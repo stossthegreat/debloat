@@ -1,4 +1,3 @@
 abstract final class ApiConfig {
-  // Railway backend URL — replace after deploy
-  static const String backendBaseUrl = 'https://YOUR-RAILWAY-URL.up.railway.app';
+  static const String backendBaseUrl = 'https://mirrorly-production.up.railway.app';
 }
