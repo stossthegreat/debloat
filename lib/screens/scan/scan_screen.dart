@@ -41,6 +41,13 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
 
   bool _processing = false;
 
+  // Debug counters — live status badge
+  int _framesProcessed = 0;
+  int _facesDetected   = 0;
+  int _meshHits        = 0;
+  int _meshFallbacks   = 0;
+  String _lastError    = '';
+
   // Rotating copy per phase
   static const _scanCopy = [
     '468 landmarks',
@@ -134,6 +141,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
     _processing = true;
 
     try {
+      _framesProcessed++;
       final inputImage = _buildInputImage(image);
       if (inputImage == null) return;
 
@@ -141,15 +149,23 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       final imgH = image.height.toDouble();
 
       // Run both detectors in parallel
-      final results = await Future.wait([
-        _faceDetector!.processImage(inputImage),
-        _meshService!.detect(inputImage, imgW, imgH),
-      ]);
+      List<Face> faces = [];
+      FaceMesh? mesh;
+      try {
+        final results = await Future.wait([
+          _faceDetector!.processImage(inputImage),
+          _meshService!.detect(inputImage, imgW, imgH),
+        ]);
+        faces = results[0] as List<Face>;
+        mesh  = results[1] as FaceMesh?;
+      } catch (e) {
+        _lastError = e.toString().substring(0, e.toString().length.clamp(0, 60));
+      }
 
       if (!mounted) return;
 
-      final faces = results[0] as List<Face>;
-      var mesh    = results[1] as FaceMesh?;
+      if (faces.isNotEmpty) _facesDetected++;
+      if (mesh != null && mesh.isValid) _meshHits++;
 
       if (faces.isEmpty) {
         _faceFrames = 0;
@@ -159,6 +175,8 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
             _progress = 0;
             _mesh     = null;
           });
+        } else {
+          setState(() {});  // refresh debug badge
         }
         return;
       }
@@ -178,6 +196,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
         }
         if (pts.length >= 20) {
           mesh = FaceMesh(pts);
+          _meshFallbacks++;
         }
       }
 
@@ -344,21 +363,22 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
           if (preview != null && preview.value.isInitialized)
             Positioned.fill(
               child: ClipRect(
-                child: OverflowBox(
-                  alignment: Alignment.center,
-                  maxWidth:  double.infinity,
-                  maxHeight: double.infinity,
-                  child: FittedBox(
-                    fit: BoxFit.cover,
-                    alignment: Alignment.center,
-                    // previewSize is always in sensor (landscape) orientation;
-                    // swap w/h to render as portrait on the screen.
-                    child: SizedBox(
-                      width:  preview.value.previewSize?.height ?? 1,
-                      height: preview.value.previewSize?.width  ?? 1,
-                      child: CameraPreview(preview),
-                    ),
-                  ),
+                child: Builder(
+                  builder: (context) {
+                    final screenSize = MediaQuery.of(context).size;
+                    // CameraPreview self-applies aspect = 1/cameraAspect in portrait
+                    final previewAspect = 1 / preview.value.aspectRatio;
+                    final screenAspect  = screenSize.width / screenSize.height;
+                    // Scale up to cover the full screen
+                    final scale = previewAspect > screenAspect
+                        ? previewAspect / screenAspect
+                        : screenAspect / previewAspect;
+                    return Transform.scale(
+                      scale: scale,
+                      alignment: Alignment.center,
+                      child: Center(child: CameraPreview(preview)),
+                    );
+                  },
                 ),
               ),
             )
@@ -435,6 +455,31 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
+
+          // Debug badge — remove before final ship
+          Positioned(
+            left: 12, bottom: 12,
+            child: SafeArea(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'FR $_framesProcessed · FC $_facesDetected · MS $_meshHits · FB $_meshFallbacks'
+                  '${_lastError.isNotEmpty ? "\nERR: $_lastError" : ""}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ),
+          ),
 
           // Top bar
           SafeArea(
