@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -84,7 +83,12 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       ),
     );
 
-    _meshService = FaceMeshService();
+    // Google ML Kit Face Mesh Detection is Android-only — trying to use it
+    // on iOS throws MissingPluginException and kills the processing loop.
+    // On iOS, mesh stays null and we fall back to face_detection contour points.
+    if (Platform.isAndroid) {
+      _meshService = FaceMeshService();
+    }
 
     _camera = CameraController(
       front,
@@ -196,18 +200,21 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       final imgW = image.width.toDouble();
       final imgH = image.height.toDouble();
 
-      // Run both detectors in parallel
+      // Run face detection always. Run mesh detection only where supported.
       List<Face> faces = [];
       FaceMesh? mesh;
       try {
-        final results = await Future.wait([
-          _faceDetector!.processImage(inputImage),
-          _meshService!.detect(inputImage, imgW, imgH),
-        ]);
-        faces = results[0] as List<Face>;
-        mesh  = results[1] as FaceMesh?;
+        faces = await _faceDetector!.processImage(inputImage);
       } catch (e) {
         _lastError = e.toString().substring(0, e.toString().length.clamp(0, 60));
+      }
+      if (_meshService != null) {
+        try {
+          mesh = await _meshService!.detect(inputImage, imgW, imgH);
+        } catch (_) {
+          // Face mesh detection unsupported on this platform/device — silently
+          // fall through to face-detection contour fallback below.
+        }
       }
 
       if (!mounted) return;
@@ -409,7 +416,18 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       body: Stack(
         children: [
           if (preview != null && preview.value.isInitialized)
-            Positioned.fill(child: CameraPreview(preview))
+            Positioned.fill(
+              child: SizedBox.expand(
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width:  preview.value.previewSize?.height ?? 1,
+                    height: preview.value.previewSize?.width  ?? 1,
+                    child: CameraPreview(preview),
+                  ),
+                ),
+              ),
+            )
           else
             const Positioned.fill(child: ColoredBox(color: Colors.black)),
 
