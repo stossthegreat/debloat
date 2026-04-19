@@ -366,11 +366,21 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       _progress = 0.0;
     });
     HapticFeedback.mediumImpact();
+    bool lockFired = false;
     _measureTimer?.cancel();
     _measureTimer = Timer.periodic(40.ms, (t) {
       if (!mounted) { t.cancel(); return; }
       final np = _progress + 0.013;  // ~3s full reveal
       setState(() => _progress = np.clamp(0.0, 1.0));
+
+      // LOCK STRIKE haptic — fires exactly when the painter's signature
+      // lock-strike visual begins. Gives the user a physical beat that
+      // syncs to the flash, ring, and "◆ LOCK ◆" label.
+      if (!lockFired && np >= 0.90) {
+        lockFired = true;
+        HapticFeedback.heavyImpact();
+      }
+
       if (np >= 1.0) {
         t.cancel();
         _startCapture();

@@ -87,11 +87,18 @@ class GeometryOverlayPainter extends CustomPainter {
           _drawMeshTriangleWash(canvas, size);
           _drawBoneStructure(canvas, size, dramatic: true);
           _drawMeasurementCallouts(canvas, size);
+          _drawFloatingMeasurements(canvas, size);
           _drawRadarRings(canvas, size);
           _drawFaceLockBrackets(canvas, size, intensity: 1.0);
+          // Signature LOCK STRIKE at the climax of measuring — full-screen
+          // vignette flash + ring shockwave + "LOCK" label pulse. This is
+          // THE moment that lands on TikTok.
+          if (progress >= 0.90) _drawLockStrike(canvas, size);
         }
         _drawTopTicker(canvas, size,
-          '◉ YOUR BONES, READ  ·  LOCKING YOUR ARCHETYPE');
+          progress >= 0.90
+            ? '◆ LOCK ACQUIRED  ·  EVERY MM MAPPED'
+            : '◉ YOUR BONES, READ  ·  LOCKING YOUR ARCHETYPE');
         _drawBottomMeasurementStream(canvas, size);
         break;
 
@@ -319,19 +326,43 @@ class GeometryOverlayPainter extends CustomPainter {
   void _drawMeshDots(Canvas canvas, Size size,
       {double alphaScale = 1.0, bool breath = false}) {
     final points = mesh!.points;
+    final depths = mesh!.depths;
     final dotPaint = Paint()..style = PaintingStyle.fill;
     final b = breath ? (math.sin(animT * 1.5) * 0.15 + 1.0) : 1.0;
+
+    // Pre-compute depth range so near/far mapping is stable per-frame.
+    double zMin = 0, zMax = 0;
+    if (depths != null && depths.isNotEmpty) {
+      zMin = depths.reduce(math.min);
+      zMax = depths.reduce(math.max);
+      if (zMax - zMin < 1e-5) zMax = zMin + 1e-5;
+    }
 
     for (var i = 0; i < points.length; i++) {
       final p = points[i];
       final x = p.dx * size.width;
       final y = p.dy * size.height;
+
+      // 3D PARALLAX — points closer to camera (smaller Z in MediaPipe's
+      // convention) render brighter + bigger. Creates a volumetric feel
+      // nobody else in this category uses because nobody reads Z off the
+      // mesh. This IS a moat.
+      double depthMul = 1.0;
+      double depthAlpha = 1.0;
+      if (depths != null && i < depths.length) {
+        final z = depths[i];
+        // Normalize so near = 1.0, far = 0.0
+        final n = 1.0 - ((z - zMin) / (zMax - zMin)).clamp(0.0, 1.0);
+        depthMul   = 0.7 + n * 0.9;   // size range 0.7x .. 1.6x
+        depthAlpha = 0.45 + n * 0.75; // alpha range 0.45 .. 1.2
+      }
+
       // Two-tone: nose bridge + eye landmarks in gold, rest cyan
       final isAnchor = i == 1 || i == 4 || i == 6 || i == 10 ||
                        i == 152 || i == 33 || i == 263;
       dotPaint.color = (isAnchor ? _cGoldHi : _cCyan)
-          .withValues(alpha: 0.65 * alphaScale);
-      canvas.drawCircle(Offset(x, y), 1.2 * b, dotPaint);
+          .withValues(alpha: (0.65 * alphaScale * depthAlpha).clamp(0.0, 1.0));
+      canvas.drawCircle(Offset(x, y), 1.2 * b * depthMul, dotPaint);
     }
   }
 
@@ -471,10 +502,20 @@ class GeometryOverlayPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round);
 
-      // 4. Bright white core (only if dramatic, makes lines feel neon)
+      // 4. Cyan undercore (offset subtly — chromatic aberration / neon feel)
       if (dramatic) {
         canvas.drawPath(path, Paint()
-          ..color = _cWhite.withValues(alpha: alpha * 0.55)
+          ..color = _cCyanHi.withValues(alpha: alpha * 0.35 * xrayPulse)
+          ..strokeWidth = w * 0.55
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.2));
+      }
+
+      // 5. Bright white core (makes lines feel incandescent)
+      if (dramatic) {
+        canvas.drawPath(path, Paint()
+          ..color = _cWhite.withValues(alpha: alpha * 0.65)
           ..strokeWidth = w * 0.35
           ..style = PaintingStyle.stroke
           ..strokeCap = StrokeCap.round);
@@ -564,6 +605,171 @@ class GeometryOverlayPainter extends CustomPainter {
           canvas.drawCircle(p, dramatic ? 3 : 2, anchorPaint);
         }
       }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  LAYER 6b  —  Floating live measurement readouts (numbers at anchors)
+  //  These are the numbers animating next to the mesh, terminal-style. Each
+  //  appears when its reveal phase begins, with a slight flicker to read as
+  //  "live data streaming in."
+  // ═══════════════════════════════════════════════════════════════════════════
+  void _drawFloatingMeasurements(Canvas canvas, Size size) {
+    final points = mesh!.points;
+    if (points.length < 200) return;
+    final reveal = ((progress - 0.55) / 0.35).clamp(0.0, 1.0);
+    if (reveal <= 0) return;
+
+    Offset? px(int i) {
+      if (i >= points.length) return null;
+      final p = points[i];
+      return Offset(p.dx * size.width, p.dy * size.height);
+    }
+
+    // Fake-live values modulated so they feel alive. These visually SELL
+    // the precision — the verdict/real data in the report comes from backend.
+    final canthal = (3.0 + math.sin(animT * 2.1) * 0.12);
+    final jaw     = (118 + math.sin(animT * 1.6) * 0.6);
+    final fwhr    = (1.87 + math.sin(animT * 1.9) * 0.015);
+    final sym     = (87  + math.sin(animT * 1.3) * 0.8);
+
+    final readouts = <(Offset?, String, double)>[
+      (px(FaceMesh.idxLeftEyeOuter),  'CANTHAL ${canthal.toStringAsFixed(2)}°', 0.00),
+      (px(FaceMesh.idxChin),          'JAW ${jaw.toStringAsFixed(0)}°',         0.20),
+      (px(FaceMesh.idxCheekL),        'FWHR ${fwhr.toStringAsFixed(2)}',        0.40),
+      (px(FaceMesh.idxCheekR),        'SYM ${sym.toStringAsFixed(0)}%',         0.60),
+    ];
+
+    for (final (anchor, text, delay) in readouts) {
+      if (anchor == null) continue;
+      final local = ((reveal - delay) / 0.25).clamp(0.0, 1.0);
+      if (local <= 0) continue;
+
+      // Flicker effect — reads as "data streaming in"
+      final flicker = (math.sin(animT * 18 + anchor.dx) + 1) / 2;
+      final alpha = local * (0.75 + flicker * 0.25);
+
+      _drawTerminalReadout(canvas, anchor, text, alpha);
+    }
+  }
+
+  void _drawTerminalReadout(Canvas canvas, Offset anchor, String text, double alpha) {
+    // Position text slightly offset from anchor
+    final pos = Offset(anchor.dx + 14, anchor.dy - 8);
+
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: _cGoldHi.withValues(alpha: alpha),
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.2,
+          fontFamilyFallback: const ['monospace'],
+          shadows: [
+            Shadow(
+              color: _cGold.withValues(alpha: alpha * 0.6),
+              blurRadius: 4,
+            ),
+          ],
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    // Dark underlay pill for legibility on light skin
+    final rect = Rect.fromLTWH(
+      pos.dx - 4, pos.dy - 2, tp.width + 8, tp.height + 4);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(3)),
+      Paint()..color = Colors.black.withValues(alpha: alpha * 0.55),
+    );
+    tp.paint(canvas, pos);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  LAYER 6c  —  THE LOCK STRIKE (signature moment)
+  //  Fires at the climax of measuring (progress >= 0.9). Full-screen
+  //  vignette flash + ring shockwave from face center + "◆ LOCK ◆" label.
+  //  This is the beat that lands on a 10-second TikTok. Don't skip.
+  // ═══════════════════════════════════════════════════════════════════════════
+  void _drawLockStrike(Canvas canvas, Size size) {
+    // Strike intensity — peaks right at progress=0.9 then fades.
+    final strikeT = ((progress - 0.90) / 0.10).clamp(0.0, 1.0);
+    // Ease-out envelope — sharp in, slow fade
+    final envelope = 1 - math.pow(1 - strikeT, 2).toDouble();
+
+    // 1. Full-screen gold vignette flash
+    final vignette = Paint()
+      ..shader = RadialGradient(
+        center: Alignment.center,
+        radius: 1.2,
+        colors: [
+          Colors.transparent,
+          _cGold.withValues(alpha: 0.0),
+          _cGold.withValues(alpha: 0.28 * (1 - strikeT)),
+        ],
+        stops: const [0.0, 0.55, 1.0],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height), vignette);
+
+    // 2. Center-screen bright starburst
+    final cx = size.width / 2;
+    final cy = size.height * 0.45;
+    final burstR = 30 + envelope * 80;
+    canvas.drawCircle(Offset(cx, cy), burstR * 0.3, Paint()
+      ..color = _cWhite.withValues(alpha: 0.85 * (1 - strikeT)));
+    canvas.drawCircle(Offset(cx, cy), burstR, Paint()
+      ..color = _cGold.withValues(alpha: 0.55 * (1 - strikeT))
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14));
+    canvas.drawCircle(Offset(cx, cy), burstR * 2.4, Paint()
+      ..color = _cGold.withValues(alpha: 0.22 * (1 - strikeT))
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 22));
+
+    // 3. Expanding ring shockwave
+    final ringR = envelope * math.min(size.width, size.height) * 0.8;
+    final ringAlpha = (1 - envelope) * 0.9;
+    if (ringAlpha > 0.02) {
+      canvas.drawCircle(Offset(cx, cy), ringR, Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3 + (1 - envelope) * 3
+        ..color = _cGoldHi.withValues(alpha: ringAlpha));
+      canvas.drawCircle(Offset(cx, cy), ringR * 1.08, Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5
+        ..color = _cGold.withValues(alpha: ringAlpha * 0.55));
+    }
+
+    // 4. "◆ LOCK ◆" label pulse, center-top
+    final labelT = ((strikeT - 0.05) / 0.3).clamp(0.0, 1.0);
+    final labelOpacity = labelT * (1 - (strikeT - 0.3).clamp(0.0, 0.7) / 0.7);
+    if (labelOpacity > 0.05) {
+      final scale = 0.8 + labelT * 0.3;
+      canvas.save();
+      canvas.translate(cx, size.height * 0.25);
+      canvas.scale(scale, scale);
+      final tp = TextPainter(
+        text: TextSpan(
+          text: '◆ LOCK ◆',
+          style: TextStyle(
+            color: _cGoldHi.withValues(alpha: labelOpacity),
+            fontSize: 26,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 8,
+            fontFamilyFallback: const ['monospace'],
+            shadows: [
+              Shadow(
+                color: _cGold.withValues(alpha: labelOpacity * 0.8),
+                blurRadius: 16,
+              ),
+            ],
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
+      canvas.restore();
     }
   }
 

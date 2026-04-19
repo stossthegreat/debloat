@@ -3,10 +3,13 @@ import 'package:google_mlkit_face_mesh_detection/google_mlkit_face_mesh_detectio
 
 /// Holds the 468 normalized face mesh points.
 /// All coordinates are 0..1 relative to the source image.
+/// Optional parallel list of Z-depth values (negative = closer to camera,
+/// positive = farther) enables 3D parallax rendering in the overlay.
 class FaceMesh {
   final List<Offset> points;
+  final List<double>? depths;
 
-  const FaceMesh(this.points);
+  const FaceMesh(this.points, {this.depths});
 
   // Lowered from 50 so bounding-box / landmark fallbacks still render
   // something rather than being silently discarded. Layer-specific guards
@@ -55,10 +58,13 @@ class FaceMeshService {
     if (meshes.isEmpty) return null;
 
     final m = meshes.first;
-    final pts = m.points
-        .map((p) => mapper(p.x.toDouble(), p.y.toDouble()))
-        .toList(growable: false);
-    return FaceMesh(pts);
+    final pts    = <Offset>[];
+    final depths = <double>[];
+    for (final p in m.points) {
+      pts.add(mapper(p.x.toDouble(), p.y.toDouble()));
+      depths.add(p.z.toDouble());
+    }
+    return FaceMesh(pts, depths: depths);
   }
 
   Future<void> close() async => _detector.close();
