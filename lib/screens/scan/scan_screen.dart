@@ -133,14 +133,14 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
               ?? InputImageRotation.rotation270deg);
     _isFrontCam = front.lensDirection == CameraLensDirection.front;
 
-    // Unified pipeline — both iOS and Android run the same path: FaceDetector
-    // contours → FaceMesh fallback. The google_mlkit_face_mesh_detection
-    // plugin was Android-only and failed silently on many devices (empty
-    // meshes, plugin registration issues), which made Android render nothing
-    // while iOS — which had always relied on the contour fallback — showed
-    // the full mesh visualization. Keeping both platforms on the same path
-    // guarantees parity: whatever iOS shows, Android now shows too.
-    _meshService = null;
+    // Android gets the full 468-point mesh via google_mlkit_face_mesh_detection
+    // (Android-only plugin). iOS falls back to contour points from face_detection
+    // — same pipeline, fewer points, still renders.
+    if (Platform.isAndroid) {
+      _meshService = FaceMeshService();
+    } else {
+      _meshService = null;
+    }
 
     // Canonical Flutter + ML Kit setup — per google_mlkit_commons README:
     //   Android → NV21 (natively delivered by camera 0.10.5+, no conversion)
@@ -207,40 +207,40 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
   // extra flip. 0°/180° is the only case where we mirror explicitly for front.
   //
   // Returns normalized 0..1 display-space coordinates for the portrait preview.
-  /// Coordinate translator — ported from the fitness-app SkeletonPainter.
+  /// Coordinate translator — canonical Google ML Kit pattern.
   ///
-  /// ANDROID — ML Kit returns landmarks in the unrotated SENSOR frame.
-  ///   Divide by sensor dims (imgW/imgH) directly. Mirror X for front cam
-  ///   because the preview is mirrored by the plugin while the stream isn't.
+  /// Proven by: Google's own `CameraXLivePreviewActivity.java` sample
+  /// (which swaps image w/h when rotation is 90°/180°) + flutter-ml's
+  /// `coordinates_translator.dart` example painter — THE reference impl
+  /// for this stack.
   ///
-  /// iOS — AVCaptureVideoPreviewLayer auto-mirrors the front-cam preview
-  ///   at the SYSTEM level, and ML Kit's iOS path outputs in the same
-  ///   mirrored space. The sensor reports landscape dims even in portrait,
-  ///   so swap the division. NO explicit mirror — system handles it.
+  /// KEY FACT: ML Kit returns landmarks in the ROTATED upright frame, not
+  /// the raw sensor frame. For a portrait phone with a landscape sensor at
+  /// rotation 270°, landmark x maxes at sensor HEIGHT (= portrait width).
+  ///
+  /// Rotation 270° also bakes in a horizontal flip — that's why front-cam
+  /// portrait "just works" without an extra `_isFrontCam` mirror. Applying
+  /// a second mirror on 270° sends the overlay to the wrong side.
   Offset _normalize(double bx, double by, double imgW, double imgH) {
-    final isIOS = Platform.isIOS;
     double nx, ny;
-    if (isIOS) {
-      // iOS: swap dims for portrait rotation; no mirror (system handles it)
-      switch (_rotation) {
-        case InputImageRotation.rotation90deg:
-        case InputImageRotation.rotation270deg:
-          nx = bx / imgH;
-          ny = by / imgW;
-          break;
-        case InputImageRotation.rotation0deg:
-        case InputImageRotation.rotation180deg:
-          nx = bx / imgW;
-          ny = by / imgH;
-          break;
-      }
-    } else {
-      // Android: sensor-frame dims directly, mirror for front cam.
-      // This is the fitness-app SkeletonPainter pattern that runs in
-      // production on thousands of Android devices.
-      nx = bx / imgW;
-      ny = by / imgH;
-      if (_isFrontCam) nx = 1.0 - nx;
+    switch (_rotation) {
+      case InputImageRotation.rotation90deg:
+        // Back cam portrait typical. Upright width = sensor height.
+        nx = bx / imgH;
+        ny = by / imgW;
+        break;
+      case InputImageRotation.rotation270deg:
+        // Front cam portrait typical. Implicit horizontal flip is part of
+        // the 270° transformation — do NOT add an extra front-cam mirror.
+        nx = 1.0 - bx / imgH;
+        ny = by / imgW;
+        break;
+      case InputImageRotation.rotation0deg:
+      case InputImageRotation.rotation180deg:
+        nx = bx / imgW;
+        ny = by / imgH;
+        if (_isFrontCam) nx = 1.0 - nx;
+        break;
     }
     return Offset(nx, ny);
   }
