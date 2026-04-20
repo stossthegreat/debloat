@@ -81,6 +81,12 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
   int _fallbackHit = 0;
   int _lastMeshPts = 0;
   String _pipelineErr = '';
+  // Extra debug — raw camera signals visible in the diagnostic panel
+  int _dbgImgW = 0;
+  int _dbgImgH = 0;
+  int _dbgSensorRot = -1;
+  String _dbgFirstRaw = '';  // first mesh point raw pixel coords
+  String _dbgFirstNorm = ''; // first mesh point normalized 0..1
 
   // 60fps animation clock — drives particle drift, scan sweep, radar rings,
   // pulse, glitch cadence. Monotonic seconds since screen init.
@@ -258,6 +264,9 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
 
       final imgW = image.width.toDouble();
       final imgH = image.height.toDouble();
+      _dbgImgW = image.width;
+      _dbgImgH = image.height;
+      _dbgSensorRot = _camera?.description.sensorOrientation ?? -1;
 
       // Run face detection always. Run mesh detection only where supported.
       List<Face> faces = [];
@@ -269,13 +278,29 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       }
       if (_meshService != null) {
         try {
+          // Capture first point's raw coords for debug
+          bool firstCaptured = false;
           mesh = await _meshService!.detect(
             inputImage,
-            (x, y) => _normalize(x, y, imgW, imgH),
+            (x, y) {
+              if (!firstCaptured) {
+                firstCaptured = true;
+                _dbgFirstRaw = '(${x.toStringAsFixed(0)}, ${y.toStringAsFixed(0)})';
+              }
+              final n = _normalize(x, y, imgW, imgH);
+              if (firstCaptured && _dbgFirstNorm.isEmpty) {
+                _dbgFirstNorm = '(${n.dx.toStringAsFixed(2)}, ${n.dy.toStringAsFixed(2)})';
+              }
+              return n;
+            },
           );
           if (mesh != null && mesh.isValid) {
             _meshHit++;
             _lastMeshPts = mesh.points.length;
+            // Refresh first-point debug each successful detection
+            _dbgFirstNorm = '';
+          } else if (mesh == null) {
+            _pipelineErr = 'MESH EMPTY (plugin returned no faces)';
           }
         } catch (e) {
           _pipelineErr = 'FM: ${_trim(e)}';
@@ -743,6 +768,19 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
             style: const TextStyle(color: Colors.white, fontSize: 9,
               fontWeight: FontWeight.w600, letterSpacing: 0.6, height: 1.3,
               fontFamilyFallback: ['monospace'])),
+          const SizedBox(height: 3),
+          Text(
+            'IMG ${_dbgImgW}x$_dbgImgH   ROT ${_rotation.name.replaceAll('rotation', '').replaceAll('deg', '°')}   SENSOR $_dbgSensorRot°',
+            style: const TextStyle(color: Colors.white60, fontSize: 8.5,
+              fontWeight: FontWeight.w600, letterSpacing: 0.4, height: 1.25,
+              fontFamilyFallback: ['monospace'])),
+          if (_dbgFirstRaw.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text('RAW $_dbgFirstRaw → NORM $_dbgFirstNorm',
+              style: const TextStyle(color: Colors.white60, fontSize: 8.5,
+                fontWeight: FontWeight.w600, letterSpacing: 0.4, height: 1.25,
+                fontFamilyFallback: ['monospace'])),
+          ],
           if (_pipelineErr.isNotEmpty) ...[
             const SizedBox(height: 3),
             Text(_pipelineErr,
