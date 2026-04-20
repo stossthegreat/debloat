@@ -133,12 +133,14 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
               ?? InputImageRotation.rotation270deg);
     _isFrontCam = front.lensDirection == CameraLensDirection.front;
 
-    // Google ML Kit Face Mesh Detection is Android-only — trying to use it
-    // on iOS throws MissingPluginException and kills the processing loop.
-    // On iOS, mesh stays null and we fall back to face_detection contour points.
-    if (Platform.isAndroid) {
-      _meshService = FaceMeshService();
-    }
+    // Unified pipeline — both iOS and Android run the same path: FaceDetector
+    // contours → FaceMesh fallback. The google_mlkit_face_mesh_detection
+    // plugin was Android-only and failed silently on many devices (empty
+    // meshes, plugin registration issues), which made Android render nothing
+    // while iOS — which had always relied on the contour fallback — showed
+    // the full mesh visualization. Keeping both platforms on the same path
+    // guarantees parity: whatever iOS shows, Android now shows too.
+    _meshService = null;
 
     // Canonical Flutter + ML Kit setup — per google_mlkit_commons README:
     //   Android → NV21 (natively delivered by camera 0.10.5+, no conversion)
