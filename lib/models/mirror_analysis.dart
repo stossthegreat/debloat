@@ -70,12 +70,14 @@ class Report {
 class MirrorAnalysis {
   final Report report;
   final String maximizedImageUrl;
-  /// Cumulative chain outputs from the 3-pass Flux chain, one per fix:
-  ///   intermediateUrls[0] = photo after fix 1 applied
-  ///   intermediateUrls[1] = photo after fixes 1 + 2 applied
-  ///   intermediateUrls[2] = photo after all 3 fixes applied (== maximized)
-  /// The report screen uses these to fill the 3 fix cards instantly — no
-  /// extra Flux call when the user taps "See it".
+  /// Optional pre-rendered per-fix images.
+  ///
+  /// The backend does NOT currently populate this — the maximize endpoint
+  /// now runs a single combined Flux call and returns only the hero URL,
+  /// so fix cards fall back to live `/tryon` rendering when the user
+  /// taps "See it." The field is kept for forward compatibility in case
+  /// the backend later exposes per-fix precomputed images (e.g. via
+  /// background generation or caching).
   final List<String> intermediateUrls;
 
   const MirrorAnalysis({

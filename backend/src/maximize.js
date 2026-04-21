@@ -3,48 +3,49 @@ import crypto from 'node:crypto';
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
-// SOLO calls from the original photo want MAX, not Pro.
-// Research (BFL + Fireworks + flux-kontext.io comparisons): Pro is
-// more stable over LONG CHAINS (its drift per step is smaller); Max
-// has higher SINGLE-SHOT fidelity (it lands closer to the reference
-// in one pass). Since every call here is a solo from the original,
-// every call is a single shot — Max is the correct pick.
+// Max, not Pro. Research:
+//   - Pro is stabler across LONG CHAINS.
+//   - Max has higher SINGLE-SHOT fidelity AND "better multi-instruction
+//     handling" — BFL's own marketing copy for Max.
+// We're doing one single shot with multiple instructions, so Max.
 const MODEL = 'black-forest-labs/flux-kontext-max';
 
 /**
- * Generate the Maximized Twin.
+ * Generate the Maximized Twin in ONE Flux call.
  *
- * ARCHITECTURE — why SOLO from original, not chained:
+ * ARCHITECTURE — why single call, not chain, not 3-solo:
  *
- * BFL's docs say "chain" for multi-step edits, but chain accumulates
- * identity drift: pass 1 sees the original and is clean; pass 2 sees
- * the already-edited pass 1 output and treats it as reference, so it
- * drifts on top of pass 1's drift; pass 3 compounds again. Users hit
- * exactly this — "first image perfect, second image face already
- * different, third image worst." Since the HERO is the last pass in
- * a chain, users literally saw the most-drifted image as the hero.
+ *   Chained passes: each pass takes the previous output as reference, so
+ *   drift compounds. By pass 3 the face is noticeably off.
  *
- * Fix: three SOLO calls, each from the ORIGINAL photo. Every image
- * has the same reference, so none of them drift onto each other.
- * Hero = the first solo (GPT orders fixes by impact; fix 0 is the
- * most impactful). Fix cards 0/1/2 each display their own solo.
+ *   3 solo from original: no drift accumulation per pass, but 3× Flux
+ *   spend, 3× latency, and constant 429 throttling on Replicate's
+ *   rate-limited tier. Hero only shows ONE fix anyway (we picked solo[0]
+ *   as hero), so the other 2 renders were paid for but never seen in
+ *   the primary moment.
  *
- * TRADEOFF: the hero only shows ONE visible change, not all three
- * cumulatively. That's the honest limit of Kontext — it can't land
- * three clean zone edits in one image without drifting identity.
- * One strong clean change that's unmistakably THEM beats three
- * muddy ones where the face looks off.
+ *   Single call with all 3 combined: Max is BFL's designated multi-
+ *   instruction model. One prompt, three visualRequests joined with
+ *   commas + BFL canonical preservation clause. 1 call. No throttle.
+ *   Fast. And when Max lands all three it IS the goat.
  *
- * RATE LIMITING: calls are sequential with ~2s pacing + retry-with-
- * backoff on 429. Replicate's free/low-credit tier throttles to 6
- * req/min; this pacing keeps us under the ceiling and retries
- * gracefully if the ceiling shifts.
+ *   If Max drops one of three changes: the fix cards in the app are
+ *   text-first; user taps "See it" on any individual fix to render
+ *   it in isolation via /tryon. Cost-shifted to user intent — we
+ *   don't pre-pay for renders the user might never look at.
+ *
+ * Preserve clause is CONFLICT-AWARE. BFL's canonical preserve list
+ * includes "hairstyle" — but if the user's visualRequest is a haircut,
+ * preserving hairstyle contradicts the change and Kontext flips a coin
+ * on which wins. Solution: detect what's being changed and drop the
+ * conflicting anchor from the preserve list.
  *
  * Returns:
  *   {
- *     url:               first solo (= hero, most impactful fix)
- *     intermediateUrls:  [solo 0, solo 1, solo 2]
- *     seeds, prompts
+ *     url:              the single hero image (all 3 changes, if Max lands them)
+ *     prompt:           the composed prompt (for debugging)
+ *     seed:             deterministic
+ *     intermediateUrls: [] (legacy field, kept for client compat)
  *   }
  */
 export async function maximize({ imageBase64, brief }) {
@@ -56,69 +57,74 @@ export async function maximize({ imageBase64, brief }) {
     improve.push(defaultImprove()[improve.length]);
   }
 
-  const prompts = improve.map(buildSoloPrompt);
-  const seeds   = improve.map((_, i) =>
-    deterministicSeed(imageBase64, `solo${i + 1}`));
+  const prompt = buildCombinedPrompt(improve);
+  const seed   = deterministicSeed(imageBase64);
 
-  const inputDataUri = `data:image/jpeg;base64,${imageBase64}`;
-
-  const urls = [];
-  for (let i = 0; i < 3; i++) {
-    const outputUrl = await runKontextWithRetry({
-      imageDataUri: inputDataUri,  // ALWAYS the original — not the previous output
-      prompt:       prompts[i],
-      seed:         seeds[i],
-    });
-    urls.push(outputUrl);
-    // Pace the loop so we don't trip Replicate's 6-req/min burst cap on
-    // low-credit accounts. 2.2s between calls → ~27 req/min ceiling max,
-    // well under any sensible throttle and invisible to users since
-    // Flux itself takes ~5s per render anyway.
-    if (i < 2) await sleep(2200);
-  }
+  const url = await runKontextWithRetry({
+    imageDataUri: `data:image/jpeg;base64,${imageBase64}`,
+    prompt,
+    seed,
+  });
 
   return {
-    url:              urls[0],   // hero = solo 0 (most impactful fix)
-    intermediateUrls: urls,      // [solo 0, solo 1, solo 2] → fix cards 0/1/2
-    seeds,
-    prompts,
+    url,
+    prompt,
+    seed,
+    intermediateUrls: [], // client falls back to live /tryon per fix card
   };
 }
 
-/**
- * Default improve list when GPT didn't return one. Ordered by visual
- * impact so the hero (solo 0) lands the biggest change.
- */
 function defaultImprove() {
   return [
-    'clear, healthy, even-toned skin with natural pores still visible',
-    'cleanly groomed hair and eyebrows matched to the face shape',
-    'bright, rested under-eyes with no puffiness',
+    'clearer, healthier skin with natural pores preserved',
+    'cleanly groomed hair matched to the face shape',
+    'a cleaner, more defined beard line',
   ];
 }
 
 /**
- * BFL-canonical Kontext prompt — as short as it gets.
- *
- * Kontext's attention budget is finite; a long enumerated preservation
- * list ("keep the jaw, keep the nose, keep the lips, keep the eyes...")
- * dilutes the signal rather than reinforcing it. BFL's own i2i guide
- * shows the canonical preservation phrase is a literal 7-word formula:
- *   "while maintaining the same facial features, hairstyle, and
- *    expression"
- * We extend it with three more identity anchors (age, skin tone,
- * ethnicity) and nothing else. Shorter = tighter attention = less drift.
- *
- * Positive-only phrasing — no "do not" (BFL: negatives can invert).
+ * One BFL-canonical prompt combining all three changes. Conflict-aware
+ * preserve list — if a change touches a canonical preserve anchor
+ * (hairstyle / facial hair / skin tone), that anchor is dropped so the
+ * model doesn't get contradicting instructions.
  */
-function buildSoloPrompt(visualChange) {
-  const change = String(visualChange || '').trim();
-  return `The person in this photo, now with ${change}, while maintaining the same facial features, hairstyle, expression, age, skin tone, and ethnicity. Same pose, camera angle, framing, lighting, and background as the original. Photorealistic, natural pores preserved.`;
+function buildCombinedPrompt(changes) {
+  const items = changes
+    .map(s => String(s || '').trim())
+    .filter(Boolean)
+    .map(s => s.replace(/\.$/, ''));     // strip trailing periods
+  if (items.length === 0) return '';
+
+  // Join as a clean English list: "A, B, and C"
+  const changeList = items.length === 1
+    ? items[0]
+    : items.length === 2
+      ? `${items[0]} and ${items[1]}`
+      : `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+
+  // Conflict detection — drop preserve anchors that contradict the changes.
+  const lower = items.join(' | ').toLowerCase();
+  const preserves = ['facial features', 'expression', 'age', 'ethnicity'];
+
+  if (!/\b(hair(?!\s*line)|fade|crop|cut|hairline|fringe|buzz|taper|undercut)\b/.test(lower)) {
+    preserves.push('hairstyle');
+  }
+  if (!/\b(beard|stubble|facial hair|moustache|goatee)\b/.test(lower)) {
+    preserves.push('facial hair');
+  }
+  if (!/\b(skin|complexion|pore|texture|tone|blemish|retinol|glow)\b/.test(lower)) {
+    preserves.push('skin tone');
+  }
+
+  const preserveClause = preserves.join(', ');
+
+  return `The person in this photo, now with ${changeList}, while maintaining the same ${preserveClause}. Same pose, camera angle, framing, lighting, and background as the original. Photorealistic, natural pores preserved.`;
 }
 
 /**
  * Flux call with retry-with-backoff on 429. Honors Replicate's
- * `retry_after` when present, otherwise backs off exponentially.
+ * `retry_after` when present. Single-call maximize rarely triggers 429
+ * but the defence-in-depth is cheap.
  */
 async function runKontextWithRetry({ imageDataUri, prompt, seed }) {
   const maxAttempts = 3;
@@ -128,16 +134,14 @@ async function runKontextWithRetry({ imageDataUri, prompt, seed }) {
     try {
       return await runKontext({ imageDataUri, prompt, seed });
     } catch (err) {
-      const msg    = String(err?.message ?? err);
-      const is429  = msg.includes('429') || msg.includes('Too Many Requests');
+      const msg   = String(err?.message ?? err);
+      const is429 = msg.includes('429') || msg.includes('Too Many Requests');
       if (!is429 || attempt >= maxAttempts) throw err;
-
-      // Try to extract "retry_after":N from Replicate's error body.
-      const m = msg.match(/retry_after"?\s*:\s*(\d+)/);
-      const waitSec = m ? Number(m[1]) : Math.pow(2, attempt) * 3; // 6, 12, 24
+      const m       = msg.match(/retry_after"?\s*:\s*(\d+)/);
+      const waitSec = m ? Number(m[1]) : Math.pow(2, attempt) * 3;
       const waitMs  = Math.min(Math.max(waitSec, 3), 30) * 1000;
-      console.warn(`[flux] 429 throttled, waiting ${waitMs}ms then retrying (attempt ${attempt}/${maxAttempts})`);
-      await sleep(waitMs);
+      console.warn(`[flux] 429, waiting ${waitMs}ms (attempt ${attempt}/${maxAttempts})`);
+      await new Promise(r => setTimeout(r, waitMs));
     }
   }
 }
@@ -159,15 +163,7 @@ async function runKontext({ imageDataUri, prompt, seed }) {
     : (output?.url?.() ?? output?.[0] ?? String(output));
 }
 
-function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
-
-function deterministicSeed(imageBase64, label) {
-  const hash = crypto.createHash('md5')
-    .update(imageBase64)
-    .update('::')
-    .update(label)
-    .digest();
+function deterministicSeed(imageBase64) {
+  const hash = crypto.createHash('md5').update(imageBase64).digest();
   return hash.readUInt32BE(0) % 2147483647;
 }
