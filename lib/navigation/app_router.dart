@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../models/face_geometry.dart';
 import '../screens/chat/chat_screen.dart';
 import '../screens/home/home_screen.dart';
+import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/paywall/paywall_screen.dart';
 import '../screens/protocol/protocol_screen.dart';
 import '../screens/scan/scan_screen.dart';
@@ -13,8 +14,9 @@ import '../screens/splash/splash_screen.dart';
 final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
-    GoRoute(path: '/',         builder: (_, __) => const SplashScreen()),
-    GoRoute(path: '/paywall',  builder: (_, __) => const PaywallScreen()),
+    GoRoute(path: '/',           builder: (_, __) => const SplashScreen()),
+    GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
+    GoRoute(path: '/paywall',    builder: (_, __) => const PaywallScreen()),
     GoRoute(path: '/home',     builder: (_, __) => const HomeScreen()),
     GoRoute(path: '/scan',     builder: (_, __) => const ScanScreen()),
     GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),

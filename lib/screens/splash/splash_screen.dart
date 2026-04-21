@@ -25,8 +25,8 @@ class _SplashScreenState extends State<SplashScreen> {
     final onboarded = await LocalStoreService.isOnboarded();
     await Future.delayed(const Duration(milliseconds: 2400));
     if (!mounted) return;
-    // First-run → paywall. Returning users → home hub.
-    context.go(onboarded ? '/home' : '/paywall');
+    // First-run → onboarding (which leads to paywall). Returning → home.
+    context.go(onboarded ? '/home' : '/onboarding');
   }
 
   @override
