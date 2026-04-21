@@ -70,14 +70,30 @@ class Report {
 class MirrorAnalysis {
   final Report report;
   final String maximizedImageUrl;
+  /// Cumulative chain outputs from the 3-pass Flux chain, one per fix:
+  ///   intermediateUrls[0] = photo after fix 1 applied
+  ///   intermediateUrls[1] = photo after fixes 1 + 2 applied
+  ///   intermediateUrls[2] = photo after all 3 fixes applied (== maximized)
+  /// The report screen uses these to fill the 3 fix cards instantly — no
+  /// extra Flux call when the user taps "See it".
+  final List<String> intermediateUrls;
 
   const MirrorAnalysis({
     required this.report,
     required this.maximizedImageUrl,
+    this.intermediateUrls = const [],
   });
 
-  factory MirrorAnalysis.fromJson(Map<String, dynamic> j) => MirrorAnalysis(
-    report: Report.fromJson(j['report'] as Map<String, dynamic>),
-    maximizedImageUrl: (j['maximized'] as Map<String, dynamic>?)?['url'] as String? ?? '',
-  );
+  factory MirrorAnalysis.fromJson(Map<String, dynamic> j) {
+    final maxed = j['maximized'] as Map<String, dynamic>? ?? {};
+    final raw   = maxed['intermediateUrls'] as List?;
+    return MirrorAnalysis(
+      report: Report.fromJson(j['report'] as Map<String, dynamic>),
+      maximizedImageUrl: maxed['url'] as String? ?? '',
+      intermediateUrls: (raw ?? const [])
+          .map((e) => e.toString())
+          .where((s) => s.isNotEmpty)
+          .toList(),
+    );
+  }
 }

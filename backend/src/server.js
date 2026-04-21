@@ -51,7 +51,12 @@ app.post('/maximize', async (req, res) => {
   }
 });
 
-// ── Full pipeline: analyse → maximize in one call, geometry flowing through both
+// ── Full pipeline: analyse → maximize (3-pass chain) in one call.
+// The hero is a 3-pass Flux chain — one pass per fix — and the 3
+// intermediate outputs double as the fix-card preview images so the
+// Flutter side doesn't need a second Flux call when the user taps a
+// fix to see it. 3 Flux calls for the entire report (hero + 3 fix
+// previews), not 6.
 app.post('/scan', async (req, res) => {
   try {
     const { imageBase64, extraImagesBase64, geometry } = req.body;
@@ -62,10 +67,20 @@ app.post('/scan', async (req, res) => {
       extraImages: Array.isArray(extraImagesBase64) ? extraImagesBase64 : [],
       geometry,
     });
-    const maxed  = await maximize({
-      imageBase64, // Flux Kontext uses the front image only for identity lock
-      brief: report.brief,
-      geometry,
+
+    // Pull the 3 visualRequest strings straight off the fixes so the chain
+    // is 1:1 with the cards. Fallback to brief.improve if any visualRequest
+    // is missing (older analyse response, cache, etc).
+    const chainBrief = {
+      improve: (report.fixes ?? [])
+        .map((f, i) => (f?.visualRequest || report?.brief?.improve?.[i] || ''))
+        .map(s => s.trim())
+        .filter(Boolean),
+    };
+
+    const maxed = await maximize({
+      imageBase64,
+      brief: chainBrief,
     });
 
     res.json({ report, maximized: maxed });

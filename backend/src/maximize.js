@@ -3,74 +3,103 @@ import crypto from 'node:crypto';
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
-// PRO beats MAX on chained edits. BFL's own testing + community benchmarks:
-// Pro accumulates less identity drift across sequential passes, which is
-// exactly what we do here. Max is better for single-shot fidelity; we're
-// not doing single-shot anymore.
+// Pro beats Max on chained edits — BFL + community benchmarks both say
+// Pro accumulates less identity drift over sequential passes. Max is
+// better single-shot; we're not single-shot anymore.
 const MODEL = 'black-forest-labs/flux-kontext-pro';
 
 /**
- * Generate the Maximized Twin as a CHAINED edit per BFL's own i2i guide.
+ * Generate the Maximized Twin as a THREE-PASS CHAIN — one BFL-canonical
+ * Kontext edit per fix, each pass taking the previous output as input.
  *
  *   docs.bfl.ai/guides/prompting_guide_kontext_i2i
  *
- * Key finding from BFL's docs (verbatim):
+ * BFL's own guide, verbatim:
  *   "Complex transformations often require multiple steps. Break dramatic
  *    changes into sequential edits for better control. Make one change
  *    at a time."
  *
- * Our previous single-call approach (prompt asking for skin + eyes + hair
- * + lighting at once) is exactly what BFL warns against. The model reliably
- * lands only 1–2 instructions per call and silently drops the rest — that's
- * the "hero shows only one of three changes" bug users reported.
+ * HUGE UX WIN of the chain:
+ *   The 3 intermediate images are the FIX CARD images. The hero shows the
+ *   cumulative "all 3 fixes applied" transformation; each fix card shows
+ *   the state after the Nth fix was applied. User taps a card and the
+ *   image loads INSTANTLY — no extra Flux call, no wait. 3 Flux calls
+ *   total for the entire report: hero + all 3 fix previews.
  *
- * The fix is a 2-pass chain:
- *   Pass 1  — SKIN + EYES  (the "rested / clear" pass; covers the two most
- *             visually adjacent changes in one pass — BFL allows 2 related
- *             changes in a single call, just not 3+ unrelated ones)
- *   Pass 2  — HAIR + GROOMING  (takes pass 1's output as input; applies the
- *             hair/brow tidy. Feeding the previous output preserves all the
- *             gains from pass 1 because Kontext treats the new image as
- *             the reference.)
- *
- * 2 calls, ~$0.16 total, ~8–12s total. vs 1 call that missed edits half
- * the time.
- *
- * Deterministic seed on each pass so the same input photo always produces
- * the same chain.
+ * Returns:
+ *   {
+ *     url:               final cumulative hero (= intermediateUrls[2])
+ *     intermediateUrls:  [after fix 1, after fixes 1+2, after all 3 fixes]
+ *     seeds:             [s1, s2, s3]  (deterministic)
+ *     prompts:           the three pass prompts (for debugging)
+ *   }
  */
-export async function maximize({ imageBase64 }) {
-  // Pass 1 — skin + eyes. Positive phrasing only (BFL: no negative prompts).
-  const pass1Prompt = `The person in this photo. Refine the skin to look healthy, clear, and even-toned with natural pores still visible; refine the under-eyes to look rested and bright.
+export async function maximize({ imageBase64, brief }) {
+  // BFL allows up to ~2–3 edits per call safely, but for maximum consistency
+  // we cap at 3 single-zone items and chain them. GPT's brief.improve is the
+  // canonical source; callers should pass the array derived from the 3 fixes.
+  const improve = Array.isArray(brief?.improve) && brief.improve.length > 0
+    ? brief.improve.slice(0, 3)
+    : defaultImprove();
 
-Keep the exact same facial features, bone structure, face shape, jawline, nose shape, eye shape and colour, eyebrows, hairline, hair, skin tone, ethnicity, same age, and overall identity completely identical to the original. Soft natural daylight. Preserve the original pose, camera angle, framing, expression, and background. Only change the skin and under-eye areas as described above.`;
+  // Pad to exactly 3 items so the chain always does 3 passes. This keeps
+  // the fix-card slot mapping stable on the Flutter side.
+  while (improve.length < 3) {
+    improve.push(defaultImprove()[improve.length]);
+  }
 
-  const pass1Seed = deterministicSeed(imageBase64, 'pass1');
-  const pass1Url  = await runKontext({
-    imageDataUri: `data:image/jpeg;base64,${imageBase64}`,
-    prompt:       pass1Prompt,
-    seed:         pass1Seed,
-  });
+  const prompts = improve.map(buildPassPrompt);
+  const seeds   = improve.map((_, i) =>
+    deterministicSeed(imageBase64, `pass${i + 1}`));
 
-  // Pass 2 — hair + brows. Feeds pass 1's URL as the reference so the
-  // skin/eye gains are preserved and only hair/brows are adjusted on top.
-  const pass2Prompt = `The person in this photo. Tidy the hair on the head so it sits neatly in the same style with natural shine; tidy the eyebrows so they are clean and well-shaped.
+  const urls = [];
+  let currentInputDataUri = `data:image/jpeg;base64,${imageBase64}`;
 
-Keep the exact same facial features, bone structure, face shape, jawline, nose shape, eye shape and colour, skin tone, ethnicity, same age, and overall identity completely identical to the reference. Preserve the original pose, camera angle, framing, expression, and background. Natural skin texture with visible pores. Only change the hair on the head and the eyebrow grooming — leave everything else pixel-identical.`;
-
-  const pass2Seed = deterministicSeed(imageBase64, 'pass2');
-  const pass2Url  = await runKontext({
-    imageDataUri: pass1Url,   // CHAIN: previous output becomes next input
-    prompt:       pass2Prompt,
-    seed:         pass2Seed,
-  });
+  for (let i = 0; i < 3; i++) {
+    const outputUrl = await runKontext({
+      imageDataUri: currentInputDataUri,
+      prompt:       prompts[i],
+      seed:         seeds[i],
+    });
+    urls.push(outputUrl);
+    currentInputDataUri = outputUrl; // CHAIN — next pass uses this output
+  }
 
   return {
-    url:           pass2Url,
-    prompt:        `pass1: ${pass1Prompt}\n\npass2: ${pass2Prompt}`,
-    intermediateUrl: pass1Url,
-    seeds:         [pass1Seed, pass2Seed],
+    url:              urls[2],   // final = hero
+    intermediateUrls: urls,      // [after fix1, after fix1+2, after all 3]
+    seeds,
+    prompts,
   };
+}
+
+/**
+ * Default improve list used when GPT didn't return one. Three single-zone
+ * items, ordered skin → eyes/rested → hair so that each pass builds on a
+ * stable foundation. (Skin changes lighting cues that eye fixes key off;
+ * hair is the most visually dominant so it lands last.)
+ */
+function defaultImprove() {
+  return [
+    'clear, healthy, even-toned skin with natural pores still visible',
+    'bright, rested under-eyes with no puffiness',
+    'cleanly groomed hair and eyebrows matched to the face shape',
+  ];
+}
+
+/**
+ * One BFL-canonical Kontext prompt per pass:
+ *   1. Name the subject (no pronouns)
+ *   2. State the single change
+ *   3. Positive preservation clause (no "DO NOT" — BFL warns negatives can
+ *      invert intent)
+ *   4. Global pose/lighting/background lock
+ */
+function buildPassPrompt(visualChange) {
+  const change = String(visualChange || '').trim();
+  return `The person in this photo. Make this single change: ${change}.
+
+Keep the exact same facial features, bone structure, face shape, jawline, nose shape, eye shape and colour, lips, ethnicity, age, and overall identity completely identical to the reference image. Natural skin texture with visible pores. Preserve the original pose, camera angle, framing, facial expression, lighting, and background. Everything not named in the change above stays pixel-identical.`;
 }
 
 async function runKontext({ imageDataUri, prompt, seed }) {
@@ -78,10 +107,10 @@ async function runKontext({ imageDataUri, prompt, seed }) {
     prompt,
     input_image:      imageDataUri,
     aspect_ratio:     'match_input_image',
-    output_format:    'png',   // BFL: png preserves skin detail, jpg compresses
+    output_format:    'png',   // BFL: png preserves skin detail vs jpg
     output_quality:   95,
     safety_tolerance: 2,
-    prompt_upsampling: false,  // BFL: true silently rewrites prompt + injects drift
+    prompt_upsampling: false,  // BFL: true silently rewrites prompt + breaks determinism
     seed,
   };
   const output = await replicate.run(MODEL, { input });

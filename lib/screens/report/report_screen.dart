@@ -361,12 +361,21 @@ class _ReportScreenState extends State<ReportScreen> {
             style: AppTypography.label.copyWith(
               color: AppColors.gold, letterSpacing: 3.0, fontSize: 10)),
           const SizedBox(height: Sp.sm),
-          ...a.report.fixes.asMap().entries.map((e) =>
-            _FixCard(
+          ...a.report.fixes.asMap().entries.map((e) {
+            // Each fix card displays the cumulative chain output for its
+            // index — instantly, without a second Flux call. intermediateUrls
+            // comes from the hero's 3-pass chain. If missing (older scan
+            // or chain failure), the card falls back to firing /tryon.
+            final pre = e.key < a.intermediateUrls.length
+                ? a.intermediateUrls[e.key]
+                : null;
+            return _FixCard(
               index: e.key + 1, fix: e.value,
-              capturedBytes: widget.imageBytes,
-              geometry:      widget.geometry,
-            ).animate().fadeIn(delay: Duration(milliseconds: 2600 + e.key * 120))),
+              capturedBytes:  widget.imageBytes,
+              geometry:       widget.geometry,
+              precomputedUrl: pre,
+            ).animate().fadeIn(delay: Duration(milliseconds: 2600 + e.key * 120));
+          }),
 
           const SizedBox(height: Sp.xl),
 
@@ -879,9 +888,15 @@ class _FixCard extends StatefulWidget {
   final Fix fix;
   final Uint8List? capturedBytes;
   final FaceGeometry geometry;
+  /// Pre-rendered URL from the hero's Flux chain — the cumulative state
+  /// after this fix was applied. When present, the card shows it
+  /// immediately on tap (no extra API call). Falls back to firing /tryon
+  /// only if absent (older scan, chain failure, etc).
+  final String? precomputedUrl;
   const _FixCard({
     required this.index, required this.fix,
     required this.capturedBytes, required this.geometry,
+    this.precomputedUrl,
   });
   @override
   State<_FixCard> createState() => _FixCardState();
@@ -894,6 +909,18 @@ class _FixCardState extends State<_FixCard> {
 
   Future<void> _seeIt() async {
     if (_rendering) return;
+
+    // Fast path — the Flux chain already produced the cumulative image
+    // for this fix as part of /scan. Use it verbatim, no second Flux call.
+    final pre = widget.precomputedUrl;
+    if (pre != null && pre.isNotEmpty) {
+      setState(() {
+        _renderUrl   = pre;
+        _renderError = null;
+      });
+      return;
+    }
+
     setState(() { _rendering = true; _renderError = null; });
 
     try {
