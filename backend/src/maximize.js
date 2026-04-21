@@ -1,4 +1,5 @@
 import Replicate from 'replicate';
+import crypto from 'node:crypto';
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 const MODEL = 'black-forest-labs/flux-kontext-max';
@@ -14,21 +15,21 @@ const MODEL = 'black-forest-labs/flux-kontext-max';
  *     (BFL #1 failure cause)
  *   - Used "transform / BETTER / aspirational" verbs — BFL flags these as
  *     licence for Flux to morph identity
- *   - Wall of "DO NOT" negative prompts — Kontext does NOT support negative
- *     prompting; it can ATTEND to the forbidden concept and invert the
- *     intent (e.g. "do not enlarge eyes" can enlarge them)
+ *   - Wall of "DO NOT" negative prompts — Kontext does NOT support
+ *     negative prompting; it can ATTEND to the forbidden concept and
+ *     invert the intent ("do not enlarge eyes" can enlarge them)
  *   - Blew past the 512-token attention cap by ~3× — preservation clauses
  *     were silently dropped
  *   - Stacked 13+ edits. BFL hard cap: 2–3 per call (cumulative drift)
- *   - Injected jargon geometry numbers Flux can't interpret (token waste)
  *
- * New prompt is ~110 tokens, prose (not bullets), positive-framed, opens
- * with the canonical subject-naming line, ends with the canonical
- * preservation clause.
+ * Also: deterministic seed from the input image. Same photo → same render
+ * every run, so we stop coin-flipping between a user's best-case and worst-
+ * case Flux attractors. Zero extra Replicate cost.
  */
 export async function maximize({ imageBase64, brief }) {
   const improve = Array.isArray(brief?.improve) ? brief.improve.slice(0, 3) : [];
   const prompt  = buildPrompt({ improve });
+  const seed    = deterministicSeed(imageBase64);
 
   const input = {
     prompt,
@@ -38,6 +39,7 @@ export async function maximize({ imageBase64, brief }) {
     output_quality: 95,
     safety_tolerance: 2,
     prompt_upsampling: false,    // BFL: leaving true silently rewrites prompt + injects drift
+    seed,
   };
 
   const output = await replicate.run(MODEL, { input });
@@ -45,7 +47,7 @@ export async function maximize({ imageBase64, brief }) {
     ? output
     : (output?.url?.() ?? output?.[0] ?? String(output));
 
-  return { url, prompt };
+  return { url, prompt, seed };
 }
 
 function buildPrompt({ improve }) {
@@ -65,4 +67,15 @@ Keep the exact same facial features, bone structure, face shape, jawline, nose s
 function lowerFirst(s) {
   if (!s) return s;
   return s.charAt(0).toLowerCase() + s.slice(1);
+}
+
+/**
+ * Stable 32-bit unsigned seed derived from the input image bytes. Replicate
+ * accepts any integer seed; hashing the base64 means the SAME scan always
+ * produces the SAME render, without us tracking state anywhere. First 4
+ * bytes of md5 → unsigned int32, mod 2^31-1 keeps it in positive-int range.
+ */
+function deterministicSeed(imageBase64) {
+  const hash = crypto.createHash('md5').update(imageBase64).digest();
+  return hash.readUInt32BE(0) % 2147483647;
 }

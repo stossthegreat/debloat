@@ -150,6 +150,7 @@ The user wants to hear the TRUTH about themselves AND the PATH to being the best
       "title":    "<2–4 words, bold headline, all caps ok>",
       "reason":   "<1–2 sentences. MUST cite at least one measurement + what it means for THIS person. Blunt. No hedging.>",
       "action":   "<Exact, specific, branded if possible. Haircut names. Product names. Dosages. Times of day. Body-fat targets. Not 'try a fade' — 'mid-fade with 4cm textured crop, side-parted off the left cheekbone'.>",
+      "visualRequest": "<CRITICAL: what the AFTER image should visually SHOW — NOT what the user should DO. 6–14 words, plain visual language. Example for a retinol fix: 'clear, even-toned skin with reduced texture and healthy rested glow'. Example for a haircut fix: 'mid-fade with 4cm textured crop, side-parted, cleanly styled'. NEVER include product names (tretinoin, cerave, minoxidil), dosages, protocols, timelines, or verbs like 'apply/moisturize/take' — a text-to-image model WILL render them literally (cream on the face, bottles in the shot, etc.). Describe only the visible end state of the face.>",
       "timeline": "<realistic window, e.g. '2 weeks' or '8 weeks'>",
       "rescanDay": <integer number of days until they should rescan to check progress>
     },
@@ -158,7 +159,7 @@ The user wants to hear the TRUTH about themselves AND the PATH to being the best
   ],
 
   "brief": {
-    "improve":  ["<concrete visual change the maximized twin should render>", "<...>", "<...>"],
+    "improve":  ["<VISUAL phrase — what the hero twin SHOWS, not what to do. Same rules as visualRequest. 3 items max.>", "<...>", "<...>"],
     "preserve": ["<identity anchor tied to a measurement, e.g. 'positive canthal tilt 2.8° — do not soften outer eye corner'>", "<...>", "<...>"]
   },
 

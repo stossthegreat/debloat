@@ -897,8 +897,16 @@ class _FixCardState extends State<_FixCard> {
     setState(() { _rendering = true; _renderError = null; });
 
     try {
-      // Build a tryon style request from the fix action + title.
-      final style = '${widget.fix.title}: ${widget.fix.action}';
+      // PROTOCOL vs VISUAL — critical split. `fix.action` is the user's
+      // routine ("Tretinoin 0.025% nightly, moisturize with CeraVe") and
+      // Flux Kontext, being an image model, will render that literally
+      // (cream on the face, bottles in the shot). GPT now returns a
+      // dedicated `visualRequest` that describes only the visible end
+      // state of the face — use that when we have it, and fall back to
+      // the title alone if GPT/older-cache didn't populate it.
+      final style = widget.fix.visualRequest.trim().isNotEmpty
+          ? widget.fix.visualRequest
+          : widget.fix.title;
       final cat   = _guessCategory(widget.fix.title, widget.fix.action);
       // Save bytes to disk on-the-fly so TryOnService can load them.
       final bytes = widget.capturedBytes;

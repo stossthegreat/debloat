@@ -5,6 +5,12 @@ class Fix {
   final String title;
   final String reason;
   final String action;
+  /// The VISUAL phrase used to feed Flux Kontext when the user taps "See
+  /// it" on this fix. Separate from [action] because [action] is protocol
+  /// ("Tretinoin 0.025% nightly, moisturize with CeraVe") and a text-to-
+  /// image model renders protocol literally (cream on the face). This
+  /// field describes the END STATE of the face only.
+  final String visualRequest;
   final String timeline;
   final int rescanDay;
 
@@ -12,16 +18,18 @@ class Fix {
     required this.title,
     required this.reason,
     required this.action,
+    required this.visualRequest,
     required this.timeline,
     required this.rescanDay,
   });
 
   factory Fix.fromJson(Map<String, dynamic> j) => Fix(
-    title:     j['title']     as String? ?? '',
-    reason:    j['reason']    as String? ?? '',
-    action:    j['action']    as String? ?? '',
-    timeline:  j['timeline']  as String? ?? '',
-    rescanDay: (j['rescanDay'] as num?)?.toInt() ?? 14,
+    title:         j['title']         as String? ?? '',
+    reason:        j['reason']        as String? ?? '',
+    action:        j['action']        as String? ?? '',
+    visualRequest: j['visualRequest'] as String? ?? '',
+    timeline:      j['timeline']      as String? ?? '',
+    rescanDay:    (j['rescanDay']     as num?)?.toInt() ?? 14,
   );
 }
 

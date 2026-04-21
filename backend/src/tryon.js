@@ -1,4 +1,5 @@
 import Replicate from 'replicate';
+import crypto from 'node:crypto';
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 const MODEL = 'black-forest-labs/flux-kontext-max';
@@ -9,9 +10,19 @@ const MODEL = 'black-forest-labs/flux-kontext-max';
  *
  *   docs.bfl.ai/guides/prompting_guide_kontext_i2i
  *
- * styleRequest is passed VERBATIM. If the user said "make my beard pink,"
- * the render shows pink beard. We don't sanitize. The identity-lock clause
- * at the bottom keeps them looking like themselves even through wild edits.
+ * styleRequest is passed VERBATIM — the caller is responsible for ensuring
+ * it describes a VISUAL outcome ("short squared beard, tight neckline")
+ * and NOT protocol ("tretinoin 0.025% nightly, moisturize with CeraVe").
+ * Flux is a text-to-image model and will render protocol text literally
+ * (cream on the face, bottles in the shot). The report screen's fix card
+ * sources this from the Fix.visualRequest field GPT writes specifically
+ * for this purpose; the chat advisor writes it into style_request per its
+ * own system-prompt rules.
+ *
+ * Seed: deterministic hash of image + style + category. Same input → same
+ * render every run. Second tap on "See It" produces the same face,
+ * eliminating the "sometimes perfect, sometimes worse" variance users hit.
+ * Zero extra Replicate cost.
  */
 export async function tryOn({ imageBase64, styleRequest, category }) {
   if (!styleRequest || typeof styleRequest !== 'string') {
@@ -19,6 +30,7 @@ export async function tryOn({ imageBase64, styleRequest, category }) {
   }
 
   const prompt = buildPrompt({ styleRequest: styleRequest.trim(), category });
+  const seed   = deterministicSeed(imageBase64, styleRequest, category);
 
   const input = {
     prompt,
@@ -28,6 +40,7 @@ export async function tryOn({ imageBase64, styleRequest, category }) {
     output_quality: 95,
     safety_tolerance: 2,
     prompt_upsampling: false,
+    seed,
   };
 
   const output = await replicate.run(MODEL, { input });
@@ -35,7 +48,7 @@ export async function tryOn({ imageBase64, styleRequest, category }) {
     ? output
     : (output?.url?.() ?? output?.[0] ?? String(output));
 
-  return { url, prompt, styleRequest, category };
+  return { url, prompt, styleRequest, category, seed };
 }
 
 function buildPrompt({ styleRequest, category }) {
@@ -59,4 +72,15 @@ function zoneFor(category) {
     case 'weight':      return 'the subtle distribution of facial fat (no more than 5–8% change, no bone changes)';
     default:            return '';
   }
+}
+
+function deterministicSeed(imageBase64, styleRequest, category) {
+  const hash = crypto.createHash('md5')
+    .update(imageBase64)
+    .update('::')
+    .update(styleRequest)
+    .update('::')
+    .update(category ?? '')
+    .digest();
+  return hash.readUInt32BE(0) % 2147483647;
 }
