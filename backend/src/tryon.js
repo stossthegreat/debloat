@@ -5,39 +5,39 @@ const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 const MODEL = 'black-forest-labs/flux-kontext-max';
 
 /**
- * Render a single-feature edit on the user's face (haircut / beard /
- * glasses / skin / etc.) while preserving identity.
+ * Single-change edit on the user's face (haircut / beard / colour / glasses
+ * / whatever they typed). Identity-locked per BFL's Kontext i2i guide.
  *
- * TUNING NOTES (updated after consistency audit):
+ *   docs.bfl.ai/guides/prompting_guide_kontext_i2i
  *
- * 1. Prompt length kept under ~140 words. Flux Kontext is an image-editing
- *    model — long prompts cause it to flip between contradictory
- *    instructions. Short + declarative + one change = reliable output.
+ * styleRequest is passed VERBATIM — the caller is responsible for ensuring
+ * it describes a VISUAL outcome ("short squared beard, tight neckline")
+ * and NOT protocol ("tretinoin 0.025% nightly, moisturize with CeraVe").
+ * Flux is a text-to-image model and will render protocol text literally
+ * (cream on the face, bottles in the shot). The report screen's fix card
+ * sources this from the Fix.visualRequest field GPT writes specifically
+ * for this purpose; the chat advisor writes it into style_request per its
+ * own system-prompt rules.
  *
- * 2. `styleRequest` MUST describe the VISUAL outcome ("clear even skin
- *    with reduced texture"), NEVER the protocol ("tretinoin 0.025%
- *    nightly"). If a protocol leaks in, Flux obediently renders it —
- *    that's the "cream on face instead of retinol glow" bug. The caller
- *    (report screen, chat screen) is responsible for passing the visual
- *    phrase.
- *
- * 3. Seed: deterministic hash of image + style + category. Same input →
- *    same render every time, so the user's second tap on "See It" doesn't
- *    produce a different face.
+ * Seed: deterministic hash of image + style + category. Same input → same
+ * render every run. Second tap on "See It" produces the same face,
+ * eliminating the "sometimes perfect, sometimes worse" variance users hit.
+ * Zero extra Replicate cost.
  */
-export async function tryOn({ imageBase64, styleRequest, category, geometry }) {
+export async function tryOn({ imageBase64, styleRequest, category }) {
   if (!styleRequest || typeof styleRequest !== 'string') {
     throw new Error('styleRequest required');
   }
 
-  const prompt = buildPrompt({ styleRequest, category });
+  const prompt = buildPrompt({ styleRequest: styleRequest.trim(), category });
   const seed   = deterministicSeed(imageBase64, styleRequest, category);
 
   const input = {
     prompt,
     input_image: `data:image/jpeg;base64,${imageBase64}`,
     aspect_ratio: 'match_input_image',
-    output_format: 'jpg',
+    output_format: 'png',
+    output_quality: 95,
     safety_tolerance: 2,
     prompt_upsampling: false,
     seed,
@@ -52,26 +52,26 @@ export async function tryOn({ imageBase64, styleRequest, category, geometry }) {
 }
 
 function buildPrompt({ styleRequest, category }) {
-  // One-sentence scope clause per category — tells Flux which zone is
-  // editable and which must not move.
-  const scope = {
-    haircut:     'Edit only the head hair.',
-    beard:       'Edit only the facial hair. Do not alter the jaw beneath, even if it was previously hidden.',
-    facial_hair: 'Edit only the facial hair.',
-    hair_color:  'Edit only the hair colour; keep the cut identical.',
-    glasses:     'Edit only the eyewear; do not age the subject.',
-    weight:      'Show only a subtle natural change in facial fat, under 8%. Bone structure must not move.',
-    skin:        'Edit only the skin tone and texture. Keep natural pores.',
-  }[category] ?? 'Edit only the requested feature.';
+  // Zone hint keeps the edit localized — Kontext respects "only the X"
+  // spatial constraints per BFL's i2i guide.
+  const zone = zoneFor(category);
+  const zoneLine = zone ? ` Only alter ${zone}.` : '';
 
-  // ≤140 words. One change clause + scope + identity clause + style.
-  return `Same person in the photo with this single change: ${styleRequest}.
+  return `The person in this photo. Make this single change: ${styleRequest}.${zoneLine}
 
-${scope}
+Keep the exact same facial features, bone structure, face shape, jawline, nose shape, eye shape and colour, eyebrows, lips, hairline, skin tone, ethnicity, age, and overall identity completely identical to the original. Natural skin texture with visible pores. Preserve the original pose, camera angle, framing, expression, and background. Everything not named in the change above stays pixel-identical.`;
+}
 
-Keep exact identity: same face, same apparent age (never older), same ethnicity and skin tone, same eye shape, same nose, same lips, same bone structure, same jawline, same pose, same expression, same framing. Do not morph facial geometry. Do not apply plastic or filter smoothing — natural skin texture and pores stay.
-
-Photorealistic portrait, 85mm lens at f/2.8, natural soft daylight, editorial magazine quality.`;
+function zoneFor(category) {
+  switch (category) {
+    case 'haircut':     return 'the hair on the head';
+    case 'hair_color':  return 'the hair colour';
+    case 'beard':
+    case 'facial_hair': return 'the facial hair on the chin, jaw and upper lip';
+    case 'glasses':     return 'the eyewear';
+    case 'weight':      return 'the subtle distribution of facial fat (no more than 5–8% change, no bone changes)';
+    default:            return '';
+  }
 }
 
 function deterministicSeed(imageBase64, styleRequest, category) {
