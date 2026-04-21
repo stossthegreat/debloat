@@ -46,33 +46,36 @@ class ShareCard extends StatelessWidget {
       child: ColoredBox(
         color: Colors.black,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(40, 56, 40, 48),
+          padding: const EdgeInsets.fromLTRB(40, 48, 40, 44),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // ── 1 · SCORE TRANSITION (or just "Mirrorly" if no scores) ──
+              // Sized for 1080×1920 export. These LOOK huge in code —
+              // but on a social feed thumbnail they'll read as the
+              // dominant element of the card, which is the point.
               if (hasScores) ...[
                 _ScoreTransitionStatic(
                   currentScore:   currentScore,
                   projectedScore: projectedScore,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 14),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(width: 112, child: Text('CURRENT',
+                    SizedBox(width: 160, child: Text('CURRENT',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 13, letterSpacing: 3.4,
+                        fontSize: 17, letterSpacing: 4.0,
                         fontWeight: FontWeight.w700,
                       ))),
-                    const SizedBox(width: 76),
-                    SizedBox(width: 112, child: Text('PROJECTED',
+                    const SizedBox(width: 90),
+                    SizedBox(width: 160, child: Text('PROJECTED',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         color: Colors.white,
-                        fontSize: 13, letterSpacing: 3.4,
+                        fontSize: 17, letterSpacing: 4.0,
                         fontWeight: FontWeight.w700,
                       ))),
                   ],
@@ -81,12 +84,11 @@ class ShareCard extends StatelessWidget {
                 Text('Mirrorly',
                   style: GoogleFonts.playfairDisplay(
                     color: Colors.white,
-                    fontSize: 40, letterSpacing: -1.0,
+                    fontSize: 54, letterSpacing: -1.2,
                     fontWeight: FontWeight.w600, height: 1,
                   )),
 
-              // Tight gap — user wanted "numbers closer to the picture".
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
               // ── 2 · IMAGE (Mirrorly wordmark overlaid top-left of NOW) ──
               AspectRatio(
@@ -111,7 +113,7 @@ class ShareCard extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 32),
 
               // ── 3 · TAGLINE ──
               Center(
@@ -120,7 +122,7 @@ class ShareCard extends StatelessWidget {
                   maxLines: 3, overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.playfairDisplay(
                     color: Colors.white,
-                    fontSize: 28, letterSpacing: -0.4,
+                    fontSize: 38, letterSpacing: -0.6,
                     fontStyle: FontStyle.italic,
                     fontWeight: FontWeight.w500, height: 1.24,
                   )),
@@ -129,26 +131,27 @@ class ShareCard extends StatelessWidget {
               const Spacer(),
 
               // ── 4 · PROOF LINES ──
+              // Way bigger than before — these are the credit-line stack
+              // that reads at thumbnail size on a feed. 40pt Inter-800
+              // all-caps. On 1080×1920 this fills a sixth of the card.
               for (var i = 0; i < proofs.length; i++) ...[
                 Text(proofs[i].toUpperCase(),
                   style: GoogleFonts.inter(
                     color: Colors.white,
-                    fontSize: 24, letterSpacing: 1.5,
-                    fontWeight: FontWeight.w700, height: 1.35,
+                    fontSize: 40, letterSpacing: 1.8,
+                    fontWeight: FontWeight.w800, height: 1.25,
                   )),
-                if (i != proofs.length - 1) const SizedBox(height: 4),
+                if (i != proofs.length - 1) const SizedBox(height: 6),
               ],
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 28),
 
-              // ── Footer — just the domain now that "Mirrorly" is in the
-              // NOW image. Minimal so it doesn't compete.
               Align(
                 alignment: Alignment.centerRight,
                 child: Text('mirrorly.app',
                   style: GoogleFonts.inter(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    fontSize: 13, letterSpacing: 0.4,
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 18, letterSpacing: 0.6,
                     fontWeight: FontWeight.w500,
                   )),
               ),
@@ -203,11 +206,11 @@ class ShareCard extends StatelessWidget {
 
         if (showBrandWordmark)
           Positioned(
-            left: 14, top: 12,
+            left: 18, top: 16,
             child: Text('Mirrorly',
               style: GoogleFonts.playfairDisplay(
                 color: Colors.white,
-                fontSize: 22, letterSpacing: -0.5,
+                fontSize: 30, letterSpacing: -0.6,
                 fontWeight: FontWeight.w600, height: 1,
               )),
           ),
@@ -266,30 +269,30 @@ class _ScoreTransitionStatic extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
-          width: 112,
+          width: 160,
           child: Text('$currentScore',
             textAlign: TextAlign.center,
             style: GoogleFonts.playfairDisplay(
-              fontSize: 84, height: 1.0, letterSpacing: -2.4,
+              fontSize: 120, height: 1.0, letterSpacing: -3.6,
               color: Colors.white.withValues(alpha: 0.62),
               fontStyle: FontStyle.italic,
               fontWeight: FontWeight.w500,
             )),
         ),
-        const SizedBox(width: 36),
+        const SizedBox(width: 44),
         Text('→',
           style: GoogleFonts.inter(
             color: ShareCard.accentRed,
-            fontSize: 52, height: 1,
+            fontSize: 76, height: 1,
             fontWeight: FontWeight.w300,
           )),
-        const SizedBox(width: 36),
+        const SizedBox(width: 44),
         SizedBox(
-          width: 112,
+          width: 160,
           child: Text('$projectedScore',
             textAlign: TextAlign.center,
             style: GoogleFonts.playfairDisplay(
-              fontSize: 100, height: 1.0, letterSpacing: -2.8,
+              fontSize: 144, height: 1.0, letterSpacing: -4.0,
               color: Colors.white,
               fontStyle: FontStyle.italic,
               fontWeight: FontWeight.w700,
