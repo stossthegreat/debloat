@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../services/trait_builder_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/share_card.dart';
 
@@ -32,28 +31,23 @@ class ShareService {
     } catch (_) {}
   }
 
-  /// Render a ShareCard off-screen, capture as PNG, open share sheet.
-  /// The card never appears in the UI — this is pure composition.
+  /// Render the viral ShareCard off-screen at 1080×1920, capture as PNG,
+  /// open share sheet. The card is pure composition — never appears in UI.
   ///
-  /// Shows a loading overlay while rendering + fires haptic on tap + handles
-  /// errors gracefully. Rendering at pixelRatio 2.0 (not 3.0) for speed —
-  /// still looks sharp on Stories / Reels upload.
+  /// Format is locked to:
+  ///   "X CORRECTIONS. SAME FACE." → before/after → 3 micro-proofs → footer.
+  /// No score, no archetype, no percentile pills — those are report-screen
+  /// concerns. Share format optimises for shareability, not completeness.
   static Future<void> shareComposed({
     required BuildContext context,
     required Uint8List? beforeBytes,
     required String? afterUrl,
-    required int score,
-    required String tier,
-    required String archetype,
-    required String verdict,
-    required int percentile,
-    required int potentialDelta,
-    required List<Trait> traits,
+    required int correctionsCount,
+    required List<String> microProofs,
     String? text,
   }) async {
     HapticFeedback.lightImpact();
 
-    // Show loading overlay so the user gets feedback immediately.
     if (context.mounted) {
       showDialog(
         context: context,
@@ -67,15 +61,10 @@ class ShareService {
     try {
       if (!context.mounted) return;
       final card = ShareCard(
-        beforeBytes:     beforeBytes,
-        afterUrl:        afterUrl,
-        score:           score,
-        tier:            tier,
-        archetype:       archetype,
-        verdict:         verdict,
-        percentile:      percentile,
-        potentialDelta:  potentialDelta,
-        traits:          traits,
+        beforeBytes:      beforeBytes,
+        afterUrl:         afterUrl,
+        correctionsCount: correctionsCount,
+        microProofs:      microProofs,
       );
       final bytes = await _captureOffscreen(
         context:     context,
@@ -86,8 +75,6 @@ class ShareService {
       if (bytes == null) {
         errorMsg = 'Couldn\'t render the card — try again';
       } else {
-        // Dismiss loading BEFORE opening share sheet so iOS/Android has
-        // a clean window hierarchy for the share UI.
         if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
         HapticFeedback.mediumImpact();
         await _shareBytes(
@@ -101,7 +88,6 @@ class ShareService {
       errorMsg = 'Share failed: ${e.toString().split('\n').first}';
     }
 
-    // Dismiss loading + show error
     if (context.mounted) {
       Navigator.of(context, rootNavigator: true).pop();
       ScaffoldMessenger.of(context).showSnackBar(

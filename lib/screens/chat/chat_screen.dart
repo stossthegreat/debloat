@@ -410,15 +410,10 @@ class _MessageBubble extends StatelessWidget {
                 if (!isUser && message.imageUrl != null) ...[
                   const SizedBox(height: 12),
                   _InlineBeforeAfter(
-                    beforeBytes:    scanBytes,
-                    afterUrl:       message.imageUrl!,
-                    caption:        message.imageCaption,
-                    score:          score.value,
-                    tier:           score.tierLabel,
-                    archetype:      match.archetype.name,
-                    percentile:     percentile,
-                    potentialDelta: potentialDelta,
-                    traits:         traits,
+                    beforeBytes: scanBytes,
+                    afterUrl:    message.imageUrl!,
+                    caption:     message.imageCaption,
+                    traits:      traits,
                   ),
                 ],
               ],
@@ -453,21 +448,14 @@ class _InlineBeforeAfter extends StatelessWidget {
   final Uint8List? beforeBytes;
   final String afterUrl;
   final String? caption;
-  final int score;
-  final String tier;
-  final String archetype;
-  final int percentile;
-  final int potentialDelta;
+  // Traits are kept here ONLY to derive micro-proofs for the share card —
+  // the score/percentile/archetype the previous version took are no longer
+  // surfaced anywhere in the new viral share format.
   final List<Trait> traits;
 
   const _InlineBeforeAfter({
     required this.beforeBytes,
     required this.afterUrl,
-    required this.score,
-    required this.tier,
-    required this.archetype,
-    required this.percentile,
-    required this.potentialDelta,
     required this.traits,
     this.caption,
   });
@@ -501,17 +489,14 @@ class _InlineBeforeAfter extends StatelessWidget {
                       borderRadius: BorderRadius.circular(Rd.md)),
                   ),
                   onPressed: () => ShareService.shareComposed(
-                    context:        context,
-                    beforeBytes:    beforeBytes,
-                    afterUrl:       afterUrl,
-                    score:          score,
-                    tier:           tier,
-                    archetype:      archetype,
-                    verdict:        caption ?? '',
-                    percentile:     percentile,
-                    potentialDelta: potentialDelta,
-                    traits:         traits,
-                    text: 'Me vs me maxed — $score/$archetype via Mirrorly',
+                    context:          context,
+                    beforeBytes:      beforeBytes,
+                    afterUrl:         afterUrl,
+                    // Inline chat tryon = a single applied change, so the
+                    // share card reads "1 CORRECTION. SAME FACE."
+                    correctionsCount: 1,
+                    microProofs:      _proofsFromTraits(traits),
+                    text: '1 correction. Same face. mirrorly.app',
                   ),
                   icon: const Icon(Icons.ios_share_rounded, size: 14),
                   label: Text('SHARE',
@@ -526,6 +511,34 @@ class _InlineBeforeAfter extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Build the 3 micro-proof one-liners shared by chat + report. Pulls top-3
+/// strength traits and renders them as compact viral-card lines. Mirrors the
+/// helper in report_screen.dart so the share card reads identically from
+/// either entry point.
+List<String> _proofsFromTraits(List<Trait> traits) {
+  final strengths = traits
+      .where((t) => t.kind == TraitKind.strength)
+      .take(3)
+      .toList();
+  final lines = <String>[];
+  for (final t in strengths) {
+    final pct = t.pct.trim();
+    if (pct.toUpperCase().startsWith('TOP ')) {
+      lines.add('$pct ${t.name}');
+    } else if (pct.isNotEmpty &&
+        !pct.contains(RegExp(r'[A-Z]{2,} [A-Z]{2,}'))) {
+      lines.add('${t.name} · $pct');
+    } else {
+      lines.add(t.name);
+    }
+  }
+  while (lines.length < 3) {
+    lines.add(const ['MEASURED PROFILE', 'BALANCED FRAME',
+                      'STRUCTURED ARCHETYPE'][lines.length]);
+  }
+  return lines;
 }
 
 class _TypingIndicator extends StatefulWidget {

@@ -17,7 +17,6 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../services/chat_service.dart';
 import '../../services/share_service.dart';
-import '../../widgets/common/before_after_card.dart';
 import '../../widgets/common/fullscreen_image.dart';
 import '../../widgets/common/quick_tryon_chips.dart';
 import '../../widgets/report/archetype_card.dart';
@@ -212,12 +211,62 @@ class _ReportScreenState extends State<ReportScreen> {
     return (headroom * 0.55).round();
   }
 
+  /// Build the 3 micro-proof one-liners shown under the hero + on the share
+  /// card. Pulls the top-3 STRENGTH traits and renders them as
+  /// "TOP X% NAME" so each line reads as a verifiable spec, not marketing.
+  /// Falls back to neutral but punchy lines when the user has fewer than 3
+  /// strengths surfaced (rare on a clean scan).
+  List<String> _buildMicroProofs(List<Trait> traits) {
+    final strengths = traits
+        .where((t) => t.kind == TraitKind.strength)
+        .take(3)
+        .toList();
+    final lines = <String>[];
+    for (final t in strengths) {
+      final pct = t.pct.trim();
+      // Some pct strings ("BALANCED FULLNESS") aren't percentile-shaped —
+      // surface them verbatim. The percentile-shaped ones lead with the
+      // number ("TOP 5% SYMMETRY") for the harder flex.
+      if (pct.toUpperCase().startsWith('TOP ')) {
+        lines.add('$pct ${t.name}');
+      } else if (pct.isNotEmpty && !pct.contains(RegExp(r'[A-Z]{2,} [A-Z]{2,}'))) {
+        lines.add('${t.name} · $pct');
+      } else {
+        lines.add(t.name);
+      }
+    }
+    while (lines.length < 3) {
+      lines.add(const ['MEASURED PROFILE', 'BALANCED FRAME',
+                        'STRUCTURED ARCHETYPE'][lines.length]);
+    }
+    return lines;
+  }
+
   Widget _buildReport(MirrorAnalysis a) {
     final score = ScoringService.compute(widget.geometry);
     final match = ArchetypeService.bestMatch(widget.geometry);
     final traits = TraitBuilderService.build(widget.geometry);
     final percentile = _percentile(score.value);
     final potential = _potentialDelta(score.value);
+    final projected = (score.value + potential).clamp(0, 100);
+    final correctionsCount = a.report.fixes.isNotEmpty
+        ? a.report.fixes.length
+        : 3;
+
+    // Top-3 strength traits formatted as one-liners for the hero + share
+    // cards. Falls back to neutral copy if the geometry is too dim to
+    // surface 3 strengths (rare — e.g. low-confidence scan).
+    final microProofs = _buildMicroProofs(traits);
+
+    // The tagline that punches under the score transition. Prefer the
+    // GPT-generated one-line verdict (specific, measurement-cited); fall
+    // back to a deterministic line tied to the projection delta so it never
+    // looks empty.
+    final tagline = (a.report.oneLineVerdict.trim().isNotEmpty)
+        ? a.report.oneLineVerdict
+        : (potential >= 12
+            ? "You're hiding your structure."
+            : "You're closer than you think.");
 
     // 6-axis radar values (each 0..1) built from the same measurements
     // used by the trait system.
@@ -258,18 +307,12 @@ class _ReportScreenState extends State<ReportScreen> {
               ),
               _ShareButton(
                 onTap: () => ShareService.shareComposed(
-                  context:        context,
-                  beforeBytes:    widget.imageBytes,
-                  afterUrl:       a.maximizedImageUrl,
-                  score:          score.value,
-                  tier:           score.tierLabel,
-                  archetype:      match.archetype.name,
-                  verdict:        a.report.oneLineVerdict,
-                  percentile:     percentile,
-                  potentialDelta: potential,
-                  traits:         traits,
-                  text: 'I scored ${score.value}/100. ${match.archetype.name}. '
-                        'Top $percentile%. mirrorly.app',
+                  context:          context,
+                  beforeBytes:      widget.imageBytes,
+                  afterUrl:         a.maximizedImageUrl,
+                  correctionsCount: correctionsCount,
+                  microProofs:      microProofs,
+                  text: '$correctionsCount corrections. Same face. mirrorly.app',
                 ),
               ),
             ],
@@ -277,12 +320,15 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.lg),
 
-          // ── 1 · HERO CARD ─ the viral screenshot moment ────────────────
+          // ── 1 · HERO CARD ─ score → projected, tagline, B/A, proofs ────
           HeroCard(
-            score:           score.value,
-            archetype:       match.archetype.name,
-            percentile:      percentile,
-            potentialDelta:  potential,
+            currentScore:     score.value,
+            projectedScore:   projected,
+            tagline:          tagline,
+            beforeBytes:      widget.imageBytes,
+            afterUrl:         a.maximizedImageUrl,
+            correctionsCount: correctionsCount,
+            microProofs:      microProofs,
           ),
 
           const SizedBox(height: Sp.md),
@@ -301,23 +347,16 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.md),
 
-          // ── 4 · BEFORE / MAXED ─ blurred reveal, variable reward ───────
-          BeforeAfterCard(
-            beforeBytes:    widget.imageBytes,
-            afterUrl:       a.maximizedImageUrl,
-            potentialDelta: potential,
-          ).animate().fadeIn(delay: 2200.ms, duration: 500.ms),
-
-          const SizedBox(height: Sp.md),
-
-          // ── 5 · APPLY ALL FIXES ────────────────────────────────────────
+          // ── 4 · APPLY ALL FIXES ────────────────────────────────────────
+          // BeforeAfterCard removed — the hero card now carries the B/A
+          // moment, and showing it twice diluted the impact.
           _ApplyAllFixesButton(
             maximizedImageUrl: a.maximizedImageUrl,
           ).animate().fadeIn(delay: 2400.ms, duration: 400.ms),
 
           const SizedBox(height: Sp.xl),
 
-          // ── 6 · THREE FIX CARDS (GPT-sourced, with inline Flux) ────────
+          // ── 5 · THREE FIX CARDS (GPT-sourced, with inline Flux) ────────
           Text('THE FIXES',
             style: AppTypography.label.copyWith(
               color: AppColors.gold, letterSpacing: 3.0, fontSize: 10)),
