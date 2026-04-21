@@ -145,21 +145,27 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Widget _buildLoading() {
     if (_error != null) {
+      // Translate raw backend errors into a human message. We never show
+      // "Backend 500: {"error":"Request to ...api.replicate.com... 429
+      // Too Many Requests: ..."}" to the user — that's an internal
+      // stack-dump and it scares people.
+      final friendly = _friendlyError(_error!);
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Scan failed', style: AppTypography.h3.copyWith(
+              Text(friendly.title, style: AppTypography.h3.copyWith(
                 color: AppColors.signalRed)),
               const SizedBox(height: 12),
-              Text(_error!, style: AppTypography.bodySmall,
+              Text(friendly.body,
+                style: AppTypography.bodySmall,
                 textAlign: TextAlign.center),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () { setState(() => _error = null); _run(); },
-                child: const Text('Retry'),
+                child: const Text('Try again'),
               ),
               const SizedBox(height: 8),
               TextButton(
@@ -202,6 +208,41 @@ class _ReportScreenState extends State<ReportScreen> {
     if (score >= 70) return 28;
     if (score >= 60) return 44;
     return 62;
+  }
+
+  /// Convert backend stack-dump errors into a human message. Raw
+  /// backend JSON never reaches the user — they see a clean sentence
+  /// plus Try Again. 429s get their own copy since they're transient.
+  ({String title, String body}) _friendlyError(String raw) {
+    final lower = raw.toLowerCase();
+    if (lower.contains('429') || lower.contains('too many requests') ||
+        lower.contains('throttled') || lower.contains('rate limit')) {
+      return (
+        title: 'Slight wait',
+        body: 'We\'re rendering a lot of scans right now. '
+              'Give it a few seconds and try again.',
+      );
+    }
+    if (lower.contains('timeout') || lower.contains('timed out') ||
+        lower.contains('socket')) {
+      return (
+        title: 'Connection dropped',
+        body: 'Check your connection and try again. '
+              'Your scan is safe.',
+      );
+    }
+    if (lower.contains('500') || lower.contains('502') ||
+        lower.contains('503') || lower.contains('504')) {
+      return (
+        title: 'Server hiccup',
+        body: 'Something on our end — it\'s usually temporary. '
+              'Try again in a moment.',
+      );
+    }
+    return (
+      title: 'Scan didn\'t complete',
+      body: 'Something interrupted the render. Try again.',
+    );
   }
 
   /// Potential delta — how many points a full maximisation could add.
