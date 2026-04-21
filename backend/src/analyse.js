@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { computeCategoryGate, formatGateForPrompt } from './category_gate.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -28,6 +29,14 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
  */
 export async function analyse({ imageBase64, extraImages = [], geometry }) {
   const g = geometry ?? {};
+
+  // Pre-compute the category shortlist BEFORE the GPT call.
+  // The gate's rules turn measurements into eligibility per category +
+  // an evidence-grounded protocol per eligible category. GPT receives a
+  // shortlist instead of all 14 categories — this fixes the "GPT defaults
+  // to skin/hair/beard every time" failure mode.
+  const gate = computeCategoryGate(g);
+  const gateBlock = formatGateForPrompt(gate);
 
   // Full 16-measurement table with plain interpretations.
   const measurementLines = [
@@ -75,6 +84,8 @@ MediaPipe + CV extracted these measurements from their face. THIS IS FACT. You d
 
 ${measurementLines || '(no measurements provided — rely on image only)'}
 
+${gateBlock}
+
 ## VOICE RULES
 
 1. Every observation cites a specific measurement AND what it means in plain English. Never "your jaw is strong." Always "your jaw angle at 118° is sharp — top 15%."
@@ -89,22 +100,7 @@ ${measurementLines || '(no measurements provided — rely on image only)'}
    - Hair already well styled? → Do NOT critique hair. Look at skin, brow, glasses, posture.
    - Skin already clear? → Do NOT prescribe skincare.
    Your fixes must be GAPS, not generics. If you can't find three real gaps, return two — or return one plus two preservation notes.
-7. USE THE FULL CATEGORY SPACE. Do NOT default to hair / beard / skin — that's the generic advice every other app gives and it kills perceived value. EACH OF YOUR 3 FIXES MUST HIT A DIFFERENT CATEGORY. Available categories:
-   - HAIR (cut / colour / length / parting / forehead framing)
-   - BEARD / FACIAL HAIR (shape / length / trim lines)
-   - SKIN (texture / tone / hydration / protocol)
-   - EYEBROW (shape / grooming / thickness / trim tail)
-   - GLASSES / EYEWEAR (frame shape matched to face)
-   - BODY COMPOSITION (lean / tone / bf target)
-   - POSTURE (neck, chin, submental area)
-   - TEETH (whitening / alignment if visible)
-   - LIGHTING / PHOTO HABITS (the look they present to camera)
-   - SLEEP / UNDER-EYE PROTOCOL
-   - HYDRATION / LIP PROTOCOL
-   - JAW EXERCISES (masseter, platysma, mewing)
-   - CLOTHING NECKLINE (crew vs v-neck vs collar, matched to face length)
-   - ACCESSORIES (earrings / piercing / minimal jewellery)
-   Pick the 3 HIGHEST-LEVERAGE categories for THIS user. Never two fixes from the same category. If hair and skin are both genuinely weakest, pick ONE of them and find a distinctive second + third fix from elsewhere.
+7. USE THE CATEGORY GATE BELOW. The gate has pre-computed which categories are eligible for THIS user from their measurements + which are blocked because they would actively hurt this user. Pick 3 from ELIGIBLE only. Each fix's \`action\` field must implement the protocol shown in the gate — adapted into THE MIRROR voice but preserving the specifics.
 8. Be honest about STRENGTHS. When something is working, name it with the measurement.
 9. When in doubt, lean toward PROTECTIVE advice ("preserve what's working") over a made-up fix.
 10. The user needs "the exit." Every fix must feel like THE MIRROR showing them the way out — not a critique. End each fix with an action that lands like a door opening.
