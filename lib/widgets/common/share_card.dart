@@ -90,12 +90,16 @@ class ShareCard extends StatelessWidget {
               // Push pics down a little so the score row breathes.
               const SizedBox(height: 40),
 
-              // ── 2 · IMAGE (Mirrorly wordmark BIG + RED on NOW side) ──
+              // ── 2 · IMAGE (Mirrorly wordmark + RED on NOW side) ──
               // Flexible so the image shrinks if the bigger typography
               // above/below eats into its room — never clips.
+              // User asked for ~33% bigger before/after images — aspect
+              // tightened from 5:6 (0.83) to 5:8 (0.625), making the
+              // image block 33% taller at the same width. Each half
+              // shows substantially more of the user's face.
               Flexible(
                 child: AspectRatio(
-                  aspectRatio: 5 / 6,
+                  aspectRatio: 5 / 8,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: Row(
@@ -193,7 +197,7 @@ class ShareCard extends StatelessWidget {
         // "Mirrorly" wordmark reads over any skin tone or highlight.
         if (showBrandWordmark)
           Positioned(
-            left: 0, right: 0, top: 0, height: 140,
+            left: 0, right: 0, top: 0, height: 80,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -210,18 +214,18 @@ class ShareCard extends StatelessWidget {
 
         if (showBrandWordmark)
           Positioned(
-            left: 22, top: 20,
+            left: 20, top: 18,
             child: Text('Mirrorly',
               style: GoogleFonts.playfairDisplay(
                 color: ShareCard.accentRed,
-                fontSize: 68, letterSpacing: -1.6,
+                fontSize: 34, letterSpacing: -0.8,
                 fontWeight: FontWeight.w900, height: 1,
                 shadows: [
                   // Tight pure-black outline shadow so the red stays
                   // saturated but still reads over a bright highlight.
                   Shadow(
                     color: Colors.black.withValues(alpha: 0.75),
-                    blurRadius: 4,
+                    blurRadius: 3,
                     offset: const Offset(0, 1),
                   ),
                 ],
