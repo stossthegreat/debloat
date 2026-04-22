@@ -83,7 +83,7 @@ class _ProtocolScreenState extends State<ProtocolScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.auto_awesome,
-            size: 42, color: AppColors.red.withValues(alpha: 0.65)),
+            size: 42, color: AppColors.divider),
           const SizedBox(height: Sp.md),
           Text('No active protocol.',
             style: AppTypography.h1.copyWith(fontSize: 26)),
@@ -123,7 +123,7 @@ class _ProtocolScreenState extends State<ProtocolScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.surface1, shape: BoxShape.circle,
                         border: Border.all(
-                          color: AppColors.red.withValues(alpha: 0.3), width: 0.8),
+                          color: AppColors.divider, width: 0.8),
                       ),
                       child: const Icon(Icons.arrow_back_ios_new_rounded,
                         size: 14, color: AppColors.textSecondary),
@@ -143,7 +143,7 @@ class _ProtocolScreenState extends State<ProtocolScreen> {
             // Title block
             Text('PROTOCOL · DAY ${p.currentDay} / ${p.lengthDays}',
               style: AppTypography.label.copyWith(
-                color: AppColors.red, letterSpacing: 2.8, fontSize: 9)),
+                color: AppColors.textTertiary, letterSpacing: 2.8, fontSize: 9)),
             const SizedBox(height: 6),
             Text(p.title,
               style: AppTypography.h1.copyWith(fontSize: 36, letterSpacing: -1.0)),
@@ -234,7 +234,7 @@ class _ProgressBlock extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface1,
         borderRadius: BorderRadius.circular(Rd.xl),
-        border: Border.all(color: AppColors.red.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,7 +311,7 @@ class _DayDot extends StatelessWidget {
             : null,
         boxShadow: isDone ? [
           BoxShadow(
-            color: AppColors.red.withValues(alpha: 0.4),
+            color: AppColors.divider,
             blurRadius: 4),
         ] : null,
       ),
@@ -414,7 +414,7 @@ class _MilestoneRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(Rd.md),
         border: Border.all(
           color: reached
-              ? AppColors.red.withValues(alpha: 0.45)
+              ? AppColors.divider
               : AppColors.divider),
       ),
       child: Row(
@@ -423,7 +423,7 @@ class _MilestoneRow extends StatelessWidget {
             width: 30, height: 30,
             decoration: BoxDecoration(
               color: reached
-                  ? AppColors.red.withValues(alpha: 0.18)
+                  ? AppColors.divider
                   : AppColors.surface2,
               shape: BoxShape.circle,
             ),

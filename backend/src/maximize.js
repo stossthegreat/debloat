@@ -3,50 +3,35 @@ import crypto from 'node:crypto';
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
-// Max, not Pro. Research:
-//   - Pro is stabler across LONG CHAINS.
-//   - Max has higher SINGLE-SHOT fidelity AND "better multi-instruction
-//     handling" — BFL's own marketing copy for Max.
-// We're doing one single shot with multiple instructions, so Max.
+// Max — BFL's designated multi-instruction model. We're doing one single-shot
+// with multiple instructions, so Max > Pro on single-shot fidelity.
 const MODEL = 'black-forest-labs/flux-kontext-max';
 
 /**
  * Generate the Maximized Twin in ONE Flux call.
  *
- * ARCHITECTURE — why single call, not chain, not 3-solo:
+ * PRODUCT RULE (user feedback — 2026-04-22):
+ *   The HERO change must ALWAYS be a GROOMING edit — hair first, then beard.
+ *   Skin is NEVER the hero. When skin appears in the change list, it is
+ *   reduced to a soft daylight glow filter — invisible-as-an-edit — because
+ *   the user must look IDENTICAL, just photographed on their best day.
  *
- *   Chained passes: each pass takes the previous output as reference, so
- *   drift compounds. By pass 3 the face is noticeably off.
+ *   Why: the earlier prompt treated all 3 fixes as equal siblings and Flux
+ *   tended to blend them into a generic "smoothed/aged" look. Hair/beard
+ *   edits are visually demonstrable wins (haircut, trimmed beard) — the
+ *   "wow" moment. Skin edits at full strength read as AI-filter / plastic
+ *   / older. The fix is HEIRARCHY:
+ *     - 1 dominant grooming change (hair or beard)
+ *     - 1 secondary grooming touch (beard if hair was primary, or stubble)
+ *     - skin = "slight brightness lift, like soft daylight, no texture change"
  *
- *   3 solo from original: no drift accumulation per pass, but 3× Flux
- *   spend, 3× latency, and constant 429 throttling on Replicate's
- *   rate-limited tier. Hero only shows ONE fix anyway (we picked solo[0]
- *   as hero), so the other 2 renders were paid for but never seen in
- *   the primary moment.
- *
- *   Single call with all 3 combined: Max is BFL's designated multi-
- *   instruction model. One prompt, three visualRequests joined with
- *   commas + BFL canonical preservation clause. 1 call. No throttle.
- *   Fast. And when Max lands all three it IS the goat.
- *
- *   If Max drops one of three changes: the fix cards in the app are
- *   text-first; user taps "See it" on any individual fix to render
- *   it in isolation via /tryon. Cost-shifted to user intent — we
- *   don't pre-pay for renders the user might never look at.
- *
- * Preserve clause is CONFLICT-AWARE. BFL's canonical preserve list
- * includes "hairstyle" — but if the user's visualRequest is a haircut,
- * preserving hairstyle contradicts the change and Kontext flips a coin
- * on which wins. Solution: detect what's being changed and drop the
- * conflicting anchor from the preserve list.
+ * IDENTITY LOCK (hard):
+ *   The user is the same person. Same exact face, same age, zero bone
+ *   structure change. If Flux drifts these, the render fails. The clause
+ *   is repeated three times in the prompt because Flux rewards redundancy.
  *
  * Returns:
- *   {
- *     url:              the single hero image (all 3 changes, if Max lands them)
- *     prompt:           the composed prompt (for debugging)
- *     seed:             deterministic
- *     intermediateUrls: [] (legacy field, kept for client compat)
- *   }
+ *   { url, prompt, seed, intermediateUrls: [] }
  */
 export async function maximize({ imageBase64, brief }) {
   const improve = Array.isArray(brief?.improve) && brief.improve.length > 0
@@ -76,56 +61,86 @@ export async function maximize({ imageBase64, brief }) {
 
 function defaultImprove() {
   return [
-    'clearer, healthier skin with natural pores preserved',
-    'cleanly groomed hair matched to the face shape',
-    'a cleaner, more defined beard line',
+    'cleanly styled modern haircut matched to the face shape',
+    'a cleaner, more defined beard line (or neat stubble if clean-shaven)',
+    'subtly brighter healthy skin — a light daylight glow, not a texture change',
   ];
 }
 
 /**
- * One BFL-canonical prompt combining all three changes. Conflict-aware
- * preserve list — if a change touches a canonical preserve anchor
- * (hairstyle / facial hair / skin tone), that anchor is dropped so the
- * model doesn't get contradicting instructions.
+ * Classify each incoming improve item so we can rank them hero → supporting.
+ *   priority 0 = HAIR     (hero if present)
+ *   priority 1 = BEARD    (hero if hair absent; otherwise secondary)
+ *   priority 2 = OTHER grooming (brows, teeth, glasses, etc.)
+ *   priority 3 = SKIN     (demoted — rendered as a light filter, never as
+ *                          an explicit edit)
  */
+function classify(s) {
+  const x = String(s || '').toLowerCase();
+  if (/\b(hair(?!\s*line)|fade|crop|cut|hairline|fringe|buzz|taper|undercut|quiff|pomp|part)\b/.test(x)) return 0;
+  if (/\b(beard|stubble|goatee|moustache|facial hair)\b/.test(x)) return 1;
+  if (/\b(brow|eyebrow|teeth|whiten|glasses|frame|lash)\b/.test(x)) return 2;
+  if (/\b(skin|complexion|pore|texture|tone|blemish|retinol|glow|tret|acne|redness|dull)\b/.test(x)) return 3;
+  return 2;
+}
+
 function buildCombinedPrompt(changes) {
   const items = changes
     .map(s => String(s || '').trim())
     .filter(Boolean)
-    .map(s => s.replace(/\.$/, ''));     // strip trailing periods
+    .map(s => s.replace(/\.$/, ''));
   if (items.length === 0) return '';
 
-  // Join as a clean English list: "A, B, and C"
-  const changeList = items.length === 1
-    ? items[0]
-    : items.length === 2
-      ? `${items[0]} and ${items[1]}`
-      : `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+  // Rank each item 0-3 (hair > beard > other grooming > skin).
+  const ranked = items
+    .map((s, i) => ({ s, pri: classify(s), idx: i }))
+    .sort((a, b) => a.pri - b.pri || a.idx - b.idx);
 
-  // Conflict detection — drop preserve anchors that contradict the changes.
+  // Split into: primary grooming (hero), secondary grooming, skin-as-filter.
+  const hero     = ranked[0];
+  const secondary = ranked.find(r => r !== hero && r.pri <= 2);
+  const hasSkin  = ranked.some(r => r.pri === 3);
+
+  // Build the three sentence beats.
+  const heroLine = hero
+    ? `Apply a clearly visible primary grooming change: ${hero.s}. This is the hero change — it should be immediately obvious and flattering.`
+    : '';
+
+  const secondaryLine = secondary
+    ? `In addition, refine: ${secondary.s}. This supports the hero change without competing with it.`
+    : '';
+
+  // Skin is NEVER described as an edit. It becomes a "light filter" beat.
+  const skinLine = hasSkin
+    ? `Apply only a very subtle daylight brightness lift to the skin — the kind of difference soft window light makes. NO texture change, NO blur, NO smoothing, NO retouching. Skin tone, pores, blemishes, freckles all remain exactly as in the original.`
+    : '';
+
+  // Conflict-aware preserve clause — drop anchors that contradict changes.
   const lower = items.join(' | ').toLowerCase();
-  const preserves = ['facial features', 'expression', 'age', 'ethnicity'];
+  const preserves = ['facial features', 'bone structure', 'jawline', 'nose shape', 'eye shape', 'eye colour', 'lips', 'expression', 'apparent age', 'ethnicity'];
 
-  if (!/\b(hair(?!\s*line)|fade|crop|cut|hairline|fringe|buzz|taper|undercut)\b/.test(lower)) {
-    preserves.push('hairstyle');
+  if (!/\b(hair(?!\s*line)|fade|crop|cut|hairline|fringe|buzz|taper|undercut|quiff|pomp)\b/.test(lower)) {
+    preserves.splice(1, 0, 'hairstyle');
   }
-  if (!/\b(beard|stubble|facial hair|moustache|goatee)\b/.test(lower)) {
+  if (!/\b(beard|stubble|goatee|moustache|facial hair)\b/.test(lower)) {
     preserves.push('facial hair');
-  }
-  if (!/\b(skin|complexion|pore|texture|tone|blemish|retinol|glow)\b/.test(lower)) {
-    preserves.push('skin tone');
   }
 
   const preserveClause = preserves.join(', ');
 
-  return `The person in this photo, now with ${changeList}, while maintaining the same ${preserveClause}. Same pose, camera angle, framing, lighting, and background as the original. Photorealistic, natural pores preserved.`;
+  return [
+    `EDIT A PORTRAIT. Subject is the same exact person as in the input photo — same face, same bones, same age, same ethnicity, SAME IDENTITY. Do not make this person look older, younger, thinner, or different in any way other than the grooming changes specified below.`,
+    ``,
+    heroLine,
+    secondaryLine,
+    skinLine,
+    ``,
+    `HARD IDENTITY LOCK — preserve exactly: ${preserveClause}. If the face in the output doesn't visibly match the face in the input, the render has failed.`,
+    ``,
+    `Keep the same pose, camera angle, framing, lighting direction and background as the original photograph. Photorealistic. Natural pores and skin texture preserved. No beauty-filter smoothing. No painterly effect. No age shift.`,
+  ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
 }
 
-/**
- * Flux call with retry-with-backoff on 429. Honors Replicate's
- * `retry_after` when present. Single-call maximize rarely triggers 429
- * but the defence-in-depth is cheap.
- */
 async function runKontextWithRetry({ imageDataUri, prompt, seed }) {
   const maxAttempts = 3;
   let attempt = 0;

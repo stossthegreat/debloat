@@ -245,7 +245,7 @@ class _ActiveProtocolCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface1,
             borderRadius: BorderRadius.circular(Rd.xl),
-            border: Border.all(color: AppColors.red.withValues(alpha: 0.3), width: 0.8),
+            border: Border.all(color: AppColors.divider, width: 0.8),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,7 +254,7 @@ class _ActiveProtocolCard extends StatelessWidget {
                 children: [
                   Text('PROTOCOL · DAY ${protocol.currentDay} / ${protocol.lengthDays}',
                     style: AppTypography.label.copyWith(
-                      color: AppColors.red, letterSpacing: 2.4, fontSize: 9)),
+                      color: AppColors.textTertiary, letterSpacing: 2.4, fontSize: 9)),
                   const Spacer(),
                   Icon(Icons.arrow_forward_rounded,
                     size: 14, color: AppColors.textSecondary),
@@ -284,7 +284,7 @@ class _ActiveProtocolCard extends StatelessWidget {
                       height: 3,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(colors: [
-                          AppColors.red.withValues(alpha: 0.35),
+                          AppColors.divider,
                           AppColors.red,
                         ]),
                         borderRadius: BorderRadius.circular(2),
@@ -345,7 +345,7 @@ class _LatestSnapshot extends StatelessWidget {
               children: [
                 Text(scan.tierLabel.toUpperCase(),
                   style: AppTypography.label.copyWith(
-                    color: AppColors.red, letterSpacing: 2.4, fontSize: 10)),
+                    color: AppColors.textTertiary, letterSpacing: 2.4, fontSize: 10)),
                 const SizedBox(height: 3),
                 Text(scan.archetypeName,
                   style: AppTypography.h1.copyWith(
@@ -417,7 +417,7 @@ class _NoScanYet extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.auto_awesome, size: 42,
-                  color: AppColors.red.withValues(alpha: 0.65)),
+                  color: AppColors.textSecondary.withValues(alpha: 0.65)),
                 const SizedBox(height: Sp.md),
                 Text('Scan first.',
                   style: AppTypography.h1.copyWith(fontSize: 28, letterSpacing: -0.6)),
@@ -527,10 +527,9 @@ class _IconBtn extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.transparent,
             shape: BoxShape.circle,
-            border: Border.all(
-              color: AppColors.red.withValues(alpha: 0.4), width: 0.8),
+            border: Border.all(color: AppColors.divider, width: 0.8),
           ),
-          child: Icon(icon, size: 16, color: AppColors.red),
+          child: Icon(icon, size: 16, color: AppColors.textSecondary),
         ),
       ),
     );
@@ -543,7 +542,7 @@ class _Splash extends StatelessWidget {
   Widget build(BuildContext context) => const Center(
     child: SizedBox(
       width: 28, height: 28,
-      child: CircularProgressIndicator(color: AppColors.red, strokeWidth: 2),
+      child: CircularProgressIndicator(color: AppColors.textSecondary, strokeWidth: 2),
     ),
   );
 }

@@ -76,7 +76,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
       children: [
         SizedBox(height: MediaQuery.of(context).size.height * 0.15),
         Icon(Icons.show_chart_rounded,
-          size: 48, color: AppColors.red.withValues(alpha: 0.6)),
+          size: 48, color: AppColors.divider),
         const SizedBox(height: Sp.md),
         Text('No history yet.',
           textAlign: TextAlign.center,
@@ -157,7 +157,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         if (_generations.isNotEmpty) ...[
           Text('GENERATION VAULT',
             style: AppTypography.label.copyWith(
-              color: AppColors.red, letterSpacing: 2.5, fontSize: 10)),
+              color: AppColors.textTertiary, letterSpacing: 2.5, fontSize: 10)),
           const SizedBox(height: 6),
           Text('Every render, saved.',
             style: AppTypography.bodySmall.copyWith(
@@ -208,14 +208,14 @@ class _ChartCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface1,
         borderRadius: BorderRadius.circular(Rd.xl),
-        border: Border.all(color: AppColors.red.withValues(alpha: 0.28)),
+        border: Border.all(color: AppColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('AESTHETIC INDEX · OVER TIME',
             style: AppTypography.label.copyWith(
-              color: AppColors.red, letterSpacing: 2.5, fontSize: 9)),
+              color: AppColors.textTertiary, letterSpacing: 2.5, fontSize: 9)),
           const SizedBox(height: Sp.md),
           SizedBox(
             height: 160,
@@ -302,8 +302,8 @@ class _ScoreChartPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
           colors: [
-            AppColors.red.withValues(alpha: 0.24),
-            AppColors.red.withValues(alpha: 0.02),
+            AppColors.divider,
+            AppColors.divider,
           ],
         ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)));
     }
@@ -446,7 +446,7 @@ class _ScanHistoryList extends StatelessWidget {
       children: [
         Text('SCAN HISTORY',
           style: AppTypography.label.copyWith(
-            color: AppColors.red, letterSpacing: 2.5, fontSize: 10)),
+            color: AppColors.textTertiary, letterSpacing: 2.5, fontSize: 10)),
         const SizedBox(height: Sp.sm),
         for (var i = 0; i < scans.length; i++) ...[
           _ScanRow(scan: scans[i], index: i + 1, total: scans.length),

@@ -45,14 +45,7 @@ class _BeforeAfterCardState extends State<BeforeAfterCard> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(Rd.lg),
-        border: Border.all(
-          color: AppColors.red.withValues(alpha: 0.45), width: 0.9),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.red.withValues(alpha: 0.12),
-            blurRadius: 22,
-          ),
-        ],
+        border: Border.all(color: AppColors.divider, width: 0.8),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(Rd.lg),
@@ -73,7 +66,7 @@ class _BeforeAfterCardState extends State<BeforeAfterCard> {
                         caption: widget.beforeLabel),
                     ),
                   ),
-                  Container(width: 1.5, color: AppColors.red),
+                  Container(width: 1, color: AppColors.divider),
                   Expanded(
                     child: _ImageHalf(
                       url: widget.afterUrl,

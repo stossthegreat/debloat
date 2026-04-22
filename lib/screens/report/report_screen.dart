@@ -402,7 +402,7 @@ class _ReportScreenState extends State<ReportScreen> {
           // ── 5 · THREE FIX CARDS (GPT-sourced, with inline Flux) ────────
           Text('THE FIXES',
             style: AppTypography.label.copyWith(
-              color: AppColors.red, letterSpacing: 3.0, fontSize: 10)),
+              color: AppColors.textTertiary, letterSpacing: 3.0, fontSize: 10)),
           const SizedBox(height: Sp.sm),
           ...a.report.fixes.asMap().entries.map((e) {
             // Each fix card displays the cumulative chain output for its
@@ -644,7 +644,7 @@ class _DeeperAnalysisPanelState extends State<_DeeperAnalysisPanel> {
           // Quick-action chips — kept here for depth users who want more renders
           Text('TRY MORE LOOKS',
             style: AppTypography.label.copyWith(
-              color: AppColors.red, letterSpacing: 2.5, fontSize: 9)),
+              color: AppColors.textTertiary, letterSpacing: 2.5, fontSize: 9)),
           const SizedBox(height: Sp.sm),
           QuickTryonChips(
             geometry: widget.geometry,
@@ -683,19 +683,9 @@ class _ApplyAllFixesButtonState extends State<_ApplyAllFixesButton> {
         width: double.infinity,
         padding: const EdgeInsets.all(Sp.md),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.red.withValues(alpha: 0.24),
-              AppColors.red.withValues(alpha: 0.08),
-            ],
-          ),
+          color: AppColors.surface1,
           borderRadius: BorderRadius.circular(Rd.xl),
-          border: Border.all(color: AppColors.red, width: 1.2),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.red.withValues(alpha: 0.3),
-              blurRadius: 36, offset: const Offset(0, 8)),
-          ],
+          border: Border.all(color: AppColors.divider, width: 0.8),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -791,27 +781,21 @@ class _ConsultCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(Sp.md),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.red.withValues(alpha: 0.10),
-                AppColors.red.withValues(alpha: 0.03),
-              ],
-            ),
+            color: AppColors.surface1,
             borderRadius: BorderRadius.circular(Rd.xl),
-            border: Border.all(color: AppColors.red.withValues(alpha: 0.4)),
+            border: Border.all(color: AppColors.divider, width: 0.8),
           ),
           child: Row(
             children: [
               Container(
                 width: 42, height: 42,
                 decoration: BoxDecoration(
-                  color: AppColors.red.withValues(alpha: 0.15),
+                  color: AppColors.surface2,
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppColors.red.withValues(alpha: 0.6), width: 0.8),
+                  border: Border.all(color: AppColors.divider, width: 0.8),
                 ),
                 child: const Icon(Icons.auto_awesome,
-                  size: 18, color: AppColors.red),
+                  size: 18, color: AppColors.textSecondary),
               ),
               const SizedBox(width: Sp.md),
               Expanded(
@@ -820,7 +804,8 @@ class _ConsultCard extends StatelessWidget {
                   children: [
                     Text('CONSULT THE AI',
                       style: AppTypography.label.copyWith(
-                        color: AppColors.red, letterSpacing: 2.6, fontSize: 9)),
+                        color: AppColors.textPrimary, letterSpacing: 2.6, fontSize: 9,
+                        fontWeight: FontWeight.w800)),
                     const SizedBox(height: 3),
                     Text('Ask about haircut, beard, skin, surgery — answered '
                          'against your measured bones.',
@@ -831,7 +816,7 @@ class _ConsultCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               const Icon(Icons.arrow_forward_rounded,
-                size: 18, color: AppColors.red),
+                size: 18, color: AppColors.textTertiary),
             ],
           ),
         ),
@@ -1110,8 +1095,8 @@ class _FixCardState extends State<_FixCard> {
               width: double.infinity, height: 44,
               child: OutlinedButton(
                 style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: AppColors.red.withValues(alpha: 0.55)),
-                  foregroundColor: AppColors.red,
+                  side: BorderSide(color: AppColors.divider),
+                  foregroundColor: AppColors.textPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(Rd.md)),
                 ),
@@ -1119,16 +1104,16 @@ class _FixCardState extends State<_FixCard> {
                 child: _rendering
                   ? const SizedBox(width: 16, height: 16,
                       child: CircularProgressIndicator(
-                        strokeWidth: 1.8, color: AppColors.red))
+                        strokeWidth: 1.8, color: AppColors.textSecondary))
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.auto_awesome,
-                          size: 14, color: AppColors.red),
+                          size: 14, color: AppColors.textSecondary),
                         const SizedBox(width: 8),
                         Text('SEE IT ON YOUR FACE',
                           style: AppTypography.label.copyWith(
-                            color: AppColors.red, letterSpacing: 2.0,
+                            color: AppColors.textPrimary, letterSpacing: 2.0,
                             fontSize: 10, fontWeight: FontWeight.w800)),
                       ],
                     ),

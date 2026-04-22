@@ -47,9 +47,9 @@ class ScoreCard extends StatelessWidget {
             children: [
               Text('AESTHETIC INDEX',
                 style: AppTypography.label.copyWith(
-                  color: AppColors.red, letterSpacing: 3.2, fontSize: 9)),
+                  color: AppColors.textTertiary, letterSpacing: 3.2, fontSize: 9)),
               const SizedBox(width: 8),
-              _Pip(color: AppColors.red.withValues(alpha: 0.75)),
+              _Pip(color: AppColors.textTertiary.withValues(alpha: 0.75)),
               const Spacer(),
               if (!score.reliable)
                 Text('LOW CONFIDENCE',
@@ -71,7 +71,9 @@ class ScoreCard extends StatelessWidget {
                       size: const Size(150, 150),
                       painter: _ScoreArcPainter(
                         value: score.value / 100,
-                        color: AppColors.red,
+                        // Arc neutralized — only the NUMBER gets the red
+                        // hero treatment so the page doesn't read as "error".
+                        color: AppColors.textTertiary,
                         trackColor: AppColors.surface3,
                       ),
                     ),
@@ -81,9 +83,10 @@ class ScoreCard extends StatelessWidget {
                         Text('${score.value}',
                           style: AppTypography.display.copyWith(
                             fontSize: 58,
-                            color: AppColors.textPrimary,
+                            color: AppColors.red,
                             letterSpacing: -3,
                             height: 1,
+                            fontStyle: FontStyle.italic,
                           )),
                         const SizedBox(height: 2),
                         Text('/ 100',
@@ -104,7 +107,7 @@ class ScoreCard extends StatelessWidget {
                     children: [
                       Text(score.tierLabel,
                         style: AppTypography.h1.copyWith(
-                          color: AppColors.red,
+                          color: AppColors.textPrimary,
                           fontSize: 30,
                           letterSpacing: -0.6,
                           height: 1.0,

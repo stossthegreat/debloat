@@ -42,7 +42,7 @@ class _RadarChartState extends State<RadarChart>
       decoration: BoxDecoration(
         color: AppColors.surface1,
         borderRadius: BorderRadius.circular(Rd.xl),
-        border: Border.all(color: AppColors.red.withValues(alpha: 0.28)),
+        border: Border.all(color: AppColors.divider, width: 0.8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,7 +51,7 @@ class _RadarChartState extends State<RadarChart>
             children: [
               Text('FACIAL RADAR',
                 style: AppTypography.label.copyWith(
-                  color: AppColors.red, letterSpacing: 3.0, fontSize: 10)),
+                  color: AppColors.textTertiary, letterSpacing: 3.0, fontSize: 10)),
               const Spacer(),
               Text('Your Polygon · Ideal Polygon',
                 style: AppTypography.label.copyWith(

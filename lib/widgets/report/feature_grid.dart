@@ -27,12 +27,12 @@ class FeatureGrid extends StatelessWidget {
           children: [
             Text('YOUR FACE · FEATURE BY FEATURE',
               style: AppTypography.label.copyWith(
-                color: AppColors.red, letterSpacing: 2.8, fontSize: 9)),
+                color: AppColors.textTertiary, letterSpacing: 2.8, fontSize: 9)),
             const Spacer(),
             Container(
               width: 4, height: 4,
               decoration: const BoxDecoration(
-                color: AppColors.red, shape: BoxShape.circle),
+                color: AppColors.textTertiary, shape: BoxShape.circle),
             ),
           ],
         ),
@@ -139,8 +139,9 @@ class _FeatureCard extends StatelessWidget {
                   children: [
                     Text('THE EXIT',
                       style: AppTypography.label.copyWith(
-                        color: AppColors.red,
-                        letterSpacing: 2.2, fontSize: 8.5)),
+                        color: AppColors.textTertiary,
+                        letterSpacing: 2.2, fontSize: 8.5,
+                        fontWeight: FontWeight.w800)),
                     const SizedBox(height: 3),
                     Text(read.fix,
                       style: AppTypography.bodySmall.copyWith(
@@ -151,27 +152,21 @@ class _FeatureCard extends StatelessWidget {
               ),
               if (read.pointLift > 0) ...[
                 const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: AppColors.red.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppColors.red.withValues(alpha: 0.55), width: 0.7),
-                  ),
-                  child: Column(
-                    children: [
-                      Text('+${read.pointLift}',
-                        style: AppTypography.measurement.copyWith(
-                          color: AppColors.red, fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5)),
-                      Text('POINTS',
-                        style: AppTypography.label.copyWith(
-                          color: AppColors.red, fontSize: 7.5,
-                          letterSpacing: 1.6)),
-                    ],
-                  ),
+                // Unboxed — only the NUMBER pops in red. Pill removed so
+                // the page stops reading as alert-heavy.
+                Column(
+                  children: [
+                    Text('+${read.pointLift}',
+                      style: AppTypography.measurement.copyWith(
+                        color: AppColors.red, fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                        fontStyle: FontStyle.italic)),
+                    Text('POINTS',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.textTertiary, fontSize: 7.5,
+                        letterSpacing: 1.6)),
+                  ],
                 ),
               ],
             ],
@@ -184,8 +179,8 @@ class _FeatureCard extends StatelessWidget {
               width: double.infinity, height: 38,
               child: OutlinedButton(
                 style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: AppColors.red.withValues(alpha: 0.55)),
-                  foregroundColor: AppColors.red,
+                  side: BorderSide(color: AppColors.divider),
+                  foregroundColor: AppColors.textPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(Rd.md)),
                 ),
@@ -194,11 +189,11 @@ class _FeatureCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(Icons.auto_awesome,
-                      size: 12, color: AppColors.red),
+                      size: 12, color: AppColors.textSecondary),
                     const SizedBox(width: 8),
                     Text('SEE THIS FIX ON MY FACE',
                       style: AppTypography.label.copyWith(
-                        color: AppColors.red, letterSpacing: 2.0,
+                        color: AppColors.textPrimary, letterSpacing: 2.0,
                         fontSize: 9.5, fontWeight: FontWeight.w800)),
                   ],
                 ),

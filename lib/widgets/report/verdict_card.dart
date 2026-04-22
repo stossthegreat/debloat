@@ -47,20 +47,23 @@ class VerdictCard extends StatelessWidget {
             children: [
               Text('THE VERDICT',
                 style: AppTypography.label.copyWith(
-                  color: AppColors.red, letterSpacing: 3.2, fontSize: 9)),
+                  color: AppColors.textTertiary, letterSpacing: 3.2, fontSize: 9)),
               const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.red.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(
-                    color: AppColors.red.withValues(alpha: 0.65), width: 0.8),
-                ),
-                child: Text('$score · ${tier.toUpperCase()}',
-                  style: AppTypography.label.copyWith(
-                    color: AppColors.red, letterSpacing: 2.0, fontSize: 10,
-                    fontWeight: FontWeight.w800)),
+              // Score pill neutralised — only the NUMBER pops in red; tier
+              // is plain white tracked text. Before: full-red badge.
+              Text.rich(
+                TextSpan(children: [
+                  TextSpan(text: '$score',
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.red, letterSpacing: 1.2, fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      fontStyle: FontStyle.italic,
+                    )),
+                  TextSpan(text: '  ·  ${tier.toUpperCase()}',
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.textPrimary, letterSpacing: 2.0, fontSize: 10,
+                      fontWeight: FontWeight.w800)),
+                ]),
               ),
             ],
           ),
@@ -78,11 +81,11 @@ class VerdictCard extends StatelessWidget {
           Row(
             children: [
               Icon(Icons.auto_awesome, size: 12,
-                color: AppColors.red.withValues(alpha: 0.75)),
+                color: AppColors.textTertiary),
               const SizedBox(width: 6),
               Text(archetype.toUpperCase(),
                 style: AppTypography.label.copyWith(
-                  color: AppColors.red.withValues(alpha: 0.9),
+                  color: AppColors.textPrimary.withValues(alpha: 0.85),
                   letterSpacing: 2.4, fontSize: 9,
                   fontWeight: FontWeight.w800)),
             ],

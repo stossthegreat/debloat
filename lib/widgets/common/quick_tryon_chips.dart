@@ -116,14 +116,13 @@ class _Chip extends StatelessWidget {
             ),
             decoration: BoxDecoration(
               color: AppColors.surface1,
-              border: Border.all(
-                color: AppColors.red.withValues(alpha: 0.45), width: 0.8),
+              border: Border.all(color: AppColors.divider, width: 0.8),
               borderRadius: BorderRadius.circular(100),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: compact ? 12 : 13, color: AppColors.red),
+                Icon(icon, size: compact ? 12 : 13, color: AppColors.textSecondary),
                 const SizedBox(width: 6),
                 Text(label,
                   style: AppTypography.label.copyWith(

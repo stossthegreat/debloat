@@ -22,7 +22,7 @@ class TraitGrid extends StatelessWidget {
       children: [
         Text('YOUR TRAITS',
           style: AppTypography.label.copyWith(
-            color: AppColors.red, letterSpacing: 3.0, fontSize: 10)),
+            color: AppColors.textTertiary, letterSpacing: 3.0, fontSize: 10)),
         const SizedBox(height: 10),
         // 2×2 grid
         GridView.builder(
