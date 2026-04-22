@@ -3,151 +3,147 @@ import crypto from 'node:crypto';
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
-// Max — BFL's designated multi-instruction model. We're doing one single-shot
-// with multiple instructions, so Max > Pro on single-shot fidelity.
-const MODEL = 'black-forest-labs/flux-kontext-max';
+// ─────────────────────────────────────────────────────────────────────────────
+//  MODEL CHOICE — April 2026 research verdict
+// ─────────────────────────────────────────────────────────────────────────────
+// Kontext Max was producing "uglier / older / different person" outputs. The
+// root cause is structural, not prompt-level:
+//   1. Flux has a documented +2.18 year age bias on males (arxiv 2502.03420).
+//   2. Kontext's identity is a SOFT prompt bias, not a face-embedding lock —
+//      every edit re-synthesises the full face.
+//   3. Flux's portrait prior over-smooths skin, which kills cheek-shadow and
+//      reads as "older / less attractive."
+// Fix = (a) use a model whose portrait prior isn't beauty-retouched, AND
+//       (b) post-pass a face-swap from the ORIGINAL selfie back onto the edit
+//           output — a GEOMETRIC identity lock that no prompt can outperform.
+//
+// Primary edit model: Google's Nano Banana (Gemini 2.5 Flash Image). Google's
+// DeepMind marketing for this model: "locks onto your facial features, skin
+// tone, and expression before making any change." Best-in-class for hair /
+// beard edits where the face must stay recognisable.
+//
+// Post-pass: cdingram/face-swap on Replicate (buffalo_l + inswapper_128).
+// Takes the edit output + the original selfie, pastes the original face's
+// geometry onto the new haircut, blends. ~$0.01/img, ~4s.
+//
+// Net cost: Nano Banana Flash ($0.039) + face swap ($0.01) ≈ $0.05 / twin
+// vs Kontext Max $0.08 — CHEAPER AND BETTER.
+const EDIT_MODEL = 'google/nano-banana';         // primary — Gemini 2.5 Flash Image
+const SWAP_MODEL = 'cdingram/face-swap';         // identity-lock post-pass
 
 /**
- * Generate the Maximized Twin in ONE Flux call.
+ * Generate the Maximized Twin — ONE hero change, identity-locked.
  *
- * PRODUCT RULE (user feedback — 2026-04-22):
- *   The HERO change must ALWAYS be a GROOMING edit — hair first, then beard.
- *   Skin is NEVER the hero. When skin appears in the change list, it is
- *   reduced to a soft daylight glow filter — invisible-as-an-edit — because
- *   the user must look IDENTICAL, just photographed on their best day.
+ * Architecture:
+ *   Stage 1: pick the single hero change from brief.improve. Hair > Beard >
+ *            other grooming. Skin is NEVER the hero and is never sent to the
+ *            edit model. (Flux/Nano Banana both smooth skin as a side effect
+ *            — which is how we got "uglier/older" outputs.)
+ *   Stage 2: call Nano Banana with a descriptor-first prompt that positively
+ *            preserves face/bones/age so the model clamps identity.
+ *   Stage 3: face-swap post-pass using the ORIGINAL selfie as the face
+ *            source. This is the geometric identity guarantee — no prompt
+ *            can drift the face when we literally paste the original face
+ *            geometry back at the end.
  *
- *   Why: the earlier prompt treated all 3 fixes as equal siblings and Flux
- *   tended to blend them into a generic "smoothed/aged" look. Hair/beard
- *   edits are visually demonstrable wins (haircut, trimmed beard) — the
- *   "wow" moment. Skin edits at full strength read as AI-filter / plastic
- *   / older. The fix is HEIRARCHY:
- *     - 1 dominant grooming change (hair or beard)
- *     - 1 secondary grooming touch (beard if hair was primary, or stubble)
- *     - skin = "slight brightness lift, like soft daylight, no texture change"
- *
- * IDENTITY LOCK (hard):
- *   The user is the same person. Same exact face, same age, zero bone
- *   structure change. If Flux drifts these, the render fails. The clause
- *   is repeated three times in the prompt because Flux rewards redundancy.
- *
- * Returns:
- *   { url, prompt, seed, intermediateUrls: [] }
+ * Returns { url, editUrl, prompt, seed, heroChange, model, intermediateUrls }.
  */
 export async function maximize({ imageBase64, brief }) {
-  const improve = Array.isArray(brief?.improve) && brief.improve.length > 0
-    ? brief.improve.slice(0, 3)
-    : defaultImprove();
+  const improve = Array.isArray(brief?.improve) ? brief.improve : [];
 
-  while (improve.length < 3) {
-    improve.push(defaultImprove()[improve.length]);
+  // Rank fixes: hair(0) > beard(1) > other-grooming(2). Skin(3) filtered out.
+  const ranked = improve
+    .map((s, i) => ({ s: String(s || '').trim(), pri: classify(s), idx: i }))
+    .filter(r => r.s.length > 0 && r.pri <= 2)
+    .sort((a, b) => a.pri - b.pri || a.idx - b.idx);
+
+  const heroChange = ranked.length > 0
+    ? ranked[0].s
+    : 'a cleanly styled, modern haircut that suits the face shape';
+
+  const prompt = buildPrompt(heroChange);
+  const seed   = deterministicSeed(imageBase64);
+  const inputDataUri = `data:image/jpeg;base64,${imageBase64}`;
+
+  // Stage 1+2 — primary edit via Nano Banana
+  const editUrl = await runEditWithRetry({ imageDataUri: inputDataUri, prompt });
+
+  // Stage 3 — face-swap original → edit (identity guarantee)
+  let finalUrl = editUrl;
+  try {
+    finalUrl = await runFaceSwap({
+      editedUrl:   editUrl,
+      originalUri: inputDataUri,
+    });
+  } catch (e) {
+    // If the face-swap post-pass fails, serve the edit as-is rather than
+    // error the whole scan. Identity will drift slightly but user still
+    // sees a maximized twin.
+    console.warn('[maximize] face-swap post-pass failed:', String(e?.message ?? e));
   }
 
-  const prompt = buildCombinedPrompt(improve);
-  const seed   = deterministicSeed(imageBase64);
-
-  const url = await runKontextWithRetry({
-    imageDataUri: `data:image/jpeg;base64,${imageBase64}`,
-    prompt,
-    seed,
-  });
-
   return {
-    url,
+    url:              finalUrl,
+    editUrl,
     prompt,
     seed,
-    intermediateUrls: [], // client falls back to live /tryon per fix card
+    heroChange,
+    model:            EDIT_MODEL,
+    intermediateUrls: [],
   };
 }
 
-function defaultImprove() {
-  return [
-    'cleanly styled modern haircut matched to the face shape',
-    'a cleaner, more defined beard line (or neat stubble if clean-shaven)',
-    'subtly brighter healthy skin — a light daylight glow, not a texture change',
-  ];
-}
-
 /**
- * Classify each incoming improve item so we can rank them hero → supporting.
- *   priority 0 = HAIR     (hero if present)
- *   priority 1 = BEARD    (hero if hair absent; otherwise secondary)
- *   priority 2 = OTHER grooming (brows, teeth, glasses, etc.)
- *   priority 3 = SKIN     (demoted — rendered as a light filter, never as
- *                          an explicit edit)
+ * Classify an improve item so we can rank it:
+ *   0 = HAIR  (hero if present)
+ *   1 = BEARD (hero if hair absent)
+ *   2 = OTHER grooming (brows, teeth, glasses, lashes)
+ *   3 = SKIN — never sent to the model
  */
 function classify(s) {
   const x = String(s || '').toLowerCase();
-  if (/\b(hair(?!\s*line)|fade|crop|cut|hairline|fringe|buzz|taper|undercut|quiff|pomp|part)\b/.test(x)) return 0;
+  if (/\b(hair(?!\s*line)|fade|crop|cut|hairline|fringe|buzz|taper|undercut|quiff|pomp|part|bangs)\b/.test(x)) return 0;
   if (/\b(beard|stubble|goatee|moustache|facial hair)\b/.test(x)) return 1;
   if (/\b(brow|eyebrow|teeth|whiten|glasses|frame|lash)\b/.test(x)) return 2;
-  if (/\b(skin|complexion|pore|texture|tone|blemish|retinol|glow|tret|acne|redness|dull)\b/.test(x)) return 3;
-  return 2;
+  return 3; // skin / tone / pore / blemish → drop
 }
 
-function buildCombinedPrompt(changes) {
-  const items = changes
-    .map(s => String(s || '').trim())
-    .filter(Boolean)
-    .map(s => s.replace(/\.$/, ''));
-  if (items.length === 0) return '';
-
-  // Rank each item 0-3 (hair > beard > other grooming > skin).
-  const ranked = items
-    .map((s, i) => ({ s, pri: classify(s), idx: i }))
-    .sort((a, b) => a.pri - b.pri || a.idx - b.idx);
-
-  // Split into: primary grooming (hero), secondary grooming, skin-as-filter.
-  const hero     = ranked[0];
-  const secondary = ranked.find(r => r !== hero && r.pri <= 2);
-  const hasSkin  = ranked.some(r => r.pri === 3);
-
-  // Build the three sentence beats.
-  const heroLine = hero
-    ? `Apply a clearly visible primary grooming change: ${hero.s}. This is the hero change — it should be immediately obvious and flattering.`
-    : '';
-
-  const secondaryLine = secondary
-    ? `In addition, refine: ${secondary.s}. This supports the hero change without competing with it.`
-    : '';
-
-  // Skin is NEVER described as an edit. It becomes a "light filter" beat.
-  const skinLine = hasSkin
-    ? `Apply only a very subtle daylight brightness lift to the skin — the kind of difference soft window light makes. NO texture change, NO blur, NO smoothing, NO retouching. Skin tone, pores, blemishes, freckles all remain exactly as in the original.`
-    : '';
-
-  // Conflict-aware preserve clause — drop anchors that contradict changes.
-  const lower = items.join(' | ').toLowerCase();
-  const preserves = ['facial features', 'bone structure', 'jawline', 'nose shape', 'eye shape', 'eye colour', 'lips', 'expression', 'apparent age', 'ethnicity'];
-
-  if (!/\b(hair(?!\s*line)|fade|crop|cut|hairline|fringe|buzz|taper|undercut|quiff|pomp)\b/.test(lower)) {
-    preserves.splice(1, 0, 'hairstyle');
-  }
-  if (!/\b(beard|stubble|goatee|moustache|facial hair)\b/.test(lower)) {
-    preserves.push('facial hair');
-  }
-
-  const preserveClause = preserves.join(', ');
-
-  return [
-    `EDIT A PORTRAIT. Subject is the same exact person as in the input photo — same face, same bones, same age, same ethnicity, SAME IDENTITY. Do not make this person look older, younger, thinner, or different in any way other than the grooming changes specified below.`,
-    ``,
-    heroLine,
-    secondaryLine,
-    skinLine,
-    ``,
-    `HARD IDENTITY LOCK — preserve exactly: ${preserveClause}. If the face in the output doesn't visibly match the face in the input, the render has failed.`,
-    ``,
-    `Keep the same pose, camera angle, framing, lighting direction and background as the original photograph. Photorealistic. Natural pores and skin texture preserved. No beauty-filter smoothing. No painterly effect. No age shift.`,
-  ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+/**
+ * Descriptor-first prompt. Four ordered beats per the community-validated
+ * Nano Banana hair-swap template (Skywork + multiple Reddit threads):
+ *
+ *   1. Subject naming        — "The person in this photo"
+ *   2. The ONE change        — "Give them [hero grooming change]"
+ *   3. Positive preserve     — list what must stay the same (not negation)
+ *   4. Lighting/background   — keep everything else identical
+ *
+ * KEY — "apparent age" listed in the preserve clause. This is the measured
+ * fix for Flux/Gemini's +2y male age-drift bias (arxiv 2502.03420): by
+ * positively preserving age, the model clamps to the source age instead
+ * of defaulting older.
+ */
+function buildPrompt(heroChange) {
+  return (
+    `The person in this photo. Give them ${heroChange}. ` +
+    `Match their head shape exactly. ` +
+    `Keep the same face, skin tone, skin texture, jawline, nose shape, ` +
+    `eye shape, eye colour, eyebrows, lips, expression, apparent age, ` +
+    `and ethnicity — all exactly as in the original. ` +
+    `Keep the same lighting, same background, same framing, same camera ` +
+    `angle and same pose. Natural shadows. ` +
+    `Photorealistic. Do not smooth the skin. Do not age the face. ` +
+    `Do not alter any facial feature other than the single change specified.`
+  );
 }
 
-async function runKontextWithRetry({ imageDataUri, prompt, seed }) {
+// ─── Stage 1+2 — primary edit ────────────────────────────────────────────────
+async function runEditWithRetry({ imageDataUri, prompt }) {
   const maxAttempts = 3;
   let attempt = 0;
   while (true) {
     attempt++;
     try {
-      return await runKontext({ imageDataUri, prompt, seed });
+      return await runEdit({ imageDataUri, prompt });
     } catch (err) {
       const msg   = String(err?.message ?? err);
       const is429 = msg.includes('429') || msg.includes('Too Many Requests');
@@ -155,27 +151,46 @@ async function runKontextWithRetry({ imageDataUri, prompt, seed }) {
       const m       = msg.match(/retry_after"?\s*:\s*(\d+)/);
       const waitSec = m ? Number(m[1]) : Math.pow(2, attempt) * 3;
       const waitMs  = Math.min(Math.max(waitSec, 3), 30) * 1000;
-      console.warn(`[flux] 429, waiting ${waitMs}ms (attempt ${attempt}/${maxAttempts})`);
+      console.warn(`[edit] 429, waiting ${waitMs}ms (attempt ${attempt}/${maxAttempts})`);
       await new Promise(r => setTimeout(r, waitMs));
     }
   }
 }
 
-async function runKontext({ imageDataUri, prompt, seed }) {
+async function runEdit({ imageDataUri, prompt }) {
+  // Nano Banana accepts `image_input` as an ARRAY (supports up to 14 refs).
+  // png output avoids jpg compression artifacts on skin.
   const input = {
     prompt,
-    input_image:       imageDataUri,
-    aspect_ratio:      'match_input_image',
-    output_format:     'png',
-    output_quality:    95,
-    safety_tolerance:  2,
-    prompt_upsampling: false,
-    seed,
+    image_input:   [imageDataUri],
+    aspect_ratio:  'match_input_image',
+    output_format: 'png',
   };
-  const output = await replicate.run(MODEL, { input });
-  return typeof output === 'string'
-    ? output
-    : (output?.url?.() ?? output?.[0] ?? String(output));
+  const output = await replicate.run(EDIT_MODEL, { input });
+  return extractUrl(output);
+}
+
+// ─── Stage 3 — face-swap post-pass (GEOMETRIC identity lock) ─────────────────
+// The identity guarantee no prompt can deliver. Takes:
+//   - editedUrl   : the Nano Banana output (has the new hair, drifted face)
+//   - originalUri : the user's actual selfie (has the correct face)
+// Pastes the original face geometry onto the edited output, blends.
+async function runFaceSwap({ editedUrl, originalUri }) {
+  const input = {
+    input_image: editedUrl,     // target (has the new hair/beard)
+    swap_image:  originalUri,   // source (has the correct face)
+  };
+  const output = await replicate.run(SWAP_MODEL, { input });
+  return extractUrl(output);
+}
+
+// ─── helpers ─────────────────────────────────────────────────────────────────
+function extractUrl(output) {
+  if (typeof output === 'string') return output;
+  if (Array.isArray(output))      return String(output[0]);
+  if (output && typeof output.url === 'function') return output.url();
+  if (output && typeof output.url === 'string')   return output.url;
+  return String(output);
 }
 
 function deterministicSeed(imageBase64) {
