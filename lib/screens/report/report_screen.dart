@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -9,6 +11,7 @@ import '../../models/scan_record.dart';
 import '../../services/archetype_service.dart';
 import '../../services/face_asset_service.dart';
 import '../../services/feature_analysis_service.dart';
+import '../../services/honest_rating_service.dart';
 import '../../services/local_store_service.dart';
 import '../../services/mirror_api_service.dart';
 import '../../services/scoring_service.dart';
@@ -49,6 +52,10 @@ class _ReportScreenState extends State<ReportScreen> {
   // Populated once the scan image is persisted. Passed to chat/tryon so the
   // advisor can fire Flux renders inline using the real scan image.
   String? _savedImagePath;
+  // GPT-4o Vision honest-looks rating. Fires in parallel with /scan so
+  // the added latency is absorbed. Null = model refused (rare) and the
+  // dual-score hero degrades to geometry-only.
+  HonestRating? _honest;
 
   static const _loadingCopy = [
     'Resolving skin micro-texture',
@@ -76,12 +83,29 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Future<void> _run() async {
     try {
-      final result = await MirrorApiService.scan(
+      // Fire /scan and /rate in parallel. Rate is ~3s, scan is ~10s, so
+      // running concurrently keeps the perceived loading time flat.
+      // Rate degrades gracefully to null on refusal / failure — the
+      // report still renders in geometry-only mode.
+      final imageB64 = base64Encode(widget.imageBytes);
+
+      final scanFuture   = MirrorApiService.scan(
         imageBytes:  widget.imageBytes,
         geometry:    widget.geometry,
         extraImages: widget.extraImages,
       );
-      if (mounted) setState(() => _analysis = result);
+      final honestFuture = HonestRatingService.rate(imageBase64: imageB64);
+
+      final results = await Future.wait<dynamic>([scanFuture, honestFuture]);
+      final result = results[0] as MirrorAnalysis;
+      final honest = results[1] as HonestRating?;
+
+      if (mounted) {
+        setState(() {
+          _analysis = result;
+          _honest   = honest;
+        });
+      }
       // Persist the scan so it lights up Progress + Advisor tabs.
       await _persistScan(result);
     } catch (e) {
@@ -351,11 +375,26 @@ class _ReportScreenState extends State<ReportScreen> {
                   context:        context,
                   beforeBytes:    widget.imageBytes,
                   afterUrl:       a.maximizedImageUrl,
-                  currentScore:   score.value,
+                  // Share card leads with the honest (vision) score when
+                  // available, so the shared image tells the same truth
+                  // as the results page. Projected still comes from the
+                  // geometry potential model.
+                  currentScore:   _honest?.score ?? score.value,
                   projectedScore: projected,
                   tagline:        tagline,
-                  microProofs:    microProofs,
-                  text: '${score.value} → $projected. Same face. mirrorly.app',
+                  // First two bullets = the two scores (our moat, named).
+                  // Third bullet = the top strength trait so the card
+                  // still flexes something specific.
+                  microProofs: [
+                    if (_honest != null)
+                      'HONEST LOOKS · ${_honest!.score}/100'
+                    else
+                      'BONES · ${score.value}/100',
+                    'BONE STRUCTURE · ${score.value}/100',
+                    microProofs.isNotEmpty ? microProofs.first : 'MEASURED PROFILE',
+                  ],
+                  text: '${_honest?.score ?? score.value} → $projected. '
+                        'Same face. mirrorly.app',
                 ),
               ),
             ],
@@ -363,9 +402,22 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.lg),
 
+          // ── 0 · DUAL-SCORE HERO ─ honest (big) + bone structure (under) ─
+          // Two scores is the moat. Honest is GPT-4o Vision's real-photo
+          // read — skin, eye area, proportions — with no geometry context
+          // so bones can't bail out a bad face. Bone structure is our
+          // on-device measurement math, shown smaller as the companion
+          // number. Degrades to geometry-only if the vision model refused.
+          _DualScoreHero(
+            honest:    _honest,
+            geometry:  score.value,
+          ),
+
+          const SizedBox(height: Sp.md),
+
           // ── 1 · HERO CARD ─ score → projected, tagline, B/A, proofs ────
           HeroCard(
-            currentScore:     score.value,
+            currentScore:     _honest?.score ?? score.value,
             projectedScore:   projected,
             tagline:          tagline,
             beforeBytes:      widget.imageBytes,
@@ -636,7 +688,7 @@ class _DeeperAnalysisPanelState extends State<_DeeperAnalysisPanel> {
           _Block(label: 'WHAT\'S ALREADY WORKING', color: AppColors.signalGreen,
             body: a.report.strongest),
           const SizedBox(height: Sp.md),
-          _Block(label: 'WHAT\'S HOLDING IT BACK', color: AppColors.signalRed,
+          _Block(label: 'WHAT\'S HOLDING IT BACK', color: AppColors.signalAmber,
             body: a.report.pulldown),
 
           const SizedBox(height: Sp.md),
@@ -1080,7 +1132,7 @@ class _FixCardState extends State<_FixCard> {
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(Rd.md),
-                  border: Border.all(color: AppColors.red.withValues(alpha: 0.35)),
+                  border: Border.all(color: AppColors.signalGreen.withValues(alpha: 0.5)),
                 ),
                 child: Image.network(_renderUrl!, fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Center(
@@ -1189,5 +1241,176 @@ class _Verdict extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DUAL SCORE HERO
+//
+//  The two-score read sits directly above the main hero card:
+//    HONEST LOOKS  — big italic red number, GPT-4o Vision's real-photo rating.
+//    BONE STRUCTURE — small chip, on-device geometry score.
+//
+//  Honest is the hero because it's the uncontaminated truth. Bones are the
+//  secondary because that's our unique measurement moat — we keep it
+//  visible so users know the geometry is real, not invented.
+//
+//  Degrades cleanly: if honest is null (model refused or network failed)
+//  the bones score promotes to hero and the eyebrow reads BONES ONLY.
+// ═══════════════════════════════════════════════════════════════════════════
+class _DualScoreHero extends StatelessWidget {
+  final HonestRating? honest;
+  final int geometry;
+
+  const _DualScoreHero({required this.honest, required this.geometry});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasHonest = honest != null;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(Rd.xl),
+        border: Border.all(
+          color: AppColors.red.withValues(alpha: 0.28), width: 0.8),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.red.withValues(alpha: 0.14),
+            blurRadius: 24, spreadRadius: -4),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(hasHonest ? 'THE TRUTH · TWO SCORES' : 'THE READ · BONES ONLY',
+            style: AppTypography.label.copyWith(
+              color: AppColors.red,
+              letterSpacing: 3.0, fontSize: 9.5,
+              fontWeight: FontWeight.w800)),
+
+          const SizedBox(height: 14),
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('${honest?.score ?? geometry}',
+                style: AppTypography.measurement.copyWith(
+                  color: AppColors.red,
+                  fontSize: 78, height: 1,
+                  letterSpacing: -2.8,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.w800,
+                  shadows: [
+                    Shadow(
+                      color: AppColors.red.withValues(alpha: 0.35),
+                      blurRadius: 22),
+                  ],
+                )),
+              const SizedBox(width: 10),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Text('/ 100',
+                  style: AppTypography.label.copyWith(
+                    color: AppColors.textTertiary,
+                    fontSize: 11, letterSpacing: 2.2,
+                    fontWeight: FontWeight.w700)),
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(hasHonest ? 'HONEST LOOKS' : 'BONE STRUCTURE',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.textSecondary,
+                        letterSpacing: 2.4, fontSize: 9.5,
+                        fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 4),
+                    Text(hasHonest ? 'GPT-4 · VISION' : 'ON-DEVICE GEOMETRY',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.textTertiary,
+                        letterSpacing: 2.0, fontSize: 8,
+                        fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          if (hasHonest && honest!.note.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(honest!.note,
+              style: AppTypography.body.copyWith(
+                color: AppColors.textSecondary,
+                fontSize: 13, height: 1.45,
+                fontStyle: FontStyle.italic)),
+          ],
+
+          const SizedBox(height: 14),
+          Container(height: 1, color: AppColors.divider),
+          const SizedBox(height: 12),
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 30, height: 30,
+                decoration: BoxDecoration(
+                  color: AppColors.signalGreen.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.signalGreen.withValues(alpha: 0.45),
+                    width: 0.8),
+                ),
+                child: const Center(
+                  child: Icon(Icons.straighten_rounded,
+                    size: 15, color: AppColors.signalGreen),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('BONE STRUCTURE',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.textTertiary,
+                        letterSpacing: 2.4, fontSize: 9,
+                        fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(hasHonest
+                        ? 'Geometry — what bones alone would score.'
+                        : 'Vision pass unavailable — showing bones only.',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 11.5, height: 1.35)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text('$geometry',
+                style: AppTypography.measurement.copyWith(
+                  color: AppColors.textPrimary,
+                  fontSize: 30, height: 1,
+                  letterSpacing: -1.2,
+                  fontWeight: FontWeight.w800)),
+              const SizedBox(width: 4),
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text('/100',
+                  style: AppTypography.label.copyWith(
+                    color: AppColors.textTertiary,
+                    fontSize: 9, letterSpacing: 1.4,
+                    fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 520.ms).slideY(
+      begin: 0.04, end: 0, curve: Curves.easeOutCubic, duration: 520.ms);
   }
 }
