@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
 
 /// Three-page onboarding. No animations, no custom painters. Every screen
@@ -41,8 +42,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         duration: const Duration(milliseconds: 420),
         curve: Curves.easeOutCubic);
     } else {
-      context.go('/paywall');
+      // Mark onboarding complete BEFORE routing to paywall. That way even
+      // if the user abandons the paywall or swipes the app away, the next
+      // launch skips onboarding and goes straight to home (or paywall if
+      // they never purchased). User feedback: "they need to land in home."
+      _finishOnboarding();
     }
+  }
+
+  Future<void> _finishOnboarding() async {
+    await LocalStoreService.setOnboarded(true);
+    if (!mounted) return;
+    context.go('/paywall');
   }
 
   @override
