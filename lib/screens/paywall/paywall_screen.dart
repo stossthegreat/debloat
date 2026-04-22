@@ -9,19 +9,18 @@ import '../../theme/app_typography.dart';
 
 /// Mirrorly paywall — single screen, no scroll, three identical price cards.
 ///
-/// Design constraints (from product brief):
-/// - Black background, white text, red accents only.
-/// - Logo centre-top, three powerful selling points, three identical-size
-///   price cards with one selected by default, big red CTA, terms below.
-/// - No "free trial" messaging. Honest pricing only — Apple's review process
-///   rejects vague trial language.
-/// - Three IAP product IDs (must match App Store Connect):
-///     mirrorly_pro_monthly  £9.99/mo   (auto-renew)
-///     mirrorly_pro_yearly   £89.99/yr  (auto-renew, "save 25%" badge)
-///     mirrorly_pro_rescue   £8.99      (one-time → 20 image credits)
+/// Ported from AURALAY's polished design on 2026-04-22: app icon hero at
+/// top, AURALAY-style numbered selling points with italic numerals + bigger
+/// body type, identical 132pt price cards, big red CTA, Apple-compliant
+/// disclosure row. Mirrorly-specific: product IDs + wordmark + pricing.
 ///
-/// IAP wiring is left as a stub against LocalStoreService; replace
-/// `_purchase` with the real `in_app_purchase` flow when keys land.
+/// Apple's review process rejects vague "free trial" language so the trial
+/// is not offered here; honest, up-front monthly/annual/credit tiers only.
+///
+/// IAP product IDs (must match App Store Connect / Play Console):
+///   mirrorly_pro_monthly  £9.99/mo   (auto-renew)
+///   mirrorly_pro_yearly   £89.99/yr  (auto-renew, "save 25%" badge)
+///   mirrorly_pro_rescue   £8.99      (one-time → 20 image credits)
 class PaywallScreen extends StatefulWidget {
   const PaywallScreen({super.key});
 
@@ -30,7 +29,6 @@ class PaywallScreen extends StatefulWidget {
 }
 
 class _PaywallScreenState extends State<PaywallScreen> {
-  // Default selected = annual (highest LTV, anchors against monthly).
   String _selected = 'mirrorly_pro_yearly';
 
   static const _tiers = <_Tier>[
@@ -66,53 +64,84 @@ class _PaywallScreenState extends State<PaywallScreen> {
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+          padding: const EdgeInsets.fromLTRB(22, 10, 22, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── 1. Logo (centre top) ─────────────────────────────────────
-              const _Wordmark()
-                  .animate()
-                  .fadeIn(duration: 380.ms)
-                  .slideY(begin: -0.18, end: 0, curve: Curves.easeOutCubic),
+              // ── 1. Icon (centre top) — hero brand
+              Center(
+                child: Container(
+                  width: 84, height: 84,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.red.withValues(alpha: 0.35),
+                        blurRadius: 24, spreadRadius: 0),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.asset(
+                      'assets/icons/appstore.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+              ).animate()
+                .fadeIn(duration: 460.ms)
+                .scale(begin: const Offset(0.85, 0.85),
+                  curve: Curves.easeOutBack, duration: 540.ms),
+
+              const SizedBox(height: 10),
+
+              Center(
+                child: Text('MIRRORLY',
+                  style: AppTypography.h1.copyWith(
+                    color: Colors.white,
+                    fontSize: 22, letterSpacing: 5.0,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ).animate().fadeIn(delay: 180.ms, duration: 360.ms),
 
               const SizedBox(height: 4),
 
-              // ── 2. Differentiator strap (anti-gimmick line) ──────────────
               Center(
-                child: Text('NOT A GIMMICK · REAL FACE GEOMETRY',
+                child: Text('MEASURED · NOT GUESSED',
                   style: AppTypography.label.copyWith(
                     color: AppColors.red,
-                    fontSize: 9, letterSpacing: 3.0,
+                    fontSize: 10, letterSpacing: 3.0,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-              ).animate().fadeIn(delay: 200.ms, duration: 360.ms),
+              ).animate().fadeIn(delay: 240.ms, duration: 360.ms),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 26),
 
-              // ── 3. Three selling points ──────────────────────────────────
+              // ── 2. Three numbered selling points (AURALAY's sizes — bigger + sexier)
               const _Point(
                 n: '1',
-                headline: 'WE MEASURE EVERY FACIAL BONE',
-                body: '16 surgical measurements. Sub-millimetre. No guessing.',
+                headline: 'EVERY BONE, MEASURED',
+                body: '16 surgical measurements — jawline, canthal tilt, symmetry, thirds. Not a guess.',
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 18),
               const _Point(
                 n: '2',
-                headline: '5 MAXIMIZED IMAGES PER WEEK',
-                body: 'Your real face, rendered at its peak. Hairstyles. Beard. Skin. Glasses.',
+                headline: 'YOU, MAXIMIZED — RENDERED',
+                body: 'Flux Kontext renders YOUR actual face at its best. Haircut, beard, skin. Same person, undeniable lift.',
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 18),
               const _Point(
                 n: '3',
-                headline: 'YOUR FACE DOCTOR, ON CALL',
-                body: 'Knows every inch of your anatomy. Every fix designed for your bones — not a generic.',
+                headline: 'FACE DOCTOR, ON CALL',
+                body: 'AI advisor that knows every inch of your anatomy. Every fix designed for your bones — not a generic.',
               ),
 
               const Spacer(),
 
-              // ── 4. Three identical price cards ───────────────────────────
+              // ── 3. Three identical price cards
               Row(
                 children: [
                   for (final t in _tiers) ...[
@@ -131,9 +160,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 ],
               ).animate().fadeIn(delay: 600.ms, duration: 400.ms),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
-              // ── 5. Big red CTA ───────────────────────────────────────────
+              // ── 4. Big red CTA
               SizedBox(
                 width: double.infinity, height: 56,
                 child: ElevatedButton(
@@ -163,7 +192,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
               const SizedBox(height: 14),
 
-              // ── 6. Terms / privacy / restore (Apple requires) ────────────
+              // ── 5. Terms / privacy / restore
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -181,7 +210,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 ],
               ),
 
-              // Auto-renew disclosure (Apple-required for sub products).
               if (_selected != 'mirrorly_pro_rescue')
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
@@ -213,8 +241,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
   Future<void> _restore() async {
     HapticFeedback.selectionClick();
     if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.showSnackBar(const SnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
       content: Text('No previous purchases found.'),
       backgroundColor: Colors.black,
     ));
@@ -233,8 +260,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
         title: Text(title, style: const TextStyle(color: Colors.white)),
         content: Text(
           'Read the full document at $url',
-          style: TextStyle(
-            color: AppColors.textSecondary, height: 1.5),
+          style: TextStyle(color: AppColors.textSecondary, height: 1.5),
         ),
         actions: [
           TextButton(
@@ -263,31 +289,9 @@ class _Tier {
   });
 }
 
-class _Wordmark extends StatelessWidget {
-  const _Wordmark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('Mirrorly',
-            style: AppTypography.h1.copyWith(
-              fontSize: 30, letterSpacing: -0.8, height: 1)),
-          const SizedBox(width: 8),
-          Container(
-            width: 6, height: 6,
-            margin: const EdgeInsets.only(top: 12),
-            decoration: const BoxDecoration(
-              color: AppColors.red, shape: BoxShape.circle),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
+/// Selling-point row — italic 30pt red Playfair numeral + bold 13.5pt
+/// headline + 14pt body. Ported verbatim from AURALAY's polished paywall
+/// so the two apps feel like the same brand family.
 class _Point extends StatelessWidget {
   final String n, headline, body;
   const _Point({required this.n, required this.headline, required this.body});
@@ -298,13 +302,15 @@ class _Point extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 22,
+          width: 28,
           child: Text(n,
             style: AppTypography.h1.copyWith(
-              color: AppColors.red, fontSize: 24,
-              fontWeight: FontWeight.w900, height: 1, letterSpacing: -0.5)),
+              color: AppColors.red, fontSize: 30,
+              fontWeight: FontWeight.w900, height: 1, letterSpacing: -0.6,
+              fontStyle: FontStyle.italic,
+            )),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,14 +318,16 @@ class _Point extends StatelessWidget {
               Text(headline,
                 style: AppTypography.label.copyWith(
                   color: Colors.white,
-                  fontSize: 11, letterSpacing: 2.0,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 13.5, letterSpacing: 1.6,
+                  fontWeight: FontWeight.w900,
+                  height: 1.15,
                 )),
-              const SizedBox(height: 3),
+              const SizedBox(height: 5),
               Text(body,
                 style: AppTypography.bodySmall.copyWith(
                   color: AppColors.textSecondary,
-                  fontSize: 12.5, height: 1.4,
+                  fontSize: 14, height: 1.45,
+                  fontWeight: FontWeight.w500,
                 )),
             ],
           ),
@@ -331,7 +339,6 @@ class _Point extends StatelessWidget {
   }
 }
 
-/// Identical-size price card. Selected = red border + red price + glow.
 class _PriceCard extends StatelessWidget {
   final _Tier tier;
   final bool selected;
@@ -348,7 +355,7 @@ class _PriceCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: 180.ms,
-        height: 132,  // identical for all 3
+        height: 132,  // identical across all 3 cards
         padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
         decoration: BoxDecoration(
           color: selected ? AppColors.redGlow : Colors.transparent,

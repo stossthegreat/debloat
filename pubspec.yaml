@@ -31,6 +31,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icons/appstore.png
+    - assets/icons/playstore.png
 
 # Generates every iOS + Android launcher icon from two master PNGs.
 # Run after dropping new masters:  dart run flutter_launcher_icons

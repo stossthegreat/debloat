@@ -1093,10 +1093,11 @@ class _FixCardState extends State<_FixCard> {
           else
             SizedBox(
               width: double.infinity, height: 44,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: AppColors.divider),
-                  foregroundColor: AppColors.textPrimary,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.signalGreen,
+                  foregroundColor: AppColors.base,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(Rd.md)),
                 ),
@@ -1104,17 +1105,17 @@ class _FixCardState extends State<_FixCard> {
                 child: _rendering
                   ? const SizedBox(width: 16, height: 16,
                       child: CircularProgressIndicator(
-                        strokeWidth: 1.8, color: AppColors.textSecondary))
+                        strokeWidth: 1.8, color: AppColors.base))
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.auto_awesome,
-                          size: 14, color: AppColors.textSecondary),
+                          size: 14, color: AppColors.base),
                         const SizedBox(width: 8),
                         Text('SEE IT ON YOUR FACE',
                           style: AppTypography.label.copyWith(
-                            color: AppColors.textPrimary, letterSpacing: 2.0,
-                            fontSize: 10, fontWeight: FontWeight.w800)),
+                            color: AppColors.base, letterSpacing: 2.0,
+                            fontSize: 10, fontWeight: FontWeight.w900)),
                       ],
                     ),
               ),

@@ -177,10 +177,11 @@ class _FeatureCard extends StatelessWidget {
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity, height: 38,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: AppColors.divider),
-                  foregroundColor: AppColors.textPrimary,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.signalGreen,
+                  foregroundColor: AppColors.base,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(Rd.md)),
                 ),
@@ -189,12 +190,12 @@ class _FeatureCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(Icons.auto_awesome,
-                      size: 12, color: AppColors.textSecondary),
+                      size: 12, color: AppColors.base),
                     const SizedBox(width: 8),
                     Text('SEE THIS FIX ON MY FACE',
                       style: AppTypography.label.copyWith(
-                        color: AppColors.textPrimary, letterSpacing: 2.0,
-                        fontSize: 9.5, fontWeight: FontWeight.w800)),
+                        color: AppColors.base, letterSpacing: 2.0,
+                        fontSize: 9.5, fontWeight: FontWeight.w900)),
                   ],
                 ),
               ),
