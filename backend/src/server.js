@@ -7,6 +7,7 @@ import { analyse } from './analyse.js';
 import { maximize } from './maximize.js';
 import { tryOn } from './tryon.js';
 import { chat } from './chat.js';
+import { rate } from './rate.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -101,6 +102,26 @@ app.post('/chat', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('[/chat] error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Rate: GPT-4o Vision honest looks rating. Companion to geometry —
+// the vision-based half of the two-score moat. Returns null on refusal,
+// client falls back to geometry-only in that case.
+app.post('/rate', async (req, res) => {
+  try {
+    const { imageBase64 } = req.body;
+    if (!imageBase64) return res.status(400).json({ error: 'imageBase64 required' });
+    const result = await rate({ imageBase64 });
+    if (result == null) {
+      // Distinct 200 with {refused:true} so the client can degrade cleanly
+      // without treating this as a hard error.
+      return res.json({ refused: true });
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('[/rate] error:', err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -93,13 +93,14 @@ class ShareCard extends StatelessWidget {
               // ── 2 · IMAGE (Mirrorly wordmark + RED on NOW side) ──
               // Flexible so the image shrinks if the bigger typography
               // above/below eats into its room — never clips.
-              // User asked for ~33% bigger before/after images — aspect
-              // tightened from 5:6 (0.83) to 5:8 (0.625), making the
-              // image block 33% taller at the same width. Each half
-              // shows substantially more of the user's face.
+              // Aspect has been tightened TWICE at user request:
+              //   5:6 (0.83) → 5:8 (0.625)  — +33% taller
+              //   5:8 (0.625) → 5:11 (0.455) — +33% taller again
+              // Net: the before/after is now ~80% taller than v1, and the
+              // user's face fills substantially more of the 9:16 frame.
               Flexible(
                 child: AspectRatio(
-                  aspectRatio: 5 / 8,
+                  aspectRatio: 5 / 11,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: Row(
