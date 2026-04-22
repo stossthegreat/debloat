@@ -123,16 +123,17 @@ class ShareCard extends StatelessWidget {
 
               const SizedBox(height: 36),
 
-              // ── 3 · TAGLINE — BIG italic serif quote. ──
+              // ── 3 · TAGLINE — the one statement under the images. RED. ──
+              //  (User feedback 2026-04-22: tagline red, proofs white.)
               Center(
                 child: Text(tagline,
                   textAlign: TextAlign.center,
                   maxLines: 3, overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.playfairDisplay(
-                    color: Colors.white,
+                    color: ShareCard.accentRed,
                     fontSize: 54, letterSpacing: -0.9,
                     fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w500, height: 1.22,
+                    fontWeight: FontWeight.w600, height: 1.22,
                   )),
               ),
 
@@ -141,13 +142,17 @@ class ShareCard extends StatelessWidget {
               // reply bar at the bottom.
               const SizedBox(height: 24),
 
-              // ── 4 · PROOF LINES — BIG caps, RED. The "verified" flex. ──
+              // ── 4 · PROOF LINES — CAPS, WHITE, same visual scale as tagline ──
+              //  User wanted proofs matched to the quote size (was 58pt,
+              //  visibly bigger than the 54pt tagline — looked bottom-heavy).
+              //  Now 38pt w700 with tight tracking → reads as a companion
+              //  ledger line under the italic headline instead of competing.
               for (var i = 0; i < proofs.length; i++) ...[
                 Text(proofs[i].toUpperCase(),
                   style: GoogleFonts.inter(
-                    color: ShareCard.accentRed,
-                    fontSize: 58, letterSpacing: 2.2,
-                    fontWeight: FontWeight.w800, height: 1.22,
+                    color: Colors.white,
+                    fontSize: 38, letterSpacing: 1.8,
+                    fontWeight: FontWeight.w700, height: 1.25,
                   )),
                 if (i != proofs.length - 1) const SizedBox(height: 8),
               ],

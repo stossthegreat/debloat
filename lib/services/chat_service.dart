@@ -7,14 +7,43 @@ import 'mirror_api_service.dart';
 import 'scoring_service.dart';
 import 'archetype_service.dart';
 
+/// A single turn in the advisor chat.
+///
+/// An assistant message can carry a **pending** style_request — the
+/// advisor recommended a visual (e.g. "mid-fade with 4cm textured crop")
+/// but has NOT rendered it. The UI shows a GENERATE IMAGE button. Tap
+/// fires /tryon → the rendered URL is attached to this same message by
+/// mutating the instance the screen holds.
 class ChatMessage {
   final ChatRole role;
   final String content;
-  /// Inline image attached to the assistant's reply (Flux Kontext tryon).
-  final String? imageUrl;
-  /// What the image is showing — shown as a caption pill over the image.
-  final String? imageCaption;
-  const ChatMessage(this.role, this.content, {this.imageUrl, this.imageCaption});
+
+  /// Rendered tryon result (populated AFTER the user taps GENERATE IMAGE).
+  String? imageUrl;
+  /// The visual descriptor used / proposed — shown as caption over image
+  /// or as the body of the GENERATE IMAGE button row.
+  final String? styleRequest;
+  /// Zone of change: haircut|beard|hair_color|glasses|facial_hair|weight.
+  final String? category;
+  /// True while /tryon is in flight for this message.
+  bool rendering;
+
+  ChatMessage(
+    this.role,
+    this.content, {
+    this.imageUrl,
+    this.styleRequest,
+    this.category,
+    this.rendering = false,
+  });
+
+  /// True when the advisor proposed a visual but the user hasn't yet
+  /// tapped GENERATE IMAGE. The button shows in this state.
+  bool get hasPendingRender =>
+      role == ChatRole.assistant &&
+      imageUrl == null &&
+      styleRequest != null &&
+      styleRequest!.trim().isNotEmpty;
 
   Map<String, dynamic> toJson() => {
     'role': role == ChatRole.user ? 'user' : 'assistant',
@@ -24,15 +53,15 @@ class ChatMessage {
 
 enum ChatRole { user, assistant }
 
-/// Response from /chat — text reply plus an optional inline Flux tryon.
+/// Response from /chat — text reply + optional visual ASK to render.
+/// Backend no longer auto-renders; the UI shows GENERATE IMAGE when
+/// styleRequest is set, user taps to fire /tryon.
 class ChatReply {
   final String text;
-  final String? imageUrl;
   final String? styleRequest;
   final String? category;
   const ChatReply({
     required this.text,
-    this.imageUrl,
     this.styleRequest,
     this.category,
   });
@@ -83,9 +112,8 @@ class ChatService {
         if (reply != null && reply.isNotEmpty) {
           return ChatReply(
             text:         reply,
-            imageUrl:     decoded['generated_image_url'] as String?,
-            styleRequest: decoded['style_request']       as String?,
-            category:     decoded['category']            as String?,
+            styleRequest: decoded['style_request'] as String?,
+            category:     decoded['category']     as String?,
           );
         }
       }

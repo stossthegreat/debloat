@@ -1092,12 +1092,13 @@ class _FixCardState extends State<_FixCard> {
             )
           else
             SizedBox(
-              width: double.infinity, height: 44,
+              width: double.infinity, height: 48,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.signalGreen,
                   foregroundColor: AppColors.base,
                   elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(Rd.md)),
                 ),
@@ -1108,14 +1109,21 @@ class _FixCardState extends State<_FixCard> {
                         strokeWidth: 1.8, color: AppColors.base))
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.auto_awesome,
-                          size: 14, color: AppColors.base),
+                          size: 16, color: AppColors.base),
                         const SizedBox(width: 8),
-                        Text('SEE IT ON YOUR FACE',
-                          style: AppTypography.label.copyWith(
-                            color: AppColors.base, letterSpacing: 2.0,
-                            fontSize: 10, fontWeight: FontWeight.w900)),
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('GENERATE IMAGE',
+                              maxLines: 1,
+                              style: AppTypography.label.copyWith(
+                                color: AppColors.base, letterSpacing: 1.6,
+                                fontSize: 12, fontWeight: FontWeight.w900)),
+                          ),
+                        ),
                       ],
                     ),
               ),

@@ -172,35 +172,11 @@ class _FeatureCard extends StatelessWidget {
             ],
           ),
 
-          // "See it on my face" action (only if there's a real fix worth rendering)
-          if (onSeeIt != null && read.pointLift >= 4) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity, height: 38,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.signalGreen,
-                  foregroundColor: AppColors.base,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(Rd.md)),
-                ),
-                onPressed: onSeeIt,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.auto_awesome,
-                      size: 12, color: AppColors.base),
-                    const SizedBox(width: 8),
-                    Text('SEE THIS FIX ON MY FACE',
-                      style: AppTypography.label.copyWith(
-                        color: AppColors.base, letterSpacing: 2.0,
-                        fontSize: 9.5, fontWeight: FontWeight.w900)),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          // "See it on my face" CTA removed per user feedback (too many
+          // generate-image buttons in the Advanced panel). The hero
+          // "GENERATE IMAGE" CTAs on the three main fix cards on the
+          // primary report screen remain — those are the product moment.
+          // The Advanced panel is now advice-only, no render buttons.
         ],
       ),
     ).animate()
