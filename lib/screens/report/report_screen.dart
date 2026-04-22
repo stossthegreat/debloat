@@ -323,15 +323,20 @@ class _ReportScreenState extends State<ReportScreen> {
     // surface 3 strengths (rare — e.g. low-confidence scan).
     final microProofs = _buildMicroProofs(traits);
 
-    // The tagline that punches under the score transition. Prefer the
-    // GPT-generated one-line verdict (specific, measurement-cited); fall
-    // back to a deterministic line tied to the projection delta so it never
-    // looks empty.
-    final tagline = (a.report.oneLineVerdict.trim().isNotEmpty)
-        ? a.report.oneLineVerdict
-        : (potential >= 12
-            ? "You're hiding your structure."
-            : "You're closer than you think.");
+    // The tagline under the before/after on both the results hero and
+    // the share card. Priority order:
+    //   1. The honest-rating viral killer line (_honest.note) — one
+    //      sentence leading with the strongest feature, built for
+    //      shareability. Freshest per user, never templated.
+    //   2. The GPT analyse `oneLineVerdict` — longer, measurement-cited.
+    //   3. A computed fallback anchored to their actual strongest axis
+    //      so it never defaults to the same string twice.
+    final honestNote = (_honest?.note ?? '').trim();
+    final tagline = honestNote.isNotEmpty
+        ? honestNote
+        : (a.report.oneLineVerdict.trim().isNotEmpty
+            ? a.report.oneLineVerdict
+            : '${score.strongestAxis.$1} carries the frame.');
 
     // 6-axis radar values (each 0..1) built from the same measurements
     // used by the trait system.

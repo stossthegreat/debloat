@@ -109,6 +109,16 @@ class _ScanHubTab extends StatelessWidget {
                     color: AppColors.red, shape: BoxShape.circle),
                 ),
                 const Spacer(),
+                // Paywall / upgrade chip — the only red glyph in the header,
+                // so the user sees it immediately. Taps through to the
+                // subscription screen where they can manage plan + buy
+                // credits.
+                _IconBtn(
+                  icon: Icons.workspace_premium_rounded,
+                  tint: AppColors.red,
+                  onTap: () => context.push('/paywall'),
+                ),
+                const SizedBox(width: 8),
                 _IconBtn(
                   icon: Icons.tune,
                   onTap: () => context.push('/settings'),
@@ -513,10 +523,14 @@ class _NavBar extends StatelessWidget {
 class _IconBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  const _IconBtn({required this.icon, required this.onTap});
+  /// Optional accent. Used for the paywall chip to make it pop in the
+  /// header. Defaults to neutral textSecondary when omitted.
+  final Color? tint;
+  const _IconBtn({required this.icon, required this.onTap, this.tint});
 
   @override
   Widget build(BuildContext context) {
+    final color = tint ?? AppColors.textSecondary;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -525,11 +539,17 @@ class _IconBtn extends StatelessWidget {
         child: Container(
           width: 36, height: 36,
           decoration: BoxDecoration(
-            color: Colors.transparent,
+            color: tint != null
+              ? tint!.withValues(alpha: 0.12)
+              : Colors.transparent,
             shape: BoxShape.circle,
-            border: Border.all(color: AppColors.divider, width: 0.8),
+            border: Border.all(
+              color: tint != null
+                ? tint!.withValues(alpha: 0.55)
+                : AppColors.divider,
+              width: 0.8),
           ),
-          child: Icon(icon, size: 16, color: AppColors.textSecondary),
+          child: Icon(icon, size: 16, color: color),
         ),
       ),
     );

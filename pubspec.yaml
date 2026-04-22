@@ -37,10 +37,20 @@ flutter:
 
 # Generates every iOS + Android launcher icon from two master PNGs.
 # Run after dropping new masters:  dart run flutter_launcher_icons
+#
+# Adaptive icons (Android 8+): without these fields, modern Android shrinks
+# the legacy square ic_launcher into the adaptive-icon safe zone and wraps
+# it with a fat generated background — the result is a small floating icon
+# with a thick outer ring. Fix: feed playstore.png to BOTH the legacy
+# slot AND the adaptive foreground layer, with a solid black background
+# that matches the artwork. The mesh now fills the visible mask instead
+# of getting insetted into a 66%-scale sandbox.
 flutter_launcher_icons:
   android: "ic_launcher"
   ios: true
-  image_path_ios:     "assets/icons/appstore.png"
-  image_path_android: "assets/icons/playstore.png"
+  image_path_ios:           "assets/icons/appstore.png"
+  image_path_android:       "assets/icons/playstore.png"
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/icons/playstore.png"
   remove_alpha_ios: true
   min_sdk_android: 23

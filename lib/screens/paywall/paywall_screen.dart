@@ -37,26 +37,53 @@ class _PaywallScreenState extends State<PaywallScreen> {
       title: 'MONTHLY',
       price: '£9.99',
       cadence: 'per month',
-      footnote: 'Cancel anytime',
+      footnote: 'Auto-renew',
       badge: null,
     ),
     _Tier(
       id: 'mirrorly_pro_yearly',
       title: 'ANNUAL',
       price: '£89.99',
-      cadence: 'per year · £7.50/mo',
-      footnote: 'Best value',
+      cadence: '£7.50 / mo',
+      footnote: 'Auto-renew',
       badge: 'SAVE 25%',
     ),
     _Tier(
       id: 'mirrorly_pro_rescue',
       title: '20 CREDITS',
       price: '£8.99',
-      cadence: 'one-time · no sub',
-      footnote: '1 image per credit',
+      cadence: '20 AI renders',
+      footnote: 'One-time · no sub',
       badge: null,
     ),
   ];
+
+  /// Per-tier "what you get" copy shown above the CTA when a tier is
+  /// selected. Keeps the user from having to guess what 20 credits means
+  /// vs a subscription. Apple reviewers also read this — so every tier
+  /// has a concrete, numbered deliverable.
+  static const _benefits = <String, List<String>>{
+    'mirrorly_pro_monthly': [
+      '2 scans per week',
+      '10 AI-rendered images per month',
+      'The Mirror — unlimited chat advice',
+      'Honest-looks score (GPT-4o Vision)',
+      'Cancel anytime in App Store settings',
+    ],
+    'mirrorly_pro_yearly': [
+      '2 scans per week',
+      '10 AI-rendered images per month',
+      'The Mirror — unlimited chat advice',
+      'Honest-looks score (GPT-4o Vision)',
+      '25% off vs monthly · cancel anytime',
+    ],
+    'mirrorly_pro_rescue': [
+      '20 AI-rendered images (one per credit)',
+      'No subscription, no recurring charge',
+      'Credits never expire',
+      'Requires an active subscription for scans',
+    ],
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +187,17 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 ],
               ).animate().fadeIn(delay: 600.ms, duration: 400.ms),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
+
+              // ── 3b. "WHAT YOU GET" benefits panel — switches per tier so
+              //       the user sees exactly what the tap is buying. Apple
+              //       reviewers read this column to confirm the product
+              //       matches the price. Credits card is the most important
+              //       one here — "what does 20 credits mean" must be answered
+              //       on the paywall itself, not in a support doc.
+              _BenefitsPanel(bullets: _benefits[_selected] ?? const []),
+
+              const SizedBox(height: 10),
 
               // ── 4. Big red CTA
               SizedBox(
@@ -179,9 +216,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                   ),
                   onPressed: () => _purchase(context, _selected),
                   child: Text(
-                    _selected == 'mirrorly_pro_rescue'
-                        ? 'BUY 20 CREDITS — £8.99'
-                        : 'CONTINUE',
+                    _ctaLabel(_selected),
                     style: const TextStyle(
                       fontWeight: FontWeight.w900,
                       fontSize: 15, letterSpacing: 2.4,
@@ -190,38 +225,39 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 ),
               ).animate().fadeIn(delay: 720.ms, duration: 400.ms),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
 
-              // ── 5. Terms / privacy / restore
+              // ── 5. APPLE-COMPLIANT DISCLOSURE (required by App Review
+              //       guideline 3.1.2). The copy below must state: (a) price
+              //       and billing cadence, (b) auto-renewal behaviour,
+              //       (c) cancellation path, (d) links to Terms + Privacy.
+              //       Switches copy per selected tier so the message matches
+              //       what the CTA will actually do.
+              _disclosure(_selected),
+
+              const SizedBox(height: 6),
+
+              // ── 6. Legal + restore row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _LinkButton(
                     label: 'TERMS',
-                    onTap: () => _showLegal(context, 'Terms of Use',
-                        'mirrorly.app/terms'),
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      context.push('/terms');
+                    },
                   ),
                   _LinkButton(
                     label: 'PRIVACY',
-                    onTap: () => _showLegal(context, 'Privacy Policy',
-                        'mirrorly.app/privacy'),
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      context.push('/privacy');
+                    },
                   ),
                   _LinkButton(label: 'RESTORE', onTap: _restore),
                 ],
               ),
-
-              if (_selected != 'mirrorly_pro_rescue')
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Subscription auto-renews. Cancel anytime in App Store settings.',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textTertiary,
-                      fontSize: 10, height: 1.4,
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
@@ -247,30 +283,51 @@ class _PaywallScreenState extends State<PaywallScreen> {
     ));
   }
 
-  void _showLegal(BuildContext context, String title, String url) {
-    HapticFeedback.selectionClick();
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.black,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
-        ),
-        title: Text(title, style: const TextStyle(color: Colors.white)),
-        content: Text(
-          'Read the full document at $url',
-          style: TextStyle(color: AppColors.textSecondary, height: 1.5),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Close',
-              style: TextStyle(
-                color: AppColors.red, fontWeight: FontWeight.w700,
-                letterSpacing: 1.5)),
-          ),
-        ],
+  /// CTA label per tier. Credits card must show the exact price on the
+  /// button itself (Apple guideline 3.1.2). Subscriptions say CONTINUE
+  /// because the price sits inside the disclosure line right below.
+  String _ctaLabel(String id) {
+    switch (id) {
+      case 'mirrorly_pro_rescue':   return 'BUY 20 CREDITS — £8.99';
+      case 'mirrorly_pro_monthly':  return 'SUBSCRIBE — £9.99/mo';
+      case 'mirrorly_pro_yearly':   return 'SUBSCRIBE — £89.99/yr';
+      default:                      return 'CONTINUE';
+    }
+  }
+
+  /// Apple App Review 3.1.2 disclosure. The copy must contain price,
+  /// cadence, auto-renewal notice, and cancellation path. Rendered as a
+  /// fixed-height block so the layout doesn't jump as the user taps
+  /// between tiers.
+  Widget _disclosure(String id) {
+    String text;
+    switch (id) {
+      case 'mirrorly_pro_rescue':
+        text = 'One-time purchase of £8.99 for 20 AI-rendered image '
+               'credits. No subscription. No auto-renewal. Credits do '
+               'not expire and are non-refundable.';
+        break;
+      case 'mirrorly_pro_monthly':
+        text = '£9.99/month. Subscription automatically renews each '
+               'month unless cancelled at least 24 hours before the '
+               'period ends. Manage or cancel in your App Store or '
+               'Google Play account settings.';
+        break;
+      case 'mirrorly_pro_yearly':
+      default:
+        text = '£89.99/year (£7.50 per month). Subscription '
+               'automatically renews each year unless cancelled at '
+               'least 24 hours before the period ends. Manage or '
+               'cancel in your App Store or Google Play account '
+               'settings.';
+        break;
+    }
+    return Text(
+      text,
+      textAlign: TextAlign.center,
+      style: AppTypography.bodySmall.copyWith(
+        color: AppColors.textTertiary,
+        fontSize: 10, height: 1.45,
       ),
     );
   }
@@ -425,6 +482,75 @@ class _PriceCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Bullet list explaining what the currently-selected tier actually
+/// delivers. Fixed height so tier switches don't reflow the layout.
+/// This is where "what does 20 credits mean" becomes unambiguous — the
+/// credits tier spells out that it's 20 renders, no subscription, and
+/// that scans still require an active subscription. Apple reviewers
+/// look for this kind of concrete benefit disclosure.
+class _BenefitsPanel extends StatelessWidget {
+  final List<String> bullets;
+  const _BenefitsPanel({required this.bullets});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.12), width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('WHAT YOU GET',
+            style: AppTypography.label.copyWith(
+              color: AppColors.red,
+              fontSize: 9, letterSpacing: 2.6,
+              fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          for (var i = 0; i < bullets.length; i++) ...[
+            _BenefitRow(bullet: bullets[i]),
+            if (i != bullets.length - 1) const SizedBox(height: 4),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BenefitRow extends StatelessWidget {
+  final String bullet;
+  const _BenefitRow({required this.bullet});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 4, right: 8),
+          child: Container(
+            width: 4, height: 4,
+            decoration: const BoxDecoration(
+              color: AppColors.red, shape: BoxShape.circle),
+          ),
+        ),
+        Expanded(
+          child: Text(bullet,
+            style: AppTypography.bodySmall.copyWith(
+              color: Colors.white,
+              fontSize: 12.5, height: 1.4,
+              fontWeight: FontWeight.w500)),
+        ),
+      ],
     );
   }
 }

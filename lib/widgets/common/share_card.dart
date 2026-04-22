@@ -58,23 +58,23 @@ class ShareCard extends StatelessWidget {
                   currentScore:   currentScore,
                   projectedScore: projectedScore,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(width: 200, child: Text('CURRENT',
+                    SizedBox(width: 160, child: Text('CURRENT',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 22, letterSpacing: 4.4,
+                        fontSize: 18, letterSpacing: 3.6,
                         fontWeight: FontWeight.w700,
                       ))),
-                    const SizedBox(width: 100),
-                    SizedBox(width: 200, child: Text('PROJECTED',
+                    const SizedBox(width: 80),
+                    SizedBox(width: 160, child: Text('PROJECTED',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         color: Colors.white,
-                        fontSize: 22, letterSpacing: 4.4,
+                        fontSize: 18, letterSpacing: 3.6,
                         fontWeight: FontWeight.w700,
                       ))),
                   ],
@@ -88,19 +88,22 @@ class ShareCard extends StatelessWidget {
                   )),
 
               // Push pics down a little so the score row breathes.
-              const SizedBox(height: 40),
+              const SizedBox(height: 24),
 
               // ── 2 · IMAGE (Mirrorly wordmark + RED on NOW side) ──
               // Flexible so the image shrinks if the bigger typography
               // above/below eats into its room — never clips.
-              // Aspect has been tightened TWICE at user request:
-              //   5:6 (0.83) → 5:8 (0.625)  — +33% taller
-              //   5:8 (0.625) → 5:11 (0.455) — +33% taller again
-              // Net: the before/after is now ~80% taller than v1, and the
-              // user's face fills substantially more of the 9:16 frame.
+              // Aspect has been tightened THREE times at user request:
+              //   5:6 → 5:8 → 5:11 → 5:15  — each step +33% taller.
+              // Plus: the trailing Spacer() below was removed so the
+              // Flexible image consumes ALL remaining vertical space
+              // instead of sharing it with the bottom filler. Net: the
+              // user's face now fills the 9:16 frame substantially
+              // more than the v1 share card.
               Flexible(
+                fit: FlexFit.tight,
                 child: AspectRatio(
-                  aspectRatio: 5 / 11,
+                  aspectRatio: 5 / 15,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: Row(
@@ -122,43 +125,40 @@ class ShareCard extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 36),
+              const SizedBox(height: 24),
 
               // ── 3 · TAGLINE — the one statement under the images. RED. ──
-              //  (User feedback 2026-04-22: tagline red, proofs white.)
+              //  Sourced from the /rate "viral killer line" (strength-led,
+              //  screenshot-worthy) so it's never templated across users.
               Center(
                 child: Text(tagline,
                   textAlign: TextAlign.center,
                   maxLines: 3, overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.playfairDisplay(
                     color: ShareCard.accentRed,
-                    fontSize: 54, letterSpacing: -0.9,
+                    fontSize: 46, letterSpacing: -0.7,
                     fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w600, height: 1.22,
+                    fontWeight: FontWeight.w600, height: 1.2,
                   )),
               ),
 
               // Tight gap — proofs sit right under the tagline so they
               // never get clipped by chat-app previews that overlay a
               // reply bar at the bottom.
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-              // ── 4 · PROOF LINES — CAPS, WHITE, same visual scale as tagline ──
-              //  User wanted proofs matched to the quote size (was 58pt,
-              //  visibly bigger than the 54pt tagline — looked bottom-heavy).
-              //  Now 38pt w700 with tight tracking → reads as a companion
-              //  ledger line under the italic headline instead of competing.
+              // ── 4 · PROOF LINES — CAPS, WHITE, companion scale ──
               for (var i = 0; i < proofs.length; i++) ...[
                 Text(proofs[i].toUpperCase(),
                   style: GoogleFonts.inter(
                     color: Colors.white,
-                    fontSize: 38, letterSpacing: 1.8,
-                    fontWeight: FontWeight.w700, height: 1.25,
+                    fontSize: 32, letterSpacing: 1.6,
+                    fontWeight: FontWeight.w700, height: 1.22,
                   )),
-                if (i != proofs.length - 1) const SizedBox(height: 8),
+                if (i != proofs.length - 1) const SizedBox(height: 6),
               ],
 
-              const Spacer(),
+              const SizedBox(height: 16),
 
               Align(
                 alignment: Alignment.centerRight,
@@ -299,23 +299,23 @@ class _ScoreTransitionStatic extends StatelessWidget {
         Text('$currentScore',
           maxLines: 1,
           style: GoogleFonts.playfairDisplay(
-            fontSize: 200, height: 1.0, letterSpacing: -6.0,
+            fontSize: 150, height: 1.0, letterSpacing: -4.5,
             color: Colors.white.withValues(alpha: 0.62),
             fontStyle: FontStyle.italic,
             fontWeight: FontWeight.w500,
           )),
-        const SizedBox(width: 42),
+        const SizedBox(width: 32),
         Text('→',
           style: GoogleFonts.inter(
             color: ShareCard.accentRed,
-            fontSize: 120, height: 1,
+            fontSize: 90, height: 1,
             fontWeight: FontWeight.w300,
           )),
-        const SizedBox(width: 42),
+        const SizedBox(width: 32),
         Text('$projectedScore',
           maxLines: 1,
           style: GoogleFonts.playfairDisplay(
-            fontSize: 232, height: 1.0, letterSpacing: -6.6,
+            fontSize: 178, height: 1.0, letterSpacing: -5.0,
             color: ShareCard.accentRed,        // the "after" number = brand red
             fontStyle: FontStyle.italic,
             fontWeight: FontWeight.w700,
