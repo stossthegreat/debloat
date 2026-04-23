@@ -66,8 +66,14 @@ class _HeroCardState extends State<HeroCard>
     // No border, no rounded frame, no glow. The card IS the black canvas.
     // Borders read as "UI", not as "editorial", and the user called that
     // out. Pure content, pure typography.
+    //
+    // Vertical rhythm tuning: the hero number sits ~1cm below the top
+    // edge (top pad 56), images tuck up against the CURRENT/PROJECTED
+    // labels (gap 12), and the tagline/proofs pull up against the image
+    // bottom (gap 12). Image itself is 10:9 (25% shorter than the old
+    // 5:6) so the whole card fits more content above the fold.
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 20),
+      padding: const EdgeInsets.fromLTRB(4, 56, 4, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -101,11 +107,12 @@ class _HeroCardState extends State<HeroCard>
             ],
           ).animate().fadeIn(delay: 1500.ms, duration: 400.ms),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 12),
 
-          // Image — 5:6 tight crop, clean rectangle.
+          // Image — 10:9 crop (25% shorter than the old 5:6 portrait),
+          // sits tight under the score so the eye-path reads as one unit.
           AspectRatio(
-            aspectRatio: 5 / 6,
+            aspectRatio: 10 / 9,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(Rd.sm),
               child: Row(
@@ -122,7 +129,7 @@ class _HeroCardState extends State<HeroCard>
             ),
           ).animate().fadeIn(delay: 1700.ms, duration: 500.ms),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 12),
 
           // Tagline — bigger than before so the punch lands.
           Center(
