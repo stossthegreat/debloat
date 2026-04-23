@@ -40,6 +40,16 @@ class FaceAssetService {
     } catch (_) {}
   }
 
+  /// Wipe every saved scan JPEG. Used by Settings → Delete all data.
+  /// Safe to call even if the directory never existed.
+  static Future<void> purgeAll() async {
+    try {
+      final base = await getApplicationDocumentsDirectory();
+      final d = Directory('${base.path}/mirrorly/scans');
+      if (await d.exists()) await d.delete(recursive: true);
+    } catch (_) {}
+  }
+
   static Future<Directory> _scansDir() async {
     final base = await getApplicationDocumentsDirectory();
     final d = Directory('${base.path}/mirrorly/scans');
