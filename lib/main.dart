@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'config/dev_flags.dart';
 import 'navigation/app_router.dart';
+import 'services/local_store_service.dart';
+import 'services/notification_service.dart';
 import 'services/purchase_service.dart';
 import 'theme/app_theme.dart';
 
@@ -18,6 +21,19 @@ void main() async {
   // the app runs as a dev stub (paywall shows "—" for prices, CTA is
   // disabled). See lib/config/purchase_config.dart for setup.
   await PurchaseService.init();
+
+  // Initialise local notifications. Permission is NOT requested here —
+  // it's deferred to the first protocol start so the prompt has context
+  // ("your streak reminder").
+  await NotificationService.init();
+
+  // Dev-flag bypass: force the subscribed flag true so every gate in the
+  // app (scan → report, Mirror tab, Progress tab, etc.) reads the user
+  // as Pro without any purchase. Safe to leave on for local testing —
+  // on a real release build this no-ops because kBypassPaywall is false.
+  if (kBypassPaywall) {
+    await LocalStoreService.setSubscribed(true);
+  }
 
   runApp(const MirrorApp());
 }

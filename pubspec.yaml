@@ -27,6 +27,13 @@ dependencies:
   # restore-purchases. We use it for Mirrorly Pro (monthly/annual) and
   # the 20-credit one-time pack.
   purchases_flutter: ^8.2.2
+  # Local notifications — the retention engine. Daily 8pm "log today"
+  # streak nudge, rescan reminders at day 14 / 30, milestone celebrations.
+  # Zero server dependency; scheduled on-device via the plugin. `timezone`
+  # is required to schedule at a specific local-wall-clock time rather
+  # than UTC.
+  flutter_local_notifications: ^17.2.3
+  timezone: ^0.9.4
 
 dev_dependencies:
   flutter_test:

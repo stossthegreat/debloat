@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../models/face_geometry.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import 'creator_styles_sheet.dart';
 
 /// Chip row of instant tryon prompts. Each chip is pre-wired with a smart
 /// default built from the user's measurements — so "Haircut" doesn't ask
@@ -32,15 +33,31 @@ class QuickTryonChips extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
         itemCount: actions.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (_, i) => _Chip(
-          label:    actions[i].label,
-          icon:     actions[i].icon,
-          compact:  compact,
-          onTap: () {
-            HapticFeedback.lightImpact();
-            onTap(actions[i].prompt, actions[i].category);
-          },
-        ),
+        itemBuilder: (_, i) {
+          final action = actions[i];
+          return _Chip(
+            label:    action.label,
+            icon:     action.icon,
+            compact:  compact,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              // Haircut opens the creator-styles picker — the user chooses
+              // a named cut (edgar, curtains, low-taper…) ranked for their
+              // face shape. The sheet's selection still fires through the
+              // same onTap(prompt, category) contract, so /tryon wiring in
+              // the consumer doesn't change.
+              if (action.opensPicker) {
+                showCreatorStylesSheet(
+                  context: context,
+                  geometry: geometry,
+                  onPick: (prompt, category, _) => onTap(prompt, category),
+                );
+              } else {
+                onTap(action.prompt, action.category);
+              }
+            },
+          );
+        },
       ),
     );
   }
@@ -69,7 +86,15 @@ class QuickTryonChips extends StatelessWidget {
         : 'medium rectangular tortoise-shell acetate glasses';
 
     return [
-      _QuickAction(label: 'Haircut',     icon: Icons.content_cut,       category: 'haircut',     prompt: haircutPrompt),
+      // Haircut chip opens the creator-styles picker instead of firing a
+      // single generic prompt — the prompt arg is unused for pickers, kept
+      // only as a defensive fallback if the sheet ever fails to surface.
+      _QuickAction(
+        label: 'Haircut',
+        icon: Icons.content_cut,
+        category: 'haircut',
+        prompt: haircutPrompt,
+        opensPicker: true),
       _QuickAction(label: 'Beard',       icon: Icons.face_retouching_natural, category: 'beard', prompt: beardPrompt),
       _QuickAction(label: 'Glasses',     icon: Icons.remove_red_eye_outlined, category: 'glasses', prompt: glassesPrompt),
       _QuickAction(label: 'Clean shave', icon: Icons.face_outlined,     category: 'facial_hair', prompt: 'clean shave, smooth skin, preserve jawline exactly'),
@@ -85,9 +110,13 @@ class _QuickAction {
   final IconData icon;
   final String category;
   final String prompt;
+  /// When true, the chip opens the creator-styles picker sheet instead of
+  /// firing its own `prompt` directly. Used for the Haircut chip.
+  final bool opensPicker;
   _QuickAction({
     required this.label, required this.icon,
     required this.category, required this.prompt,
+    this.opensPicker = false,
   });
 }
 

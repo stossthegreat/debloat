@@ -196,7 +196,12 @@ Keep it devastating. Cite every measurement. Never soften. Rule out what won't s
     ],
     response_format: { type: 'json_object' },
     temperature: 0.55,
-    max_tokens: 1800,
+    // Bumped 1800 → 2300. The prompt has grown (category gate + long
+    // voice bible + 3 fix schema + brief + verdict), and on content-rich
+    // faces GPT-4o was bumping close to the 1800 cap which risks a
+    // truncated JSON and a parse throw. 500 more tokens ≈ $0.004 at GPT-4o
+    // pricing — trivial insurance against the report breaking.
+    max_tokens: 2300,
   });
 
   const raw = response.choices[0].message.content;

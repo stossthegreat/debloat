@@ -8,12 +8,14 @@ import 'package:go_router/go_router.dart';
 import '../../models/face_geometry.dart';
 import '../../models/mirror_analysis.dart';
 import '../../models/scan_record.dart';
+import '../../models/protocol.dart';
 import '../../services/archetype_service.dart';
 import '../../services/face_asset_service.dart';
 import '../../services/feature_analysis_service.dart';
 import '../../services/honest_rating_service.dart';
 import '../../services/local_store_service.dart';
 import '../../services/mirror_api_service.dart';
+import '../../services/protocol_service.dart';
 import '../../services/scoring_service.dart';
 import '../../services/trait_builder_service.dart';
 import '../../theme/app_colors.dart';
@@ -479,6 +481,24 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.xl),
 
+          // ── 6 · PROTOCOL CTA ──────────────────────────────────────────
+          // Auto-prescribed 60-day routine keyed to the scan's pulldown
+          // axis. Placed between the Fixes (the diagnosis) and the Consult
+          // card (the conversation) — the natural commit moment. If the
+          // user already has an active protocol, the card morphs to
+          // "Continue day X" rather than overwriting it.
+          //
+          // Pulldown is backend prose ("midface softness that body-fat
+          // below 14% solves"), so we pass geometry too — the service
+          // keyword-matches the prose and falls back to geometry if no
+          // match, producing a clean canonical axis label.
+          _ProtocolCtaCard(
+            pulldown: a.report.pulldown,
+            geometry: widget.geometry,
+          ).animate().fadeIn(delay: 2900.ms, duration: 400.ms),
+
+          const SizedBox(height: Sp.xl),
+
           // ── 7 · CONSULT CTA ────────────────────────────────────────────
           _ConsultCard(
             onTap: () => context.push(
@@ -877,6 +897,164 @@ class _ConsultCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Protocol CTA card — auto-prescribe the 60-day routine keyed to the
+// scan's pulldown axis. Smart-state: shows "Start" for a fresh user, and
+// "Continue day X · N-day streak" if they already have an active protocol.
+// Never overwrites an existing protocol — the user ends it explicitly from
+// the Protocol screen if they want to start over.
+class _ProtocolCtaCard extends StatefulWidget {
+  final String pulldown;
+  final FaceGeometry geometry;
+  const _ProtocolCtaCard({
+    required this.pulldown, required this.geometry,
+  });
+
+  @override
+  State<_ProtocolCtaCard> createState() => _ProtocolCtaCardState();
+}
+
+class _ProtocolCtaCardState extends State<_ProtocolCtaCard> {
+  Protocol? _active;
+  bool _loading = true;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActive();
+  }
+
+  Future<void> _loadActive() async {
+    final p = await ProtocolService.loadActive();
+    if (!mounted) return;
+    setState(() { _active = p; _loading = false; });
+  }
+
+  Future<void> _onTap() async {
+    if (_busy) return;
+    HapticFeedback.mediumImpact();
+    setState(() => _busy = true);
+    try {
+      // Existing protocol? Continue it — do not overwrite a run in progress.
+      if (_active != null) {
+        if (!mounted) return;
+        context.push('/protocol');
+        return;
+      }
+      // Fresh — auto-prescribe and push.
+      final scan = await LocalStoreService.latestScan();
+      if (scan == null) return;
+      await ProtocolService.startForScan(
+        scan,
+        pulldown: widget.pulldown,
+        geometry: widget.geometry,
+      );
+      if (!mounted) return;
+      context.push('/protocol');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      // Reserve approximate card height so the layout doesn't jump once the
+      // active protocol check resolves.
+      return const SizedBox(height: 168);
+    }
+
+    final hasActive = _active != null;
+    // Resolve the canonical axis from the prose pulldown + geometry so the
+    // card shows a short clean label ("Jaw definition"), not the full
+    // 2-sentence backend pulldown. This is the same resolution used when
+    // the user actually taps Start — so what they see matches what they'll
+    // get.
+    final resolvedAxis = ProtocolService.resolveAxis(
+      pulldown: widget.pulldown,
+      geometry: widget.geometry,
+    );
+
+    final header = hasActive ? 'ACTIVE · 60-DAY PROTOCOL' : '60-DAY PROTOCOL';
+    final headline = hasActive
+        ? _active!.title
+        : 'Targeting ${resolvedAxis.toLowerCase()}.';
+    final body = hasActive
+        ? 'Day ${_active!.currentDay} of ${_active!.lengthDays}. '
+          '${_active!.effectiveStreak}-day streak. Tap to log today.'
+        : 'A daily routine built from your scan — morning, midday, '
+          'evening, night — time-banded and evidence-aware. Streak locks '
+          'it in. Rescans at day 14, 30, 60.';
+    final btnText = hasActive ? 'Continue today' : 'Start the 60-day plan';
+
+    return Container(
+      padding: const EdgeInsets.all(Sp.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(Rd.xl),
+        border: Border.all(
+          color: AppColors.red.withValues(alpha: 0.32), width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(header,
+                style: AppTypography.label.copyWith(
+                  color: AppColors.red,
+                  letterSpacing: 2.8, fontSize: 10,
+                  fontWeight: FontWeight.w800)),
+              const Spacer(),
+              if (hasActive) ...[
+                Icon(Icons.local_fire_department,
+                  size: 13, color: AppColors.red),
+                const SizedBox(width: 2),
+                Text('${_active!.effectiveStreak}',
+                  style: AppTypography.measurement.copyWith(
+                    color: AppColors.red,
+                    fontSize: 12, fontWeight: FontWeight.w800)),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(headline,
+            style: AppTypography.h1.copyWith(
+              fontSize: 22, letterSpacing: -0.4, height: 1.15)),
+          const SizedBox(height: 6),
+          Text(body,
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 12.5, height: 1.5)),
+          const SizedBox(height: Sp.md),
+          SizedBox(
+            width: double.infinity, height: 50,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.red,
+                foregroundColor: AppColors.base,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(Rd.lg)),
+                elevation: 0,
+              ),
+              onPressed: _busy ? null : _onTap,
+              child: _busy
+                  ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(
+                        color: AppColors.base, strokeWidth: 2))
+                  : Text(btnText,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14, letterSpacing: 0.4)),
+            ),
+          ),
+        ],
       ),
     );
   }

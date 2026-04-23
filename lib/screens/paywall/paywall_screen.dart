@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
+import '../../config/dev_flags.dart';
 import '../../config/purchase_config.dart';
 import '../../services/local_store_service.dart';
 import '../../services/purchase_service.dart';
@@ -51,6 +52,22 @@ class _PaywallScreenState extends State<PaywallScreen> {
   @override
   void initState() {
     super.initState();
+    // Dev-flag bypass: if somehow we landed on the paywall (deep link,
+    // stale route), bounce back to the destination the flow was heading
+    // to. Post-scan → /report with the stashed payload. Otherwise /home.
+    if (kBypassPaywall) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final ctx = widget.context ?? const <String, dynamic>{};
+        final after = ctx['afterPurchase'] as String?;
+        if (after != null && ctx.isNotEmpty) {
+          context.go(after, extra: ctx);
+        } else {
+          context.go('/home');
+        }
+      });
+      return;
+    }
     _loadOfferings();
   }
 

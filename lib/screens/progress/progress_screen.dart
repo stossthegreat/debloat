@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
@@ -70,43 +71,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  Widget _emptyState() {
-    return ListView(
-      padding: const EdgeInsets.all(Sp.xxl),
-      children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.15),
-        Icon(Icons.show_chart_rounded,
-          size: 48, color: AppColors.divider),
-        const SizedBox(height: Sp.md),
-        Text('No history yet.',
-          textAlign: TextAlign.center,
-          style: AppTypography.h1.copyWith(fontSize: 26)),
-        const SizedBox(height: 6),
-        Text('Every scan lands here. Weekly rescans show deltas — axis by axis.',
-          textAlign: TextAlign.center,
-          style: AppTypography.body.copyWith(color: AppColors.textSecondary)),
-        const SizedBox(height: Sp.xl),
-        Center(
-          child: SizedBox(
-            height: 50,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.red,
-                foregroundColor: AppColors.base,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Rd.lg)),
-              ),
-              onPressed: () => context.push('/scan'),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 28),
-                child: Text('Begin first scan'),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _emptyState() => const _ProgressLocked();
 
   Widget _body() {
     final sorted = [..._scans]..sort((a, b) => a.takenAt.compareTo(b.takenAt));
@@ -191,6 +156,206 @@ class _ProgressScreenState extends State<ProgressScreen> {
       'Score':         ((last.score - first.score).toDouble(),
                         pct(first.score.toDouble(), last.score.toDouble())),
     };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Progress locked — the tracking-surface sell page, shown until first scan
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Like the Mirror-locked page: this is marketing, not a placeholder. Users
+// who tap Progress before scanning see a concrete promise — protocol,
+// streak, delta chart, generation vault — all activated the moment they
+// capture their first face.
+class _ProgressLocked extends StatelessWidget {
+  const _ProgressLocked();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(Sp.lg, Sp.xl, Sp.lg, Sp.xxl),
+      children: [
+        // Masthead
+        Row(
+          children: [
+            Text('Progress',
+              style: AppTypography.h1.copyWith(
+                fontSize: 30, letterSpacing: -0.8, height: 1)),
+            const SizedBox(width: 10),
+            Container(
+              width: 5, height: 5, margin: const EdgeInsets.only(top: 8),
+              decoration: const BoxDecoration(
+                color: AppColors.red, shape: BoxShape.circle),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text('DELTAS · STREAKS · PROTOCOL',
+          style: AppTypography.label.copyWith(
+            color: AppColors.textMuted, fontSize: 8.5, letterSpacing: 3.0)),
+
+        const SizedBox(height: Sp.xxl),
+
+        // Hero pitch
+        Container(
+          padding: const EdgeInsets.all(Sp.lg),
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            borderRadius: BorderRadius.circular(Rd.xl),
+            border: Border.all(
+              color: AppColors.red.withValues(alpha: 0.32), width: 0.8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Your face, tracked in real data.',
+                style: AppTypography.h1.copyWith(
+                  fontSize: 26, letterSpacing: -0.6, height: 1.15)),
+              const SizedBox(height: 10),
+              Text('Each scan is a snapshot of your geometry. Weekly rescans '
+                   'show the deltas — axis by axis, in millimetres and degrees. '
+                   'A 60-day Protocol targeting your weakest feature. A streak '
+                   'that tells you whether you\'re actually showing up.',
+                style: AppTypography.body.copyWith(
+                  color: AppColors.textSecondary, fontSize: 14, height: 1.55)),
+            ],
+          ),
+        ).animate().fadeIn(duration: 420.ms)
+          .slideY(begin: 0.04, end: 0, duration: 420.ms, curve: Curves.easeOut),
+
+        const SizedBox(height: Sp.lg),
+
+        _LockedCapRow(
+          icon: Icons.auto_awesome,
+          tint: AppColors.red,
+          label: '60-DAY PROTOCOL',
+          line: 'A daily routine tuned to your weakest axis — mewing, '
+                'gum work, neck training, skincycle, posture.',
+          delay: 120,
+        ),
+        _LockedCapRow(
+          icon: Icons.local_fire_department_outlined,
+          tint: AppColors.signalAmber,
+          label: 'STREAK',
+          line: 'Consistency that compounds. One freeze per week so a bad day '
+                'doesn\'t nuke a 40-day run.',
+          delay: 200,
+        ),
+        _LockedCapRow(
+          icon: Icons.show_chart_rounded,
+          tint: AppColors.measure,
+          label: 'DELTA CHART',
+          line: 'Before and after on every axis — jaw angle, canthal tilt, '
+                'symmetry, skin. No vibes, only numbers.',
+          delay: 280,
+        ),
+        _LockedCapRow(
+          icon: Icons.grid_view_rounded,
+          tint: AppColors.accent,
+          label: 'GENERATION VAULT',
+          line: 'Every cut, beard, and frame you\'ve ever rendered on your '
+                'face — saved, side by side.',
+          delay: 360,
+        ),
+
+        const SizedBox(height: Sp.xl),
+
+        // CTA — identical in weight + language to Mirror-locked for
+        // consistency across the two locked surfaces.
+        SizedBox(
+          width: double.infinity, height: 56,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.red,
+              foregroundColor: AppColors.base,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Rd.lg)),
+              elevation: 0,
+            ),
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              context.push('/scan');
+            },
+            child: const Text('Scan to unlock',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 15, letterSpacing: 0.4)),
+          ),
+        ).animate().fadeIn(delay: 440.ms, duration: 360.ms),
+        const SizedBox(height: Sp.md),
+        Center(
+          child: Text('Progress activates after your first scan.',
+            style: AppTypography.label.copyWith(
+              color: AppColors.textTertiary,
+              fontSize: 9.5, letterSpacing: 1.8)),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Capability row (progress-locked variant) ───────────────────────────────
+class _LockedCapRow extends StatelessWidget {
+  final IconData icon;
+  final Color tint;
+  final String label;
+  final String line;
+  final int delay;
+  const _LockedCapRow({
+    required this.icon,
+    required this.tint,
+    required this.label,
+    required this.line,
+    required this.delay,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(Sp.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(Rd.lg),
+        border: Border.all(color: AppColors.divider, width: 0.8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38, height: 38,
+            decoration: BoxDecoration(
+              color: tint.withValues(alpha: 0.13),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: tint.withValues(alpha: 0.5), width: 0.8),
+            ),
+            child: Icon(icon, size: 16, color: tint),
+          ),
+          const SizedBox(width: Sp.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                  style: AppTypography.label.copyWith(
+                    color: tint, letterSpacing: 2.4, fontSize: 9)),
+                const SizedBox(height: 3),
+                Text(line,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5, height: 1.45)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(
+      delay: Duration(milliseconds: delay), duration: 360.ms)
+      .slideY(begin: 0.06, end: 0,
+        delay: Duration(milliseconds: delay),
+        duration: 360.ms, curve: Curves.easeOut);
   }
 }
 

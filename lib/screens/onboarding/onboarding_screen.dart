@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../config/dev_flags.dart';
 import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
 
@@ -53,7 +54,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _finishOnboarding() async {
     await LocalStoreService.setOnboarded(true);
     if (!mounted) return;
-    context.go('/paywall');
+    // Dev-flag bypass skips the paywall; everyone lands on /home. In
+    // production the paywall sits between onboarding and home exactly
+    // as before.
+    context.go(kBypassPaywall ? '/home' : '/paywall');
   }
 
   @override

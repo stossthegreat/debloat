@@ -107,4 +107,18 @@ class LocalStoreService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kOnboarded, v);
   }
+
+  // ── Nuke ────────────────────────────────────────────────────────────────
+  /// Wipe every on-device user-generated key (scans, generations,
+  /// protocol). Subscription and onboarding flags are preserved —
+  /// subscription is the source of truth from RevenueCat anyway, and
+  /// forgetting onboarding would throw a paid user back onto the
+  /// onboarding flow which is worse UX than honouring their purchase.
+  /// Used by Settings → Delete all data.
+  static Future<void> clearAllUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kScans);
+    await prefs.remove(_kGenerations);
+    await prefs.remove(_kActiveProto);
+  }
 }

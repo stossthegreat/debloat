@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../config/dev_flags.dart';
 import '../../models/protocol.dart';
 import '../../models/scan_record.dart';
 import '../../services/local_store_service.dart';
@@ -68,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _advisorTab() {
-    if (_latest == null) return const _NoScanYet(forTab: 'The Mirror');
+    if (_latest == null) return const _MirrorLocked();
     return ChatScreen(
       geometry:  _latest!.geometry,
       imagePath: _latest!.capturedImagePath,
@@ -112,13 +113,16 @@ class _ScanHubTab extends StatelessWidget {
                 // Paywall / upgrade chip — the only red glyph in the header,
                 // so the user sees it immediately. Taps through to the
                 // subscription screen where they can manage plan + buy
-                // credits.
-                _IconBtn(
-                  icon: Icons.workspace_premium_rounded,
-                  tint: AppColors.red,
-                  onTap: () => context.push('/paywall'),
-                ),
-                const SizedBox(width: 8),
+                // credits. Hidden in dev-bypass mode so testing reflects
+                // the real post-purchase experience (no upgrade prompts).
+                if (!kBypassPaywall) ...[
+                  _IconBtn(
+                    icon: Icons.workspace_premium_rounded,
+                    tint: AppColors.red,
+                    onTap: () => context.push('/paywall'),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 _IconBtn(
                   icon: Icons.tune,
                   onTap: () => context.push('/settings'),
@@ -266,6 +270,11 @@ class _ActiveProtocolCard extends StatelessWidget {
                     style: AppTypography.label.copyWith(
                       color: AppColors.textTertiary, letterSpacing: 2.4, fontSize: 9)),
                   const Spacer(),
+                  // Streak chip — colour follows live / at-risk / broken so
+                  // the home hub reflects whether the run is live without
+                  // having to open the protocol screen.
+                  _StreakChip(protocol: protocol),
+                  const SizedBox(width: 8),
                   Icon(Icons.arrow_forward_rounded,
                     size: 14, color: AppColors.textSecondary),
                 ],
@@ -411,56 +420,239 @@ class _PrimaryScanCta extends StatelessWidget {
   }
 }
 
-class _NoScanYet extends StatelessWidget {
-  final String forTab;
-  const _NoScanYet({required this.forTab});
+// ═══════════════════════════════════════════════════════════════════════════
+//  Mirror locked — the Advisor sell page, shown until the user has scanned
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// This isn't a "go scan first" page — it's the pitch for the most valuable
+// surface in the app. Users tap the Mirror tab expecting *something*; give
+// them a concrete promise of what arrives post-scan: creator-matched cuts,
+// beard shape, frames, before/afters rendered onto their own face.
+class _MirrorLocked extends StatelessWidget {
+  const _MirrorLocked();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.base,
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(Sp.xl),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(Sp.lg, Sp.xl, Sp.lg, Sp.xxl),
+          children: [
+            // Masthead — matches the scan tab's rhythm
+            Row(
               children: [
-                Icon(Icons.auto_awesome, size: 42,
-                  color: AppColors.textSecondary.withValues(alpha: 0.65)),
-                const SizedBox(height: Sp.md),
-                Text('Scan first.',
-                  style: AppTypography.h1.copyWith(fontSize: 28, letterSpacing: -0.6)),
-                const SizedBox(height: 6),
-                Text('$forTab reads from your geometry. '
-                     'You need at least one scan before we can advise.',
-                  textAlign: TextAlign.center,
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.textSecondary, fontSize: 14)),
-                const SizedBox(height: Sp.xl),
-                SizedBox(
-                  height: 52,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.red,
-                      foregroundColor: AppColors.base,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(Rd.lg)),
-                    ),
-                    onPressed: () => context.push('/scan'),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 26),
-                      child: Text('Start scan',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
-                    ),
-                  ),
+                Text('The Mirror',
+                  style: AppTypography.h1.copyWith(
+                    fontSize: 30, letterSpacing: -0.8, height: 1)),
+                const SizedBox(width: 10),
+                Container(
+                  width: 5, height: 5, margin: const EdgeInsets.only(top: 8),
+                  decoration: const BoxDecoration(
+                    color: AppColors.red, shape: BoxShape.circle),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 2),
+            Text('YOUR PERSONAL FACE DOCTOR',
+              style: AppTypography.label.copyWith(
+                color: AppColors.textMuted, fontSize: 8.5, letterSpacing: 3.0)),
+
+            const SizedBox(height: Sp.xxl),
+
+            // Hero pitch card
+            Container(
+              padding: const EdgeInsets.all(Sp.lg),
+              decoration: BoxDecoration(
+                color: AppColors.surface1,
+                borderRadius: BorderRadius.circular(Rd.xl),
+                border: Border.all(
+                  color: AppColors.red.withValues(alpha: 0.32), width: 0.8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Knows every millimeter.',
+                    style: AppTypography.h1.copyWith(
+                      fontSize: 26, letterSpacing: -0.6, height: 1.15)),
+                  const SizedBox(height: 10),
+                  Text('One scan and The Mirror has the full geometry of your '
+                       'face — 468 mesh points, 16 measurements. From that, it '
+                       'tells you exactly which haircut, beard, and frames mog '
+                       'your current self — then renders the result on your '
+                       'actual face.',
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.textSecondary, fontSize: 14, height: 1.55)),
+                ],
+              ),
+            ).animate().fadeIn(duration: 420.ms)
+              .slideY(begin: 0.04, end: 0, duration: 420.ms, curve: Curves.easeOut),
+
+            const SizedBox(height: Sp.lg),
+
+            // Capability stack — each row is a promise of what unlocks
+            _CapRow(
+              icon: Icons.content_cut,
+              tint: AppColors.accent,
+              label: 'HAIRCUT MATCH',
+              line: 'Ten named cuts — edgar, curtains, low taper, textured fringe — '
+                    'ranked for your face shape and rendered onto your face.',
+              delay: 120,
+            ),
+            _CapRow(
+              icon: Icons.face_retouching_natural,
+              tint: AppColors.signalAmber,
+              label: 'BEARD + FACIAL HAIR',
+              line: 'Density, length, and shape tuned to your jawline. Tried on '
+                    'before you sit in the chair.',
+              delay: 200,
+            ),
+            _CapRow(
+              icon: Icons.visibility_outlined,
+              tint: AppColors.measure,
+              label: 'FRAMES + GLASSES',
+              line: 'Frames that sit with your bone structure — not against it. '
+                    'Round face, angular frame. Angular face, soft curve.',
+              delay: 280,
+            ),
+            _CapRow(
+              icon: Icons.auto_awesome,
+              tint: AppColors.red,
+              label: 'BEFORE / AFTER',
+              line: 'See yourself transformed on your own face. Not a lookalike. '
+                    'Not a stock photo. You.',
+              delay: 360,
+            ),
+
+            const SizedBox(height: Sp.xl),
+
+            // Primary CTA — same language + weight as the scan-tab button so
+            // the handoff feels like one continuous flow.
+            SizedBox(
+              width: double.infinity, height: 56,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.red,
+                  foregroundColor: AppColors.base,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Rd.lg)),
+                  elevation: 0,
+                ),
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  context.push('/scan');
+                },
+                child: const Text('Scan to unlock',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15, letterSpacing: 0.4)),
+              ),
+            ).animate().fadeIn(delay: 440.ms, duration: 360.ms),
+            const SizedBox(height: Sp.md),
+            Center(
+              child: Text('The Mirror activates after your first scan.',
+                style: AppTypography.label.copyWith(
+                  color: AppColors.textTertiary,
+                  fontSize: 9.5, letterSpacing: 1.8)),
+            ),
+          ],
         ),
       ),
     );
+  }
+}
+
+// ── Streak chip — miniature flame+number lockup for the home protocol card ─
+class _StreakChip extends StatelessWidget {
+  final Protocol protocol;
+  const _StreakChip({required this.protocol});
+
+  @override
+  Widget build(BuildContext context) {
+    final streak = protocol.effectiveStreak;
+    if (streak <= 0 && protocol.streakStatus == StreakStatus.fresh) {
+      return const SizedBox.shrink();
+    }
+    final color = switch (protocol.streakStatus) {
+      StreakStatus.live    => AppColors.red,
+      StreakStatus.atRisk  => AppColors.signalAmber,
+      StreakStatus.broken  => AppColors.textMuted,
+      StreakStatus.fresh   => AppColors.textTertiary,
+    };
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.local_fire_department, size: 13, color: color),
+        const SizedBox(width: 2),
+        Text('$streak',
+          style: AppTypography.measurement.copyWith(
+            color: color, fontSize: 12, fontWeight: FontWeight.w800)),
+      ],
+    );
+  }
+}
+
+// ── Capability row — one feature, icon + label + detail line ────────────────
+class _CapRow extends StatelessWidget {
+  final IconData icon;
+  final Color tint;
+  final String label;
+  final String line;
+  final int delay;
+  const _CapRow({
+    required this.icon,
+    required this.tint,
+    required this.label,
+    required this.line,
+    required this.delay,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(Sp.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(Rd.lg),
+        border: Border.all(color: AppColors.divider, width: 0.8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38, height: 38,
+            decoration: BoxDecoration(
+              color: tint.withValues(alpha: 0.13),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: tint.withValues(alpha: 0.5), width: 0.8),
+            ),
+            child: Icon(icon, size: 16, color: tint),
+          ),
+          const SizedBox(width: Sp.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                  style: AppTypography.label.copyWith(
+                    color: tint, letterSpacing: 2.4, fontSize: 9)),
+                const SizedBox(height: 3),
+                Text(line,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5, height: 1.45)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(
+      delay: Duration(milliseconds: delay), duration: 360.ms)
+      .slideY(begin: 0.06, end: 0,
+        delay: Duration(milliseconds: delay),
+        duration: 360.ms, curve: Curves.easeOut);
   }
 }
 

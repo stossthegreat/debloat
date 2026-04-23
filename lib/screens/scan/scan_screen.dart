@@ -16,6 +16,7 @@ import '../../services/face_mesh_service.dart';
 import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import '../../config/dev_flags.dart';
 import '../../widgets/scan/geometry_overlay_painter.dart';
 
 class ScanScreen extends StatefulWidget {
@@ -659,7 +660,14 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
     if (!mounted) return;
 
     // Paywall gate.
-    final subscribed = await LocalStoreService.isSubscribed();
+    //
+    // DEV BYPASS — set [_kBypassPaywall] (top of file) to true to test
+    // every post-scan surface (Report, Mirror, Protocol, creator-cuts
+    // picker) without a live subscription. Flip back to false before
+    // shipping.
+    final subscribed = kBypassPaywall
+        ? true
+        : await LocalStoreService.isSubscribed();
     if (!mounted) return;
 
     if (!subscribed) {

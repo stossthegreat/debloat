@@ -33,9 +33,167 @@ class _ProtocolScreenState extends State<ProtocolScreen> {
   Future<void> _markTodayComplete() async {
     if (_p == null) return;
     HapticFeedback.mediumImpact();
-    final updated = await ProtocolService.markDayComplete(_p!, _p!.currentDay);
+    final prevStreak = _p!.effectiveStreak;
+    final dayJustCompleted = _p!.currentDay;
+    final updated = await ProtocolService.markDayComplete(_p!, dayJustCompleted);
     if (!mounted) return;
     setState(() => _p = updated);
+
+    // Milestone celebration — day 7, 14, 30, 60. Big haptic pulse + modal.
+    // Feels like a reward for showing up, not a ping when they didn't.
+    if (_isMilestone(dayJustCompleted)) {
+      HapticFeedback.heavyImpact();
+      await Future.delayed(const Duration(milliseconds: 200));
+      HapticFeedback.heavyImpact();
+      if (!mounted) return;
+      await _showMilestoneCelebration(
+        day: dayJustCompleted,
+        streak: updated.effectiveStreak,
+      );
+    } else if (updated.effectiveStreak > prevStreak &&
+               (updated.effectiveStreak == 3 ||
+                updated.effectiveStreak == 10 ||
+                updated.effectiveStreak == 21)) {
+      // Small streak-number celebrations — the "3-day rule" sticks a habit,
+      // 10 is a psychological threshold, 21 is the old "habit complete"
+      // number. Quick toast-style haptic, no modal.
+      HapticFeedback.heavyImpact();
+    }
+  }
+
+  bool _isMilestone(int day) => day == 7 || day == 14 || day == 30 || day == 60;
+
+  Future<void> _showMilestoneCelebration({
+    required int day, required int streak,
+  }) async {
+    final (title, body, action) = _milestoneCopy(day);
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.86),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(24),
+        child: Container(
+          padding: const EdgeInsets.all(Sp.lg),
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            borderRadius: BorderRadius.circular(Rd.xl),
+            border: Border.all(
+              color: AppColors.red.withValues(alpha: 0.5), width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.red.withValues(alpha: 0.25),
+                blurRadius: 28, spreadRadius: 1),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('DAY $day · CHECKPOINT',
+                style: AppTypography.label.copyWith(
+                  color: AppColors.red,
+                  letterSpacing: 3.0, fontSize: 10,
+                  fontWeight: FontWeight.w800)),
+              const SizedBox(height: 10),
+              Text(title,
+                style: AppTypography.h1.copyWith(
+                  fontSize: 30, letterSpacing: -0.8, height: 1.1)),
+              const SizedBox(height: 10),
+              Text(body,
+                style: AppTypography.body.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 14, height: 1.55)),
+              const SizedBox(height: Sp.md),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppColors.red.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: AppColors.red.withValues(alpha: 0.4), width: 0.8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.local_fire_department,
+                      size: 14, color: AppColors.red),
+                    const SizedBox(width: 4),
+                    Text('$streak DAY STREAK',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.red,
+                        letterSpacing: 2.0, fontSize: 10,
+                        fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: Sp.lg),
+              SizedBox(
+                width: double.infinity, height: 48,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.red,
+                    foregroundColor: AppColors.base,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Rd.lg)),
+                    elevation: 0,
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(action,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14, letterSpacing: 0.4)),
+                ),
+              ),
+            ],
+          ),
+        ).animate().scale(
+          begin: const Offset(0.86, 0.86), end: const Offset(1, 1),
+          duration: 380.ms, curve: Curves.easeOutBack)
+          .fadeIn(duration: 280.ms),
+      ),
+    );
+  }
+
+  /// Copy scales with the milestone. Day 7 is habit-formed. Day 14 is the
+  /// first rescan moment. Day 30 is mid-protocol. Day 60 is completion.
+  (String title, String body, String action) _milestoneCopy(int day) {
+    switch (day) {
+      case 7:
+        return (
+          'One week in.',
+          'Seven days of showing up. The habit is starting to stick — most '
+          'people quit before this. Keep going.',
+          'Keep the run',
+        );
+      case 14:
+        return (
+          'Rescan day.',
+          'Two weeks. Take a new scan today and compare to baseline — even '
+          'small deltas mean the protocol is working. This is the first '
+          'proof moment.',
+          'Got it',
+        );
+      case 30:
+        return (
+          'Midpoint.',
+          'Thirty days. If an axis has stalled, The Mirror can switch the '
+          'focus — tap the protocol menu to review. Halfway to the full '
+          'before / after.',
+          'Midpoint logged',
+        );
+      case 60:
+        return (
+          'Protocol complete.',
+          'Sixty days. Take your final scan and compare side-by-side with '
+          'day one. Share the before / after if you want — this is the '
+          'receipt.',
+          'Final rescan',
+        );
+      default:
+        return ('Checkpoint', 'Day $day logged.', 'Continue');
+    }
   }
 
   Future<void> _endProtocol() async {
@@ -158,16 +316,36 @@ class _ProtocolScreenState extends State<ProtocolScreen> {
             _ProgressBlock(protocol: p)
               .animate().fadeIn(duration: 400.ms),
 
+            const SizedBox(height: Sp.md),
+
+            // Streak strip — flame + current + longest + freezes available
+            _StreakStrip(protocol: p)
+              .animate().fadeIn(delay: 120.ms, duration: 400.ms),
+
             const SizedBox(height: Sp.xl),
 
             Text('TODAY',
               style: AppTypography.label.copyWith(
                 color: AppColors.textPrimary, letterSpacing: 2.5, fontSize: 10)),
-            const SizedBox(height: Sp.sm),
-            for (var i = 0; i < p.dailyTasks.length; i++) ...[
-              _TaskCard(task: p.dailyTasks[i], delay: 160 + i * 80),
-              const SizedBox(height: Sp.sm),
-            ],
+
+            // Group tasks by time-of-day so the daily flow reads as a schedule
+            // (morning → midday → evening → night → all-day habits) rather
+            // than a flat checklist. Sections render only when they have
+            // tasks, so protocols with a thinner band just skip it.
+            for (final band in const [
+              TimeBand.am, TimeBand.midday, TimeBand.pm,
+              TimeBand.night, TimeBand.ongoing,
+            ])
+              if (p.dailyTasks.any((t) => t.timeBand == band)) ...[
+                const SizedBox(height: Sp.md),
+                _TimeBandHeader(band: band),
+                const SizedBox(height: Sp.sm),
+                for (var i = 0; i < p.dailyTasks.length; i++)
+                  if (p.dailyTasks[i].timeBand == band) ...[
+                    _TaskCard(task: p.dailyTasks[i], delay: 160 + i * 60),
+                    const SizedBox(height: Sp.sm),
+                  ],
+              ],
 
             const SizedBox(height: Sp.xl),
 
@@ -265,16 +443,18 @@ class _ProgressBlock extends StatelessWidget {
               color: AppColors.textTertiary, letterSpacing: 2.4, fontSize: 8.5)),
           const SizedBox(height: Sp.md),
 
-          // Per-day dots — shows completed days as filled, current as pulsing
+          // Per-day dots — completed (red) / frozen (accent indigo) / current
+          // (red outline) / past-not-done (faded red) / future (surface).
           Wrap(
             spacing: 4, runSpacing: 4,
             children: [
               for (var d = 1; d <= protocol.lengthDays; d++)
                 _DayDot(
                   day: d,
-                  isDone: protocol.completedDays.contains(d),
+                  isDone:    protocol.completedDays.contains(d),
                   isCurrent: d == protocol.currentDay,
-                  isPast: d < protocol.currentDay,
+                  isPast:    d <  protocol.currentDay,
+                  isFrozen:  protocol.freezeDays.contains(d),
                 ),
             ],
           ),
@@ -286,34 +466,43 @@ class _ProgressBlock extends StatelessWidget {
 
 class _DayDot extends StatelessWidget {
   final int day;
-  final bool isDone, isCurrent, isPast;
+  final bool isDone, isCurrent, isPast, isFrozen;
   const _DayDot({
     required this.day, required this.isDone,
     required this.isCurrent, required this.isPast,
+    this.isFrozen = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 10, height: 10,
-      decoration: BoxDecoration(
-        color: isDone
-            ? AppColors.red
+    // Frozen takes priority over past-not-done — the user saved that day
+    // with a freeze, so don't render it as a miss.
+    final color = isDone
+        ? AppColors.red
+        : isFrozen
+            ? AppColors.accent
             : isCurrent
                 ? Colors.transparent
                 : isPast
                     ? AppColors.signalRed.withValues(alpha: 0.3)
-                    : AppColors.surface3,
+                    : AppColors.surface3;
+
+    return Container(
+      width: 10, height: 10,
+      decoration: BoxDecoration(
+        color: color,
         shape: BoxShape.rectangle,
         borderRadius: BorderRadius.circular(2),
         border: isCurrent
             ? Border.all(color: AppColors.red, width: 1.2)
             : null,
-        boxShadow: isDone ? [
-          BoxShadow(
-            color: AppColors.divider,
-            blurRadius: 4),
-        ] : null,
+        boxShadow: isDone
+            ? [const BoxShadow(color: AppColors.divider, blurRadius: 4)]
+            : isFrozen
+                ? [BoxShadow(
+                    color: AppColors.accent.withValues(alpha: 0.4),
+                    blurRadius: 4)]
+                : null,
       ),
     );
   }
@@ -395,6 +584,148 @@ class _TaskCard extends StatelessWidget {
       case TaskCategory.nutrition: return Icons.restaurant;
       case TaskCategory.grooming:  return Icons.content_cut;
     }
+  }
+}
+
+// ── Streak strip — the lock-in mechanic. Flame colour + copy follow the
+// effective status so the user always knows whether they're live, at-risk,
+// or broken.
+class _StreakStrip extends StatelessWidget {
+  final Protocol protocol;
+  const _StreakStrip({required this.protocol});
+
+  @override
+  Widget build(BuildContext context) {
+    final status  = protocol.streakStatus;
+    final streak  = protocol.effectiveStreak;
+    final (flame, label) = _state(status);
+
+    return Container(
+      padding: const EdgeInsets.all(Sp.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(Rd.xl),
+        border: Border.all(color: flame.withValues(alpha: 0.32), width: 0.8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(Icons.local_fire_department,
+            size: 34, color: flame),
+          const SizedBox(width: Sp.md),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('$streak',
+                    style: AppTypography.display.copyWith(
+                      fontSize: 32, color: flame,
+                      letterSpacing: -1.2, height: 1)),
+                  const SizedBox(width: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 5),
+                    child: Text('DAY',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.textTertiary,
+                        fontSize: 9, letterSpacing: 1.8)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(label,
+                style: AppTypography.label.copyWith(
+                  color: flame, letterSpacing: 2.4, fontSize: 9)),
+            ],
+          ),
+          const Spacer(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('LONGEST',
+                style: AppTypography.label.copyWith(
+                  color: AppColors.textMuted,
+                  fontSize: 8, letterSpacing: 1.8)),
+              Text('${protocol.longestStreak}',
+                style: AppTypography.measurement.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 15, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(Icons.ac_unit,
+                    size: 9, color: AppColors.accent),
+                  const SizedBox(width: 3),
+                  Text('${protocol.freezesAvailable} FREEZE',
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.accent,
+                      fontSize: 8.5, letterSpacing: 1.6)),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  (Color, String) _state(StreakStatus s) {
+    switch (s) {
+      case StreakStatus.fresh:
+        return (AppColors.textTertiary, 'BEGIN THE RUN');
+      case StreakStatus.live:
+        return (AppColors.red, 'ON FIRE');
+      case StreakStatus.atRisk:
+        return (AppColors.signalAmber, 'LOG TODAY');
+      case StreakStatus.broken:
+        return (AppColors.textMuted, 'STREAK BROKEN');
+    }
+  }
+}
+
+// ── Time-band section header (morning / midday / evening / night / all-day) ─
+class _TimeBandHeader extends StatelessWidget {
+  final TimeBand band;
+  const _TimeBandHeader({required this.band});
+
+  String get _label {
+    switch (band) {
+      case TimeBand.am:      return 'MORNING';
+      case TimeBand.midday:  return 'MIDDAY';
+      case TimeBand.pm:      return 'EVENING';
+      case TimeBand.night:   return 'NIGHT';
+      case TimeBand.ongoing: return 'ALL DAY';
+    }
+  }
+
+  IconData get _icon {
+    switch (band) {
+      case TimeBand.am:      return Icons.wb_twilight_outlined;
+      case TimeBand.midday:  return Icons.wb_sunny_outlined;
+      case TimeBand.pm:      return Icons.wb_iridescent_outlined;
+      case TimeBand.night:   return Icons.nightlight_round;
+      case TimeBand.ongoing: return Icons.all_inclusive;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(_icon, size: 12, color: AppColors.textTertiary),
+        const SizedBox(width: 8),
+        Text(_label,
+          style: AppTypography.label.copyWith(
+            color: AppColors.textTertiary,
+            letterSpacing: 2.8, fontSize: 9)),
+        const SizedBox(width: 10),
+        Expanded(child: Container(
+          height: 0.6, color: AppColors.divider)),
+      ],
+    );
   }
 }
 
