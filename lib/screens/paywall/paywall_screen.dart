@@ -2,353 +2,557 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
+import '../../config/purchase_config.dart';
 import '../../services/local_store_service.dart';
+import '../../services/purchase_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 
-/// Mirrorly paywall — single screen, no scroll, three identical price cards.
+/// Mirrorly paywall.
 ///
-/// Ported from AURALAY's polished design on 2026-04-22: app icon hero at
-/// top, AURALAY-style numbered selling points with italic numerals + bigger
-/// body type, identical 132pt price cards, big red CTA, Apple-compliant
-/// disclosure row. Mirrorly-specific: product IDs + wordmark + pricing.
+/// Scrollable, close-X at top-left, real localized StoreKit prices
+/// pulled through RevenueCat (never hardcoded), Apple 3.1.2 compliant
+/// disclosure directly under the CTA, benefits bullet list moved
+/// BELOW the CTA so the purchase button is always visible without
+/// scrolling.
 ///
-/// Apple's review process rejects vague "free trial" language so the trial
-/// is not offered here; honest, up-front monthly/annual/credit tiers only.
+/// Routing contract:
+///   - `/paywall`                                 → standalone entry (from
+///                                                   onboarding, home chip)
+///   - `/paywall` with extra `{afterPurchase: '/report', imageBytes,
+///     geometry, extraImages}` → scan-gated entry. On successful
+///     purchase we forward to /report with the captured scan data so
+///     the user's MediaPipe work isn't lost.
 ///
-/// IAP product IDs (must match App Store Connect / Play Console):
-///   mirrorly_pro_monthly  £9.99/mo   (auto-renew)
-///   mirrorly_pro_yearly   £89.99/yr  (auto-renew, "save 25%" badge)
-///   mirrorly_pro_rescue   £8.99      (one-time → 20 image credits)
+/// Close X behaviour: if we can pop (arrived as a push), pop; else
+/// go /home. Either way, abandoning the paywall does not re-trigger
+/// onboarding because isOnboarded was already persisted.
 class PaywallScreen extends StatefulWidget {
-  const PaywallScreen({super.key});
+  /// Optional context forwarded from the scan gate. Kept opaque here —
+  /// the keys the scan screen set get read back on purchase success.
+  final Map<String, dynamic>? context;
+
+  const PaywallScreen({super.key, this.context});
 
   @override
   State<PaywallScreen> createState() => _PaywallScreenState();
 }
 
+enum _Tier { monthly, annual, credits }
+
 class _PaywallScreenState extends State<PaywallScreen> {
-  String _selected = 'mirrorly_pro_yearly';
+  _Tier _selected = _Tier.annual;
+  PurchaseOfferings _offerings = PurchaseOfferings.empty();
+  bool _loading = true;
+  bool _purchasing = false;
 
-  static const _tiers = <_Tier>[
-    _Tier(
-      id: 'mirrorly_pro_monthly',
-      title: 'MONTHLY',
-      price: '£9.99',
-      cadence: 'per month',
-      footnote: 'Auto-renew',
-      badge: null,
-    ),
-    _Tier(
-      id: 'mirrorly_pro_yearly',
-      title: 'ANNUAL',
-      price: '£89.99',
-      cadence: '£7.50 / mo',
-      footnote: 'Auto-renew',
-      badge: 'SAVE 25%',
-    ),
-    _Tier(
-      id: 'mirrorly_pro_rescue',
-      title: '20 CREDITS',
-      price: '£8.99',
-      cadence: '20 AI renders',
-      footnote: 'One-time · no sub',
-      badge: null,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadOfferings();
+  }
 
-  /// Per-tier "what you get" copy shown above the CTA when a tier is
-  /// selected. Keeps the user from having to guess what 20 credits means
-  /// vs a subscription. Apple reviewers also read this — so every tier
-  /// has a concrete, numbered deliverable.
-  static const _benefits = <String, List<String>>{
-    'mirrorly_pro_monthly': [
-      '2 scans per week',
-      '10 AI-rendered images per month',
-      'The Mirror — unlimited chat advice',
-      'Honest-looks score (GPT-4o Vision)',
-      'Cancel anytime in App Store settings',
-    ],
-    'mirrorly_pro_yearly': [
-      '2 scans per week',
-      '10 AI-rendered images per month',
-      'The Mirror — unlimited chat advice',
-      'Honest-looks score (GPT-4o Vision)',
-      '25% off vs monthly · cancel anytime',
-    ],
-    'mirrorly_pro_rescue': [
-      '20 AI-rendered images (one per credit)',
-      'No subscription, no recurring charge',
-      'Credits never expire',
-      'Requires an active subscription for scans',
-    ],
+  Future<void> _loadOfferings() async {
+    final off = await PurchaseService.loadOfferings();
+    if (!mounted) return;
+    setState(() {
+      _offerings = off;
+      _loading = false;
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  //  PRICE HELPERS — everything the user sees as currency comes from
+  //  the StoreKit / Play Billing SDK via RevenueCat. Never hardcoded.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  String _priceFor(_Tier t) {
+    final pkg = _packageFor(t);
+    if (pkg == null) return _loading ? '—' : '—';
+    return pkg.storeProduct.priceString;
+  }
+
+  /// Monthly equivalent for the annual plan — computed from the real
+  /// annual price divided by 12 in the SAME currency the store returned.
+  /// If store returned £89.99, this is £7.50 etc.
+  String _perMonthForAnnual() {
+    final annual = _offerings.annual;
+    if (annual == null) return '—';
+    final p = annual.storeProduct;
+    final perMonth = p.price / 12.0;
+    // Use the currency code RevenueCat gave us and a simple formatter
+    // that matches typical App Store display (symbol + 2dp).
+    return _formatPrice(perMonth, p.currencyCode, p.priceString);
+  }
+
+  /// Format with the same currency symbol the store used — we steal
+  /// the non-digit prefix off `priceString` so we match whatever the
+  /// user's locale shows (£, $, €, ₹, kr, etc.) without having to keep
+  /// a currency table.
+  String _formatPrice(double amount, String currencyCode, String example) {
+    final symbolMatch = RegExp(r'^[^\d,\.\-]+').firstMatch(example);
+    final symbol = symbolMatch?.group(0) ?? (currencyCode.isNotEmpty ? '$currencyCode ' : '');
+    return '$symbol${amount.toStringAsFixed(2)}';
+  }
+
+  Package? _packageFor(_Tier t) => switch (t) {
+    _Tier.monthly => _offerings.monthly,
+    _Tier.annual  => _offerings.annual,
+    _Tier.credits => _offerings.credits,
   };
+
+  // ─────────────────────────────────────────────────────────────────────────
+  //  ACTIONS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<void> _buy() async {
+    if (_purchasing) return;
+    final pkg = _packageFor(_selected);
+    if (pkg == null) {
+      // Configure-state safety net — in production the CTA is disabled
+      // when no package is available, so this shouldn't fire.
+      _snack('Store unavailable. Try again in a moment.');
+      return;
+    }
+
+    HapticFeedback.mediumImpact();
+    setState(() => _purchasing = true);
+
+    final outcome = await PurchaseService.purchase(pkg);
+
+    if (!mounted) return;
+    setState(() => _purchasing = false);
+
+    switch (outcome) {
+      case PurchaseOutcome.success:
+        await LocalStoreService.setOnboarded(true);
+        if (!mounted) return;
+        _forwardOnSuccess();
+        break;
+
+      case PurchaseOutcome.cancelled:
+        // Silent — user backed out intentionally, no toast spam.
+        break;
+
+      case PurchaseOutcome.noPriorPurchases:
+        _snack('No previous purchases found.');
+        break;
+
+      case PurchaseOutcome.notConfigured:
+        // Dev stub — no RC keys yet. Fall back to the pre-RC stub so
+        // the dev flow still lets you see /home.
+        await LocalStoreService.setSubscribed(true);
+        await LocalStoreService.setOnboarded(true);
+        if (mounted) _forwardOnSuccess();
+        break;
+
+      case PurchaseOutcome.error:
+        _snack('Purchase could not complete. Please try again.');
+        break;
+    }
+  }
+
+  Future<void> _restore() async {
+    HapticFeedback.selectionClick();
+    final outcome = await PurchaseService.restore();
+    if (!mounted) return;
+    switch (outcome) {
+      case PurchaseOutcome.success:
+        _snack('Subscription restored.');
+        if (mounted) _forwardOnSuccess();
+        break;
+      case PurchaseOutcome.noPriorPurchases:
+        _snack('No previous purchases found.');
+        break;
+      case PurchaseOutcome.notConfigured:
+        _snack('Store not yet configured.');
+        break;
+      case PurchaseOutcome.cancelled:
+      case PurchaseOutcome.error:
+        _snack('Could not restore purchases.');
+        break;
+    }
+  }
+
+  void _forwardOnSuccess() {
+    final ctx = widget.context;
+    // Scan-gated entry: forward to /report with the captured scan data
+    // so the user's MediaPipe work isn't thrown away.
+    if (ctx != null && ctx['afterPurchase'] == '/report') {
+      context.go('/report', extra: {
+        'imageBytes':  ctx['imageBytes'],
+        'geometry':    ctx['geometry'],
+        'extraImages': ctx['extraImages'] ?? const <dynamic>[],
+      });
+      return;
+    }
+    context.go('/home');
+  }
+
+  void _close() {
+    HapticFeedback.selectionClick();
+    // If we arrived as a push, pop returns to whatever was underneath
+    // (home, scan, etc). If there's nothing to pop (launched directly
+    // from onboarding / splash), land on home. Onboarding is already
+    // persisted-complete so they won't loop back.
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home');
+    }
+  }
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: Colors.black,
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  //  BUILD
+  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
+    final canBuy = _packageFor(_selected) != null || !PurchaseConfig.isConfigured;
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 10, 22, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── 1. Icon (centre top) — hero brand
-              Center(
-                child: Container(
-                  width: 84, height: 84,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.red.withValues(alpha: 0.35),
-                        blurRadius: 24, spreadRadius: 0),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Image.asset(
-                      'assets/icons/appstore.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ),
-              ).animate()
-                .fadeIn(duration: 460.ms)
-                .scale(begin: const Offset(0.85, 0.85),
-                  curve: Curves.easeOutBack, duration: 540.ms),
-
-              const SizedBox(height: 10),
-
-              Center(
-                child: Text('MIRRORLY',
-                  style: AppTypography.h1.copyWith(
-                    color: Colors.white,
-                    fontSize: 22, letterSpacing: 5.0,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ).animate().fadeIn(delay: 180.ms, duration: 360.ms),
-
-              const SizedBox(height: 4),
-
-              Center(
-                child: Text('MEASURED · NOT GUESSED',
-                  style: AppTypography.label.copyWith(
-                    color: AppColors.red,
-                    fontSize: 10, letterSpacing: 3.0,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ).animate().fadeIn(delay: 240.ms, duration: 360.ms),
-
-              const SizedBox(height: 26),
-
-              // ── 2. Three numbered selling points (AURALAY's sizes — bigger + sexier)
-              const _Point(
-                n: '1',
-                headline: 'EVERY BONE, MEASURED',
-                body: '16 surgical measurements — jawline, canthal tilt, symmetry, thirds. Not a guess.',
-              ),
-              const SizedBox(height: 18),
-              const _Point(
-                n: '2',
-                headline: 'YOU, MAXIMIZED — RENDERED',
-                body: 'Flux Kontext renders YOUR actual face at its best. Haircut, beard, skin. Same person, undeniable lift.',
-              ),
-              const SizedBox(height: 18),
-              const _Point(
-                n: '3',
-                headline: 'THE MIRROR · ON CALL',
-                body: 'An AI that knows every inch of your anatomy. Every fix designed for your bones — not a generic.',
-              ),
-
-              const Spacer(),
-
-              // ── 3. Three identical price cards
-              Row(
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(22, 56, 22, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final t in _tiers) ...[
-                    Expanded(
-                      child: _PriceCard(
-                        tier: t,
-                        selected: _selected == t.id,
+                  // 1. Hero logo + wordmark
+                  _hero(),
+                  const SizedBox(height: 26),
+
+                  // 2. Three numbered selling points
+                  const _Point(n: '1',
+                    headline: 'EVERY BONE, MEASURED',
+                    body: '16 surgical measurements — jawline, canthal '
+                          'tilt, symmetry, thirds. Not a guess.'),
+                  const SizedBox(height: 18),
+                  const _Point(n: '2',
+                    headline: 'YOU, MAXIMIZED — RENDERED',
+                    body: 'AI renders YOUR actual face at its best. '
+                          'Haircut, beard, skin. Same person, undeniable '
+                          'lift.'),
+                  const SizedBox(height: 18),
+                  const _Point(n: '3',
+                    headline: 'THE MIRROR · ON CALL',
+                    body: 'An AI that knows every inch of your anatomy. '
+                          'Every fix designed for your bones — not a '
+                          'generic.'),
+
+                  const SizedBox(height: 26),
+
+                  // 3. Three price cards — real localized prices
+                  Row(
+                    children: [
+                      Expanded(child: _PriceCard(
+                        title: 'MONTHLY',
+                        price: _priceFor(_Tier.monthly),
+                        cadence: 'per month',
+                        footnote: 'Auto-renew',
+                        selected: _selected == _Tier.monthly,
+                        available: _offerings.monthly != null || !PurchaseConfig.isConfigured,
                         onTap: () {
                           HapticFeedback.selectionClick();
-                          setState(() => _selected = t.id);
+                          setState(() => _selected = _Tier.monthly);
+                        },
+                      )),
+                      const SizedBox(width: 8),
+                      Expanded(child: _PriceCard(
+                        title: 'ANNUAL',
+                        price: _priceFor(_Tier.annual),
+                        cadence: '${_perMonthForAnnual()} / mo',
+                        footnote: 'Auto-renew',
+                        badge: 'BEST VALUE',
+                        selected: _selected == _Tier.annual,
+                        available: _offerings.annual != null || !PurchaseConfig.isConfigured,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() => _selected = _Tier.annual);
+                        },
+                      )),
+                      const SizedBox(width: 8),
+                      Expanded(child: _PriceCard(
+                        title: '20 CREDITS',
+                        price: _priceFor(_Tier.credits),
+                        cadence: '20 renders',
+                        footnote: 'One-time',
+                        selected: _selected == _Tier.credits,
+                        available: _offerings.credits != null || !PurchaseConfig.isConfigured,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() => _selected = _Tier.credits);
+                        },
+                      )),
+                    ],
+                  ).animate().fadeIn(delay: 600.ms, duration: 400.ms),
+
+                  const SizedBox(height: 14),
+
+                  // 4. CTA — sits high on the screen; disclosure sits
+                  //    immediately below, benefits under that.
+                  SizedBox(
+                    width: double.infinity, height: 56,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: canBuy ? AppColors.red : AppColors.surface3,
+                        disabledBackgroundColor: AppColors.surface3,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
+                      ),
+                      onPressed: (canBuy && !_purchasing) ? _buy : null,
+                      child: _purchasing
+                          ? const SizedBox(
+                              width: 18, height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation(Colors.white)),
+                            )
+                          : Text(
+                              _ctaLabel(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15, letterSpacing: 2.4,
+                              ),
+                            ),
+                    ),
+                  ).animate().fadeIn(delay: 720.ms, duration: 400.ms),
+
+                  const SizedBox(height: 10),
+
+                  // 5. Apple 3.1.2 compliant disclosure — switches per
+                  //    tier; covers price, cadence, renewal, cancellation.
+                  _disclosure(),
+
+                  const SizedBox(height: 16),
+
+                  // 6. Benefits panel — NOW UNDER the CTA per user
+                  //    feedback. Still per-tier, still spells out what
+                  //    each tier actually delivers.
+                  _BenefitsPanel(bullets: _bulletsFor(_selected)),
+
+                  const SizedBox(height: 16),
+
+                  // 7. Legal + restore row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _LinkButton(
+                        label: 'TERMS',
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          context.push('/terms');
                         },
                       ),
-                    ),
-                    if (t != _tiers.last) const SizedBox(width: 8),
-                  ],
-                ],
-              ).animate().fadeIn(delay: 600.ms, duration: 400.ms),
-
-              const SizedBox(height: 10),
-
-              // ── 3b. "WHAT YOU GET" benefits panel — switches per tier so
-              //       the user sees exactly what the tap is buying. Apple
-              //       reviewers read this column to confirm the product
-              //       matches the price. Credits card is the most important
-              //       one here — "what does 20 credits mean" must be answered
-              //       on the paywall itself, not in a support doc.
-              _BenefitsPanel(bullets: _benefits[_selected] ?? const []),
-
-              const SizedBox(height: 10),
-
-              // ── 4. Big red CTA
-              SizedBox(
-                width: double.infinity, height: 56,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.red,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                    elevation: 0,
-                    shadowColor: AppColors.redGlow,
-                  ).copyWith(
-                    overlayColor: WidgetStateProperty.all(
-                      AppColors.redDim.withValues(alpha: 0.3)),
+                      _LinkButton(
+                        label: 'PRIVACY',
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          context.push('/privacy');
+                        },
+                      ),
+                      _LinkButton(label: 'RESTORE', onTap: _restore),
+                    ],
                   ),
-                  onPressed: () => _purchase(context, _selected),
-                  child: Text(
-                    _ctaLabel(_selected),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 15, letterSpacing: 2.4,
-                    ),
-                  ),
-                ),
-              ).animate().fadeIn(delay: 720.ms, duration: 400.ms),
 
-              const SizedBox(height: 10),
-
-              // ── 5. APPLE-COMPLIANT DISCLOSURE (required by App Review
-              //       guideline 3.1.2). The copy below must state: (a) price
-              //       and billing cadence, (b) auto-renewal behaviour,
-              //       (c) cancellation path, (d) links to Terms + Privacy.
-              //       Switches copy per selected tier so the message matches
-              //       what the CTA will actually do.
-              _disclosure(_selected),
-
-              const SizedBox(height: 6),
-
-              // ── 6. Legal + restore row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _LinkButton(
-                    label: 'TERMS',
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      context.push('/terms');
-                    },
-                  ),
-                  _LinkButton(
-                    label: 'PRIVACY',
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      context.push('/privacy');
-                    },
-                  ),
-                  _LinkButton(label: 'RESTORE', onTap: _restore),
+                  const SizedBox(height: 18),
                 ],
               ),
-            ],
-          ),
+            ),
+
+            // 8. Close X — top-left. Always visible, always works.
+            Positioned(
+              left: 10, top: 10,
+              child: _CloseX(onTap: _close),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Future<void> _purchase(BuildContext context, String productId) async {
-    HapticFeedback.mediumImpact();
-    // STUB — wire to in_app_purchase here. For now, mark as subscribed and
-    // proceed to home so flow can be tested.
-    await LocalStoreService.setSubscribed(true);
-    await LocalStoreService.setOnboarded(true);
-    if (context.mounted) context.go('/home');
+  Widget _hero() {
+    return Column(
+      children: [
+        Center(
+          child: Container(
+            width: 80, height: 80,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.red.withValues(alpha: 0.35),
+                  blurRadius: 24),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.asset(
+                'assets/icons/appstore.png',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ).animate()
+          .fadeIn(duration: 460.ms)
+          .scale(begin: const Offset(0.85, 0.85),
+            curve: Curves.easeOutBack, duration: 540.ms),
+        const SizedBox(height: 10),
+        Text('MIRRORLY',
+          textAlign: TextAlign.center,
+          style: AppTypography.h1.copyWith(
+            color: Colors.white,
+            fontSize: 22, letterSpacing: 5.0,
+            fontWeight: FontWeight.w900,
+          ),
+        ).animate().fadeIn(delay: 180.ms, duration: 360.ms),
+        const SizedBox(height: 4),
+        Text('MEASURED · NOT GUESSED',
+          textAlign: TextAlign.center,
+          style: AppTypography.label.copyWith(
+            color: AppColors.red,
+            fontSize: 10, letterSpacing: 3.0,
+            fontWeight: FontWeight.w800,
+          ),
+        ).animate().fadeIn(delay: 240.ms, duration: 360.ms),
+      ],
+    );
   }
 
-  Future<void> _restore() async {
-    HapticFeedback.selectionClick();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('No previous purchases found.'),
-      backgroundColor: Colors.black,
-    ));
-  }
-
-  /// CTA label per tier. Credits card must show the exact price on the
-  /// button itself (Apple guideline 3.1.2). Subscriptions say CONTINUE
-  /// because the price sits inside the disclosure line right below.
-  String _ctaLabel(String id) {
-    switch (id) {
-      case 'mirrorly_pro_rescue':   return 'BUY 20 CREDITS — £8.99';
-      case 'mirrorly_pro_monthly':  return 'SUBSCRIBE — £9.99/mo';
-      case 'mirrorly_pro_yearly':   return 'SUBSCRIBE — £89.99/yr';
-      default:                      return 'CONTINUE';
+  String _ctaLabel() {
+    final price = _priceFor(_selected);
+    switch (_selected) {
+      case _Tier.monthly: return 'SUBSCRIBE · $price / MO';
+      case _Tier.annual:  return 'SUBSCRIBE · $price / YR';
+      case _Tier.credits: return 'BUY · $price';
     }
   }
 
-  /// Apple App Review 3.1.2 disclosure. The copy must contain price,
-  /// cadence, auto-renewal notice, and cancellation path. Rendered as a
-  /// fixed-height block so the layout doesn't jump as the user taps
-  /// between tiers.
-  Widget _disclosure(String id) {
+  /// Apple 3.1.2 compliant disclosure.
+  /// Must contain: title/service, length, price, auto-renewal,
+  /// cancellation path, links to Terms + Privacy.
+  Widget _disclosure() {
+    final price  = _priceFor(_selected);
+    final perMo  = _perMonthForAnnual();
+
     String text;
-    switch (id) {
-      case 'mirrorly_pro_rescue':
-        text = 'One-time purchase of £8.99 for 20 AI-rendered image '
-               'credits. No subscription. No auto-renewal. Credits do '
-               'not expire and are non-refundable.';
+    switch (_selected) {
+      case _Tier.monthly:
+        text = 'Mirrorly Pro — monthly subscription. Your payment of '
+               '$price will be charged to your App Store (or Google '
+               'Play) account at confirmation of purchase. The '
+               'subscription automatically renews each month for $price '
+               'unless you cancel at least 24 hours before the end of '
+               'the current period. Your account will be charged for '
+               'renewal within 24 hours of the period ending. You can '
+               'manage or cancel your subscription any time in your '
+               'account settings. Uninstalling the app does NOT cancel '
+               'the subscription.';
         break;
-      case 'mirrorly_pro_monthly':
-        text = '£9.99/month. Subscription automatically renews each '
-               'month unless cancelled at least 24 hours before the '
-               'period ends. Manage or cancel in your App Store or '
-               'Google Play account settings.';
+      case _Tier.annual:
+        text = 'Mirrorly Pro — annual subscription. Your payment of '
+               '$price (equivalent to $perMo per month) will be '
+               'charged to your App Store (or Google Play) account at '
+               'confirmation of purchase. The subscription '
+               'automatically renews each year for $price unless you '
+               'cancel at least 24 hours before the end of the '
+               'current period. Your account will be charged for '
+               'renewal within 24 hours of the period ending. You can '
+               'manage or cancel your subscription any time in your '
+               'account settings. Uninstalling the app does NOT '
+               'cancel the subscription.';
         break;
-      case 'mirrorly_pro_yearly':
-      default:
-        text = '£89.99/year (£7.50 per month). Subscription '
-               'automatically renews each year unless cancelled at '
-               'least 24 hours before the period ends. Manage or '
-               'cancel in your App Store or Google Play account '
-               'settings.';
+      case _Tier.credits:
+        text = '20 Render Credits — one-time purchase of $price. NOT '
+               'a subscription. Your App Store (or Google Play) '
+               'account will be charged $price at confirmation of '
+               'purchase, once. No auto-renewal. Each credit entitles '
+               'you to one AI-rendered image. Credits do not expire '
+               'and are non-refundable and non-transferable. A '
+               'Mirrorly Pro subscription is required to perform '
+               'scans.';
         break;
     }
+
     return Text(
       text,
       textAlign: TextAlign.center,
       style: AppTypography.bodySmall.copyWith(
         color: AppColors.textTertiary,
-        fontSize: 10, height: 1.45,
+        fontSize: 10.5, height: 1.5,
+      ),
+    );
+  }
+
+  List<String> _bulletsFor(_Tier t) {
+    switch (t) {
+      case _Tier.monthly:
+      case _Tier.annual:
+        return [
+          '2 scans per week',
+          '10 AI-rendered images per month',
+          'The Mirror — unlimited chat advice',
+          'Honest-looks score (GPT-4o Vision)',
+          'Geometry score (on-device, 16 metrics)',
+          'Cancel anytime in App Store or Google Play settings',
+        ];
+      case _Tier.credits:
+        return [
+          '20 AI-rendered images (one per credit)',
+          'No subscription, no recurring charge',
+          'Credits never expire',
+          'Non-refundable, non-transferable',
+          'Requires an active Mirrorly Pro subscription for scans',
+        ];
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  SUB-WIDGETS
+// ══════════════════════════════════════════════════════════════════════════
+
+class _CloseX extends StatelessWidget {
+  final VoidCallback onTap;
+  const _CloseX({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          width: 40, height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.06),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.22), width: 0.8),
+          ),
+          child: const Icon(Icons.close_rounded,
+            size: 20, color: Colors.white),
+        ),
       ),
     );
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-//  WIDGETS
-// ──────────────────────────────────────────────────────────────────────────
-
-class _Tier {
-  final String id, title, price, cadence, footnote;
-  final String? badge;
-  const _Tier({
-    required this.id, required this.title, required this.price,
-    required this.cadence, required this.footnote, this.badge,
-  });
-}
-
-/// Selling-point row — italic 30pt red Playfair numeral + bold 13.5pt
-/// headline + 14pt body. Ported verbatim from AURALAY's polished paywall
-/// so the two apps feel like the same brand family.
 class _Point extends StatelessWidget {
   final String n, headline, body;
   const _Point({required this.n, required this.headline, required this.body});
@@ -397,22 +601,34 @@ class _Point extends StatelessWidget {
 }
 
 class _PriceCard extends StatelessWidget {
-  final _Tier tier;
+  final String title, price, cadence, footnote;
+  final String? badge;
   final bool selected;
+  final bool available;
   final VoidCallback onTap;
+
   const _PriceCard({
-    required this.tier, required this.selected, required this.onTap,
+    required this.title,
+    required this.price,
+    required this.cadence,
+    required this.footnote,
+    required this.selected,
+    required this.available,
+    required this.onTap,
+    this.badge,
   });
 
   @override
   Widget build(BuildContext context) {
     final borderColor = selected ? AppColors.red : Colors.white24;
-    final priceColor  = selected ? AppColors.red : Colors.white;
+    final priceColor = selected
+      ? AppColors.red
+      : (available ? Colors.white : Colors.white54);
     return GestureDetector(
-      onTap: onTap,
+      onTap: available ? onTap : null,
       child: AnimatedContainer(
         duration: 180.ms,
-        height: 132,  // identical across all 3 cards
+        height: 140,
         padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
         decoration: BoxDecoration(
           color: selected ? AppColors.redGlow : Colors.transparent,
@@ -427,7 +643,7 @@ class _PriceCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(tier.title,
+                  child: Text(title,
                     style: AppTypography.label.copyWith(
                       color: Colors.white,
                       fontSize: 9, letterSpacing: 1.6,
@@ -435,7 +651,7 @@ class _PriceCard extends StatelessWidget {
                     ),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
-                if (tier.badge != null)
+                if (badge != null)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 5, vertical: 2),
@@ -443,10 +659,10 @@ class _PriceCard extends StatelessWidget {
                       color: AppColors.red,
                       borderRadius: BorderRadius.circular(3),
                     ),
-                    child: Text(tier.badge!,
+                    child: Text(badge!,
                       style: const TextStyle(
-                        color: Colors.white, fontSize: 7.5,
-                        letterSpacing: 0.8, fontWeight: FontWeight.w900,
+                        color: Colors.white, fontSize: 7,
+                        letterSpacing: 0.6, fontWeight: FontWeight.w900,
                       )),
                   ),
               ],
@@ -454,7 +670,7 @@ class _PriceCard extends StatelessWidget {
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(tier.price,
+              child: Text(price,
                 style: AppTypography.display.copyWith(
                   color: priceColor,
                   fontSize: 26, height: 1, letterSpacing: -1.0,
@@ -464,14 +680,14 @@ class _PriceCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(tier.cadence,
+                Text(cadence,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 9, fontWeight: FontWeight.w600, height: 1.2,
+                    fontSize: 9.5, fontWeight: FontWeight.w600, height: 1.2,
                   ),
-                  maxLines: 2, overflow: TextOverflow.ellipsis),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
-                Text(tier.footnote,
+                Text(footnote,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.45),
                     fontSize: 8.5, fontWeight: FontWeight.w500, height: 1.2,
@@ -486,12 +702,6 @@ class _PriceCard extends StatelessWidget {
   }
 }
 
-/// Bullet list explaining what the currently-selected tier actually
-/// delivers. Fixed height so tier switches don't reflow the layout.
-/// This is where "what does 20 credits mean" becomes unambiguous — the
-/// credits tier spells out that it's 20 renders, no subscription, and
-/// that scans still require an active subscription. Apple reviewers
-/// look for this kind of concrete benefit disclosure.
 class _BenefitsPanel extends StatelessWidget {
   final List<String> bullets;
   const _BenefitsPanel({required this.bullets});

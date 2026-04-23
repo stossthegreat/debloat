@@ -17,7 +17,15 @@ final appRouter = GoRouter(
   routes: [
     GoRoute(path: '/',           builder: (_, __) => const SplashScreen()),
     GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
-    GoRoute(path: '/paywall',    builder: (_, __) => const PaywallScreen()),
+    GoRoute(
+      path: '/paywall',
+      builder: (context, state) {
+        final extra = state.extra;
+        return PaywallScreen(
+          context: extra is Map<String, dynamic> ? extra : null,
+        );
+      },
+    ),
     GoRoute(path: '/home',     builder: (_, __) => const HomeScreen()),
     GoRoute(path: '/scan',     builder: (_, __) => const ScanScreen()),
     GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),

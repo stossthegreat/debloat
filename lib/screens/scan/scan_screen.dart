@@ -13,6 +13,7 @@ import 'package:image/image.dart' as img;
 import '../../models/face_geometry.dart';
 import '../../services/face_geometry_service.dart';
 import '../../services/face_mesh_service.dart';
+import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/scan/geometry_overlay_painter.dart';
@@ -628,6 +629,17 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
   /// Backend currently consumes only one image (front), so we send that as
   /// imageBytes but pass all 3 as `images` for forward compatibility when
   /// /scan is upgraded to multi-image GPT vision.
+  ///
+  /// THE PAYWALL GATE. MediaPipe work finishes in this method — the
+  /// measurements are already on-device, for free. The expensive
+  /// calls (Replicate, OpenAI) happen inside /report. So we check the
+  /// subscription flag here: paid users pass through to /report, free
+  /// users get routed to /paywall with the scan payload stashed so a
+  /// successful purchase drops them straight into their report.
+  ///
+  /// The user's framing: "they turn both sides, boom paywall" — they
+  /// get the full scan experience and hit the wall at the point of
+  /// maximum curiosity, not before.
   Future<void> _shipToBackend() async {
     setState(() => _phase = ScanPhase.analysing);
 
@@ -639,13 +651,34 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
           hasReliableData: false,
         );
 
+    final imageBytes = _capturedImages.isNotEmpty
+        ? _capturedImages.first : Uint8List(0);
+    final extraImages = _capturedImages.length > 1
+        ? _capturedImages.sublist(1) : <Uint8List>[];
+
     if (!mounted) return;
+
+    // Paywall gate.
+    final subscribed = await LocalStoreService.isSubscribed();
+    if (!mounted) return;
+
+    if (!subscribed) {
+      // Stash the scan payload on the paywall route. On successful
+      // purchase, the paywall forwards to /report with this data so
+      // the user never has to redo the scan.
+      context.go('/paywall', extra: {
+        'afterPurchase': '/report',
+        'imageBytes':    imageBytes,
+        'geometry':      primaryGeom,
+        'extraImages':   extraImages,
+      });
+      return;
+    }
+
     context.go('/report', extra: {
-      'imageBytes':  _capturedImages.isNotEmpty
-          ? _capturedImages.first : Uint8List(0),
+      'imageBytes':  imageBytes,
       'geometry':    primaryGeom,
-      'extraImages': _capturedImages.length > 1
-          ? _capturedImages.sublist(1) : <Uint8List>[],
+      'extraImages': extraImages,
     });
   }
 
