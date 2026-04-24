@@ -22,7 +22,6 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../services/share_service.dart';
 import '../../widgets/common/fullscreen_image.dart';
-import '../../widgets/common/quick_tryon_chips.dart';
 import '../../widgets/report/archetype_card.dart';
 import '../../widgets/report/feature_grid.dart';
 import '../../widgets/report/hero_card.dart';
@@ -278,32 +277,25 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   /// Build the 3 micro-proof one-liners shown under the hero + on the share
-  /// card. Pulls the top-3 STRENGTH traits and renders them as
-  /// "TOP X% NAME" so each line reads as a verifiable spec, not marketing.
-  /// Falls back to neutral but punchy lines when the user has fewer than 3
-  /// strengths surfaced (rare on a clean scan).
+  /// card. Pulls the top-3 STRENGTH traits and renders their pre-composed
+  /// emotional heroLine strings — "Your hunter eyes beat 88% of men" reads
+  /// and shares harder than "TOP 12% HUNTER EYES". Falls back to neutral
+  /// but punchy lines when fewer than 3 strengths surfaced.
   List<String> _buildMicroProofs(List<Trait> traits) {
     final strengths = traits
         .where((t) => t.kind == TraitKind.strength)
         .take(3)
         .toList();
-    final lines = <String>[];
-    for (final t in strengths) {
-      final pct = t.pct.trim();
-      // Some pct strings ("BALANCED FULLNESS") aren't percentile-shaped —
-      // surface them verbatim. The percentile-shaped ones lead with the
-      // number ("TOP 5% SYMMETRY") for the harder flex.
-      if (pct.toUpperCase().startsWith('TOP ')) {
-        lines.add('$pct ${t.name}');
-      } else if (pct.isNotEmpty && !pct.contains(RegExp(r'[A-Z]{2,} [A-Z]{2,}'))) {
-        lines.add('${t.name} · $pct');
-      } else {
-        lines.add(t.name);
-      }
-    }
+    final lines = [
+      for (final t in strengths)
+        t.heroLine.trim().isNotEmpty ? t.heroLine : t.name,
+    ];
     while (lines.length < 3) {
-      lines.add(const ['MEASURED PROFILE', 'BALANCED FRAME',
-                        'STRUCTURED ARCHETYPE'][lines.length]);
+      lines.add(const [
+        'Measured profile — 16 geometry points',
+        'Balanced frame — proportions check',
+        'Structured archetype — bones on spec',
+      ][lines.length]);
     }
     return lines;
   }
@@ -484,41 +476,27 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.xl),
 
-          // ── 6 · PROTOCOL CTA ──────────────────────────────────────────
-          // Auto-prescribed 60-day routine keyed to the scan's pulldown
-          // axis. Placed between the Fixes (the diagnosis) and the Consult
-          // card (the conversation) — the natural commit moment. If the
-          // user already has an active protocol, the card morphs to
-          // "Continue day X" rather than overwriting it.
-          //
-          // Pulldown is backend prose ("midface softness that body-fat
-          // below 14% solves"), so we pass geometry too — the service
-          // keyword-matches the prose and falls back to geometry if no
-          // match, producing a clean canonical axis label.
-          _ProtocolCtaCard(
-            pulldown: a.report.pulldown,
-            geometry: widget.geometry,
-          ).animate().fadeIn(delay: 2900.ms, duration: 400.ms),
-
-          const SizedBox(height: Sp.xl),
-
-          // ── 7 · CONSULT CTA ────────────────────────────────────────────
+          // ── 6 · CONSULT CTA ────────────────────────────────────────────
           _ConsultCard(
             onTap: () => context.push(
               '/chat',
               extra: {'geometry': widget.geometry, 'imagePath': _savedImagePath},
             ),
-          ).animate().fadeIn(delay: 3000.ms, duration: 400.ms),
+          ).animate().fadeIn(delay: 2900.ms, duration: 400.ms),
 
           const SizedBox(height: Sp.xl),
 
-          // ── 8 · DEEPER ANALYSIS ─ collapsed; the full detail dump ──────
+          // ── 7 · DEEPER ANALYSIS ─ always-open full breakdown ───────────
+          // Previously the two nested dropdowns (this panel + the inner
+          // HiddenDepthPanel) gated content behind two taps. That's our
+          // moat — 16 measurements, archetype match, feature-by-feature
+          // read, GPT prose — no other app surfaces it. Release it all.
           _DeeperAnalysisPanel(
             analysis:   a,
             geometry:   widget.geometry,
             match:      match,
             savedImagePath: _savedImagePath,
-          ).animate().fadeIn(delay: 3200.ms, duration: 400.ms),
+          ).animate().fadeIn(delay: 3000.ms, duration: 400.ms),
 
           const SizedBox(height: Sp.xl),
 
@@ -527,6 +505,19 @@ class _ReportScreenState extends State<ReportScreen> {
             .animate().fadeIn(delay: 1500.ms, duration: 500.ms)
             .slideY(begin: 0.05, end: 0,
                 delay: 1500.ms, duration: 500.ms, curve: Curves.easeOut),
+
+          const SizedBox(height: Sp.xl),
+
+          // ── 8 · PROTOCOL CTA ─ the final commit moment ─────────────────
+          // Moved to sit just above the Done/Consult row so it's the last
+          // thing the user sees as they finish reading. Auto-prescribed
+          // 60-day routine keyed to the scan's pulldown axis. If a
+          // protocol is already active the card morphs to "Continue day
+          // X" rather than overwriting it.
+          _ProtocolCtaCard(
+            pulldown: a.report.pulldown,
+            geometry: widget.geometry,
+          ).animate().fadeIn(delay: 3200.ms, duration: 400.ms),
 
           const SizedBox(height: Sp.xl),
 
@@ -579,9 +570,15 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 }
 
-// ── Consultation CTA card ────────────────────────────────────────────────────
-// ── DEEPER ANALYSIS · collapsed disclosure housing all old widgets ──────────
-class _DeeperAnalysisPanel extends StatefulWidget {
+// ── Full breakdown — always open, always rendered ───────────────────────────
+//
+// Was a tap-to-expand disclosure. User's call: "instead of drop down, open
+// them so it's one big page. That's our thing — we can give all those
+// details no one else can. So release it all." Header + animation removed;
+// content rendered directly. Try-on chips removed too (per the same note:
+// the presets were feeling like a gimmick on the results card, and the
+// Mirror chat is where on-demand renders live now).
+class _DeeperAnalysisPanel extends StatelessWidget {
   final MirrorAnalysis analysis;
   final FaceGeometry geometry;
   final ArchetypeMatch match;
@@ -590,155 +587,70 @@ class _DeeperAnalysisPanel extends StatefulWidget {
     required this.analysis, required this.geometry, required this.match,
     this.savedImagePath,
   });
-  @override
-  State<_DeeperAnalysisPanel> createState() => _DeeperAnalysisPanelState();
-}
-
-class _DeeperAnalysisPanelState extends State<_DeeperAnalysisPanel> {
-  bool _open = false;
 
   @override
   Widget build(BuildContext context) {
+    final a = analysis;
+    final scoreComputed = ScoringService.compute(geometry);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => setState(() => _open = !_open),
-            borderRadius: BorderRadius.circular(Rd.lg),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: Sp.md, vertical: 16),
-              decoration: BoxDecoration(
-                color: AppColors.surface1,
-                borderRadius: BorderRadius.circular(Rd.lg),
-                border: Border.all(
-                  color: AppColors.measure.withValues(alpha: 0.38), width: 0.9),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 38, height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.measure.withValues(alpha: 0.14),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.measure.withValues(alpha: 0.6), width: 0.8),
-                    ),
-                    child: const Icon(Icons.all_inclusive,
-                      size: 17, color: AppColors.measure),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('READ THE FULL BREAKDOWN',
-                          style: AppTypography.label.copyWith(
-                            color: AppColors.measure,
-                            letterSpacing: 2.6, fontSize: 10.5,
-                            fontWeight: FontWeight.w900)),
-                        const SizedBox(height: 3),
-                        Text('All 16 measurements · GPT read · fixes timeline',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textTertiary, fontSize: 11.5)),
-                      ],
-                    ),
-                  ),
-                  AnimatedRotation(
-                    turns: _open ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 240),
-                    child: const Icon(Icons.expand_more_rounded,
-                      color: AppColors.measure, size: 22),
-                  ),
-                ],
-              ),
-            ),
+        // Small section masthead so the breakdown reads as its own block,
+        // not a random pile of cards.
+        Text('FULL BREAKDOWN',
+          style: AppTypography.label.copyWith(
+            color: AppColors.measure,
+            letterSpacing: 2.8, fontSize: 10.5,
+            fontWeight: FontWeight.w900)),
+        const SizedBox(height: 3),
+        Text('All 16 measurements · archetype · feature-by-feature read',
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.textTertiary, fontSize: 11.5, height: 1.4)),
+        const SizedBox(height: Sp.md),
+
+        // Archetype details
+        ArchetypeCard(match: match),
+        const SizedBox(height: Sp.md),
+
+        // Feature-by-feature deep read
+        FeatureGrid(
+          reads: FeatureAnalysisService.analyse(geometry),
+          onSeeIt: (read) => context.push(
+            '/chat',
+            extra: {
+              'geometry':  geometry,
+              'imagePath': savedImagePath,
+              'autoSend':  read.tryonPrompt,
+            },
           ),
         ),
+        const SizedBox(height: Sp.md),
 
-        ClipRect(
-          child: AnimatedSize(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-            alignment: Alignment.topCenter,
-            child: _open ? _fullDetail(context) : const SizedBox.shrink(),
-          ),
-        ),
-      ],
-    );
-  }
+        // 16-metric grid — previously behind a second tap, now inline
+        HiddenDepthPanel(geometry: geometry),
+        const SizedBox(height: Sp.md),
 
-  Widget _fullDetail(BuildContext context) {
-    final a = widget.analysis;
-    return Padding(
-      padding: const EdgeInsets.only(top: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Archetype details
-          ArchetypeCard(match: widget.match),
+        // GPT prose blocks
+        if (a.report.oneLineVerdict.isNotEmpty) ...[
+          VerdictCard(
+            verdict:   a.report.oneLineVerdict,
+            score:     scoreComputed.value,
+            tier:      scoreComputed.tierLabel,
+            archetype: match.archetype.name),
           const SizedBox(height: Sp.md),
-
-          // Feature-by-feature deep read
-          FeatureGrid(
-            reads: FeatureAnalysisService.analyse(widget.geometry),
-            onSeeIt: (read) => context.push(
-              '/chat',
-              extra: {
-                'geometry':  widget.geometry,
-                'imagePath': widget.savedImagePath,
-                'autoSend':  read.tryonPrompt,
-              },
-            ),
-          ),
-          const SizedBox(height: Sp.md),
-
-          // 16-metric grid behind one more tap
-          HiddenDepthPanel(geometry: widget.geometry),
-          const SizedBox(height: Sp.md),
-
-          // GPT prose blocks
-          if (a.report.oneLineVerdict.isNotEmpty) ...[
-            VerdictCard(
-              verdict:   a.report.oneLineVerdict,
-              score:     ScoringService.compute(widget.geometry).value,
-              tier:      ScoringService.compute(widget.geometry).tierLabel,
-              archetype: widget.match.archetype.name),
-            const SizedBox(height: Sp.md),
-          ],
-
-          if (a.report.boneReading.isNotEmpty) ...[
-            _Block(label: 'THE READ', color: AppColors.measure,
-              body: a.report.boneReading),
-            const SizedBox(height: Sp.md),
-          ],
-          _Block(label: 'WHAT\'S ALREADY WORKING', color: AppColors.signalGreen,
-            body: a.report.strongest),
-          const SizedBox(height: Sp.md),
-          _Block(label: 'WHAT\'S HOLDING IT BACK', color: AppColors.signalAmber,
-            body: a.report.pulldown),
-
-          const SizedBox(height: Sp.md),
-
-          // Quick-action chips — kept here for depth users who want more renders
-          Text('TRY MORE LOOKS',
-            style: AppTypography.label.copyWith(
-              color: AppColors.textTertiary, letterSpacing: 2.5, fontSize: 9)),
-          const SizedBox(height: Sp.sm),
-          QuickTryonChips(
-            geometry: widget.geometry,
-            onTap: (style, cat) => context.push(
-              '/chat',
-              extra: {
-                'geometry':  widget.geometry,
-                'imagePath': widget.savedImagePath,
-                'autoSend':  style,
-              },
-            ),
-          ),
         ],
-      ),
+
+        if (a.report.boneReading.isNotEmpty) ...[
+          _Block(label: 'THE READ', color: AppColors.measure,
+            body: a.report.boneReading),
+          const SizedBox(height: Sp.md),
+        ],
+        _Block(label: 'WHAT\'S ALREADY WORKING', color: AppColors.signalGreen,
+          body: a.report.strongest),
+        const SizedBox(height: Sp.md),
+        _Block(label: 'WHAT\'S HOLDING IT BACK', color: AppColors.signalAmber,
+          body: a.report.pulldown),
+      ],
     );
   }
 }
