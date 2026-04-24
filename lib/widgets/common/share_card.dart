@@ -148,12 +148,14 @@ class ShareCard extends StatelessWidget {
               const SizedBox(height: 16),
 
               // ── 4 · PROOF LINES — CAPS, WHITE, companion scale ──
+              // Shrunk from 32 → 24 so they read as supporting beats to
+              // the red tagline above, matching the smaller hero bullets.
               for (var i = 0; i < proofs.length; i++) ...[
                 Text(proofs[i].toUpperCase(),
                   style: GoogleFonts.inter(
                     color: Colors.white,
-                    fontSize: 32, letterSpacing: 1.6,
-                    fontWeight: FontWeight.w700, height: 1.22,
+                    fontSize: 24, letterSpacing: 1.4,
+                    fontWeight: FontWeight.w700, height: 1.25,
                   )),
                 if (i != proofs.length - 1) const SizedBox(height: 6),
               ],

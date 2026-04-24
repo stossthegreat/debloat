@@ -15,6 +15,7 @@ class FaceGeometryService {
     final noseBridge      = contours[FaceContourType.noseBridge]?.points ?? [];
     final noseBottom      = contours[FaceContourType.noseBottom]?.points ?? [];
     final leftEyebrow     = contours[FaceContourType.leftEyebrowTop]?.points ?? [];
+    final rightEyebrow    = contours[FaceContourType.rightEyebrowTop]?.points ?? [];
     final upperLipTop     = contours[FaceContourType.upperLipTop]?.points ?? [];
     final upperLipBottom  = contours[FaceContourType.upperLipBottom]?.points ?? [];
     final lowerLipTop     = contours[FaceContourType.lowerLipTop]?.points ?? [];
@@ -58,6 +59,8 @@ class FaceGeometryService {
         leftEyeContour.length;
     final rightEyeCX = rightEyeContour.map((p) => p.x).reduce((a, b) => a + b) /
         rightEyeContour.length;
+    final rightEyeCY = rightEyeContour.map((p) => p.y).reduce((a, b) => a + b) /
+        rightEyeContour.length;
     // ── Face bounding box from oval ────────────────────────────────────────
     final ovalXs = faceOval.map((p) => p.x.toDouble()).toList();
     final ovalYs = faceOval.map((p) => p.y.toDouble()).toList();
@@ -78,12 +81,58 @@ class FaceGeometryService {
     }
 
     // ── Symmetry ──────────────────────────────────────────────────────────
+    // Old impl compared only eye-center X offsets from the face midline. That
+    // trips `symmetryScore >= 85` for almost everyone because there's only
+    // one signal — and nobody sends an asymmetric selfie facing straight on.
+    // We now average horizontal midline deviation across 4 paired features:
+    // eye centers, eyebrow centroids, mouth corners, and upper jaw edges.
+    // Each pair's contribution is the |leftΔ - rightΔ| / faceWidth, then
+    // averaged. Scale 8.0 tuned so elite-symmetric faces still peak near 95.
     final faceCX = (faceLeft + faceRight) / 2;
-    final leftEyeDistFromCenter  = (faceCX - leftEyeCX).abs();
-    final rightEyeDistFromCenter = (rightEyeCX - faceCX).abs();
-    final eyeAsymmetry = (leftEyeDistFromCenter - rightEyeDistFromCenter).abs() /
-        faceWidth;
-    final symmetryScore = ((1.0 - eyeAsymmetry * 6.0).clamp(0.4, 1.0) * 100);
+    double centroidX(List<math.Point<int>> pts) =>
+        pts.isEmpty ? faceCX
+            : pts.map((p) => p.x.toDouble()).reduce((a, b) => a + b) / pts.length;
+
+    final pairOffsets = <double>[];
+
+    // Pair 1 — eye centers (always present given hasData guard).
+    pairOffsets.add(
+      ((faceCX - leftEyeCX).abs() - (rightEyeCX - faceCX).abs()).abs() / faceWidth);
+
+    // Pair 2 — eyebrow centroids (skip if either side missing).
+    if (leftEyebrow.isNotEmpty && rightEyebrow.isNotEmpty) {
+      final lbX = centroidX(leftEyebrow);
+      final rbX = centroidX(rightEyebrow);
+      pairOffsets.add(
+        ((faceCX - lbX).abs() - (rbX - faceCX).abs()).abs() / faceWidth);
+    }
+
+    // Pair 3 — mouth corners (first & last points on upperLipTop are the
+    // left and right corners in ML Kit's ordering).
+    if (upperLipTop.length >= 2) {
+      final lmx = upperLipTop.first.x.toDouble();
+      final rmx = upperLipTop.last.x.toDouble();
+      pairOffsets.add(
+        ((faceCX - lmx).abs() - (rmx - faceCX).abs()).abs() / faceWidth);
+    }
+
+    // Pair 4 — upper jaw width. Take oval points near the cheekbone band
+    // and compare leftmost vs rightmost distance from centerline.
+    if (faceOval.length >= 8) {
+      final cheekBandY = faceTop + faceHeight * 0.42;
+      final cheekBand = faceOval
+          .where((p) => (p.y - cheekBandY).abs() < faceHeight * 0.08)
+          .toList();
+      if (cheekBand.length >= 2) {
+        final ljx = cheekBand.map((p) => p.x.toDouble()).reduce(math.min);
+        final rjx = cheekBand.map((p) => p.x.toDouble()).reduce(math.max);
+        pairOffsets.add(
+          ((faceCX - ljx).abs() - (rjx - faceCX).abs()).abs() / faceWidth);
+      }
+    }
+
+    final meanOffset = pairOffsets.reduce((a, b) => a + b) / pairOffsets.length;
+    final symmetryScore = ((1.0 - meanOffset * 8.0).clamp(0.4, 1.0) * 100);
 
     // ── FWHR ──────────────────────────────────────────────────────────────
     // Width at cheekbones (approx middle of face oval)
@@ -185,13 +234,25 @@ class FaceGeometryService {
       lipFullness = faceHeight > 0 ? (lipH / faceHeight * 10).clamp(0.0, 1.0) : 0.5;
     }
 
-    // ── Brow-to-eye gap (vertical) ───────────────────────────────────────
+    // ── Brow-to-eye gap (vertical) — average both sides ──────────────────
+    // Old impl only used the left brow; users with asymmetric brow height
+    // got a one-sided reading. Average the two sides when both contours
+    // are available, fall back to whichever one we have.
     double brow2EyeGap = 0.04;
-    if (leftEyebrow.isNotEmpty) {
-      final browBottomY = leftEyebrow.map((p) => p.y.toDouble()).reduce(math.max);
-      brow2EyeGap = faceHeight > 0
-          ? ((leftEyeCY - browBottomY).abs() / faceHeight).clamp(0.0, 0.2)
-          : 0.04;
+    final hasLeftBrow = leftEyebrow.isNotEmpty;
+    final hasRightBrow = rightEyebrow.isNotEmpty;
+    if (faceHeight > 0 && (hasLeftBrow || hasRightBrow)) {
+      final samples = <double>[];
+      if (hasLeftBrow) {
+        final browBottomY = leftEyebrow.map((p) => p.y.toDouble()).reduce(math.max);
+        samples.add((leftEyeCY - browBottomY).abs() / faceHeight);
+      }
+      if (hasRightBrow) {
+        final browBottomY = rightEyebrow.map((p) => p.y.toDouble()).reduce(math.max);
+        samples.add((rightEyeCY - browBottomY).abs() / faceHeight);
+      }
+      brow2EyeGap = (samples.reduce((a, b) => a + b) / samples.length)
+          .clamp(0.0, 0.2);
     }
 
     // ── Philtrum ratio (nose base → upper lip top / lower third) ─────────

@@ -238,27 +238,113 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   /// Build the 3 micro-proof one-liners shown under the hero + on the share
-  /// card. Pulls the top-3 STRENGTH traits and renders their pre-composed
-  /// emotional heroLine strings — "Your hunter eyes beat 88% of men" reads
-  /// and shares harder than "TOP 12% HUNTER EYES". Falls back to neutral
-  /// but punchy lines when fewer than 3 strengths surfaced.
+  /// card. Each line covers a DIFFERENT feature category and a DIFFERENT
+  /// rhetorical angle — so users never see "hunter eyes beat 88% of men"
+  /// on line 1 and "ideal eye spacing — top 20%" on line 2. Three beats:
+  ///
+  ///   1 · FEATURE FLEX     — cultural name + measurement   ("Hunter eyes — +3.2° tilt")
+  ///   2 · MEASUREMENT      — number + percentile            ("Symmetry 91/100 — top 8%")
+  ///   3 · PERCENTILE FLEX  — rarity framing                 ("Dominant frame, rarer than 92% of men")
+  ///
+  /// Falls back to neutral but punchy lines when fewer than 3 unique
+  /// categories surfaced (e.g. a dim scan with only one strength trait).
   List<String> _buildMicroProofs(List<Trait> traits) {
-    final strengths = traits
-        .where((t) => t.kind == TraitKind.strength)
-        .take(3)
-        .toList();
-    final lines = [
-      for (final t in strengths)
-        t.heroLine.trim().isNotEmpty ? t.heroLine : t.name,
+    // Pick one trait per feature category so the three bullets never
+    // double up on the same feature (e.g. HUNTER EYES + IDEAL EYE SPACING
+    // both collapsing to eyes).
+    final byCategory = <String, Trait>{};
+    for (final t in traits.where((t) => t.kind == TraitKind.strength)) {
+      final cat = _categoryOf(t.name);
+      byCategory.putIfAbsent(cat, () => t);
+      if (byCategory.length == 3) break;
+    }
+    final picks = byCategory.values.toList();
+
+    final lines = <String>[
+      if (picks.isNotEmpty) _flexLine(picks[0]),
+      if (picks.length >= 2) _measureLine(picks[1]),
+      if (picks.length >= 3) _percentileLine(picks[2]),
+    ];
+
+    // Fallbacks — three distinct angles so the fallback trio doesn't
+    // repeat itself either.
+    const fallbacks = [
+      'Measured profile — 16 geometry points',
+      'Proportions on spec — balanced frame',
+      'Structured archetype — bones rarer than most',
     ];
     while (lines.length < 3) {
-      lines.add(const [
-        'Measured profile — 16 geometry points',
-        'Balanced frame — proportions check',
-        'Structured archetype — bones on spec',
-      ][lines.length]);
+      lines.add(fallbacks[lines.length]);
     }
     return lines;
+  }
+
+  /// Coarse feature-category key so we dedupe eyes vs symmetry vs frame.
+  static String _categoryOf(String traitName) {
+    final n = traitName.toUpperCase();
+    if (n.contains('EYE')) return 'EYES';
+    if (n.contains('SYMMETRY')) return 'SYMMETRY';
+    if (n.contains('BROW')) return 'BROW';
+    if (n.contains('LIP')) return 'LIPS';
+    if (n.contains('FRAME') || n.contains('DOMINANT')) return 'FRAME';
+    if (n.contains('THIRD') || n.contains('PROPORTION') || n.contains('GOLDEN')) {
+      return 'PROPORTIONS';
+    }
+    if (n.contains('JAW') || n.contains('CHIN')) return 'JAW';
+    return n;
+  }
+
+  /// Bullet 1 — name the feature, cite the measurement. Shareable on its
+  /// own. Pulls from the trait's pre-composed `detail` (e.g. "+3.1° TILT").
+  static String _flexLine(Trait t) {
+    final name = _culturalName(t.name);
+    final detail = t.detail.trim();
+    return detail.isEmpty ? name : '$name — $detail';
+  }
+
+  /// Bullet 2 — lead with the feature and its measurement, add a
+  /// percentile label as a secondary flex. Different rhythm from bullet 1
+  /// so it doesn't read as a repeat.
+  static String _measureLine(Trait t) {
+    final name = _culturalName(t.name);
+    final detail = t.detail.trim();
+    final pct = t.pct.trim();
+    if (detail.isEmpty && pct.isEmpty) return name;
+    if (detail.isEmpty) return '$name — $pct';
+    if (pct.isEmpty) return '$name at $detail';
+    return '$name $detail — $pct';
+  }
+
+  /// Bullet 3 — pure rarity framing. "Rarer than X% of men" reads harder
+  /// than "top X%" for the closing beat. Skips the measurement so the
+  /// shape contrasts with bullets 1 & 2.
+  static String _percentileLine(Trait t) {
+    final name = _culturalName(t.name);
+    final pct = t.pct.trim();
+    if (pct.toUpperCase().startsWith('TOP')) {
+      // "TOP 8%" → "rarer than 92% of men"
+      final m = RegExp(r'TOP\s+(\d+)').firstMatch(pct.toUpperCase());
+      if (m != null) {
+        final beats = 100 - int.parse(m.group(1)!);
+        return '$name — rarer than $beats% of men';
+      }
+    }
+    return pct.isEmpty ? name : '$name — $pct';
+  }
+
+  /// Map the trait's grid-label ("HUNTER EYES", "RARE SYMMETRY") to the
+  /// short cultural phrase the bullets render with.
+  static String _culturalName(String raw) {
+    final n = raw.toUpperCase();
+    if (n.contains('HUNTER')) return 'Hunter eyes';
+    if (n.contains('SYMMETRY')) return 'Symmetry';
+    if (n.contains('MODEL LIPS') || n == 'LIPS') return 'Model lips';
+    if (n.contains('DOMINANT FRAME')) return 'Dominant frame';
+    if (n.contains('GOLDEN THIRDS')) return 'Golden thirds';
+    if (n.contains('DOMINANT BROW')) return 'Dominant brow';
+    if (n.contains('IDEAL EYE SPACING')) return 'Eye spacing';
+    // Default: title-case the raw trait name.
+    return raw[0].toUpperCase() + raw.substring(1).toLowerCase();
   }
 
   Widget _buildReport(MirrorAnalysis a) {
@@ -279,18 +365,25 @@ class _ReportScreenState extends State<ReportScreen> {
 
     // The tagline under the before/after on both the results hero and
     // the share card. Priority order:
-    //   1. The honest-rating viral killer line (_honest.note) — one
-    //      sentence leading with the strongest feature, built for
-    //      shareability. Freshest per user, never templated.
-    //   2. The GPT analyse `oneLineVerdict` — longer, measurement-cited.
-    //   3. A computed fallback anchored to their actual strongest axis
-    //      so it never defaults to the same string twice.
+    //   1. The honest-rating viral killer line (_honest.note) — built to
+    //      the 3-beat template "<feature> — <metric>. <verdict>."
+    //   2. The top strength trait's pre-composed heroLine — already
+    //      punchy, already anchored to a real geometry metric. Better
+    //      fallback than the longer GPT prose verdict when /rate refused.
+    //   3. GPT analyse `oneLineVerdict` — longer, measurement-cited.
+    //   4. Strongest-axis fallback so it never defaults blank.
     final honestNote = (_honest?.note ?? '').trim();
+    final topStrengthLine = traits
+        .where((t) => t.kind == TraitKind.strength)
+        .map((t) => t.heroLine.trim())
+        .firstWhere((s) => s.isNotEmpty, orElse: () => '');
     final tagline = honestNote.isNotEmpty
         ? honestNote
-        : (a.report.oneLineVerdict.trim().isNotEmpty
-            ? a.report.oneLineVerdict
-            : '${score.strongestAxis.$1} carries the frame.');
+        : (topStrengthLine.isNotEmpty
+            ? topStrengthLine
+            : (a.report.oneLineVerdict.trim().isNotEmpty
+                ? a.report.oneLineVerdict
+                : '${score.strongestAxis.$1} carries the frame.'));
 
     // 6-axis radar values (each 0..1) built from the same measurements
     // used by the trait system.
@@ -341,16 +434,18 @@ class _ReportScreenState extends State<ReportScreen> {
                   currentScore:   _honest?.score ?? score.value,
                   projectedScore: projected,
                   tagline:        tagline,
-                  // First two bullets = the two scores (our moat, named).
-                  // Third bullet = the top strength trait so the card
-                  // still flexes something specific.
+                  // Keep one score-flex line so the share card has a
+                  // proof number. The other two come straight from the
+                  // on-screen micro-proofs so what gets shared matches
+                  // what the user saw — no two different bullet sets,
+                  // no bullets that all key on the same feature.
                   microProofs: [
                     if (_honest != null)
                       'HONEST LOOKS · ${_honest!.score}/100'
                     else
                       'BONES · ${score.value}/100',
-                    'BONE STRUCTURE · ${score.value}/100',
-                    microProofs.isNotEmpty ? microProofs.first : 'MEASURED PROFILE',
+                    if (microProofs.isNotEmpty) microProofs[0],
+                    if (microProofs.length >= 2) microProofs[1],
                   ],
                   text: '${_honest?.score ?? score.value} → $projected. '
                         'Same face. mirrorly.app',
@@ -399,16 +494,16 @@ class _ReportScreenState extends State<ReportScreen> {
             labels: const ['EYES', 'JAW', 'SYMMETRY', 'LIPS', 'FWHR', 'BALANCE'],
           ).animate().fadeIn(delay: 1900.ms, duration: 500.ms),
 
-          const SizedBox(height: Sp.md),
+          const SizedBox(height: Sp.xl),
 
-          // ── 4 · APPLY ALL FIXES ────────────────────────────────────────
-          // BeforeAfterCard removed — the hero card now carries the B/A
-          // moment, and showing it twice diluted the impact.
-          //
-          // When the hero URL is empty (Replicate was down during /scan and
-          // we returned report-only), the button's state morphs to a
+          // ── 4 · APPLY ALL FIXES ─ the primary CTA, above the fixes ─────
+          // Lives directly above the 3 fix cards so the "generate me" moment
+          // sits where the eye lands right before the advice itself. When
+          // the hero URL is empty (Replicate was down during /scan and we
+          // returned report-only), the button's state morphs to a
           // "Generate hero image" retry that hits /maximize directly. No
-          // re-scan required.
+          // re-scan required. Tap resolves to the "Final form unlocked"
+          // card rendered in place of this button.
           _ApplyAllFixesButton(
             maximizedImageUrl: a.maximizedImageUrl,
             imageBytes:        widget.imageBytes,
@@ -418,7 +513,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 .toList(),
           ).animate().fadeIn(delay: 2400.ms, duration: 400.ms),
 
-          const SizedBox(height: Sp.xl),
+          const SizedBox(height: Sp.md),
 
           // ── 5 · FIX HEADLINES (text only — no per-fix Flux render) ─────
           // We deliberately don't render per-fix inline try-ons any more

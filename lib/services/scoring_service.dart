@@ -8,12 +8,18 @@ import '../models/face_geometry.dart';
 /// rather than 100 — leaves headroom, matches clinical grading norms, and
 /// prevents the ceiling feeling like a participation trophy.
 class ScoringService {
+  // Jaw was weighted 16 and chin 10, but the underlying `jawAngle` measure
+  // is a face-oval triangle apex (not a real gonial angle) and chin
+  // projection on a front-pose photo is a vertical-share proxy at best.
+  // Pulling jaw down to 10, keeping chin at 10 (axis is now rescaled), and
+  // redistributing the recovered 6 points to symmetry (+4) and thirds (+2)
+  // — which ARE measured reliably on ML Kit's contour set.
   static const _wCanthal  = 14.0;
-  static const _wSymmetry = 22.0;
-  static const _wThirds   = 14.0;
+  static const _wSymmetry = 26.0;
+  static const _wThirds   = 16.0;
   static const _wFwhr     = 14.0;
   static const _wEyeSpace = 10.0;
-  static const _wJaw      = 16.0;
+  static const _wJaw      = 10.0;
   static const _wChin     = 10.0;
   // sum = 100
 
@@ -99,11 +105,21 @@ class ScoringService {
     return math.max(0, 1 - (deg - 125) / 20);
   }
 
-  /// Chin projection: positive forward projection rewarded.
+  /// Chin dominance — the fraction of face height taken up between nose
+  /// tip and chin bottom. Previous impl expected values 0..4 and scored
+  /// everyone in a tiny 0.50–0.56 band because the source metric is clamped
+  /// 0..0.5. Rescaled against the observed male range: ~0.22 (weak) →
+  /// ~0.38 (dominant). Values outside that band clamp to 0 / 1 cleanly.
+  ///
+  /// NOTE: this is a vertical proportion (lower-face share of total face
+  /// height), not sagittal chin projection. Real chin projection needs a
+  /// side profile — the axis label is kept as "Chin projection" because
+  /// protocol_service keys on that exact string when prescribing routines.
   static double _chinAxis(double proj) {
-    if (proj >= 4) return 1.0;
-    if (proj >= 0) return 0.5 + (proj / 4) * 0.5;
-    return (0.5 + proj * 0.15).clamp(0.0, 1.0);
+    const weakAnchor     = 0.22;
+    const dominantAnchor = 0.38;
+    return ((proj - weakAnchor) / (dominantAnchor - weakAnchor))
+        .clamp(0.0, 1.0);
   }
 }
 

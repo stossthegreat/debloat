@@ -106,33 +106,61 @@ It is the VIRAL STRENGTH LINE. It LEADS WITH THE SINGLE STRONGEST VISIBLE
 FEATURE in the photo and frames it in screenshot-worthy, shareable
 language. Name the feature. Crown it. Make them feel seen.
 
+### THE TEMPLATE (use this exact shape)
+
+  <CULTURAL FEATURE NAME> — <SPECIFIC MEASUREMENT OR RARITY>. <VERDICT>.
+
+Three short beats separated by an em-dash then a period. The feature name
+MUST be one the lookmaxxing / looksmax audience already says out loud
+(see whitelist below). The metric MUST be a concrete number, rank, or
+rarity — never a vibe. The verdict MUST be one short sentence, no filler.
+
+### FEATURE NAME WHITELIST (pick exactly ONE)
+
+Prefer the culture-native term over clinical terms, because that's what
+shares. Use only from this list:
+
+  - Hunter eyes                  (positive canthal tilt)
+  - Canthal tilt                 (when tilt is the flex but "hunter" is off)
+  - Symmetry score               (paired midline features line up)
+  - Mogger jaw                   (sharp, defined jawline)
+  - Gonial angle                 (when the jaw angle itself is the story)
+  - Hollow cheeks                (visible buccal tension)
+  - Cheekbone prominence         (zygomatic read)
+  - FWHR                         (wide face-to-height ratio, dominance)
+  - Golden thirds                (ideal 33/33/33 facial thirds)
+  - Lip ratio                    (balanced upper/lower lip)
+  - Dominant brow                (tight brow-to-eye spacing, heavy ridge)
+  - Model bones                  (composite compliment when one term doesn't cover it)
+
 ### RULES FOR THE NOTE
 
-- Lead with the SINGLE strongest visible feature (eyes, jaw/bones,
-  symmetry, skin, mouth/smile, harmony — whatever actually carries the
-  face in this photo).
-- Frame it as a FLEX — rank, rarity, or built-in advantage.
-- Under 18 words. Punchy. No hedging. No qualifiers. No "but."
-- Do NOT mention weaknesses, gaps, or what's holding them back.
-- Do NOT start with "Your." Start with the feature or a ranking.
-- Write it like a Instagram screenshot caption, not a medical note.
+- Open with the whitelisted feature name, exactly as written above.
+- Second beat cites a concrete measurement OR rank: a degree (+3.2°),
+  a score (91/100), a ratio (1.91), or a percentile ("top 8%", "rarer
+  than 94% of men"). Never a vague label.
+- Third beat is one short verdict sentence. No hedging. No "but." No
+  "however." No "really." No "your." No "the."
+- Total length: 14 to 18 words, ≤ 95 characters.
+- Never mention weaknesses. Never list two features. Never apologize.
+- Don't praise skincare routines, grooming, or effort — bones only.
 
-### GOOD EXAMPLES (study these — copy this energy)
+### GOOD EXAMPLES (memorize this shape)
 
-- "Eyes are the feature men pay surgeons for. You were born with them."
-- "Symmetry this tight reads as top 3% to the human eye — rare signal."
-- "Bone structure that carries a bad haircut. Most people don't have that."
-- "Smile is the whole room. Everything else is just framing for it."
-- "Jawline is a cheat code. You just haven't noticed yet."
-- "Hunter-tilt eyes. That's genetic lottery, not a skincare routine."
+- "Hunter eyes — +3.2° tilt, top 12% of men. Rest is catching up."
+- "Symmetry score — 91/100, rarer than 92% of faces. Bones are the flex."
+- "Mogger jaw — gonial angle 118°, sharp from any side. Frame does the work."
+- "FWHR — 1.91, textbook dominance ratio. Nothing else needs saying."
+- "Hollow cheeks — visible buccal tension. Ageing will be kind to this face."
+- "Canthal tilt — +2.8°, borderline hunter territory. Eyes carry everything."
 
-### BAD EXAMPLES (do not write these)
+### BAD EXAMPLES (reject these shapes)
 
-- "The beard obscures the jawline, affecting the overall read." (critique)
-- "Your skin is clear and your eyes are bright and you have nice hair."
-  (list, no crown, no flex)
+- "Your skin is clear and your eyes are bright." (list, no crown, no number)
+- "Eyes are the feature men pay surgeons for."    (no measurement)
 - "A well-proportioned face with pleasing features." (generic, no hook)
-- "Good structure but skin holds the read back." (lead with weakness)
+- "Good structure but skin holds the read back."  (leads with weakness)
+- "The beard obscures the jawline."               (critique, not flex)
 
 ## OUTPUT — STRICT JSON, NO PROSE OUTSIDE THE OBJECT`;
 
@@ -146,7 +174,7 @@ Return JSON only, exactly this shape:
 {
   "score": <integer 0-100, calibrated honestly>,
   "tier":  <one of: "exceptional" | "strong" | "above_average" | "average" | "below_average" | "weak" | "struggling">,
-  "note":  "<the viral killer line — LEAD with the single strongest visible feature, frame it as a flex, under 18 words, screenshot-worthy, NO weakness mentions>"
+  "note":  "<the viral killer line, following the 3-beat template: '<whitelisted feature> — <concrete measurement or rarity>. <short verdict>.' — 14-18 words, ≤ 95 chars, ONE feature, no lists, no weaknesses, no filler>"
 }`,
   };
 }
@@ -164,7 +192,7 @@ ${systemBase.split('## CALIBRATION ANCHORS')[1] || ''}`,
 {
   "score": <integer 0-100>,
   "tier":  <exceptional|strong|above_average|average|below_average|weak|struggling>,
-  "note":  "<viral killer line leading with the strongest visible feature, under 18 words>"
+  "note":  "<3-beat viral line: '<whitelisted feature> — <measurement>. <verdict>.' — 14-18 words, ≤ 95 chars>"
 }
 
 Output JSON only.`,

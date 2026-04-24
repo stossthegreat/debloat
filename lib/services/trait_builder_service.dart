@@ -74,9 +74,13 @@ class TraitBuilderService {
       ));
     }
 
-    // Face width-to-height ratio — "dominance" signal. Measured across
-    // zygomatic width and bizygomatic-to-lower-lip height. Reliable.
-    if (g.fwhr >= 1.80 && g.fwhr <= 2.00) {
+    // Face width-to-height ratio — "dominance" signal. Our cheek-width
+    // proxy uses ML Kit's face oval (not actual zygomatic landmarks), so
+    // the measurement drifts up to ±0.15 from true bizygomatic FWHR. The
+    // acceptance band is widened to 1.75–2.05 so that drift doesn't flip
+    // the trait on/off for borderline faces. Core "ideal" window 1.87–1.95
+    // still triggers the top-8% badge when the measurement lands there.
+    if (g.fwhr >= 1.75 && g.fwhr <= 2.05) {
       final pct = g.fwhr >= 1.87 && g.fwhr <= 1.95 ? 'TOP 8%' : 'TOP 22%';
       all.add(Trait(
         name: 'DOMINANT FRAME',

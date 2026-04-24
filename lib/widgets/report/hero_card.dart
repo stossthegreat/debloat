@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -44,6 +45,12 @@ class HeroCard extends StatefulWidget {
 class _HeroCardState extends State<HeroCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _counter;
+
+  // The after image on the right half starts blurred behind a "TAP TO
+  // REVEAL" chip, same pattern as the Mirror-tab try-on card. Variable
+  // reward UX — anticipation of the unveil lands harder than an always-
+  // visible result. Sticky once true for the life of this mount.
+  bool _revealed = false;
 
   @override
   void initState() {
@@ -115,15 +122,54 @@ class _HeroCardState extends State<HeroCard>
             aspectRatio: 10 / 9,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(Rd.sm),
-              child: Row(
+              child: Stack(
                 children: [
-                  Expanded(child: _half(
-                    bytes: widget.beforeBytes, url: null,
-                    label: 'NOW', align: Alignment.bottomLeft)),
-                  Container(width: 1, color: Colors.white),
-                  Expanded(child: _half(
-                    bytes: null, url: widget.afterUrl,
-                    label: 'FIXED', align: Alignment.bottomRight)),
+                  Row(
+                    children: [
+                      Expanded(child: _half(
+                        bytes: widget.beforeBytes, url: null,
+                        label: 'NOW', align: Alignment.bottomLeft,
+                        blurred: false)),
+                      Container(width: 1, color: Colors.white),
+                      Expanded(child: _half(
+                        bytes: null, url: widget.afterUrl,
+                        label: 'FIXED', align: Alignment.bottomRight,
+                        blurred: !_revealed,
+                        onTap: _revealed
+                            ? null
+                            : () => setState(() => _revealed = true))),
+                    ],
+                  ),
+                  // "TAP TO REVEAL" chip pinned over the right (FIXED) half
+                  // while still blurred. IgnorePointer so the underlying
+                  // half captures the tap.
+                  if (!_revealed)
+                    Positioned(
+                      right: 0, top: 0, bottom: 0,
+                      width: MediaQuery.of(context).size.width * 0.5 - 24,
+                      child: IgnorePointer(
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(100),
+                              border: Border.all(
+                                color: HeroCard.accentRed
+                                    .withValues(alpha: 0.8),
+                                width: 0.9),
+                            ),
+                            child: Text('TAP TO REVEAL',
+                              style: GoogleFonts.inter(
+                                color: HeroCard.accentRed,
+                                fontSize: 10, letterSpacing: 2.4,
+                                fontWeight: FontWeight.w900)),
+                          ),
+                        ),
+                      ),
+                    ).animate(onPlay: (c) => c.repeat(reverse: true))
+                      .fadeIn(duration: 900.ms),
                 ],
               ),
             ),
@@ -145,15 +191,16 @@ class _HeroCardState extends State<HeroCard>
           ).animate().fadeIn(delay: 1900.ms, duration: 500.ms),
 
           if (proofs.isNotEmpty) ...[
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
 
-            // Proof lines — big, all-caps, readable from across the room.
-            // No bullets. No boxes. No divider. The spacing is the structure.
+            // Proof lines — sized down (22 → 15) so they read as a trio
+            // of tight supporting beats to the tagline above, not as
+            // shouting peers. No bullets. No boxes. No divider.
             for (var i = 0; i < proofs.length; i++) ...[
               Text(proofs[i].toUpperCase(),
                 style: GoogleFonts.inter(
                   color: Colors.white,
-                  fontSize: 22, letterSpacing: 1.5,
+                  fontSize: 15, letterSpacing: 1.2,
                   fontWeight: FontWeight.w700, height: 1.35,
                 ),
               ).animate().fadeIn(
@@ -162,7 +209,7 @@ class _HeroCardState extends State<HeroCard>
               ).slideX(begin: -0.03, end: 0,
                 delay: Duration(milliseconds: 2100 + i * 140),
                 duration: 350.ms, curve: Curves.easeOut),
-              if (i != proofs.length - 1) const SizedBox(height: 4),
+              if (i != proofs.length - 1) const SizedBox(height: 6),
             ],
           ],
         ],
@@ -175,22 +222,32 @@ class _HeroCardState extends State<HeroCard>
     required String? url,
     required String label,
     required Alignment align,
+    required bool blurred,
+    VoidCallback? onTap,
   }) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (bytes != null)
-          Image.memory(bytes,
+    Widget img = bytes != null
+        ? Image.memory(bytes,
             fit: BoxFit.cover,
             alignment: const Alignment(0, -0.35))
-        else if (url != null && url.isNotEmpty)
-          Image.network(url,
-            fit: BoxFit.cover,
-            alignment: const Alignment(0, -0.35),
-            errorBuilder: (_, __, ___) =>
-              const ColoredBox(color: Color(0xFF0C0C0C)))
-        else
-          const ColoredBox(color: Color(0xFF0C0C0C)),
+        : (url != null && url.isNotEmpty
+            ? Image.network(url,
+                fit: BoxFit.cover,
+                alignment: const Alignment(0, -0.35),
+                errorBuilder: (_, __, ___) =>
+                  const ColoredBox(color: Color(0xFF0C0C0C)))
+            : const ColoredBox(color: Color(0xFF0C0C0C)));
+
+    if (blurred) {
+      img = ImageFiltered(
+        imageFilter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: img,
+      );
+    }
+
+    final stack = Stack(
+      fit: StackFit.expand,
+      children: [
+        img,
 
         Positioned(
           left: 0, right: 0, bottom: 0, height: 64,
@@ -220,6 +277,12 @@ class _HeroCardState extends State<HeroCard>
           ),
         ),
       ],
+    );
+
+    if (onTap == null) return stack;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(onTap: onTap, child: stack),
     );
   }
 }
