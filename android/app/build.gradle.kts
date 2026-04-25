@@ -1,9 +1,26 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Play Console upload-key fingerprints loaded from play-fingerprints.properties
+// — the values that must match the keystore at upload-keystore.jks for Play
+// Store to accept the AAB. The Verify-keystore CI step reads these and
+// fails the build if the keystore in the repo doesn't match, so a
+// wrong-key build never gets shipped past CI.
+val playFingerprintsFile = rootProject.file("app/play-fingerprints.properties")
+val playFingerprints = Properties().apply {
+    if (playFingerprintsFile.exists()) {
+        FileInputStream(playFingerprintsFile).use { load(it) }
+    }
+}
+val playUploadKeySha1   = playFingerprints.getProperty("play.upload.key.sha1",   "")
+val playUploadKeySha256 = playFingerprints.getProperty("play.upload.key.sha256", "")
 
 android {
     namespace = "com.mirrorly.mirrorly"
@@ -24,8 +41,18 @@ android {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId = "com.mirrorly.mirrorly"
+
+        // Bake the registered Play Console fingerprints into BuildConfig
+        // so any in-app integrity check or asset_links logic can read
+        // them at runtime without re-parsing the properties file.
+        buildConfigField("String", "PLAY_UPLOAD_KEY_SHA1",   "\"$playUploadKeySha1\"")
+        buildConfigField("String", "PLAY_UPLOAD_KEY_SHA256", "\"$playUploadKeySha256\"")
         // ML Kit Face Mesh requires Android 6.0+ (API 23). Below that the
         // detector loads but silently returns empty meshes — which was our
         // exact Android silent-failure bug.
