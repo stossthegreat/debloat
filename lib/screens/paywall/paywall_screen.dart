@@ -256,7 +256,15 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final canBuy = _packageFor(_selected) != null || !PurchaseConfig.isConfigured;
+    // CTA is buyable when RC delivered a real Package, OR we're in
+    // dev/stub modes where _buy() routes through the notConfigured
+    // fallback and just sets the local subscribed flag. Without the
+    // kBypassPaywall arm, every TestFlight build before the
+    // RevenueCat Offering is published would see a permanently grey
+    // CTA — not what we want during smoke-testing.
+    final canBuy = _packageFor(_selected) != null
+        || !PurchaseConfig.isConfigured
+        || kBypassPaywall;
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -300,7 +308,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         cadence: 'per month',
                         footnote: 'Auto-renew',
                         selected: _selected == _Tier.monthly,
-                        available: _offerings.monthly != null || !PurchaseConfig.isConfigured,
+                        available: true,
                         onTap: () {
                           HapticFeedback.selectionClick();
                           setState(() => _selected = _Tier.monthly);
@@ -314,7 +322,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         footnote: 'Auto-renew',
                         badge: 'BEST VALUE',
                         selected: _selected == _Tier.annual,
-                        available: _offerings.annual != null || !PurchaseConfig.isConfigured,
+                        available: true,
                         onTap: () {
                           HapticFeedback.selectionClick();
                           setState(() => _selected = _Tier.annual);
@@ -327,7 +335,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         cadence: '20 renders',
                         footnote: 'One-time',
                         selected: _selected == _Tier.credits,
-                        available: _offerings.credits != null || !PurchaseConfig.isConfigured,
+                        available: true,
                         onTap: () {
                           HapticFeedback.selectionClick();
                           setState(() => _selected = _Tier.credits);
