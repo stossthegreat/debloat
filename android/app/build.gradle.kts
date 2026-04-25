@@ -83,24 +83,17 @@ android {
     // SHA-256:
     //   76:E1:49:7A:35:36:DD:9A:02:8C:DB:46:5F:F8:D2:38:18:C0:FC:40:A2:55:53:C5:C7:AB:CF:2B:A7:5C:BD:ED
     signingConfigs {
-        create("upload") {
+        create("release") {
             storeFile = file("upload-keystore.jks")
             storePassword = System.getenv("STORE_PASSWORD") ?: "skeletalpt123"
-            keyAlias      = System.getenv("KEY_ALIAS")      ?: "skeletalpt"
-            keyPassword   = System.getenv("KEY_PASSWORD")   ?: "skeletalpt123"
+            keyAlias = System.getenv("KEY_ALIAS") ?: "skeletalpt"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: "skeletalpt123"
         }
     }
 
     buildTypes {
         release {
-            // Use the upload keystore for release so AAB is signed with the
-            // key registered in Play Console. Falls back to debug signing if
-            // the keystore file is missing (e.g. local dev with no .jks) so
-            // `flutter run --release` still works.
-            signingConfig = if (file("upload-keystore.jks").exists())
-                signingConfigs.getByName("upload")
-            else
-                signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
 
             // ML Kit classes are reached via reflection inside the detector
             // SDK. Without keep rules, R8 silently strips them and the
