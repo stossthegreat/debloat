@@ -91,11 +91,15 @@ class _PaywallScreenState extends State<PaywallScreen> {
   //  hardcoded prices, even if the offering is misconfigured.
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Visual-only placeholder prices used under kBypassPaywall while
-  /// RevenueCat isn't configured. Flipped off for release.
-  static const _placeholderMonthly = r'$9.99';
-  static const _placeholderAnnual  = r'$49.99';
-  static const _placeholderCredits = r'$14.99';
+  /// Visual-only placeholder prices used while RevenueCat hasn't yet
+  /// returned a real Offering (Play / App Store products not yet
+  /// activated, or RC dashboard Offering not published). The moment a
+  /// real Package arrives, these are ignored — `_priceFor` always
+  /// prefers the live store price. Mirrors the Gobly pricing tier so
+  /// the paywall reads sensibly during pre-launch testing.
+  static const _placeholderMonthly = r'$4.99';
+  static const _placeholderAnnual  = r'$29.99';
+  static const _placeholderCredits = r'$9.99';
 
   String _priceFor(_Tier t) {
     final pkg = _packageFor(t);
@@ -121,9 +125,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
       final perMonth = p.price / 12.0;
       return _formatPrice(perMonth, p.currencyCode, p.priceString);
     }
-    // Placeholder: $49.99 / 12 ≈ $4.17 — replaced by real per-month
+    // Placeholder: $29.99 / 12 ≈ $2.50 — replaced by real per-month
     // value once the Annual Package loads from RevenueCat.
-    return r'$4.17';
+    return r'$2.50';
   }
 
   /// Format with the same currency symbol the store used — we steal

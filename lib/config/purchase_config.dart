@@ -37,10 +37,14 @@ class PurchaseConfig {
   static const proEntitlementId = 'pro';
 
   /// Product identifiers — MUST match exactly what's in App Store
-  /// Connect and Google Play Console.
+  /// Connect and Google Play Console. Naming convention follows the
+  /// Gobly pattern (`<app>_pro_<cadence>`):
+  ///   mirrorly_pro_monthly   →  Monthly subscription
+  ///   mirrorly_pro_annual    →  Annual subscription
+  ///   mirrorly_pro_rescue    →  20-credit one-time pack
   static const productIds = (
     monthly: 'mirrorly_pro_monthly',
-    yearly:  'mirrorly_pro_yearly',
+    yearly:  'mirrorly_pro_annual',
     credits: 'mirrorly_pro_rescue',
   );
 

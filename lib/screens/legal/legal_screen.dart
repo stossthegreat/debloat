@@ -142,7 +142,7 @@ class LegalDoc {
 const termsDoc = LegalDoc(
   title: 'Terms of Use',
   subtitle: 'MIRRORLY · THE AGREEMENT',
-  lastUpdatedLine: 'Last updated 23 April 2026.',
+  lastUpdatedLine: 'Last updated 25 April 2026.',
   sections: [
     LegalSection('ABOUT MIRRORLY',
       'Mirrorly is a self-assessment tool for cosmetic and grooming '
@@ -197,6 +197,19 @@ const termsDoc = LegalDoc(
       'to produce your measurements, score, and rendered outputs. '
       'We do not sell your photos. We do not train AI models on '
       'your photos.'),
+    LegalSection('FACE DATA',
+      'Mirrorly uses on-device computer-vision (Apple ML Kit on iOS, '
+      'Google ML Kit / MediaPipe on Android) to derive geometric '
+      'measurements from your selfie — eye position, jawline angle, '
+      'facial symmetry, proportions. These measurements are NUMBERS, '
+      'not face templates: Mirrorly does NOT perform facial '
+      'recognition, does NOT match your face to any identity, and '
+      'does NOT build a biometric template that could be used to '
+      'identify you. The selfie photo itself is sent to OpenAI '
+      '(GPT-4o Vision) and Replicate for analysis and rendering, '
+      'then forgotten — see the Privacy Policy for the data flow. '
+      'You can stop the app from collecting any face data at any '
+      'time by deleting it.'),
     LegalSection('ACCEPTABLE USE',
       'You agree not to use Mirrorly to scan, analyse, or render a '
       'face that is not your own without that person\'s explicit '
@@ -224,7 +237,7 @@ const termsDoc = LegalDoc(
 const privacyDoc = LegalDoc(
   title: 'Privacy Policy',
   subtitle: 'WHAT WE COLLECT · WHERE IT GOES',
-  lastUpdatedLine: 'Last updated 23 April 2026.',
+  lastUpdatedLine: 'Last updated 25 April 2026.',
   sections: [
     LegalSection('THE SHORT VERSION',
       'Your photos are processed on your device. We send your photo '
@@ -233,16 +246,48 @@ const privacyDoc = LegalDoc(
       'not train AI on your face. We do not require an account.'),
     LegalSection('WHAT WE COLLECT',
       'On your device: photos you take with the scan camera, the '
-      'measurements derived from them, your score, your active '
-      'protocol, and your purchase receipts. Nothing leaves your '
-      'device unless you tap a button that clearly says it will '
-      'send an image to our servers (e.g. "GENERATE IMAGE", '
+      'facial-geometry numbers derived from them (canthal tilt, jaw '
+      'angle, FWHR, symmetry score, facial thirds, etc.), your score, '
+      'your active protocol, and your purchase receipts. Nothing '
+      'leaves your device unless you tap a button that clearly says '
+      'it will send an image to our servers (e.g. "GENERATE IMAGE", '
       '"SCAN").\n\n'
       'On our servers, temporarily: the single photo you submit to '
       '/scan, /rate, /tryon, or /maximize for the duration of that '
       'one request (seconds), plus the measurements and the '
       'generated image URL. We do not attach your photo to a '
       'persistent account, because there is no account.'),
+    LegalSection('FACE DATA — WHAT IT IS, WHAT IT ISN\'T',
+      'Mirrorly uses on-device computer vision to derive geometric '
+      'measurements from your selfie (Apple ML Kit on iOS, Google '
+      'ML Kit on Android — both run entirely on the phone). These '
+      'measurements are plain numbers: a canthal-tilt degree, a jaw '
+      'angle, a symmetry score. They are NOT a biometric template '
+      'that could be used to recognise you, match you to another '
+      'photo, or unlock anything.\n\n'
+      'WHAT MIRRORLY DOES with face data:\n'
+      '• Compute and display your geometry score on-device.\n'
+      '• Send the photo to OpenAI (GPT-4o Vision) and Replicate '
+      '(Google Nano Banana, cdingram/face-swap) for the duration '
+      'of one API call to generate your analysis prose and your '
+      '"maximized twin" rendered image.\n'
+      '• Store the photo + the geometry numbers locally on your '
+      'device, in the app sandbox, until you delete the app.\n\n'
+      'WHAT MIRRORLY DOES NOT DO with face data:\n'
+      '• No facial recognition. We never match your face to any '
+      'identity, account, or external database.\n'
+      '• No biometric template. The geometry numbers are not a '
+      'fingerprint of your face — they describe shape, not identity.\n'
+      '• No long-term server storage. Photos sent to OpenAI / '
+      'Replicate are processed for one request and discarded by '
+      'their default API terms; we do not retain a copy on a '
+      'Mirrorly server.\n'
+      '• No model training. Neither Mirrorly nor any third party we '
+      'send your photo to trains AI models on it (per our use of '
+      'OpenAI and Replicate\'s default API endpoints, which exclude '
+      'API inputs from training).\n'
+      '• No sharing with data brokers, advertisers, or analytics '
+      'partners.'),
     LegalSection('WHO PROCESSES YOUR PHOTOS',
       'OpenAI — GPT-4o Vision runs your analysis and honest rating. '
       'Replicate — Google Nano Banana renders your transformation '
