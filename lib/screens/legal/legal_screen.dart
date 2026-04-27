@@ -276,7 +276,7 @@ const termsDoc = LegalDoc(
       'inside the app before they take effect. Continued use after '
       'an update constitutes acceptance.'),
     LegalSection('CONTACT',
-      'Questions? Email hello@mirrorly.app.'),
+      'Questions? Email info@m2mb.co.uk.'),
   ],
 );
 
@@ -348,7 +348,7 @@ const privacyDoc = LegalDoc(
     LegalSection('CHILDREN',
       'Mirrorly is not intended for children under 13. We do not '
       'knowingly collect data from children under 13. If you '
-      'believe a child has used the app, email hello@mirrorly.app '
+      'believe a child has used the app, email info@m2mb.co.uk '
       'and we will delete any on-device and server-side records '
       'associated with the submission.'),
     LegalSection('YOUR RIGHTS',
@@ -370,6 +370,6 @@ const privacyDoc = LegalDoc(
       'We may update this policy. Material changes will be '
       'surfaced inside the app before they take effect.'),
     LegalSection('CONTACT',
-      'Questions or data requests? Email hello@mirrorly.app.'),
+      'Questions or data requests? Email info@m2mb.co.uk.'),
   ],
 );

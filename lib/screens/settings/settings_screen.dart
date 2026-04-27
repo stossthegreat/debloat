@@ -179,7 +179,7 @@ class SettingsScreen extends StatelessWidget {
               _SettingTile(
                 icon: Icons.mail_outline,
                 title: 'Contact',
-                subtitle: 'hello@mirrorly.app',
+                subtitle: 'info@m2mb.co.uk',
                 onTap: () => _copyEmail(context),
               ),
 
@@ -272,10 +272,10 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _copyEmail(BuildContext ctx) async {
-    await Clipboard.setData(const ClipboardData(text: 'hello@mirrorly.app'));
+    await Clipboard.setData(const ClipboardData(text: 'info@m2mb.co.uk'));
     if (!ctx.mounted) return;
     ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-      content: const Text('hello@mirrorly.app — copied. Paste into your mail app.'),
+      content: const Text('info@m2mb.co.uk — copied. Paste into your mail app.'),
       behavior: SnackBarBehavior.floating,
       backgroundColor: AppColors.surface2,
     ));
