@@ -192,7 +192,15 @@ class _PaywallScreenState extends State<PaywallScreen> {
         break;
 
       case PurchaseOutcome.error:
-        _snack('Purchase could not complete. Please try again.');
+        // Show the actual cause from RevenueCat so the user (and we, in
+        // bug reports) know whether Play Billing said "product
+        // unavailable", "billing service disconnected", "sideloaded
+        // APK can't purchase", etc. — instead of the old generic
+        // message that hid every Android-side cause.
+        final detail = PurchaseService.lastErrorMessage;
+        _snack(detail != null && detail.isNotEmpty
+            ? detail
+            : 'Purchase could not complete. Please try again.');
         break;
     }
   }

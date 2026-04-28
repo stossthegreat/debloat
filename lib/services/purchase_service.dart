@@ -1,5 +1,7 @@
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../config/purchase_config.dart';
@@ -25,6 +27,14 @@ class PurchaseService {
   static bool _initialized = false;
   static PurchaseOfferings? _cached;
 
+  /// Most recent purchase / restore failure, in human-readable form.
+  /// Surfaced by the paywall as a toast so users (and reviewers, and us)
+  /// know whether Android Play Billing said "product unavailable",
+  /// "billing service disconnected", "item already owned", etc., instead
+  /// of the old generic "Purchase could not complete" message that hid
+  /// every Android-side cause.
+  static String? lastErrorMessage;
+
   // ─────────────────────────────────────────────────────────────────────────
   //  INITIALISATION
   // ─────────────────────────────────────────────────────────────────────────
@@ -41,7 +51,14 @@ class PurchaseService {
         : PurchaseConfig.androidApiKey;
     if (apiKey.isEmpty) return;
 
-    await Purchases.setLogLevel(LogLevel.error);
+    // Verbose logging in debug builds + on Android specifically. Android
+    // Play Billing has a long list of failure modes (product not in any
+    // active offering, sideloaded APK, test account not licensed, etc.)
+    // and the only way to find out which one fired is the RC log line
+    // tagged "[Purchases]" in adb logcat. iOS StoreKit fails much more
+    // cleanly — keep its log noise low.
+    final verbose = kDebugMode || Platform.isAndroid;
+    await Purchases.setLogLevel(verbose ? LogLevel.debug : LogLevel.error);
     await Purchases.configure(PurchasesConfiguration(apiKey));
     _initialized = true;
 
@@ -105,8 +122,18 @@ class PurchaseService {
   /// Kick off the platform purchase sheet. Returns [PurchaseOutcome] —
   /// the caller translates that into UI feedback (success → route
   /// forward, cancelled → nothing, error → toast).
+  ///
+  /// On error, [lastErrorMessage] is set with a human-readable cause so
+  /// the paywall can show it. Vital for Android — Play Billing has many
+  /// failure modes (sideloaded APK, product not in any active offering,
+  /// test account not licensed, item already owned, billing service
+  /// disconnected) and the user / reviewer needs to see which one.
   static Future<PurchaseOutcome> purchase(Package pkg) async {
-    if (!_initialized) return PurchaseOutcome.notConfigured;
+    lastErrorMessage = null;
+    if (!_initialized) {
+      lastErrorMessage = 'Store not configured.';
+      return PurchaseOutcome.notConfigured;
+    }
     try {
       final result = await Purchases.purchasePackage(pkg);
       final isPro = result.entitlements.all[PurchaseConfig.proEntitlementId]?.isActive ?? false;
@@ -121,14 +148,25 @@ class PurchaseService {
       if (isPro || isCreditPack) {
         return PurchaseOutcome.success;
       }
+      lastErrorMessage = 'Entitlement did not activate.';
       return PurchaseOutcome.error;
-    } on PurchasesErrorCode catch (_) {
-      return PurchaseOutcome.error;
-    } catch (err) {
-      final code = PurchasesErrorHelper.getErrorCode(err as dynamic);
+    } on PlatformException catch (err) {
+      // purchases_flutter throws PlatformException with the underlying
+      // RevenueCat error code attached as `details`. Surface both the
+      // user-friendly message and the code so we can grep logs.
+      final code = PurchasesErrorHelper.getErrorCode(err);
+      // ignore: avoid_print
+      print('[PurchaseService] purchase failed: code=$code msg=${err.message}');
       if (code == PurchasesErrorCode.purchaseCancelledError) {
+        lastErrorMessage = null;
         return PurchaseOutcome.cancelled;
       }
+      lastErrorMessage = _humanise(code, err.message);
+      return PurchaseOutcome.error;
+    } catch (err) {
+      // ignore: avoid_print
+      print('[PurchaseService] purchase failed (unknown): $err');
+      lastErrorMessage = err.toString();
       return PurchaseOutcome.error;
     }
   }
@@ -158,6 +196,40 @@ class PurchaseService {
       await LocalStoreService.setSubscribed(isPro);
     } catch (_) {
       // Network fail on launch is not fatal — the cached flag stands.
+    }
+  }
+
+  /// Map a RevenueCat error code + raw message into something a user
+  /// (and a reviewer, and us) can read. Most of these only fire on
+  /// Android because Play Billing is more chatty than StoreKit.
+  static String _humanise(PurchasesErrorCode? code, String? raw) {
+    switch (code) {
+      case PurchasesErrorCode.productNotAvailableForPurchaseError:
+        return 'Product not available in your store. The Offering may '
+               'not be live yet on Play Console / App Store Connect.';
+      case PurchasesErrorCode.productAlreadyPurchasedError:
+        return 'You already own this. Try Restore Purchases.';
+      case PurchasesErrorCode.storeProblemError:
+        return 'Play Store / App Store reported a problem. Try again.';
+      case PurchasesErrorCode.purchaseNotAllowedError:
+        return 'Purchases are blocked on this device — check parental '
+               'controls or sign in to a Play / Apple account that has '
+               'IAP enabled.';
+      case PurchasesErrorCode.purchaseInvalidError:
+        return 'The store rejected the purchase as invalid.';
+      case PurchasesErrorCode.networkError:
+        return 'Network error. Check your connection and try again.';
+      case PurchasesErrorCode.configurationError:
+        return 'Billing not configured. Sideloaded APKs cannot purchase '
+               '— install via Play Store internal testing track.';
+      case PurchasesErrorCode.unsupportedError:
+        return 'Billing isn\'t supported on this device or build.';
+      case PurchasesErrorCode.invalidReceiptError:
+        return 'The store returned an invalid receipt.';
+      case PurchasesErrorCode.invalidAppUserIdError:
+        return 'Invalid app user ID.';
+      default:
+        return raw ?? 'Purchase failed (${code?.name ?? "unknown"}).';
     }
   }
 }
