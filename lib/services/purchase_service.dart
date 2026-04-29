@@ -125,34 +125,68 @@ class PurchaseService {
   //  OFFERINGS (prices + packages)
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Fetch the current RevenueCat Offering. Returns a snapshot the
-  /// paywall can render without re-hitting the network. Cached for the
-  /// lifetime of the process.
+  /// Fetch the current RevenueCat Offering. By default re-hits RC every
+  /// call so dashboard changes (newly published Offering, package
+  /// added, product attached) show up the next time the paywall opens
+  /// without needing an app restart. Pass `useCache: true` only when
+  /// you've genuinely got a fresh load and want to skip the network.
   ///
-  /// When the SDK isn't configured or the fetch fails, returns the
-  /// shape expected by the paywall with nulls in the price slots so
-  /// the UI renders "—" (never a hardcoded price — we never ship a
-  /// price to the store).
-  static Future<PurchaseOfferings> loadOfferings() async {
-    if (_cached != null) return _cached!;
+  /// When the SDK isn't configured or the fetch fails, returns empty
+  /// nulls for every slot so the paywall falls back to placeholder
+  /// prices (real RC prices replace them whenever a real Offering
+  /// arrives).
+  static Future<PurchaseOfferings> loadOfferings({bool useCache = false}) async {
+    if (useCache && _cached != null) return _cached!;
     if (!_initialized) return PurchaseOfferings.empty();
 
     try {
       final offerings = await Purchases.getOfferings();
       final current = offerings.current;
-      if (current == null) return PurchaseOfferings.empty();
+      if (current == null) {
+        // Don't cache "no current offering" — let the next open retry.
+        // The user might be in the middle of publishing a new offering
+        // in the dashboard right now.
+        _cached = null;
+        return PurchaseOfferings.empty();
+      }
 
       Package? monthly;
       Package? annual;
       Package? credits;
 
+      // Match by package identifier first (the canonical RC slots
+      // $rc_monthly / $rc_annual + our custom credits_20). If the
+      // dashboard used different package IDs (e.g. someone picked
+      // "Custom" type and typed `monthly` instead of `$rc_monthly`),
+      // fall back to matching by the underlying store-product id.
+      // Either way the app finds them.
       for (final pkg in current.availablePackages) {
-        final id = pkg.identifier;
-        if (id == PurchaseConfig.offering.monthlyPackage || id == r'$rc_monthly') {
+        final pkgId = pkg.identifier.toLowerCase();
+        final prodId = pkg.storeProduct.identifier.toLowerCase();
+
+        final isMonthly =
+               pkgId == r'$rc_monthly'
+            || pkgId == 'monthly'
+            || prodId.contains('monthly');
+
+        final isAnnual =
+               pkgId == r'$rc_annual'
+            || pkgId == 'annual' || pkgId == 'yearly'
+            || prodId.contains('annual')
+            || prodId.contains('yearly');
+
+        final isCredits =
+               pkgId == PurchaseConfig.offering.creditsPackage.toLowerCase()
+            || pkgId.contains('credit')
+            || pkgId.contains('rescue')
+            || prodId.contains('rescue')
+            || prodId.contains('credit');
+
+        if (isMonthly && monthly == null) {
           monthly = pkg;
-        } else if (id == PurchaseConfig.offering.annualPackage || id == r'$rc_annual') {
+        } else if (isAnnual && annual == null) {
           annual = pkg;
-        } else if (id == PurchaseConfig.offering.creditsPackage) {
+        } else if (isCredits && credits == null) {
           credits = pkg;
         }
       }
@@ -163,7 +197,10 @@ class PurchaseService {
         credits: credits,
       );
       return _cached!;
-    } catch (_) {
+    } catch (err) {
+      // ignore: avoid_print
+      print('[PurchaseService] loadOfferings failed: $err');
+      _cached = null;
       return PurchaseOfferings.empty();
     }
   }
