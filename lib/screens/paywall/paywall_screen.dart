@@ -359,13 +359,22 @@ class _PaywallScreenState extends State<PaywallScreen> {
                   //    Android (Monthly / Annual / Rescue one-time),
                   //    two on iOS where the rescue product isn't yet
                   //    approved in App Store Connect.
+                  //
+                  //    Google Play Subscriptions Policy compliance:
+                  //    each card MUST clearly state how often the
+                  //    user will be charged (monthly vs yearly) and
+                  //    whether the subscription auto-renews. The
+                  //    annual card therefore shows "billed yearly"
+                  //    as primary cadence, with the monthly-equiv
+                  //    only as a small parenthetical — never the
+                  //    headline number.
                   Row(
                     children: [
                       Expanded(child: _PriceCard(
                         title: 'MONTHLY',
                         price: _priceFor(_Tier.monthly),
-                        cadence: 'per month',
-                        footnote: 'Auto-renew',
+                        cadence: 'Billed monthly',
+                        footnote: 'Auto-renews until cancelled',
                         selected: _selected == _Tier.monthly,
                         available: true,
                         onTap: () {
@@ -377,8 +386,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       Expanded(child: _PriceCard(
                         title: 'ANNUAL',
                         price: _priceFor(_Tier.annual),
-                        cadence: '${_perMonthForAnnual()} / mo',
-                        footnote: 'Auto-renew',
+                        cadence: 'Billed yearly (${_perMonthForAnnual()}/mo)',
+                        footnote: 'Auto-renews until cancelled',
                         badge: 'BEST VALUE',
                         selected: _selected == _Tier.annual,
                         available: true,
@@ -392,8 +401,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         Expanded(child: _PriceCard(
                           title: 'RESCUE',
                           price: _priceFor(_Tier.rescue),
-                          cadence: '20 renders',
-                          footnote: 'One-time',
+                          cadence: 'One-time · 20 renders',
+                          footnote: 'No subscription',
                           selected: _selected == _Tier.rescue,
                           available: true,
                           onTap: () {
@@ -440,8 +449,21 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
                   const SizedBox(height: 10),
 
-                  // 5. Apple 3.1.2 compliant disclosure — switches per
-                  //    tier; covers price, cadence, renewal, cancellation.
+                  // 5a. Short headline summary — Google Play
+                  //     Subscriptions Policy requires the price, the
+                  //     billing frequency, the auto-renewal terms,
+                  //     and the "subscription required" notice to be
+                  //     called out clearly in the offer (not buried
+                  //     in fine print). This single line carries
+                  //     all four facts in plain English; the long
+                  //     disclosure below adds the cancellation path.
+                  _summaryLine(),
+
+                  const SizedBox(height: 8),
+
+                  // 5b. Long-form disclosure — Apple 3.1.2 compliant.
+                  //     Covers price, cadence, renewal, cancellation
+                  //     in full sentences for each tier.
                   _disclosure(),
 
                   const SizedBox(height: 16),
@@ -549,7 +571,48 @@ class _PaywallScreenState extends State<PaywallScreen> {
     }
   }
 
-  /// Apple 3.1.2 compliant disclosure.
+  /// Short above-the-fold summary required by the Google Play
+  /// Subscriptions Policy. Must clearly state, in one line:
+  ///   - the exact price
+  ///   - how often the user will be charged (monthly vs yearly)
+  ///   - that the subscription auto-renews
+  ///   - that a Mirrorly Pro subscription is required to use the
+  ///     scan / advisor features
+  /// Sits directly under the CTA so it's impossible to miss.
+  Widget _summaryLine() {
+    final price = _priceFor(_selected);
+    String text;
+    switch (_selected) {
+      case _Tier.monthly:
+        text = '$price billed monthly. Auto-renews until cancelled. '
+               'Mirrorly Pro subscription required for scans and '
+               'AI renders.';
+        break;
+      case _Tier.annual:
+        text = '$price billed once per year (${_perMonthForAnnual()}/'
+               'mo equivalent). Auto-renews yearly until cancelled. '
+               'Mirrorly Pro subscription required for scans and '
+               'AI renders.';
+        break;
+      case _Tier.rescue:
+        text = '$price one-time charge. NOT a subscription. '
+               'Grants 20 AI render credits. An active Mirrorly Pro '
+               'subscription is required to perform the underlying '
+               'scans.';
+        break;
+    }
+    return Text(
+      text,
+      textAlign: TextAlign.center,
+      style: AppTypography.bodySmall.copyWith(
+        color: Colors.white,
+        fontSize: 11.5, height: 1.45,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+
+  /// Apple 3.1.2 compliant long-form disclosure.
   /// Must contain: title/service, length, price, auto-renewal,
   /// cancellation path, links to Terms + Privacy.
   Widget _disclosure() {
