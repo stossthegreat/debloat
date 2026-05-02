@@ -287,6 +287,23 @@ LegalDoc get termsDoc => LegalDoc(
       'On OpenAI / Replicate: only for the duration of one API call.\n\n'
       'You can stop the app from collecting any face data at any time '
       'by deleting it.'),
+    const LegalSection('THIRD-PARTY PROTECTION PARITY',
+      'Per App Store guideline 5.1.2(i), any third party that '
+      'receives Mirrorly user data must provide the same or equal '
+      'privacy protection as Mirrorly itself. Both providers we '
+      'transmit photos to meet this bar:\n\n'
+      '• OpenAI — under the standard API terms, customer inputs are '
+      'excluded from model training, encrypted in transit (TLS) '
+      'and at rest, processed transiently for the single request, '
+      'and not used for advertising, profiling, or sale to third '
+      'parties.\n'
+      '• Replicate — under the standard API terms, model inputs are '
+      'excluded from training, processed for the duration of one '
+      'inference request, not retained long-term, and not used for '
+      'advertising, profiling, or sale to third parties.\n\n'
+      'Mirrorly does not transmit user photos to any other third '
+      'party. The on-device geometry numbers stay on-device unless '
+      'they accompany the photo on a single API call.'),
     const LegalSection('ACCEPTABLE USE',
       'You agree not to use Mirrorly to scan, analyse, or render a '
       'face that is not your own without that person\'s explicit '
@@ -398,6 +415,23 @@ LegalDoc get privacyDoc => LegalDoc(
       'process the photo for the duration of one API request and '
       'do not, by their terms, retain or train on the data we send '
       'them through the API.'),
+    const LegalSection('THIRD-PARTY PROTECTION PARITY',
+      'Per App Store guideline 5.1.2(i), any third party that '
+      'receives Mirrorly user data must provide the same or equal '
+      'privacy protection as Mirrorly itself. Both AI providers '
+      'meet this bar:\n\n'
+      '• OpenAI — under the standard API terms, customer inputs are '
+      'excluded from model training, encrypted in transit (TLS) and '
+      'at rest, processed transiently for the single request, and '
+      'not used for advertising, profiling, or sale to third '
+      'parties.\n'
+      '• Replicate — under the standard API terms, model inputs are '
+      'excluded from training, processed for the duration of one '
+      'inference request, not retained long-term, and not used for '
+      'advertising, profiling, or sale to third parties.\n\n'
+      'Mirrorly does not transmit user photos to any other third '
+      'party — no advertisers, data brokers, analytics providers, '
+      'or social-login partners.'),
     const LegalSection('WHAT WE DO NOT COLLECT',
       'No name. No email. No phone number. No location. No social '
       'contacts. No tracking across other apps. No advertising '

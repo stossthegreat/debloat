@@ -118,6 +118,17 @@ class AiConsentDialog extends StatelessWidget {
                       'photo on a server.'),
               const SizedBox(height: 12),
               _Bullet(
+                head: 'EQUAL PROTECTION',
+                body: 'OpenAI and Replicate are bound by their '
+                      'enterprise privacy commitments to handle the '
+                      'data they receive with the same or equal '
+                      'protection Mirrorly guarantees here: encrypted '
+                      'in transit (HTTPS/TLS), excluded from model '
+                      'training, no long-term retention, no cross-app '
+                      'tracking, no resale to advertisers or data '
+                      'brokers.'),
+              const SizedBox(height: 12),
+              _Bullet(
                 head: 'YOU CAN REVOKE THIS',
                 body: 'Settings → Revoke AI permission. After that, '
                       'no further scans will be transmitted until '
