@@ -7,7 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../config/dev_flags.dart';
 import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/common/ai_consent_dialog.dart';
 
 /// Three-page onboarding. No animations, no custom painters. Every screen
 /// answers one question in under six seconds:
@@ -53,28 +52,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _finishOnboarding() async {
-    // App Store guideline 5.1.2(i) — show the AI data permission
-    // dialog at the END of onboarding, BEFORE the user can reach
-    // any screen that fires AI. Every reviewer who completes
-    // onboarding therefore sees the disclosure (what data is
-    // sent, who receives it, retention, equal-protection
-    // guarantee, revocation path) and explicitly taps ALLOW or
-    // CANCEL. This is in addition to the per-call ensure() gates
-    // on scan / chat / report / try-on / maximise — defence in
-    // depth so no path can transmit a photo without recorded
-    // consent.
-    final consented = await AiConsentDialog.ensure(context);
-    if (!mounted) return;
-    if (!consented) {
-      // User declined in the onboarding consent step. Stay on
-      // onboarding so they can re-tap CONTINUE and be re-prompted.
-      // Do NOT mark onboarding complete and do NOT route forward —
-      // every downstream screen would otherwise be unreachable
-      // without firing data, which is exactly what the policy
-      // forbids.
-      return;
-    }
-
+    // First-launch routing now goes straight to /scan from the
+    // splash, so this onboarding flow is only reachable as a
+    // fallback (e.g. user clears app data after a previous version
+    // landed them here). The per-call AiConsentDialog.ensure()
+    // gates on scan / chat / report / try-on / maximise still cover
+    // every transmission path, so no extra gate is needed here.
     await LocalStoreService.setOnboarded(true);
     if (!mounted) return;
     // Dev-flag bypass skips the paywall; everyone lands on /home. In

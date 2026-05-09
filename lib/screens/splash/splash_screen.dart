@@ -25,8 +25,19 @@ class _SplashScreenState extends State<SplashScreen> {
     final onboarded = await LocalStoreService.isOnboarded();
     await Future.delayed(const Duration(milliseconds: 2400));
     if (!mounted) return;
-    // First-run → onboarding (which leads to paywall). Returning → home.
-    context.go(onboarded ? '/home' : '/onboarding');
+    // CONVERSION FUNNEL: kill the onboarding detour. The dominant
+    // category leader (Umax) routes first-launch users straight to
+    // the camera — sunk-cost from a completed scan flips
+    // intent-to-pay. Mirrorly does the same: first launch → /scan
+    // (which triggers the iOS / Android camera permission prompt
+    // and shows the live MediaPipe mesh as the moat). The X in the
+    // top-right of the scan UI bails to /home for users who refuse
+    // — which lands them on the Mirror-tab pre-scan with the
+    // before/after thumbnail stack as the upsell.
+    //
+    // Returning (already-onboarded) users go to /home as before so
+    // they don't get re-funneled into a scan they've already done.
+    context.go(onboarded ? '/home' : '/scan');
   }
 
   @override

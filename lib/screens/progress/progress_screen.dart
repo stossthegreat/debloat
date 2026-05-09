@@ -176,93 +176,61 @@ class _ProgressLocked extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(Sp.lg, Sp.xl, Sp.lg, Sp.xxl),
       children: [
-        // Masthead
-        Row(
-          children: [
-            Text('Progress',
-              style: AppTypography.h1.copyWith(
-                fontSize: 30, letterSpacing: -0.8, height: 1)),
-            const SizedBox(width: 10),
-            Container(
-              width: 5, height: 5, margin: const EdgeInsets.only(top: 8),
-              decoration: const BoxDecoration(
-                color: AppColors.red, shape: BoxShape.circle),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
+        Text('Progress',
+          style: AppTypography.h1.copyWith(
+            fontSize: 32, letterSpacing: -0.8, height: 1)),
+        const SizedBox(height: 4),
         Text('DELTAS · STREAKS · PROTOCOL',
           style: AppTypography.label.copyWith(
-            color: AppColors.textMuted, fontSize: 8.5, letterSpacing: 3.0)),
+            color: AppColors.red,
+            fontSize: 9, letterSpacing: 3.0,
+            fontWeight: FontWeight.w800)),
 
         const SizedBox(height: Sp.xxl),
 
-        // Hero pitch
-        Container(
-          padding: const EdgeInsets.all(Sp.lg),
-          decoration: BoxDecoration(
-            color: AppColors.surface1,
-            borderRadius: BorderRadius.circular(Rd.xl),
-            border: Border.all(
-              color: AppColors.red.withValues(alpha: 0.32), width: 0.8),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Your face, tracked in real data.',
-                style: AppTypography.h1.copyWith(
-                  fontSize: 26, letterSpacing: -0.6, height: 1.15)),
-              const SizedBox(height: 10),
-              Text('Each scan is a snapshot of your geometry. Weekly rescans '
-                   'show the deltas — axis by axis, in millimetres and degrees. '
-                   'A 60-day Protocol targeting your weakest feature. A streak '
-                   'that tells you whether you\'re actually showing up.',
-                style: AppTypography.body.copyWith(
-                  color: AppColors.textSecondary, fontSize: 14, height: 1.55)),
-            ],
-          ),
-        ).animate().fadeIn(duration: 420.ms)
+        // Deadly quote — replaces the essay.
+        Text('"No vibes.\nOnly numbers."',
+          style: AppTypography.h1.copyWith(
+            fontSize: 22, height: 1.3, letterSpacing: -0.4,
+            fontStyle: FontStyle.italic,
+            fontWeight: FontWeight.w600,
+          ))
+          .animate().fadeIn(duration: 420.ms)
           .slideY(begin: 0.04, end: 0, duration: 420.ms, curve: Curves.easeOut),
 
-        const SizedBox(height: Sp.lg),
+        const SizedBox(height: Sp.xl),
 
         _LockedCapRow(
           icon: Icons.auto_awesome,
           tint: AppColors.red,
           label: '60-DAY PROTOCOL',
-          line: 'A daily routine tuned to your weakest axis — mewing, '
-                'gum work, neck training, skincycle, posture.',
+          line: 'Routine tuned to your weakest axis.',
           delay: 120,
         ),
         _LockedCapRow(
           icon: Icons.local_fire_department_outlined,
           tint: AppColors.signalAmber,
           label: 'STREAK',
-          line: 'Consistency that compounds. One freeze per week so a bad day '
-                'doesn\'t nuke a 40-day run.',
+          line: 'One freeze a week. Showing up wins.',
           delay: 200,
         ),
         _LockedCapRow(
           icon: Icons.show_chart_rounded,
           tint: AppColors.measure,
           label: 'DELTA CHART',
-          line: 'Before and after on every axis — jaw angle, canthal tilt, '
-                'symmetry, skin. No vibes, only numbers.',
+          line: 'Same 16 measurements. Every week.',
           delay: 280,
         ),
         _LockedCapRow(
           icon: Icons.grid_view_rounded,
           tint: AppColors.accent,
-          label: 'GENERATION VAULT',
-          line: 'Every cut, beard, and frame you\'ve ever rendered on your '
-                'face — saved, side by side.',
+          label: 'VAULT',
+          line: 'Every render you\'ve made — side by side.',
           delay: 360,
         ),
 
         const SizedBox(height: Sp.xl),
 
-        // CTA — identical in weight + language to Mirror-locked for
-        // consistency across the two locked surfaces.
         SizedBox(
           width: double.infinity, height: 56,
           child: ElevatedButton(
@@ -277,19 +245,12 @@ class _ProgressLocked extends StatelessWidget {
               HapticFeedback.mediumImpact();
               context.push('/scan');
             },
-            child: const Text('Scan to unlock',
+            child: const Text('Begin first scan',
               style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 15, letterSpacing: 0.4)),
           ),
         ).animate().fadeIn(delay: 440.ms, duration: 360.ms),
-        const SizedBox(height: Sp.md),
-        Center(
-          child: Text('Progress activates after your first scan.',
-            style: AppTypography.label.copyWith(
-              color: AppColors.textTertiary,
-              fontSize: 9.5, letterSpacing: 1.8)),
-        ),
       ],
     );
   }

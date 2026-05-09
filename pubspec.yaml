@@ -1,7 +1,7 @@
 name: mirror
 description: "Real facial geometry analysis. Not a rating. Measurements."
 publish_to: 'none'
-version: 1.1.1+12
+version: 1.1.1+13
 
 environment:
   sdk: ^3.8.0
@@ -32,6 +32,14 @@ dependencies:
   # restore-purchases. We use it for Mirrorly Pro (monthly/annual) and
   # the 20-credit one-time pack.
   purchases_flutter: ^8.2.2
+  # Firebase Analytics — conversion-funnel telemetry only. Logs the
+  # named events in lib/services/analytics_service.dart. No PII, no
+  # advertising IDs, no user properties beyond an anonymous app
+  # install ID. The Firebase config files (GoogleService-Info.plist
+  # for iOS, google-services.json for Android) are dropped in by the
+  # native side; the Flutter side just calls the SDK.
+  firebase_core:      ^3.6.0
+  firebase_analytics: ^11.3.3
   # Local notifications — the retention engine. Daily 8pm "log today"
   # streak nudge, rescan reminders at day 14 / 30, milestone celebrations.
   # Zero server dependency; scheduled on-device via the plugin. `timezone`
@@ -51,6 +59,15 @@ flutter:
   assets:
     - assets/icons/appstore.png
     - assets/icons/playstore.png
+    # Mirror-tab pre-scan before/after thumbnails. Six files; if any
+    # are missing the UI falls back to a tasteful placeholder so the
+    # build never breaks. See assets/marketing/README.md for specs.
+    - assets/marketing/hair-before.jpg
+    - assets/marketing/hair-after.jpg
+    - assets/marketing/beard-before.jpg
+    - assets/marketing/beard-after.jpg
+    - assets/marketing/frames-before.jpg
+    - assets/marketing/frames-after.jpg
 
 # Generates every iOS + Android launcher icon from two master PNGs.
 # Run after dropping new masters:  dart run flutter_launcher_icons

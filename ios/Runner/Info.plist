@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Mirrorly uses your camera to capture a selfie. The selfie is analysed on-device by Apple ML Kit to derive 16 facial-geometry measurements. To produce your written analysis and rendered "maximised" preview, the captured photo is then transmitted over HTTPS to two third-party AI services — OpenAI (GPT-4o Vision) and Replicate (Google Nano Banana + cdingram/face-swap) — but only after you tap ALLOW in the in-app AI data permission dialog that appears before any photo is sent. Both providers process the photo for the duration of one API request, exclude it from training, and do not retain it long-term. You may revoke this permission at any time in Settings.</string>
+	<string>Mirrorly uses your camera to capture a selfie for analysis. Before any photo is sent to OpenAI or Replicate, you'll be asked permission in-app. Manage in Settings.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Mirrorly saves your before/after transformations to your photo library so you can share them.</string>
 	<key>CFBundleDisplayName</key>

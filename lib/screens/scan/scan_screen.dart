@@ -12,6 +12,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
 
 import '../../models/face_geometry.dart';
+import '../../services/analytics_service.dart';
 import '../../services/face_geometry_service.dart';
 import '../../services/face_mesh_service.dart';
 import '../../services/local_store_service.dart';
@@ -112,6 +113,12 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       if (!mounted) return;
       setState(() => _animT = elapsed.inMicroseconds / 1e6);
     })..start();
+    // First-launch routing now lands users on /scan directly. The
+    // moment they reach this screen, mark onboarded so the splash
+    // doesn't re-send them here on next launch even if they bail
+    // before completing a scan. Idempotent.
+    LocalStoreService.setOnboarded(true);
+    AnalyticsService.scanStarted();
     _initCamera();
   }
 
@@ -894,6 +901,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
   /// get the full scan experience and hit the wall at the point of
   /// maximum curiosity, not before.
   Future<void> _shipToBackend() async {
+    AnalyticsService.scanCompleted();
     setState(() => _phase = ScanPhase.analysing);
 
     final primaryGeom = _primaryGeometry ?? _geometry ??
@@ -1191,6 +1199,42 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                         ),
                       ),
                       const Spacer(),
+                      // Close (X) — top-right exit. First-launch users
+                      // who refuse the camera or the moment land in
+                      // /home where the Mirror-tab pre-scan stack
+                      // upsells the scan. Existing users pop back to
+                      // wherever they came from.
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            // Mark onboarded so the splash doesn't
+                            // re-route them straight back here on
+                            // next launch — they had their chance.
+                            LocalStoreService.setOnboarded(true);
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/home');
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(22),
+                          child: Container(
+                            width: 36, height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.4),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.28),
+                                width: 0.8),
+                            ),
+                            child: const Icon(Icons.close_rounded,
+                              size: 18, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       // Settings button — gold-lined, minimal
                       Material(
                         color: Colors.transparent,

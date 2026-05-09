@@ -20,6 +20,12 @@ plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     id("com.android.application") version "8.7.3" apply false
     id("org.jetbrains.kotlin.android") version "2.1.0" apply false
+    // Firebase Analytics requires the Google Services Gradle plugin
+    // to process android/app/google-services.json at build time. The
+    // file is already present at android/app/google-services.json;
+    // this declaration loads (but does not apply globally) the plugin
+    // so the app module can opt in.
+    id("com.google.gms.google-services") version "4.4.2" apply false
 }
 
 include(":app")

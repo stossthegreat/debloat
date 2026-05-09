@@ -5,6 +5,7 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../config/purchase_config.dart';
+import 'analytics_service.dart';
 import 'local_store_service.dart';
 
 /// Single front-door for all billing operations.
@@ -227,6 +228,7 @@ class PurchaseService {
       lastErrorMessage = 'Store not configured.';
       return PurchaseOutcome.notConfigured;
     }
+    AnalyticsService.purchaseStarted(pkg.identifier);
     try {
       final result = await Purchases.purchasePackage(pkg);
       final isPro = result.entitlements.all[PurchaseConfig.proEntitlementId]?.isActive ?? false;
@@ -245,9 +247,11 @@ class PurchaseService {
         await LocalStoreService.setSubscribed(true);
       }
       if (isPro || isRescue) {
+        AnalyticsService.purchaseCompleted(pkg.identifier);
         return PurchaseOutcome.success;
       }
       lastErrorMessage = 'Entitlement did not activate.';
+      AnalyticsService.purchaseFailed(pkg.identifier, 'entitlement_inactive');
       return PurchaseOutcome.error;
     } on PlatformException catch (err) {
       // purchases_flutter throws PlatformException with the underlying
@@ -258,14 +262,17 @@ class PurchaseService {
       print('[PurchaseService] purchase failed: code=$code msg=${err.message}');
       if (code == PurchasesErrorCode.purchaseCancelledError) {
         lastErrorMessage = null;
+        AnalyticsService.purchaseCancelled(pkg.identifier);
         return PurchaseOutcome.cancelled;
       }
       lastErrorMessage = _humanise(code, err.message);
+      AnalyticsService.purchaseFailed(pkg.identifier, code?.name ?? 'unknown');
       return PurchaseOutcome.error;
     } catch (err) {
       // ignore: avoid_print
       print('[PurchaseService] purchase failed (unknown): $err');
       lastErrorMessage = err.toString();
+      AnalyticsService.purchaseFailed(pkg.identifier, 'exception');
       return PurchaseOutcome.error;
     }
   }
@@ -278,6 +285,7 @@ class PurchaseService {
       final info = await Purchases.restorePurchases();
       final isPro = info.entitlements.all[PurchaseConfig.proEntitlementId]?.isActive ?? false;
       await LocalStoreService.setSubscribed(isPro);
+      AnalyticsService.restoreCompleted(isPro);
       return isPro ? PurchaseOutcome.success : PurchaseOutcome.noPriorPurchases;
     } catch (_) {
       return PurchaseOutcome.error;

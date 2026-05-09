@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'config/dev_flags.dart';
 import 'navigation/app_router.dart';
+import 'services/analytics_service.dart';
 import 'services/local_store_service.dart';
 import 'services/notification_service.dart';
 import 'services/purchase_service.dart';
@@ -15,6 +16,13 @@ void main() async {
     statusBarBrightness: Brightness.dark,
     statusBarIconBrightness: Brightness.light,
   ));
+
+  // Initialise Firebase + Analytics. Safe to call even before the
+  // native config files (GoogleService-Info.plist / google-services
+  // .json) are dropped in — the service catches the init error and
+  // leaves every event call a silent no-op until config arrives.
+  await AnalyticsService.init();
+  AnalyticsService.appOpen();
 
   // Initialise RevenueCat. Safe to call even when keys aren't
   // configured yet — the service no-ops in that case and the rest of

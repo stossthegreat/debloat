@@ -8,6 +8,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../../config/dev_flags.dart';
 import '../../config/purchase_config.dart';
+import '../../services/analytics_service.dart';
 import '../../services/local_store_service.dart';
 import '../../services/purchase_service.dart';
 import '../../theme/app_colors.dart';
@@ -72,6 +73,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
       });
       return;
     }
+    AnalyticsService.paywallShown(
+      (widget.context?['afterPurchase'] as String?) ?? 'standalone');
     _loadOfferings();
   }
 
@@ -251,6 +254,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
   void _close() {
     HapticFeedback.selectionClick();
+    AnalyticsService.paywallDismissed(
+      (widget.context?['afterPurchase'] as String?) ?? 'standalone');
     // If we arrived as a push, pop returns to whatever was underneath
     // (home, scan, etc). If there's nothing to pop (launched directly
     // from onboarding / splash), land on home. Onboarding is already

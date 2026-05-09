@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../services/analytics_service.dart';
 import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
 
@@ -28,6 +29,7 @@ class AiConsentDialog extends StatelessWidget {
   /// resolve to false — the caller must NOT proceed to send any
   /// data in those cases.
   static Future<bool> show(BuildContext context) async {
+    AnalyticsService.consentShown();
     final granted = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -36,8 +38,10 @@ class AiConsentDialog extends StatelessWidget {
     );
     if (granted == true) {
       await LocalStoreService.setAiConsent(true);
+      AnalyticsService.consentGranted();
       return true;
     }
+    AnalyticsService.consentDenied();
     return false;
   }
 
@@ -77,17 +81,16 @@ class AiConsentDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('PERMISSION TO SHARE YOUR PHOTO WITH AI PROVIDERS',
+              Text('SHARE PHOTO WITH AI PROVIDERS?',
                 style: GoogleFonts.inter(
                   color: AppColors.red,
                   fontSize: 11, letterSpacing: 2.4,
                   fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
-              Text('Mirrorly cannot produce your written analysis, '
-                   'your honest-looks rating, or your rendered '
-                   '"maximised" preview without sending your selfie '
-                   'photo to two third-party AI services. Read every '
-                   'point below, then tap ALLOW or CANCEL.',
+              Text('To produce your analysis and rendered preview, '
+                   'your selfie is sent over an encrypted connection '
+                   'to two AI providers. Geometry measurements are '
+                   'computed on-device first.',
                 style: GoogleFonts.inter(
                   color: AppColors.textPrimary,
                   fontSize: 14, height: 1.5,
@@ -95,132 +98,38 @@ class AiConsentDialog extends StatelessWidget {
               const SizedBox(height: 16),
 
               _Bullet(
-                head: 'EXACTLY WHAT IS SENT',
-                body: '1) The selfie photo you captured (JPEG, '
-                      'compressed, base64-encoded inside an HTTPS '
-                      'POST body).\n'
-                      '2) Sixteen geometric measurements computed '
-                      'on-device by Apple ML Kit before transmission: '
-                      'canthal-tilt angle (degrees), jaw apex angle '
-                      '(degrees), face width-to-height ratio, '
-                      'facial-symmetry score (0–100), facial-thirds '
-                      'split (top/mid/lower percentages), eye spacing '
-                      'ratio, lip fullness, brow-to-eye gap, philtrum '
-                      'ratio, interpupillary distance ratio, nose '
-                      'length ratio, face length ratio, head-shape '
-                      'category (long / oval / square / broad / '
-                      'round).\n\n'
-                      'NOT sent: name, email address, phone number, '
-                      'location, contacts, advertising ID, IP-based '
-                      'tracking, social-login data — none of these '
-                      'leave your device.'),
+                head: 'WHAT IS SENT',
+                body: 'Your selfie photo + the on-device geometry '
+                      'measurements. Nothing else — no name, email, '
+                      'contacts, location, or tracking IDs.'),
               const SizedBox(height: 12),
               _Bullet(
-                head: 'EXACT ROUTE THE PHOTO TAKES',
-                body: 'Step 1 — your phone → Mirrorly\'s backend at '
-                      'https://mirrorly-production.up.railway.app '
-                      '(HTTPS / TLS 1.3). Mirrorly\'s backend does '
-                      'NOT persist the photo bytes; it forwards '
-                      'them to the relevant AI provider and returns '
-                      'the response.\n\n'
-                      'Step 2 — Mirrorly\'s backend → AI provider:\n'
-                      '• /analyse and /rate forward the photo to '
-                      'OpenAI\'s GPT-4o Vision API (api.openai.com) '
-                      'for the written analysis and honest-looks '
-                      'rating.\n'
-                      '• /maximize and /tryon forward the photo to '
-                      'Replicate (api.replicate.com) — Google\'s '
-                      'Nano Banana model renders the "maximised" '
-                      'preview, then cdingram/face-swap locks the '
-                      'identity to your real bones.\n'
-                      '• /chat forwards the photo to OpenAI so the '
-                      'Mirror advisor can answer questions about '
-                      'your specific face.'),
+                head: 'WHO RECEIVES IT',
+                body: 'OpenAI (analysis text + honest-looks rating) '
+                      'and Replicate (rendered "maximised" preview). '
+                      'Both providers process the photo for one '
+                      'request only and exclude it from training '
+                      'under their standard API terms.'),
               const SizedBox(height: 12),
               _Bullet(
-                head: 'WHO RECEIVES IT, BY NAME',
-                body: '• OpenAI, L.L.C. (San Francisco, CA, USA) — '
-                      'GPT-4o Vision endpoint.\n'
-                      '• Replicate, Inc. (San Francisco, CA, USA) — '
-                      'Nano Banana + cdingram/face-swap endpoints.\n'
-                      '• Mirrorly\'s own backend (Railway) — '
-                      'transient routing only, no persistent '
-                      'photo storage.\n\n'
-                      'No other party — no advertisers, data '
-                      'brokers, analytics SDKs, social-login '
-                      'partners, or affiliates — receives your '
-                      'photo or your geometry data.'),
+                head: 'EQUAL PROTECTION',
+                body: 'Both providers contractually guarantee the '
+                      'same or equal privacy protection Mirrorly '
+                      'gives you here: encrypted in transit, no '
+                      'long-term retention, no training, no '
+                      'advertising or resale.'),
               const SizedBox(height: 12),
               _Bullet(
-                head: 'HOW LONG EACH PARTY KEEPS IT',
-                body: '• On your phone — until you delete the '
-                      'scan from inside the app or uninstall.\n'
-                      '• In flight — encrypted by TLS 1.3.\n'
-                      '• On Mirrorly\'s backend — bytes are NOT '
-                      'persisted to disk; only request timestamps '
-                      'and HTTP status codes are logged, and those '
-                      'logs auto-expire after 30 days.\n'
-                      '• On OpenAI — for the duration of one API '
-                      'request; excluded from training and from '
-                      'long-term retention by OpenAI\'s standard '
-                      'API terms.\n'
-                      '• On Replicate — for the duration of one '
-                      'inference request; excluded from training '
-                      'and not retained long-term per Replicate\'s '
-                      'standard API terms.'),
-              const SizedBox(height: 12),
-              _Bullet(
-                head: 'WHY YOUR PHOTO IS SENT',
-                body: 'Sole purpose: produce the analysis text, '
-                      'the honest-looks score, and the rendered '
-                      'preview that you see inside the app. Your '
-                      'photo is NEVER used for advertising, '
-                      'profiling, identity matching, facial '
-                      'recognition, biometric template building, '
-                      'AI model training, or sale to third '
-                      'parties.'),
-              const SizedBox(height: 12),
-              _Bullet(
-                head: 'EQUAL OR GREATER PROTECTION',
-                body: 'Per App Store guideline 5.1.2(i), any third '
-                      'party that receives your data must provide '
-                      'the same or equal privacy protection as '
-                      'Mirrorly itself. Both providers meet this '
-                      'bar under their standard API terms: '
-                      'encrypted in transit (TLS) and at rest, '
-                      'inputs excluded from training, processed '
-                      'transiently for one request, no advertising '
-                      'or profiling use, no resale, no cross-app '
-                      'tracking.'),
-              const SizedBox(height: 12),
-              _Bullet(
-                head: 'YOU CAN REVOKE AT ANY TIME',
-                body: 'Settings → Revoke AI permission. After that, '
-                      'no further photos or measurements will be '
-                      'transmitted until you grant permission '
-                      'again. You can also delete every scan + '
-                      'render stored on this device from Settings → '
-                      'Delete all data.'),
-              const SizedBox(height: 12),
-              _Bullet(
-                head: 'GOVERNING POLICY',
-                body: 'Full text in the in-app Privacy Policy '
-                      '(Settings → Privacy Policy) and at the '
-                      'public privacy URL linked from App Store '
-                      'Connect. Both contain dedicated sections '
-                      'titled AI DATA PERMISSION, WHO PROCESSES '
-                      'YOUR PHOTOS, and THIRD-PARTY PROTECTION '
-                      'PARITY that mirror this dialog word for '
-                      'word.'),
+                head: 'REVOKE ANY TIME',
+                body: 'Settings → Revoke AI permission. The full '
+                      'data-flow disclosure lives in the Privacy '
+                      'Policy.'),
 
               const SizedBox(height: 18),
-              Text('Tap ALLOW to permit Mirrorly to transmit your '
-                   'photo to OpenAI and Replicate via Mirrorly\'s '
-                   'backend for this scan and future scans, on the '
-                   'terms above. Tap CANCEL to keep the photo '
-                   'entirely on this device — without permission, '
-                   'the analysis and the rendered preview cannot '
-                   'be produced.',
+              Text('Tap ALLOW to share your photo with OpenAI and '
+                   'Replicate. Tap CANCEL to keep it on this '
+                   'device — analysis and renders cannot be '
+                   'produced without permission.',
                 style: GoogleFonts.inter(
                   color: AppColors.textSecondary,
                   fontSize: 12.5, height: 1.5,
