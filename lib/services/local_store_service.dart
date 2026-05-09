@@ -17,6 +17,14 @@ class LocalStoreService {
   /// User must explicitly tap ALLOW in [AiConsentDialog] before the
   /// scan flow transmits the selfie photo to OpenAI / Replicate.
   static const _kAiConsent    = 'ai.consent.v1';
+  /// User's chosen "glow-up style" — drives whether analysis prose,
+  /// rendered previews, and Mirror-tab thumbnails are tuned for men's
+  /// grooming, women's beauty, or general/either. Stored as one-letter
+  /// codes so it round-trips cleanly through the API JSON payload.
+  ///   'm' → men's grooming
+  ///   'f' → women's beauty
+  ///   null → unspecified (backend defaults to general)
+  static const _kUserGender   = 'user.gender.v1';
 
   // ── Scans ────────────────────────────────────────────────────────────────
   static Future<List<ScanRecord>> loadScans() async {
@@ -127,6 +135,29 @@ class LocalStoreService {
   static Future<void> setAiConsent(bool v) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kAiConsent, v);
+  }
+
+  // ── Glow-up style (gender preference) ───────────────────────────────────
+  /// Returns 'm', 'f', or null (unspecified). When null the rest of
+  /// the app behaves identically to the pre-gender version — the
+  /// backend treats absence of `gender` in the request body the same
+  /// as its old default. So a user who never picks one isn't broken.
+  static Future<String?> userGender() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_kUserGender);
+    if (raw == 'm' || raw == 'f') return raw;
+    return null;
+  }
+
+  static Future<void> setUserGender(String? code) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (code == null) {
+      await prefs.remove(_kUserGender);
+    } else {
+      assert(code == 'm' || code == 'f',
+          'userGender must be "m", "f", or null');
+      await prefs.setString(_kUserGender, code);
+    }
   }
 
   // ── Nuke ────────────────────────────────────────────────────────────────

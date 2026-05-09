@@ -170,6 +170,17 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => _revokeAiConsent(context),
               ),
               _SettingTile(
+                icon: Icons.style_outlined,
+                title: 'Glow-up style',
+                subtitle: 'Tune analysis + renders for men\'s grooming '
+                          'or women\'s beauty',
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  context.push('/onboarding/gender',
+                      extra: const {'fromSettings': true});
+                },
+              ),
+              _SettingTile(
                 icon: Icons.delete_outline,
                 title: 'Delete all data',
                 subtitle: 'Permanently removes scans from this device',

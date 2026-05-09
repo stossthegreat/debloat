@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/face_geometry.dart';
 import 'face_asset_service.dart';
+import 'local_store_service.dart';
 import 'mirror_api_service.dart';
 import 'scoring_service.dart';
 import 'archetype_service.dart';
@@ -97,12 +98,14 @@ class ChatService {
     };
 
     try {
+      final gender = await LocalStoreService.userGender();
       final res = await http.post(
         Uri.parse('${ApiConfig.backendBaseUrl}/chat'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'messages': history.map((m) => m.toJson()).toList(),
           'face':     face,
+          if (gender != null) 'gender': gender,
         }),
       ).timeout(const Duration(seconds: 90));
 
@@ -259,6 +262,7 @@ class TryOnService {
     if (bytes == null) return null;
 
     try {
+      final gender = await LocalStoreService.userGender();
       final res = await http.post(
         Uri.parse('${ApiConfig.backendBaseUrl}/tryon'),
         headers: {'Content-Type': 'application/json'},
@@ -267,6 +271,7 @@ class TryOnService {
           'styleRequest': styleRequest,
           'category':     category,
           'geometry':     MirrorApiService.geometryToJson(geometry),
+          if (gender != null) 'gender': gender,
         }),
       ).timeout(const Duration(seconds: 120));
 

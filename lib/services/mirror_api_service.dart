@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/face_geometry.dart';
 import '../models/mirror_analysis.dart';
+import 'local_store_service.dart';
 
 class MirrorApiService {
   static Map<String, dynamic> _geometryToJson(FaceGeometry g) => {
@@ -49,9 +50,16 @@ class MirrorApiService {
     required FaceGeometry geometry,
     List<Uint8List> extraImages = const [],
   }) async {
+    // Glow-up style flag — drives whether the backend's GPT prompt
+    // tunes the analysis prose and the rendered preview for men's
+    // grooming or women's beauty. Sent as 'm' / 'f' / null; when
+    // null the backend falls back to its legacy default behaviour
+    // so users who never picked aren't broken.
+    final gender = await LocalStoreService.userGender();
     final payload = <String, dynamic>{
       'imageBase64': base64Encode(imageBytes),
       'geometry':    _geometryToJson(geometry),
+      if (gender != null) 'gender': gender,
     };
     if (extraImages.isNotEmpty) {
       payload['extraImagesBase64'] =
@@ -101,9 +109,11 @@ class MirrorApiService {
     required FaceGeometry geometry,
     List<Uint8List> extraImages = const [],
   }) async {
+    final gender = await LocalStoreService.userGender();
     final payload = <String, dynamic>{
       'imageBase64': base64Encode(imageBytes),
       'geometry':    _geometryToJson(geometry),
+      if (gender != null) 'gender': gender,
     };
     if (extraImages.isNotEmpty) {
       payload['extraImagesBase64'] =
@@ -139,9 +149,11 @@ class MirrorApiService {
     required Uint8List imageBytes,
     required List<String> improve,
   }) async {
+    final gender = await LocalStoreService.userGender();
     final body = jsonEncode({
       'imageBase64': base64Encode(imageBytes),
       'brief':       {'improve': improve},
+      if (gender != null) 'gender': gender,
     });
 
     return _retryForever<String>(

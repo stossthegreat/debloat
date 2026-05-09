@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
+import 'local_store_service.dart';
 
 /// The honest-looks score — GPT-4o Vision's candid read of the user's
 /// actual photo. This is the *second* of the two-score moat (the first
@@ -42,10 +43,14 @@ class HonestRatingService {
   /// /scan — fire them in parallel to keep the perceived latency flat).
   static Future<HonestRating?> rate({required String imageBase64}) async {
     try {
+      final gender = await LocalStoreService.userGender();
       final res = await http.post(
         Uri.parse('${ApiConfig.backendBaseUrl}/rate'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'imageBase64': imageBase64}),
+        body: jsonEncode({
+          'imageBase64': imageBase64,
+          if (gender != null) 'gender': gender,
+        }),
       ).timeout(const Duration(seconds: 60));
 
       if (res.statusCode != 200) return null;

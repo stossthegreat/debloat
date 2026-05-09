@@ -25,19 +25,18 @@ class _SplashScreenState extends State<SplashScreen> {
     final onboarded = await LocalStoreService.isOnboarded();
     await Future.delayed(const Duration(milliseconds: 2400));
     if (!mounted) return;
-    // CONVERSION FUNNEL: kill the onboarding detour. The dominant
-    // category leader (Umax) routes first-launch users straight to
-    // the camera — sunk-cost from a completed scan flips
-    // intent-to-pay. Mirrorly does the same: first launch → /scan
-    // (which triggers the iOS / Android camera permission prompt
-    // and shows the live MediaPipe mesh as the moat). The X in the
-    // top-right of the scan UI bails to /home for users who refuse
-    // — which lands them on the Mirror-tab pre-scan with the
-    // before/after thumbnail stack as the upsell.
+    // CONVERSION FUNNEL: kill the long onboarding detour. First
+    // launch lands on /onboarding/gender — a one-tap "men's grooming
+    // / women's beauty / skip" screen — and from there straight to
+    // /scan. The gender pick is critical because the analysis +
+    // render pipeline downstream is male-coded by default; a woman
+    // who scans without setting it gets a male-rendered "maximised"
+    // preview, which is brand-killing on first impression. One
+    // extra screen, one tap, prevents that.
     //
     // Returning (already-onboarded) users go to /home as before so
     // they don't get re-funneled into a scan they've already done.
-    context.go(onboarded ? '/home' : '/scan');
+    context.go(onboarded ? '/home' : '/onboarding/gender');
   }
 
   @override
