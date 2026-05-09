@@ -17,7 +17,7 @@ class MirrorApiService {
     'eyeSpacingRatio':      g.eyeSpacingRatio,
     'jawAngle':             g.jawAngle,
     'chinProjection':       g.chinProjection,
-    // Extended 7 — unlocks "head shape", "lip fullness", etc. in advice
+    // Extended 8 — unlocks "head shape", "lip fullness", etc. in advice
     'faceLengthRatio':      g.faceLengthRatio,
     'noseLengthRatio':      g.noseLengthRatio,
     'lipFullness':          g.lipFullness,
@@ -25,6 +25,11 @@ class MirrorApiService {
     'philtrumRatio':        g.philtrumRatio,
     'interpupillaryRatio':  g.interpupillaryRatio,
     'headShape':            g.headShape,
+    // Real frontal-photo jaw-strength proxy (bigonial / bizygomatic).
+    // ≥0.85 = wide square strong jaw; ≤0.75 = soft / V-shape. Replaces
+    // the old chin-apex `jawAngle` as the score driver — `jawAngle`
+    // above is kept for backward-compatible prose templates.
+    'jawWidthRatio':        g.jawWidthRatio,
   };
 
   /// Serializable form, callable from chat_service.dart.

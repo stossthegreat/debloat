@@ -29,7 +29,12 @@ class ScoringService {
     final thirdsAxis  = _thirdsAxis(g.facialThirdTop, g.facialThirdMid, g.facialThirdLow);
     final fwhrAxis    = _fwhrAxis(g.fwhr);
     final eyeAxis     = _eyeSpaceAxis(g.eyeSpacingRatio);
-    final jawAxis     = _jawAxis(g.jawAngle);
+    // Jaw axis now consumes jawWidthRatio (bigonial/bizygomatic — a
+    // real frontal-photo jaw-strength proxy) instead of the old chin-
+    // apex angle, which perversely rewarded pointy V-shape chins and
+    // penalised wide square jaws. See FaceGeometryService for the
+    // calibration rationale.
+    final jawAxis     = _jawAxis(g.jawWidthRatio);
     final chinAxis    = _chinAxis(g.chinProjection);
 
     final raw = canthalAxis * _wCanthal
@@ -64,14 +69,27 @@ class ScoringService {
 
   // ── Axes: each returns 0..1 ─────────────────────────────────────────────
 
-  /// Positive canthal tilt (+3° is ideal, "hunter eyes"). Negative tilt
-  /// collapses toward 0. Above +5° doesn't keep adding, plateau.
+  /// Canthal tilt curve — recalibrated.
+  ///
+  /// The OLD curve handed out 0.55 just for being neutral (0°). With
+  /// our prior sign-flip bug stacked on top, that meant nearly every
+  /// user was scored "hunter-positive" regardless of their real eye
+  /// shape. The new curve treats neutral as ~0.30 and reserves the
+  /// top of the scale for genuinely rare positive tilt (+5–6°+):
+  ///
+  ///   tilt   →  axis
+  ///   −3°       0.10
+  ///    0°       0.30  (neutral male median, NOT a free 55%)
+  ///   +2°       0.55
+  ///   +4°       0.80
+  ///   +6°       1.00  (genuine "hunter eyes", roughly top 10%)
   static double _canthalAxis(double deg) {
-    if (deg >= 5) return 1.0;
-    if (deg >= 3) return 0.85 + (deg - 3) * 0.075;
-    if (deg >= 0) return 0.55 + (deg / 3) * 0.30;
-    if (deg >= -2) return 0.30 + ((deg + 2) / 2) * 0.25;
-    return (0.30 + (deg + 2) * 0.1).clamp(0.0, 1.0);
+    if (deg >= 6) return 1.0;
+    if (deg >= 4) return 0.80 + (deg - 4) * 0.10;     // 4°→0.80, 6°→1.00
+    if (deg >= 2) return 0.55 + (deg - 2) * 0.125;    // 2°→0.55, 4°→0.80
+    if (deg >= 0) return 0.30 + deg * 0.125;          // 0°→0.30, 2°→0.55
+    if (deg >= -3) return 0.10 + (deg + 3) * (0.20 / 3); // -3°→0.10, 0°→0.30
+    return 0.0;
   }
 
   /// Facial thirds: ideal = 33/33/33. Reward closeness, penalize deviation.
@@ -98,11 +116,27 @@ class ScoringService {
     return (1.0 - dev / 0.12).clamp(0.0, 1.0);
   }
 
-  /// Jaw angle: 115°–125° = sharp, ideal. Below 110 or above 135 drops off.
-  static double _jawAxis(double deg) {
-    if (deg >= 115 && deg <= 125) return 1.0;
-    if (deg < 115) return math.max(0, 1 - (115 - deg) / 20);
-    return math.max(0, 1 - (deg - 125) / 20);
+  /// Jaw definition curve — driven by jawWidthRatio
+  /// (bigonial / bizygomatic — jaw width / cheekbone width).
+  ///
+  /// The old curve scored a chin-apex angle and rewarded pointy
+  /// V-shape chins (115°–125°) while penalising wide square jaws
+  /// (140°+). Backwards. The new curve maps the real frontal-photo
+  /// jaw-strength proxy:
+  ///
+  ///   ratio  →  axis
+  ///   0.65      0.00  (very tapered, soft)
+  ///   0.75      0.30  (slightly soft / oval)
+  ///   0.82      0.60  (median male)
+  ///   0.88      0.90  (strong, defined)
+  ///   0.95      1.00  (elite wide square)
+  static double _jawAxis(double ratio) {
+    if (ratio >= 0.95) return 1.0;
+    if (ratio >= 0.88) return 0.90 + (ratio - 0.88) * (0.10 / 0.07);
+    if (ratio >= 0.82) return 0.60 + (ratio - 0.82) * (0.30 / 0.06);
+    if (ratio >= 0.75) return 0.30 + (ratio - 0.75) * (0.30 / 0.07);
+    if (ratio >= 0.65) return (ratio - 0.65) * (0.30 / 0.10);
+    return 0.0;
   }
 
   /// Chin dominance — the fraction of face height taken up between nose

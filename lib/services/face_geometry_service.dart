@@ -38,21 +38,7 @@ class FaceGeometryService {
     Offset norm(math.Point<int> p) =>
         Offset(p.x / imgW, p.y / imgH);
 
-    // ── Canthal tilt ──────────────────────────────────────────────────────
-    // Left eye: inner corner = first point, outer = last point (ML Kit ordering)
-    final leftInner  = norm(leftEyeContour.first);
-    final leftOuter  = norm(leftEyeContour.last);
-    final rightInner = norm(rightEyeContour.last);
-    final rightOuter = norm(rightEyeContour.first);
-
-    final leftTiltRad  = math.atan2(
-        -(leftOuter.dy - leftInner.dy), leftOuter.dx - leftInner.dx);
-    final rightTiltRad = math.atan2(
-        -(rightOuter.dy - rightInner.dy), rightOuter.dx - rightInner.dx);
-    final canthalTilt  =
-        ((leftTiltRad + rightTiltRad) / 2) * (180 / math.pi);
-
-    // ── Eye centers ───────────────────────────────────────────────────────
+    // ── Eye centers (computed first so we can find the face midline) ──
     final leftEyeCX  = leftEyeContour.map((p) => p.x).reduce((a, b) => a + b) /
         leftEyeContour.length;
     final leftEyeCY  = leftEyeContour.map((p) => p.y).reduce((a, b) => a + b) /
@@ -61,6 +47,62 @@ class FaceGeometryService {
         rightEyeContour.length;
     final rightEyeCY = rightEyeContour.map((p) => p.y).reduce((a, b) => a + b) /
         rightEyeContour.length;
+
+    // ── Canthal tilt — robust corner detection ────────────────────────────
+    // Old impl assumed ML Kit's contour ordering put `.first` at the
+    // inner corner. That's NOT consistent across the iOS and Android
+    // ML Kit bridges (different SDK builds start the eye loop at
+    // different vertices), and when the assumption was wrong the
+    // sign of the tilt flipped — every user with downturned eyes
+    // got scored as "hunter eyes" because the inner/outer labels
+    // were swapped.
+    //
+    // Robust fix: detect the inner corner GEOMETRICALLY. The inner
+    // corner is whichever endpoint of the eye contour is closer to
+    // the face midline (between the two eye centers). The outer
+    // corner is the other one. This works on both platforms and
+    // doesn't depend on which point ML Kit happens to emit first.
+    final eyeMidlineX = (leftEyeCX + rightEyeCX) / 2;
+
+    Offset _innerOf(List<math.Point<int>> contour) {
+      final a = norm(contour.first);
+      final b = norm(contour.last);
+      // Compare against eye midline (the point between the two eye
+      // centers); the corner closer to it is the inner corner.
+      final dxA = (a.dx * imgW - eyeMidlineX).abs();
+      final dxB = (b.dx * imgW - eyeMidlineX).abs();
+      return dxA < dxB ? a : b;
+    }
+
+    Offset _outerOf(List<math.Point<int>> contour) {
+      final a = norm(contour.first);
+      final b = norm(contour.last);
+      final dxA = (a.dx * imgW - eyeMidlineX).abs();
+      final dxB = (b.dx * imgW - eyeMidlineX).abs();
+      return dxA < dxB ? b : a;
+    }
+
+    final leftInner  = _innerOf(leftEyeContour);
+    final leftOuter  = _outerOf(leftEyeContour);
+    final rightInner = _innerOf(rightEyeContour);
+    final rightOuter = _outerOf(rightEyeContour);
+
+    // Tilt per eye: angle of inner→outer line vs horizontal.
+    // Positive = outer corner sits ABOVE inner corner on screen
+    // (cat eye / "hunter"). We use the absolute horizontal distance
+    // so both eyes feed into the same sign convention regardless of
+    // which side of the face they're on.
+    double _eyeTilt(Offset inner, Offset outer) {
+      final dx = (outer.dx - inner.dx).abs();
+      // Screen-y grows downward; outer.dy < inner.dy means outer is
+      // physically higher than inner. Negate so positive = up.
+      final dyUp = -(outer.dy - inner.dy);
+      return math.atan2(dyUp, dx) * 180 / math.pi;
+    }
+
+    final canthalTilt = (_eyeTilt(leftInner, leftOuter) +
+                         _eyeTilt(rightInner, rightOuter)) / 2;
+
     // ── Face bounding box from oval ────────────────────────────────────────
     final ovalXs = faceOval.map((p) => p.x.toDouble()).toList();
     final ovalYs = faceOval.map((p) => p.y.toDouble()).toList();
@@ -168,10 +210,15 @@ class FaceGeometryService {
     final interocular   = (rightEyeCX - leftEyeCX).abs();
     final eyeSpacingRatio = interocular / faceWidth;
 
-    // ── Jaw angle (approx) ────────────────────────────────────────────────
+    // ── Jaw angle (chin apex, kept for descriptive text only) ─────────────
+    // This is the angle AT THE CHIN POINT formed by the two
+    // chin→gonial vectors. It is NOT a real gonial angle (those need
+    // a side profile) — closer to a chin-pointiness proxy. We keep
+    // computing it because the chat / protocol templates reference
+    // the literal "your jaw angle is 122°" string. Score-wise, it
+    // is no longer used; jawWidthRatio (below) drives the jaw axis.
     double jawAngle = 125;
     if (faceOval.length >= 16) {
-      // Bottom quarter of face oval — left jaw, chin, right jaw
       final bottomPoints = faceOval
           .where((p) => p.y > faceTop + faceHeight * 0.65)
           .toList();
@@ -190,6 +237,40 @@ class FaceGeometryService {
         final mag = math.sqrt(v1x * v1x + v1y * v1y) *
                     math.sqrt(v2x * v2x + v2y * v2y);
         if (mag > 0) jawAngle = math.acos((dot / mag).clamp(-1.0, 1.0)) * 180 / math.pi;
+      }
+    }
+
+    // ── Jaw width ratio — REAL frontal-photo jaw definition metric ────────
+    // bigonial = jaw width measured at the gonial Y-band (the corners
+    // of the jaw, ~70% down the face oval). bizygomatic = cheekbone
+    // width measured at the zygomatic Y-band (~40% down). Their
+    // ratio is the standard masculinity proxy from frontal anthro-
+    // pometric photos:
+    //   • Strong wide masculine jaw  → ratio ≥ 0.85
+    //   • Soft V-shape feminine chin → ratio ≤ 0.75
+    //   • Real range across faces    ≈ 0.65 .. 0.95
+    // This replaces the old chin-apex angle as the score driver
+    // because the apex angle perversely rewarded pointy chins and
+    // penalised wide square jaws — the opposite of what users
+    // experience as "good jaw".
+    double jawWidthRatio = 0.80;
+    if (faceOval.length >= 12 && faceWidth > 0) {
+      // Gonial band: ~65–80% down the face oval.
+      final gonialBand = faceOval.where((p) =>
+        p.y >= faceTop + faceHeight * 0.65 &&
+        p.y <= faceTop + faceHeight * 0.80
+      ).toList();
+      // Zygomatic band: ~32–48% down (cheekbone region).
+      final zygoBand = faceOval.where((p) =>
+        p.y >= faceTop + faceHeight * 0.32 &&
+        p.y <= faceTop + faceHeight * 0.48
+      ).toList();
+      if (gonialBand.length >= 2 && zygoBand.length >= 2) {
+        final gonialW = gonialBand.map((p) => p.x.toDouble()).reduce(math.max) -
+                        gonialBand.map((p) => p.x.toDouble()).reduce(math.min);
+        final zygoW   = zygoBand.map((p) => p.x.toDouble()).reduce(math.max) -
+                        zygoBand.map((p) => p.x.toDouble()).reduce(math.min);
+        if (zygoW > 0) jawWidthRatio = (gonialW / zygoW).clamp(0.5, 1.1);
       }
     }
 
@@ -291,6 +372,7 @@ class FaceGeometryService {
       philtrumRatio:       philtrumRatio,
       interpupillaryRatio: interpupillaryRatio,
       headShape:           headShape,
+      jawWidthRatio:       jawWidthRatio,
       hasReliableData: true,
     );
   }

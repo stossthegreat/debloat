@@ -24,6 +24,14 @@ class FaceGeometry {
   final double interpupillaryRatio;// pupil-to-pupil / face width
   final String headShape;          // 'oval' | 'round' | 'square' | 'long' | 'broad'
 
+  /// Bigonial-to-bizygomatic width ratio — jaw width at the gonial Y
+  /// band divided by cheekbone width at the zygomatic Y band. THIS is
+  /// what scoring uses to grade jaw definition; [jawAngle] above is
+  /// kept only for descriptive text templates. Real masculine "strong
+  /// wide jaw" sits at 0.85+; soft V-shape sits below 0.75. Range
+  /// is roughly 0.65..0.95 in real faces.
+  final double jawWidthRatio;
+
   final bool hasReliableData;
 
   const FaceGeometry({
@@ -44,6 +52,7 @@ class FaceGeometry {
     this.philtrumRatio        = 0.35,
     this.interpupillaryRatio  = 0.46,
     this.headShape            = 'oval',
+    this.jawWidthRatio        = 0.80,
   });
 
   // Canthal tilt rating
