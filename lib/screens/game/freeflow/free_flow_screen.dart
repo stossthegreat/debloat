@@ -9,8 +9,10 @@ import 'package:flutter_pcm_sound/flutter_pcm_sound.dart';
 import 'package:record/record.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../../config/dev_flags.dart';
 import '../../../services/audio_session.dart';
 import '../../../services/creator_mode_store.dart';
+import '../../../services/local_store_service.dart';
 import '../../../services/realtime_session.dart';
 import '../../../services/share_service.dart';
 import '../../../services/user_memory.dart';
@@ -1183,11 +1185,22 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
                     child: _ScoreCta(
                       label: 'RUN IT BACK',
                       filled: false,
-                      onTap: () {
-                        Navigator.of(context, rootNavigator: true)
-                            .pushReplacement(MaterialPageRoute(
-                          builder: (_) => const FreeFlowScreen(),
-                        ));
+                      onTap: () async {
+                        // Pro restarts freely; a free user has already
+                        // spent their one Free Flow, so close back to the
+                        // Game tab where the card is now locked → paywall.
+                        final pro = kBypassPaywall
+                            ? true
+                            : await LocalStoreService.isSubscribed();
+                        if (!mounted) return;
+                        if (pro) {
+                          Navigator.of(context, rootNavigator: true)
+                              .pushReplacement(MaterialPageRoute(
+                            builder: (_) => const FreeFlowScreen(),
+                          ));
+                        } else {
+                          _closeScreen();
+                        }
                       },
                     ),
                   ),

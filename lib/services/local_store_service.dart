@@ -25,6 +25,13 @@ class LocalStoreService {
   ///   'f' → women's beauty
   ///   null → unspecified (backend defaults to general)
   static const _kUserGender   = 'user.gender.v1';
+  /// Free-tier allowance flags for the Auralay Eyes + Game tabs. A
+  /// non-subscribed user gets exactly ONE eye-contact lesson and ONE
+  /// Free Flow live conversation; both are consumed on first open and
+  /// thereafter route to the paywall. Subscribers / kBypassPaywall
+  /// ignore these entirely.
+  static const _kEyesFreeUsed = 'eyes.free.used.v1';
+  static const _kGameFreeUsed = 'game.free.used.v1';
 
   // ── Scans ────────────────────────────────────────────────────────────────
   static Future<List<ScanRecord>> loadScans() async {
@@ -107,6 +114,31 @@ class LocalStoreService {
   static Future<void> setSubscribed(bool v) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kSubscribed, v);
+  }
+
+  // ── Free-tier allowance: Eyes + Game (Auralay tabs) ─────────────────────
+  /// True once the free eye-contact lesson has been opened. Set the
+  /// moment the session screen is pushed so a free user gets exactly
+  /// one, even if they back out.
+  static Future<bool> eyesFreeUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kEyesFreeUsed) ?? false;
+  }
+
+  static Future<void> markEyesFreeUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kEyesFreeUsed, true);
+  }
+
+  /// True once the free Free Flow live conversation has been opened.
+  static Future<bool> gameFreeUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kGameFreeUsed) ?? false;
+  }
+
+  static Future<void> markGameFreeUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kGameFreeUsed, true);
   }
 
   // ── Onboarding (has the user completed first-run?) ──────────────────────

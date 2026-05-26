@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../config/dev_flags.dart';
+import '../../services/local_store_service.dart';
 import '../../theme/auralay_app_colors.dart';
 import '../../theme/auralay_app_typography.dart';
 import 'arena/arena_scenes_screen.dart';
@@ -15,8 +18,79 @@ import 'freeflow/free_flow_screen.dart';
 ///                 you fold.
 ///   THE COUNCIL — private line to Lucien. Ask him what you cannot
 ///                 ask anyone else.
-class GameTabScreen extends StatelessWidget {
+class GameTabScreen extends StatefulWidget {
   const GameTabScreen({super.key});
+
+  @override
+  State<GameTabScreen> createState() => _GameTabScreenState();
+}
+
+class _GameTabScreenState extends State<GameTabScreen> {
+  // Paywall entitlement state. Free users get one Free Flow live
+  // conversation (the top card, consumed on open); The Arena and The
+  // Council are pro-only. `_loaded` gates the locked visual so a paid
+  // user never sees a lock flash on launch.
+  bool _pro      = false;
+  bool _gameUsed = false;
+  bool _loaded   = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEntitlements();
+  }
+
+  Future<void> _loadEntitlements() async {
+    final pro      = kBypassPaywall ? true : await LocalStoreService.isSubscribed();
+    final gameUsed = await LocalStoreService.gameFreeUsed();
+    if (!mounted) return;
+    setState(() {
+      _pro      = pro;
+      _gameUsed = gameUsed;
+      _loaded   = true;
+    });
+  }
+
+  // Free Flow: pro = unlimited; free = exactly one convo (consumed on
+  // open), then paywall. The Arena + The Council are pro-only.
+  bool get _freeFlowLocked => _loaded && !_pro && _gameUsed;
+  bool get _proOnlyLocked  => _loaded && !_pro;
+
+  Future<void> _toPaywall() async {
+    await context.push('/paywall');
+    if (!mounted) return;
+    _loadEntitlements();
+  }
+
+  Future<void> _open(Widget screen) async {
+    await Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(builder: (_) => screen),
+    );
+    if (!mounted) return;
+    _loadEntitlements();
+  }
+
+  Future<void> _onFreeFlow() async {
+    if (_pro) { _open(const FreeFlowScreen()); return; }
+    if (!_gameUsed) {
+      await LocalStoreService.markGameFreeUsed();
+      if (!mounted) return;
+      setState(() => _gameUsed = true);
+      _open(const FreeFlowScreen());
+      return;
+    }
+    _toPaywall();
+  }
+
+  void _onArena() {
+    if (_pro) { _open(const ArenaScenesScreen()); return; }
+    _toPaywall();
+  }
+
+  void _onCouncil() {
+    if (_pro) { _open(const CouncilChatScreen()); return; }
+    _toPaywall();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +137,7 @@ class GameTabScreen extends StatelessWidget {
                   )),
               const SizedBox(height: 32),
 
-              // ── FREE FLOW (live) ─────────────────────────────────
+              // ── FREE FLOW (live) — one free convo, then paywall ──
               _ConsigliereCard(
                 topLabel:  'LIVE · REAL-TIME',
                 title:     'FREE FLOW',
@@ -73,13 +147,12 @@ class GameTabScreen extends StatelessWidget {
                     'to have him step in and read it.',
                 cta:       'GO LIVE',
                 primary:   true,
-                onTap: () => Navigator.of(context, rootNavigator: true).push(
-                  MaterialPageRoute(builder: (_) => const FreeFlowScreen()),
-                ),
+                locked:    _freeFlowLocked,
+                onTap:     _onFreeFlow,
               ),
               const SizedBox(height: 14),
 
-              // ── THE ARENA ────────────────────────────────────────
+              // ── THE ARENA — pro only ─────────────────────────────
               _ConsigliereCard(
                 topLabel:  'ROLEPLAY',
                 title:     'THE ARENA',
@@ -88,13 +161,12 @@ class GameTabScreen extends StatelessWidget {
                     'Lucien watches. He cuts in when you fold.',
                 cta:       'ENTER A SCENE',
                 primary:   true,
-                onTap: () => Navigator.of(context, rootNavigator: true).push(
-                  MaterialPageRoute(builder: (_) => const ArenaScenesScreen()),
-                ),
+                locked:    _proOnlyLocked,
+                onTap:     _onArena,
               ),
               const SizedBox(height: 14),
 
-              // ── THE COUNCIL ──────────────────────────────────────
+              // ── THE COUNCIL — pro only ───────────────────────────
               _ConsigliereCard(
                 topLabel:  'CHAT',
                 title:     'THE COUNCIL',
@@ -102,10 +174,9 @@ class GameTabScreen extends StatelessWidget {
                     'A private line to Lucien. He already knows what '
                     'you are about to say. Ask him anyway.',
                 cta:       'OPEN THE LINE',
-                primary:   true,         // both cards equal — no hierarchy
-                onTap: () => Navigator.of(context, rootNavigator: true).push(
-                  MaterialPageRoute(builder: (_) => const CouncilChatScreen()),
-                ),
+                primary:   true,
+                locked:    _proOnlyLocked,
+                onTap:     _onCouncil,
               ),
 
               const SizedBox(height: 28),
@@ -156,6 +227,7 @@ class _ConsigliereCard extends StatelessWidget {
   final String subtitle;
   final String cta;
   final bool primary;
+  final bool locked;
   final VoidCallback onTap;
 
   const _ConsigliereCard({
@@ -164,6 +236,7 @@ class _ConsigliereCard extends StatelessWidget {
     required this.subtitle,
     required this.cta,
     required this.primary,
+    this.locked = false,
     required this.onTap,
   });
 
@@ -182,13 +255,15 @@ class _ConsigliereCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface1,
             borderRadius: BorderRadius.circular(16),
+            // Locked (pro-gated) cards drop to a flat grey border with
+            // no glow so they visibly read as "blacked out".
             border: Border.all(
-              color: primary
-                  ? AppColors.accent
-                  : AppColors.accentBorder,
-              width: primary ? 1.4 : 0.8,
+              color: locked
+                  ? AppColors.divider
+                  : (primary ? AppColors.accent : AppColors.accentBorder),
+              width: locked ? 0.8 : (primary ? 1.4 : 0.8),
             ),
-            boxShadow: primary
+            boxShadow: (primary && !locked)
                 ? const [
                     BoxShadow(
                       color: AppColors.accentGlow,
@@ -205,16 +280,16 @@ class _ConsigliereCard extends StatelessWidget {
                 children: [
                   Text(topLabel,
                       style: AppTypography.label.copyWith(
-                        color: AppColors.accent,
+                        color: locked ? AppColors.textTertiary : AppColors.accent,
                         fontSize: 10,
                         letterSpacing: 3,
                         fontWeight: FontWeight.w900,
                       )),
                   const Spacer(),
-                  Icon(Icons.arrow_forward_rounded,
-                      color: primary
-                          ? AppColors.accent
-                          : AppColors.textTertiary,
+                  Icon(locked ? Icons.lock_rounded : Icons.arrow_forward_rounded,
+                      color: locked
+                          ? AppColors.textTertiary
+                          : (primary ? AppColors.accent : AppColors.textTertiary),
                       size: 18),
                 ],
               ),
@@ -240,23 +315,37 @@ class _ConsigliereCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: primary
-                      ? AppColors.accent.withValues(alpha: 0.16)
-                      : AppColors.surface3,
+                  color: locked
+                      ? AppColors.surface3
+                      : (primary
+                          ? AppColors.accent.withValues(alpha: 0.16)
+                          : AppColors.surface3),
                   borderRadius: BorderRadius.circular(100),
                   border: Border.all(
-                      color: primary
-                          ? AppColors.accentBorder
-                          : AppColors.divider,
+                      color: locked
+                          ? AppColors.divider
+                          : (primary ? AppColors.accentBorder : AppColors.divider),
                       width: 0.8),
                 ),
-                child: Text(cta,
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.accent,
-                      fontSize: 10.5,
-                      letterSpacing: 2.8,
-                      fontWeight: FontWeight.w900,
-                    )),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (locked) ...[
+                      const Icon(Icons.lock_rounded,
+                          color: AppColors.textSecondary, size: 13),
+                      const SizedBox(width: 7),
+                    ],
+                    Text(locked ? 'UNLOCK WITH PRO' : cta,
+                        style: AppTypography.label.copyWith(
+                          color: locked
+                              ? AppColors.textSecondary
+                              : AppColors.accent,
+                          fontSize: 10.5,
+                          letterSpacing: 2.8,
+                          fontWeight: FontWeight.w900,
+                        )),
+                  ],
+                ),
               ),
             ],
           ),

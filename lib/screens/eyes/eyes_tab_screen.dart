@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../config/dev_flags.dart';
 import '../../models/gaze/gaze_lesson.dart';
 import '../../models/gaze/gaze_syllabus.dart';
 import '../../models/presence/presence_lesson.dart';
 import '../../models/presence/presence_syllabus.dart';
 import '../../services/gaze/gaze_progress_store.dart';
+import '../../services/local_store_service.dart';
 import '../../services/presence/presence_progress_store.dart';
 import '../../theme/auralay_app_colors.dart';
 import '../../theme/auralay_app_typography.dart';
@@ -38,6 +40,14 @@ class _EyesTabScreenState extends State<EyesTabScreen> {
   late Future<int>            _completedGaze;
   late Future<int>            _completedPresence;
 
+  // Paywall entitlement state. `_pro` true ⇒ everything unlocked,
+  // unlimited. Free users get one eye-contact lesson (Part One);
+  // Part Two (Eye Contact + Voice) is pro-only. `_loaded` gates the
+  // locked visual so a paying user never sees a lock flash on launch.
+  bool _pro       = false;
+  bool _eyesUsed  = false;
+  bool _loaded    = false;
+
   @override
   void initState() {
     super.initState();
@@ -45,6 +55,18 @@ class _EyesTabScreenState extends State<EyesTabScreen> {
     _nextPresence      = _pickNextPresence();
     _completedGaze     = GazeProgressStore.completedCount();
     _completedPresence = PresenceProgressStore.completedCount();
+    _loadEntitlements();
+  }
+
+  Future<void> _loadEntitlements() async {
+    final pro      = kBypassPaywall ? true : await LocalStoreService.isSubscribed();
+    final eyesUsed = await LocalStoreService.eyesFreeUsed();
+    if (!mounted) return;
+    setState(() {
+      _pro      = pro;
+      _eyesUsed = eyesUsed;
+      _loaded   = true;
+    });
   }
 
   Future<GazeLesson> _pickNextGaze() async {
@@ -70,6 +92,47 @@ class _EyesTabScreenState extends State<EyesTabScreen> {
       _completedGaze     = GazeProgressStore.completedCount();
       _completedPresence = PresenceProgressStore.completedCount();
     });
+    _loadEntitlements();
+  }
+
+  // ── Paywall gating ────────────────────────────────────────────────
+  // Part One (Eye Contact): pro = unlimited; free = exactly one lesson
+  // (consumed on open), then paywall. Browsing the full library is
+  // pro-only. Part Two (Eye Contact + Voice) is pro-only outright.
+  bool get _eyeContactLocked => _loaded && !_pro && _eyesUsed;
+  bool get _voiceLocked      => _loaded && !_pro;
+
+  Future<void> _toPaywall() async {
+    await context.push('/paywall');
+    if (!mounted) return;
+    _loadEntitlements();
+  }
+
+  Future<void> _onEyeContactBegin(GazeLesson l) async {
+    if (_pro) { _openGaze(l); return; }
+    if (!_eyesUsed) {
+      await LocalStoreService.markEyesFreeUsed();
+      if (!mounted) return;
+      setState(() => _eyesUsed = true);
+      _openGaze(l);
+      return;
+    }
+    _toPaywall();
+  }
+
+  void _onEyeContactBrowse() {
+    if (_pro) { _pickGaze(); return; }
+    _toPaywall();          // full library is pro-only
+  }
+
+  void _onVoiceBegin(PresenceLesson l) {
+    if (_pro) { _openVoice(l); return; }
+    _toPaywall();
+  }
+
+  void _onVoiceBrowse() {
+    if (_pro) { _pickVoice(); return; }
+    _toPaywall();
   }
 
   Future<void> _openGaze(GazeLesson l) async {
@@ -271,9 +334,10 @@ class _EyesTabScreenState extends State<EyesTabScreen> {
                           lessonOneLine: l.oneLine,
                           cta:       'BEGIN',
                           primary:   true,         // both cards equal
+                          locked:    _eyeContactLocked,
                           browseLabel: 'SEE ALL ${GazeSyllabus.all.length} EYE MOVES',
-                          onBrowse:  _pickGaze,
-                          onTap:     () => _openGaze(l),
+                          onBrowse:  _onEyeContactBrowse,
+                          onTap:     () => _onEyeContactBegin(l),
                         );
                       },
                     ),
@@ -300,9 +364,10 @@ class _EyesTabScreenState extends State<EyesTabScreen> {
                           lessonOneLine: l.oneLine,
                           cta:       'BEGIN',
                           primary:   true,         // both cards equal
+                          locked:    _voiceLocked,
                           browseLabel: 'SEE ALL ${PresenceSyllabus.all.length} VOICE MOVES',
-                          onBrowse:  _pickVoice,
-                          onTap:     () => _openVoice(l),
+                          onBrowse:  _onVoiceBrowse,
+                          onTap:     () => _onVoiceBegin(l),
                         );
                       },
                     ),
@@ -505,6 +570,7 @@ class _PartCard extends StatelessWidget {
   final String lessonOneLine;
   final String cta;
   final bool   primary;
+  final bool   locked;
   final String browseLabel;
   final VoidCallback onBrowse;
   final VoidCallback onTap;
@@ -517,6 +583,7 @@ class _PartCard extends StatelessWidget {
     required this.lessonOneLine,
     required this.cta,
     required this.primary,
+    this.locked = false,
     required this.browseLabel,
     required this.onBrowse,
     required this.onTap,
@@ -535,21 +602,22 @@ class _PartCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface1,
             borderRadius: BorderRadius.circular(20),
-            // Both cards get red borders + glow now — the user can
-            // pick whichever they want; neither is the "secondary".
-            // Previously Part Two looked dim/optional, which made
-            // people skip it.
+            // Unlocked cards carry the red border + glow. A locked
+            // (pro-gated) card drops to a flat grey border with no
+            // glow so it visibly reads as "blacked out / locked".
             border: Border.all(
-              color: AppColors.accent,
-              width: 1.2,
+              color: locked ? AppColors.divider : AppColors.accent,
+              width: locked ? 0.8 : 1.2,
             ),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.accentGlow,
-                blurRadius: 44,
-                spreadRadius: -8,
-              ),
-            ],
+            boxShadow: locked
+                ? const []
+                : const [
+                    BoxShadow(
+                      color: AppColors.accentGlow,
+                      blurRadius: 44,
+                      spreadRadius: -8,
+                    ),
+                  ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -558,16 +626,16 @@ class _PartCard extends StatelessWidget {
                 children: [
                   Text(partLabel,
                       style: AppTypography.label.copyWith(
-                        color: AppColors.accent,
+                        color: locked ? AppColors.textTertiary : AppColors.accent,
                         fontSize: 10,
                         letterSpacing: 3,
                         fontWeight: FontWeight.w900,
                       )),
                   const Spacer(),
-                  Icon(Icons.arrow_forward_rounded,
-                      color: primary
-                          ? AppColors.accent
-                          : AppColors.textTertiary,
+                  Icon(locked ? Icons.lock_rounded : Icons.arrow_forward_rounded,
+                      color: locked
+                          ? AppColors.textTertiary
+                          : (primary ? AppColors.accent : AppColors.textTertiary),
                       size: 18),
                 ],
               ),
@@ -611,69 +679,75 @@ class _PartCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: primary
-                      ? AppColors.accent
-                      : AppColors.surface3,
+                  color: locked
+                      ? AppColors.surface3
+                      : (primary ? AppColors.accent : AppColors.surface3),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(cta,
+                    Text(locked ? 'UNLOCK WITH PRO' : cta,
                         style: AppTypography.label.copyWith(
-                          color: primary ? Colors.white : AppColors.accent,
+                          color: locked
+                              ? AppColors.textSecondary
+                              : (primary ? Colors.white : AppColors.accent),
                           fontSize: 12,
                           letterSpacing: 3,
                           fontWeight: FontWeight.w900,
                         )),
                     const SizedBox(width: 8),
-                    Icon(Icons.arrow_forward_rounded,
-                        color: primary ? Colors.white : AppColors.accent,
+                    Icon(locked ? Icons.lock_rounded : Icons.arrow_forward_rounded,
+                        color: locked
+                            ? AppColors.textSecondary
+                            : (primary ? Colors.white : AppColors.accent),
                         size: 16),
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
-              // Browse-all button — an obvious, full-width tap target so
-              // it's clear you can pick ANY move, not just the next one.
-              // Its own InkWell so the tap doesn't trigger the card's
-              // "begin next" onTap.
-              Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-                child: InkWell(
-                  onTap: onBrowse,
+              // Browse-all button — full library, pick ANY move. Hidden
+              // when the card is locked (it routes to the paywall via the
+              // card tap instead). Its own InkWell so the tap doesn't
+              // trigger the card's "begin next" onTap.
+              if (!locked) ...[
+                const SizedBox(height: 10),
+                Material(
+                  color: Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface2,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: AppColors.accentBorder, width: 0.8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.grid_view_rounded,
-                            color: AppColors.accent, size: 15),
-                        const SizedBox(width: 9),
-                        Text(browseLabel,
-                            style: AppTypography.label.copyWith(
-                              color: AppColors.accent,
-                              fontSize: 11,
-                              letterSpacing: 2,
-                              fontWeight: FontWeight.w900,
-                            )),
-                        const SizedBox(width: 7),
-                        const Icon(Icons.expand_more_rounded,
-                            color: AppColors.accent, size: 16),
-                      ],
+                  child: InkWell(
+                    onTap: onBrowse,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      height: 44,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppColors.surface2,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: AppColors.accentBorder, width: 0.8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.grid_view_rounded,
+                              color: AppColors.accent, size: 15),
+                          const SizedBox(width: 9),
+                          Text(browseLabel,
+                              style: AppTypography.label.copyWith(
+                                color: AppColors.accent,
+                                fontSize: 11,
+                                letterSpacing: 2,
+                                fontWeight: FontWeight.w900,
+                              )),
+                          const SizedBox(width: 7),
+                          const Icon(Icons.expand_more_rounded,
+                              color: AppColors.accent, size: 16),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
