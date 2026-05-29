@@ -10,6 +10,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../models/face_geometry.dart';
 import '../../services/analytics_service.dart';
@@ -109,6 +110,11 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    // Keep the screen awake for the whole scan — the user holds still
+    // in front of the camera through countdown + multi-angle capture,
+    // with no touch input, so the display would otherwise auto-dim and
+    // drop the session. Released in dispose.
+    WakelockPlus.enable();
     _animTicker = createTicker((elapsed) {
       if (!mounted) return;
       setState(() => _animT = elapsed.inMicroseconds / 1e6);
@@ -1011,6 +1017,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
     _camera?.dispose();
     _faceDetector?.close();
     _meshService?.close();
+    WakelockPlus.disable();
     super.dispose();
   }
 
