@@ -106,7 +106,7 @@ class _ScanHubTab extends StatelessWidget {
         color: AppColors.red,
         backgroundColor: AppColors.surface1,
         child: ListView(
-          padding: const EdgeInsets.only(bottom: Sp.xxl),
+          padding: const EdgeInsets.only(bottom: Sp.xl),
           children: [
             // ── Masthead — Mirrorly + tab thesis + actions
             MirrorlyMasthead(
@@ -127,11 +127,9 @@ class _ScanHubTab extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: Sp.lg),
+            const SizedBox(height: Sp.md),
 
-            // ── Display headline — italic "YOUR FACE. MEASURED." with the
-            // bottom line in red. Subhead kills the AI-slop fear; body
-            // body opens the gap-to-potential thesis.
+            // ── Display headline — italic "YOUR FACE. MEASURED.".
             const DisplayBlock(
               lineOne: 'Your face.',
               lineTwo: 'Measured.',
@@ -140,27 +138,20 @@ class _ScanHubTab extends StatelessWidget {
 
             const SizedBox(height: Sp.lg),
 
-            // ── The 1-2-3 path + Current vs Optimised hero side-by-side.
-            // This is the conversion bait: he sees the path AND a glimpse
-            // of his strongest face in the same frame.
+            // ── 1-2-3 path as a single horizontal row. Each step
+            // carries its own lock state so we don't need a separate
+            // "after the scan unlock" strip below — the path tells the
+            // same story tighter.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(child: _PathFlow(stepDone: hasScan)),
-                    const SizedBox(width: Sp.md),
-                    const Expanded(child: _OptimisedSplitCard()),
-                  ],
-                ),
-              ),
+              child: _PathRow(stepDone: hasScan),
             ).animate().fadeIn(duration: 400.ms)
-              .slideY(begin: 0.04, end: 0, duration: 400.ms, curve: Curves.easeOut),
+              .slideY(begin: 0.04, end: 0, duration: 400.ms,
+                  curve: Curves.easeOut),
 
             const SizedBox(height: Sp.lg),
 
-            // ── Primary CTA — full-width red, 30-second meta underneath.
+            // ── Primary CTA — full-width red, 30-second meta.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
               child: PrimaryCta(
@@ -171,29 +162,6 @@ class _ScanHubTab extends StatelessWidget {
               ),
             ).animate().fadeIn(delay: 160.ms, duration: 400.ms),
 
-            const SizedBox(height: Sp.lg),
-
-            // ── After the scan, unlock — Presence + Game badges.
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-              child: const LockStrip(
-                label: 'After the scan, unlock',
-                highlight: 'Presence  ·  Game',
-                badges: [
-                  LockBadge(
-                    icon: Icons.remove_red_eye_outlined,
-                    label: 'Presence',
-                    color: AppColors.accent,
-                  ),
-                  LockBadge(
-                    icon: Icons.local_fire_department_rounded,
-                    label: 'Game',
-                    color: AppColors.red,
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(delay: 260.ms, duration: 400.ms),
-
             // ── Returning-user extras. Score snapshot + active protocol.
             // Hidden on first impression so the conversion column above
             // owns the screen for new users.
@@ -202,14 +170,14 @@ class _ScanHubTab extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
                 child: _LatestSnapshot(scan: latest!),
-              ).animate().fadeIn(delay: 360.ms, duration: 400.ms),
+              ).animate().fadeIn(delay: 260.ms, duration: 400.ms),
             ],
             if (protocol != null) ...[
               const SizedBox(height: Sp.md),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
                 child: _ActiveProtocolCard(protocol: protocol!),
-              ).animate().fadeIn(delay: 420.ms, duration: 400.ms),
+              ).animate().fadeIn(delay: 320.ms, duration: 400.ms),
             ],
           ],
         ),
@@ -218,177 +186,145 @@ class _ScanHubTab extends StatelessWidget {
   }
 }
 
-// ── 1-2-3 path flow used on the Scan tab — numbered circles, the current
-// step painted red, subsequent steps muted. Lives next to the optimised
-// split card so the user sees the path AND a glimpse of the destination.
-class _PathFlow extends StatelessWidget {
+// ── 1-2-3 path as a horizontal row of three tiles. Each tile carries
+// its own lock state, so we don't need a separate "after the scan
+// unlock" strip below — the path IS the unlock story.
+class _PathRow extends StatelessWidget {
   final bool stepDone;
-  const _PathFlow({required this.stepDone});
+  const _PathRow({required this.stepDone});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _step(1, 'Face first',  'Scan your face',
-            active: !stepDone, done: stepDone),
-        const SizedBox(height: 18),
-        _step(2, 'Presence next', 'Train eye contact & voice'),
-        const SizedBox(height: 18),
-        _step(3, 'Game after',   'Real roleplay with Lucien'),
-      ],
-    );
-  }
-
-  Widget _step(int n, String label, String body,
-      {bool active = false, bool done = false}) {
-    final accent = active || done ? AppColors.red : AppColors.textTertiary;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 26, height: 26,
-          decoration: BoxDecoration(
-            color: done ? AppColors.red.withOpacity(0.18) : Colors.transparent,
-            shape: BoxShape.circle,
-            border: Border.all(color: accent, width: 1.2),
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _PathTile(
+              n: 1,
+              label: 'Face',
+              body: 'Scan your face',
+              active: !stepDone,
+              done: stepDone,
+            ),
           ),
-          alignment: Alignment.center,
-          child: done
-              ? const Icon(Icons.check_rounded, size: 14, color: AppColors.red)
-              : Text(
-                  '$n',
-                  style: AppTypography.label.copyWith(
-                    color: accent,
-                    fontSize: 12,
-                    letterSpacing: 0,
-                  ),
-                ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label.toUpperCase(),
-                style: AppTypography.label.copyWith(
-                  color: accent,
-                  letterSpacing: 2.0,
-                  fontSize: 10.5,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                body,
-                style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                  height: 1.35,
-                ),
-              ),
-            ],
+          const SizedBox(width: 10),
+          Expanded(
+            child: _PathTile(
+              n: 2,
+              label: 'Presence',
+              body: 'Train eye contact',
+              locked: true,
+              icon: Icons.remove_red_eye_outlined,
+            ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Current vs Optimised split — the hero photo on the right side of the
-// Scan tab. Single image with vertical split labels; falls back to twin
-// silhouettes when the asset hasn't been dropped in yet.
-class _OptimisedSplitCard extends StatelessWidget {
-  const _OptimisedSplitCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(Rd.lg),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface2,
-          border: Border.all(color: AppColors.surface3, width: 1),
-          borderRadius: BorderRadius.circular(Rd.lg),
-        ),
-        child: Stack(
-          fit: StackFit.passthrough,
-          children: [
-            AspectRatio(
-              aspectRatio: 4 / 5,
-              child: Image.asset(
-                MirrorlyAssets.optimisedSplit,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Row(
-                  children: [
-                    Expanded(child: Container(
-                      color: AppColors.surface1,
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.person_outline_rounded,
-                          size: 36, color: AppColors.surface3),
-                    )),
-                    Container(width: 1, color: AppColors.surface3),
-                    Expanded(child: Container(
-                      color: AppColors.surface1,
-                      alignment: Alignment.center,
-                      child: Icon(Icons.person_rounded,
-                          size: 36, color: AppColors.red.withOpacity(0.6)),
-                    )),
-                  ],
-                ),
-              ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _PathTile(
+              n: 3,
+              label: 'Game',
+              body: 'Roleplay with Lucien',
+              locked: true,
+              icon: Icons.local_fire_department_rounded,
             ),
-            const Positioned(
-              left: 10, top: 10,
-              child: _SplitLabel(text: 'CURRENT'),
-            ),
-            const Positioned(
-              right: 10, top: 10,
-              child: _SplitLabel(text: 'OPTIMISED', color: AppColors.red),
-            ),
-            Positioned(
-              left: 10, right: 10, bottom: 10,
-              child: Row(
-                children: [
-                  const Icon(Icons.lock_rounded,
-                      size: 12, color: AppColors.textTertiary),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'See your strongest version rendered on you'.toUpperCase(),
-                      style: AppTypography.label.copyWith(
-                        color: AppColors.textSecondary,
-                        fontSize: 8.5,
-                        letterSpacing: 1.4,
-                        height: 1.3,
-                      ),
-                      maxLines: 2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _SplitLabel extends StatelessWidget {
-  final String text;
-  final Color color;
-  const _SplitLabel({required this.text, this.color = AppColors.textSecondary});
+class _PathTile extends StatelessWidget {
+  final int n;
+  final String label;
+  final String body;
+  final bool active;
+  final bool done;
+  final bool locked;
+  final IconData? icon;
+  const _PathTile({
+    required this.n,
+    required this.label,
+    required this.body,
+    this.active = false,
+    this.done = false,
+    this.locked = false,
+    this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: AppTypography.label.copyWith(
-        color: color,
-        fontSize: 9,
-        letterSpacing: 2.0,
+    final isLive = active || done;
+    final accent = isLive ? AppColors.red : AppColors.textTertiary;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(Rd.lg),
+        border: Border.all(
+          color: isLive
+              ? AppColors.red.withOpacity(0.55)
+              : AppColors.surface3,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 22, height: 22,
+                decoration: BoxDecoration(
+                  color: done
+                      ? AppColors.red.withOpacity(0.18)
+                      : Colors.transparent,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: accent, width: 1.2),
+                ),
+                alignment: Alignment.center,
+                child: done
+                    ? const Icon(Icons.check_rounded,
+                        size: 12, color: AppColors.red)
+                    : Text(
+                        '$n',
+                        style: AppTypography.label.copyWith(
+                          color: accent,
+                          fontSize: 11,
+                          letterSpacing: 0,
+                        ),
+                      ),
+              ),
+              const Spacer(),
+              if (locked)
+                const Icon(Icons.lock_rounded,
+                    size: 12, color: AppColors.textTertiary)
+              else if (icon != null)
+                Icon(icon, size: 14, color: accent),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            label.toUpperCase(),
+            style: AppTypography.label.copyWith(
+              color: accent,
+              letterSpacing: 1.8,
+              fontSize: 10.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            body,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 11.5,
+              height: 1.3,
+            ),
+          ),
+        ],
       ),
     );
   }

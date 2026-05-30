@@ -1,9 +1,6 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../config/dev_flags.dart';
 import '../../models/gaze/gaze_lesson.dart';
@@ -127,11 +124,6 @@ class _EyesTabScreenState extends State<EyesTabScreen> {
     _toPaywall();
   }
 
-  void _onEyeContactBrowse() {
-    if (_pro) { _pickGaze(); return; }
-    _toPaywall();          // full library is pro-only
-  }
-
   void _onVoiceBegin(PresenceLesson l) {
     if (_pro) { _openVoice(l); return; }
     _toPaywall();
@@ -200,39 +192,29 @@ class _EyesTabScreenState extends State<EyesTabScreen> {
             const SizedBox(height: Sp.lg),
 
             // ── PART ONE — Eye Contact (gaze training).
+            // Card is intentionally NOT shown as locked even after the
+            // free use is consumed: tapping always works — the handler
+            // either runs the lesson (first time, free) or routes to
+            // the paywall (after). A locked badge would just kill the
+            // tap intent and the conversion.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
               child: FutureBuilder<GazeLesson>(
                 future: _nextGaze,
                 builder: (_, snap) {
-                  final l        = snap.data ?? GazeSyllabus.all.first;
-                  final upcoming = GazeSyllabus.all
-                      .where((g) => g.id != l.id)
-                      .take(3)
-                      .toList();
-                  final extra = math.max(0,
-                      GazeSyllabus.all.length - 1 - upcoming.length);
+                  final l = snap.data ?? GazeSyllabus.all.first;
                   return CharacterCard(
                     eyebrow: 'Part one',
                     title: 'Eye Contact',
                     body:
                         'Pure gaze training. Hold her eyes. Don\'t break first.',
                     assetPath: MirrorlyAssets.gazeNeutral,
-                    locked: _eyeContactLocked,
-                    inlinePanel: LessonListPanel(
-                      rows: [
-                        _rowFor(l.number, l.name),
-                        for (final u in upcoming) _rowFor(u.number, u.name),
-                      ],
-                      currentSubtitle: l.oneLine,
-                      currentCta: _eyeContactLocked ? 'Locked' : 'Start Lesson',
-                      currentLocked: _eyeContactLocked,
+                    locked: false,
+                    inlinePanel: _CompactLessonRow(
+                      number: l.number,
+                      name: l.name,
+                      oneLine: l.oneLine,
                       onStart: () => _onEyeContactBegin(l),
-                      extraCount: extra,
-                    ),
-                    footer: _BrowseButton(
-                      label: 'See all ${GazeSyllabus.all.length} eye moves',
-                      onTap: _onEyeContactBrowse,
                     ),
                   );
                 },
@@ -277,133 +259,6 @@ class _EyesTabScreenState extends State<EyesTabScreen> {
     );
   }
 
-  LessonRowSpec _rowFor(int number, String name) => LessonRowSpec(
-        label: 'Lesson ${number.toString().padLeft(2, '0')}',
-        title: name,
-      );
-
-  /// Bottom-sheet picker — every move in the curriculum, pick any one.
-  Future<void> _pickGaze() async {
-    final l = await _showMovePicker(
-      title:   'The Gaze · Choose a move',
-      lessons: [
-        for (final g in GazeSyllabus.all)
-          (number: g.number, name: g.name, oneLine: g.oneLine),
-      ],
-    );
-    if (l != null && mounted) _openGaze(GazeSyllabus.all[l]);
-  }
-
-  Future<int?> _showMovePicker({
-    required String title,
-    required List<({int number, String name, String oneLine})> lessons,
-  }) {
-    return showModalBottomSheet<int>(
-      context: context,
-      backgroundColor: AppColors.base,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(ctx).size.height * 0.82,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                  child: Text(
-                    title.toUpperCase(),
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.red,
-                      fontSize: 11,
-                      letterSpacing: 2.8,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                Flexible(
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    itemCount: lessons.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (_, i) {
-                      final l = lessons[i];
-                      return Material(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        child: InkWell(
-                          onTap: () => Navigator.of(ctx).pop(i),
-                          borderRadius: BorderRadius.circular(12),
-                          child: Ink(
-                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface1,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                  color: AppColors.surface3, width: 0.8),
-                            ),
-                            child: Row(
-                              children: [
-                                Text(
-                                  l.number.toString().padLeft(2, '0'),
-                                  style: GoogleFonts.playfairDisplay(
-                                    color: AppColors.red,
-                                    fontSize: 22,
-                                    fontStyle: FontStyle.italic,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        l.name.toUpperCase(),
-                                        style: AppTypography.label.copyWith(
-                                          color: AppColors.textPrimary,
-                                          fontSize: 13,
-                                          letterSpacing: 1.8,
-                                          fontWeight: FontWeight.w900,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        l.oneLine,
-                                        style: AppTypography.bodySmall.copyWith(
-                                          color: AppColors.red,
-                                          fontSize: 12.5,
-                                          height: 1.35,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(Icons.arrow_forward_rounded,
-                                    color: AppColors.red, size: 18),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
 
 // ─── Progress strip ─────────────────────────────────────────────────
@@ -463,42 +318,92 @@ class _ProgressStrip extends StatelessWidget {
   }
 }
 
-// ─── Browse button ─────────────────────────────────────────────────
-// "See all 10 eye moves ↗" — sits in the Part 1 card footer.
+// ─── Compact lesson row ─────────────────────────────────────────────
+// Single-row replacement for the long lesson list. Sits inside the
+// Part 1 card. Title + one-line description on the left, round red
+// play button on the right — frees up the horizontal space the old
+// "START LESSON" text button was eating, so the title never truncates.
 
-class _BrowseButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  const _BrowseButton({required this.label, required this.onTap});
+class _CompactLessonRow extends StatelessWidget {
+  final int number;
+  final String name;
+  final String oneLine;
+  final VoidCallback onStart;
+  const _CompactLessonRow({
+    required this.number,
+    required this.name,
+    required this.oneLine,
+    required this.onStart,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(Rd.md),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                label.toUpperCase(),
-                style: AppTypography.label.copyWith(
-                  color: AppColors.textSecondary,
-                  fontSize: 11,
-                  letterSpacing: 2.2,
-                  fontWeight: FontWeight.w700,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(Rd.lg),
+        border: Border.all(color: AppColors.red.withOpacity(0.30), width: 1),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Lesson ${number.toString().padLeft(2, '0')}  ·  ${name.toUpperCase()}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.label.copyWith(
+                    color: AppColors.textPrimary,
+                    fontSize: 12,
+                    letterSpacing: 1.6,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              const Icon(Icons.arrow_forward_rounded,
-                  size: 14, color: AppColors.textSecondary),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  oneLine,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.red,
+                    fontSize: 12.5,
+                    height: 1.35,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(width: 10),
+          InkResponse(
+            onTap: onStart,
+            radius: 28,
+            child: Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.red,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.red.withOpacity(0.40),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.play_arrow_rounded,
+                color: Colors.black,
+                size: 26,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

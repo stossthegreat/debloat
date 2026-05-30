@@ -195,11 +195,16 @@ class DisplayBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Display sizes scaled down from the mockup so longer headlines
+    // ("Knows your bones to the millimetre.") fit on a phone in TWO
+    // lines max — the previous 54pt wrapped to five lines and ate the
+    // whole screen. Each line is FittedBox-scaled so the eye still
+    // lands on a single bold block even when the line is long.
     final display = GoogleFonts.playfairDisplay(
-      fontSize: 54,
+      fontSize: 42,
       fontWeight: FontWeight.w800,
       fontStyle: FontStyle.italic,
-      letterSpacing: -2.0,
+      letterSpacing: -1.6,
       height: 1.0,
     );
     return Padding(
@@ -207,21 +212,31 @@ class DisplayBlock extends StatelessWidget {
       child: Column(
         crossAxisAlignment: align,
         children: [
-          Text(
-            lineOne.toUpperCase(),
-            style: display.copyWith(color: AppColors.textPrimary),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              lineOne.toUpperCase(),
+              maxLines: 1,
+              style: display.copyWith(color: AppColors.textPrimary),
+            ),
           ),
           const SizedBox(height: 2),
-          Text(
-            lineTwo.toUpperCase(),
-            style: display.copyWith(color: AppColors.red),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              lineTwo.toUpperCase(),
+              maxLines: 1,
+              style: display.copyWith(color: AppColors.red),
+            ),
           ),
           if (subhead != null) ...[
             const SizedBox(height: Sp.md),
             Text(
               subhead!,
               style: GoogleFonts.inter(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w400,
                 color: AppColors.textPrimary,
                 height: 1.35,
