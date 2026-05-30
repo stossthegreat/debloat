@@ -2,19 +2,21 @@ import 'gaze_lesson.dart';
 
 /// THE GAZE — Lucien's seductive-eye masterclass.
 ///
-/// Ten named eye MOVES, taught deadly and tight: each lesson is ONE
-/// punch of POWER (why this move works on her), ONE line of HOW
-/// (exactly what to do), then he sends the user in. No slow-motion,
-/// no rambling — the script is built to land like a viral clip.
+/// Twelve named eye MOVES taught the way a real seducer teaches: ONE
+/// punch of WHY this move works on her, then a VIVID anatomy-named
+/// HOW (her LEFT eye, your top lid, her top lip, slow, heavy, dead
+/// brow). No CEO talk, no general "be confident" — every line names
+/// the part of the face, the speed, the feeling. That's how a man
+/// actually learns to look at a woman.
 ///
-/// Flow per lesson: POWER → HOW → trigger → drill (practice) →
-/// correction ("you did X, fix it, Again.") → drill (graded) → score.
+/// Flow per lesson:  WHY → HOW (vivid) → trigger → drill → correction
+/// → drill (graded) → score.
 ///
-/// Grounded in real research so it survives a skeptic: ~3.2s is the
-/// most comfortable mutual-gaze length (Binetti 2016); mutual gaze
-/// manufactures closeness (Aron 1997); a hard stare trips the threat
-/// circuit while soft eyes read as warmth; the anxious man breaks gaze
-/// down/away within a second, the confident man owns it.
+/// Grounded in real research: ~3.2s is the most comfortable
+/// mutual-gaze length (Binetti 2016); mutual gaze manufactures
+/// closeness (Aron 1997); hard stare trips the threat circuit, soft
+/// eyes read as warmth; the anxious man breaks down/away inside a
+/// second, the confident man owns it.
 abstract final class GazeSyllabus {
   static const all = <GazeLesson>[
     // ── LESSON 1 — THE LOCK ─────────────────────────────────────────
@@ -22,19 +24,20 @@ abstract final class GazeSyllabus {
       id: 'the_lock',
       number: 1,
       name: 'THE LOCK',
-      oneLine: 'Three seconds. Hold, then break like you chose to.',
-      objective: 'Hold my eyes. Three seconds. Break on your terms.',
+      oneLine: 'Three seconds on one eye. Don\'t flinch first.',
+      objective: 'Pick one eye. Lock. Three seconds. You break.',
       story: [
-        'Eye contact is power. Hold hers for three seconds without '
-            'flinching and her brain reads the rarest thing in the room: '
-            'a man who isn\'t afraid of her.',
+        'Three seconds without flinching reads as the rarest signal a '
+            'man can send: power. Her brain logs you before she knows why.',
       ],
       demo: [
-        'How: lock onto one eye. Hold. Three full seconds. Then break '
-            'because YOU decided to — not because you cracked.',
+        'Pick her LEFT eye. Not both — one. Lock onto the iris like '
+            'you\'re reading it. Brow stays soft, no scowl. Mouth still. '
+            'Three slow breaths through your chest. You don\'t drift. '
+            'You break when YOU decide — never when it gets heavy.',
       ],
       instruct: [
-        'Lock my eyes now. Don\'t flinch. Three seconds. Go.',
+        'One eye. Lock. Go.',
       ],
       drillSeconds: 12,
       targetBlinks: 3,
@@ -47,9 +50,8 @@ abstract final class GazeSyllabus {
       },
       isRhythmLesson: false,
       correction: [
-        'You blinked the second it got heavy. That flinch tells her '
-            'you\'re shocked she\'s still looking at you.',
-        'Hold it like you expected her to. Again.',
+        'You blinked the second it got heavy — she felt the flinch.',
+        'Hold it like you expected it. Again.',
       ],
     ),
 
@@ -58,19 +60,20 @@ abstract final class GazeSyllabus {
       id: 'the_drop',
       number: 2,
       name: 'THE DROP',
-      oneLine: 'When you break, break down. Never up and away.',
-      objective: 'Hold. Then drop your eyes down — slow. Never up.',
+      oneLine: 'When you break, break down. Never up.',
+      objective: 'Lock. Then drop slow to her mouth. Down only.',
       story: [
-        'The way you break the look says more than the look. Break DOWN '
-            'and it reads as desire. Break up and away and it reads as '
-            '"I\'m bored, who else is here."',
+        'How you BREAK says more than the look. Down reads as desire. '
+            'Up and away reads as bored.',
       ],
       demo: [
-        'How: hold her eyes, then let them fall — slow — toward her '
-            'mouth. Down is intimate. Up is dismissive.',
+        'Lock her eye. Then let your eyes fall — slow, heavy — to the '
+            'tiny dip above her top lip. Stay there one full beat. Then '
+            'climb back to her eye. No darting. No flick. The journey '
+            'down is the move; rushing kills it.',
       ],
       instruct: [
-        'Hold my eyes. Then drop them slow. Down, never up. Go.',
+        'Lock. Drop slow. Down only. Go.',
       ],
       drillSeconds: 12,
       targetBlinks: 3,
@@ -83,30 +86,32 @@ abstract final class GazeSyllabus {
       },
       isRhythmLesson: true,
       correction: [
-        'You broke up and away — you looked like you were scanning for '
-            'the exit.',
-        'Let your eyes fall slow, like they\'re heavy. Down. Again.',
+        'You broke up and away — you read like you were scanning for the exit.',
+        'Eyes fall slow, like they\'re heavy. Down. Again.',
       ],
     ),
 
-    // ── LESSON 3 — SOFT EYES ────────────────────────────────────────
+    // ── LESSON 3 — SOFT EYES (SMOULDER) ─────────────────────────────
     GazeLesson(
       id: 'soft_eyes',
       number: 3,
       name: 'SOFT EYES',
-      oneLine: 'The smolder. Warmth in the eyes, not a hard stare.',
-      objective: 'Relax the brow. Let the warmth reach your eyes.',
+      oneLine: 'Brow dead. Top lid down a hair. The smoulder.',
+      objective: 'Drop the brow. Half-lid. Smile in the mouth only.',
       story: [
-        'A hard, wide stare trips an alarm in her brain — it reads as a '
-            'threat and she pulls back. Soft eyes read as "I like what I '
-            'see and I\'ve got all night." That\'s the smolder.',
+        'A hard wide stare trips an alarm in her brain. Soft eyes read '
+            'as "I like what I see and I\'ve got all night." That\'s '
+            'the smoulder.',
       ],
       demo: [
-        'How: drop the tension in your brow, soften the corners of your '
-            'eyes, a breath of a smile in the eyes only — not the mouth.',
+        'Drop every muscle above your eyes — brow goes dead, like you '
+            'just woke up. Pull the top lid down a hair — half-lidded, '
+            'not closed. Mouth corner lifts a single millimetre. The '
+            'smile is in the MOUTH, never the eyes. Eyes stay heavy '
+            'and locked. That contradiction is the smoulder.',
       ],
       instruct: [
-        'Hold my eyes — soft. Relax the brow. Smolder. Go.',
+        'Brow dead. Lids half. Mouth corner. Lock. Go.',
       ],
       drillSeconds: 12,
       targetBlinks: 4,
@@ -119,9 +124,8 @@ abstract final class GazeSyllabus {
       },
       isRhythmLesson: false,
       correction: [
-        'That was a hard stare — tense, like you were winning a fight '
-            'nobody started.',
-        'Half the tension. Make her feel wanted, not hunted. Again.',
+        'That was a hard stare — wide, tense, winning a fight no one started.',
+        'Half the tension. Want her, don\'t hunt her. Again.',
       ],
     ),
 
@@ -130,19 +134,20 @@ abstract final class GazeSyllabus {
       id: 'caught',
       number: 4,
       name: 'CAUGHT',
-      oneLine: 'She catches you looking. You don\'t flinch. You smile.',
-      objective: 'Get caught. Hold half a beat. Let a smile start.',
+      oneLine: 'She caught you. Don\'t flinch. Smile.',
+      objective: 'Hold half a beat past comfort. One mouth corner. Slow.',
       story: [
-        'She WILL catch you looking. The boy snaps away, ashamed — he '
-            'just confessed he\'s scared of wanting her. The man holds '
-            'it and smiles. Owning the look is the entire move.',
+        'She WILL catch you. The boy snaps away ashamed. The man holds '
+            'and lets a slow smile start. Owning the look is the entire move.',
       ],
       demo: [
-        'How: when your eyes meet, don\'t run. Hold half a second '
-            'longer, and let a slow half-smile start.',
+        'Your eyes meet hers — DO NOT BREAK. Hold half a second past '
+            'comfortable. Now ONE corner of your mouth pulls up — not '
+            'both, one. Eyes stay locked while it happens. The smile '
+            'arrives like you were going to look at her anyway.',
       ],
       instruct: [
-        'You\'ve been caught looking. Hold. Half-smile. Go.',
+        'Caught. Hold. One mouth corner. Go.',
       ],
       drillSeconds: 10,
       targetBlinks: 3,
@@ -156,7 +161,7 @@ abstract final class GazeSyllabus {
       isRhythmLesson: false,
       correction: [
         'You looked away fast — you apologised with your whole face.',
-        'Never apologise for looking. Hold, and smile. Again.',
+        'Never apologise for looking. Hold, smile. Again.',
       ],
     ),
 
@@ -165,22 +170,24 @@ abstract final class GazeSyllabus {
       id: 'silent_hold',
       number: 5,
       name: 'THE SILENT HOLD',
-      oneLine: 'Anyone can hold eyes talking. Hold them in silence.',
-      objective: 'Hold my eyes through the silence. Say nothing.',
+      oneLine: 'Lock. Say nothing. Let it press into her.',
+      objective: 'Hold the look through silence. Don\'t fill the gap.',
       story: [
-        'Two strangers who hold a gaze in silence feel closer than two '
+        'Two strangers who hold gaze in silence feel closer than two '
             'who talked for an hour — that\'s a real study. The silence '
             'is the weapon most men are too scared to use.',
       ],
       demo: [
-        'How: hold her eyes and say nothing. Don\'t fill the gap. Let '
-            'it get heavy. The one who breaks first loses.',
+        'Lock onto her eye. Mouth closed, not pinched. Throat soft. '
+            'Breathe slow through your nose. Don\'t fill the silence '
+            'with a smile, a sound, a sip of your drink. Let the gap '
+            'get heavy. She breaks first, every time.',
       ],
       instruct: [
-        'Hold my eyes. Silence. Don\'t break first. Go.',
+        'Lock. No words. Hold. Go.',
       ],
-      drillSeconds: 15,
-      targetBlinks: 4,
+      drillSeconds: 25,
+      targetBlinks: 6,
       weights: {
         GazeDimension.eyeStability: 0.45,
         GazeDimension.blinkControl: 0.15,
@@ -190,8 +197,7 @@ abstract final class GazeSyllabus {
       },
       isRhythmLesson: false,
       correction: [
-        'The silence got heavy and you cracked — you looked away to '
-            'make it stop.',
+        'You cracked first — looked away to make the silence stop.',
         'Let HER be the one who can\'t take it. Again.',
       ],
     ),
@@ -201,20 +207,21 @@ abstract final class GazeSyllabus {
       id: 'slow_blink',
       number: 6,
       name: 'THE SLOW BLINK',
-      oneLine: 'Unhurried eyes. The blink of a man with nowhere to be.',
-      objective: 'Slow everything. Long, lazy blinks. No darting.',
+      oneLine: 'Eyelids fall slow, open slow. Like waking from a nap.',
+      objective: 'Long lazy blinks. No flutter. No twitch.',
       story: [
-        'Fast, fluttering, darting eyes scream anxiety — she feels it '
-            'before she knows why. Slow, lazy eyes say the most '
-            'attractive thing there is: I am not nervous and I\'m not '
-            'going anywhere.',
+        'Fast fluttering eyes scream anxiety — she feels it before she '
+            'knows why. Slow lazy eyes say: I am not nervous and I\'m '
+            'not going anywhere.',
       ],
       demo: [
-        'How: slow your blinks right down — long and lazy, like waking '
-            'from a nap. Nothing scanning. Nothing twitching.',
+        'Lock her eye. When the blink comes, let the top lid FALL — '
+            'slow, heavy, like a curtain. Count one full beat with the '
+            'eyes closed. Then open them — just as slow. No flutter, '
+            'no twitch. The slower you blink, the more dangerous you read.',
       ],
       instruct: [
-        'Hold my eyes. Slow, lazy blinks. No darting. Go.',
+        'Lock. Slow blink. Heavy. Go.',
       ],
       drillSeconds: 12,
       targetBlinks: 2,
@@ -228,7 +235,7 @@ abstract final class GazeSyllabus {
       isRhythmLesson: false,
       correction: [
         'Your eyes were a strobe light — every blink screamed nerves.',
-        'Slow them down on purpose until the calm becomes real. Again.',
+        'Slow them on purpose until the calm becomes real. Again.',
       ],
     ),
 
@@ -237,20 +244,21 @@ abstract final class GazeSyllabus {
       id: 'the_triangle',
       number: 7,
       name: 'THE TRIANGLE',
-      oneLine: 'Eye. Eye. Mouth. Back up. The look that isn\'t friendly.',
-      objective: 'Eye to eye to mouth, then back. Slow. Deliberate.',
+      oneLine: 'Left eye. Right eye. Mouth. Back up. Slow.',
+      objective: 'Travel slow eye → eye → mouth → eye. No flicks.',
       story: [
-        'You look at a friend one way and a woman you want another. The '
-            'friendly look stays on the eyes. The other one travels to '
-            'her mouth and back — and it tells her exactly what this is, '
-            'with zero words.',
+        'Friends hold eye to eye. Lovers travel to the mouth and back. '
+            'The journey is the move — and it tells her exactly what '
+            'this is, with zero words.',
       ],
       demo: [
-        'How: one eye, the other, then down to her mouth — slow — and '
-            'back up. Slow is the whole point. Fast is a twitch.',
+        'Her LEFT eye — one beat. Her RIGHT eye — one beat. Now drop, '
+            'slow, to her LIPS — stay there a full second, like you\'re '
+            'thinking about them. Climb back to her eyes. Smooth like '
+            'pouring water. A flick is a nervous tic. Slow is intent.',
       ],
       instruct: [
-        'Hold my eyes. Travel slow to the mouth. Back up. Go.',
+        'Left eye. Right eye. Mouth — slow. Back up. Go.',
       ],
       drillSeconds: 12,
       targetBlinks: 3,
@@ -263,9 +271,8 @@ abstract final class GazeSyllabus {
       },
       isRhythmLesson: true,
       correction: [
-        'You flicked down too fast — it looked like a nervous tic, not '
-            'intent.',
-        'Slow the route down. Let her feel it. Again.',
+        'You flicked down too fast — it read as a tic, not intent.',
+        'Half the speed. Let her feel the journey. Again.',
       ],
     ),
 
@@ -274,23 +281,24 @@ abstract final class GazeSyllabus {
       id: 'the_return',
       number: 8,
       name: 'THE RETURN',
-      oneLine: 'Break to build the tension. Then come back, slower.',
-      objective: 'Lock. Drift away slow. Return slower than you left.',
+      oneLine: 'Drift away calm. Return slower than you left.',
+      objective: 'Lock. Drift. Come back slower than you went.',
       story: [
         'A non-stop laser stare is exhausting, not magnetic. The power '
-            'is in the RETURN: you look away, then come back slower than '
-            'you left — telling her she was still the most interesting '
-            'thing in the room.',
+            'is in the RETURN — slower than the exit, telling her she '
+            'was still the most interesting thing in the room.',
       ],
       demo: [
-        'How: lock on, drift away calm and slow, then return — slower '
-            'than you left. Deciding, not escaping.',
+        'Lock her eye. Now drift away — calm, casual, like you noticed '
+            'something at the bar. Two seconds gone. Now come BACK — '
+            'slower than you left. Don\'t snap. Drift. Like you keep '
+            'arriving at her, deciding to.',
       ],
       instruct: [
-        'Lock my eyes. Drift slow. Return slower. Go.',
+        'Lock. Drift. Return slower. Go.',
       ],
-      drillSeconds: 14,
-      targetBlinks: 4,
+      drillSeconds: 20,
+      targetBlinks: 5,
       weights: {
         GazeDimension.eyeStability: 0.30,
         GazeDimension.blinkControl: 0.10,
@@ -300,9 +308,8 @@ abstract final class GazeSyllabus {
       },
       isRhythmLesson: true,
       correction: [
-        'Your return was a snap — like you got caught looking elsewhere '
-            'and rushed back.',
-        'The return is always slower than the exit. Again.',
+        'Your return was a snap — like you got caught and rushed back.',
+        'Return is always slower than exit. Again.',
       ],
     ),
 
@@ -311,20 +318,21 @@ abstract final class GazeSyllabus {
       id: 'the_entrance',
       number: 9,
       name: 'THE ENTRANCE',
-      oneLine: 'Find her across the room. Hold. Look away on your terms.',
-      objective: 'Find her. Hold the look. Be the one who breaks it.',
+      oneLine: 'Find her across the room. Hold past comfort. You break.',
+      objective: 'Find. Hold one beat too long. Break first — slow.',
       story: [
         'Before you say a word, the look across the room has already '
-            'told her who you are. Find her eyes, hold one beat too '
-            'long, then YOU break it first — that\'s a man who doesn\'t '
-            'wait for permission.',
+            'told her who you are. The man who holds and breaks first '
+            'doesn\'t wait for permission.',
       ],
       demo: [
-        'How: find her eyes from distance, hold one second past '
-            'comfortable, then break it first — your call, not hers.',
+        'Find her eyes from distance. Lock. Hold ONE beat past '
+            'comfortable — let her feel that you saw her. Then YOU '
+            'break first — slow, to the side. Not down, not away in '
+            'panic. Side. Your beat, your timing, your call.',
       ],
       instruct: [
-        'Find my eyes across the room. Hold too long. Break first. Go.',
+        'Find her. Hold past comfort. Break first. Go.',
       ],
       drillSeconds: 10,
       targetBlinks: 3,
@@ -337,9 +345,8 @@ abstract final class GazeSyllabus {
       },
       isRhythmLesson: true,
       correction: [
-        'You held it and let HER break first — you handed her control '
-            'before you crossed the room.',
-        'You break first. Your beat. Again.',
+        'You let HER break first — you handed her control before you crossed the room.',
+        'You break. Your beat. Again.',
       ],
     ),
 
@@ -349,22 +356,24 @@ abstract final class GazeSyllabus {
       number: 10,
       name: 'THE LISTENING GAZE',
       oneLine: 'Hold her eyes while SHE talks. Almost no one does.',
-      objective: 'Hold the gaze while she speaks. Don\'t look away.',
+      objective: 'Hold the gaze while she speaks. Don\'t drift.',
       story: [
         'Every man holds eye contact while HE talks. The second she '
-            'speaks, his eyes wander. Hold her eyes while SHE talks and '
-            'you become the rarest thing in her week — a man who is '
-            'fully, dangerously present.',
+            'speaks, his eyes wander. Hold while SHE talks and you '
+            'become the rarest thing in her week — a man who is fully, '
+            'dangerously present.',
       ],
       demo: [
-        'How: while she speaks, stay on her eyes. Not your drink, not '
-            'the door, not your phone. Soft, present, unwavering.',
+        'She\'s speaking. Pick her left eye. Soft brow. Tiny slow nods '
+            'on her key words. A slow blink every few breaths. Eyes do '
+            'not drift to her hair, her drink, your phone, the room. '
+            'Stay there. Be the only man who didn\'t look away.',
       ],
       instruct: [
-        'She\'s talking. Hold her eyes the whole time. Don\'t drift. Go.',
+        'She\'s talking. Lock soft. Stay. Go.',
       ],
-      drillSeconds: 15,
-      targetBlinks: 5,
+      drillSeconds: 25,
+      targetBlinks: 7,
       weights: {
         GazeDimension.eyeStability: 0.45,
         GazeDimension.blinkControl: 0.10,
@@ -374,46 +383,42 @@ abstract final class GazeSyllabus {
       },
       isRhythmLesson: false,
       correction: [
-        'Your eyes wandered the moment it was her turn — she noticed. '
-            'They always notice.',
-        'Stay locked while she speaks. Outclass every man she\'s met. '
-            'Again.',
+        'Your eyes wandered the moment it was her turn. She noticed.',
+        'Stay locked while she speaks. Outclass every man she\'s met. Again.',
       ],
     ),
 
     // ── SOCIALS 1 — THE REEL ────────────────────────────────────────
-    // Cinematic. Lucien calls the moves out loud while you perform them
-    // to camera — built to be filmed and posted.
     GazeLesson(
       id: 'the_reel',
       number: 11,
       name: 'THE REEL',
-      oneLine: 'The look that goes viral. Move after move, on camera.',
-      objective: 'Hit every move as he calls it. Film it.',
+      oneLine: 'Five moves on camera. Soft. Smoulder. Drop. Return. Smile.',
+      objective: 'Hit every move as I call it. Slow between beats.',
       story: [
-        'This one\'s for the camera. The look influencers build a whole '
-            'feed on — and you\'re about to run it move by move.',
+        'This is the look influencers built whole feeds on. Move by '
+            'move, on camera.',
       ],
       demo: [
-        'I call it, you hit it. Smooth, slow, no rushing between the '
-            'beats. Let the camera roll the whole way.',
+        'Lock onto the lens like it\'s her. Brow dead. I call each '
+            'move; you hit it on the beat. Slow between every cue. '
+            'Let the camera roll the entire way through. Don\'t '
+            'rush the last smile — that\'s the one that gets saved.',
       ],
       instruct: [
-        'Lock onto the lens. When I call the move, you make it. Slow. '
-            'Begin.',
+        'Lock the lens. I call, you move. Slow. Begin.',
       ],
-      // The reel itself — each cue spoken live as you perform it.
       sequenceCues: [
         'Lock the lens.',
-        'Now look away — slow, to the side.',
-        'Bring it back. Find the lens again.',
-        'Soften them. Smoulder.',
-        'Down. Slow.',
-        'Back up — like you just decided something.',
-        'Now. The smile. Half of one.',
+        'Soft eyes. Smoulder.',
+        'Drop — slow — to the mouth.',
+        'Climb back to the eyes.',
+        'Drift away — slow, to the side.',
+        'Drift back — slower than you left.',
+        'Now. Half a smile. One corner.',
       ],
-      drillSeconds: 18,
-      targetBlinks: 6,
+      drillSeconds: 24,
+      targetBlinks: 7,
       weights: {
         GazeDimension.eyeStability: 0.20,
         GazeDimension.blinkControl: 0.10,
@@ -428,35 +433,37 @@ abstract final class GazeSyllabus {
       ],
     ),
 
-    // ── SOCIALS 2 — THE SLOW BURN REEL ──────────────────────────────
+    // ── SOCIALS 2 — THE SLOW BURN ───────────────────────────────────
     GazeLesson(
       id: 'the_slow_burn_reel',
       number: 12,
       name: 'THE SLOW BURN',
-      oneLine: 'Like you\'re looking at something you want. On camera.',
-      objective: 'Hold the heat. Hit each move slow as he calls it.',
+      oneLine: 'Heavier than the reel. The look that already decided.',
+      objective: 'Hold the heat. Hit each move slow as I call it.',
       story: [
-        'Same idea, more heat. This is the look that says you\'ve '
-            'already decided — and the camera catches every second of it.',
+        'Same shape, more heat. This is the look that says you\'ve '
+            'already decided — and the camera catches every second.',
       ],
       demo: [
-        'Heavier this time. Slower. Like you\'re looking at the last '
-            'thing you want before you take it.',
+        'Lens at lid-level. Brow dead, top lid half-down. Breathe slow '
+            'through your nose. Heavier than the reel — every move at '
+            'half speed. Like you\'re looking at the last thing you '
+            'want before you take it.',
       ],
       instruct: [
-        'Eyes on the lens. Heavy. I\'ll call it. Begin.',
+        'Eyes on the lens. Heavy. I call. Begin.',
       ],
       sequenceCues: [
         'Find the lens. Hold it heavy.',
-        'Slow drop — down.',
-        'Drag it back up.',
-        'Tilt the head. Barely.',
-        'Soften. Let it burn.',
+        'Top lid down a hair.',
+        'Drop — slow — to the mouth.',
+        'Drag it back to the eyes.',
+        'Head tilt — barely.',
         'Look away like it was your choice.',
-        'Back. And the slow half-smile.',
+        'Back. Slow half-smile.',
       ],
-      drillSeconds: 18,
-      targetBlinks: 5,
+      drillSeconds: 28,
+      targetBlinks: 7,
       weights: {
         GazeDimension.eyeStability: 0.25,
         GazeDimension.blinkControl: 0.10,
