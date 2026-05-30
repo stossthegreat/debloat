@@ -106,10 +106,10 @@ class _TitleWithRedDot extends StatelessWidget {
     return RichText(
       text: TextSpan(
         style: GoogleFonts.playfairDisplay(
-          fontSize: 38,
+          fontSize: 26,
           fontWeight: FontWeight.w700,
           fontStyle: FontStyle.italic,
-          letterSpacing: -1.2,
+          letterSpacing: -0.6,
           color: AppColors.textPrimary,
           height: 1.0,
         ),

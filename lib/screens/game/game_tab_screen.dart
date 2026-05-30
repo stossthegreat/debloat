@@ -302,7 +302,7 @@ class _GameMasthead extends StatelessWidget {
       // Compact masthead so the title sits high on the screen and the
       // Free Flow card (the main event) is reachable without scrolling.
       // Lucien still bleeds into the right side but with a tighter crop.
-      height: 200,
+      height: 150,
       child: Stack(
         children: [
           // ── Lucien portrait, right half, full bleed.
@@ -370,11 +370,11 @@ class _GameMasthead extends StatelessWidget {
                 RichText(
                   text: TextSpan(
                     style: GoogleFonts.playfairDisplay(
-                      fontSize: 38,
+                      fontSize: 26,
                       fontWeight: FontWeight.w700,
                       fontStyle: FontStyle.italic,
                       color: AppColors.textPrimary,
-                      letterSpacing: -1.2,
+                      letterSpacing: -0.6,
                       height: 1.0,
                     ),
                     children: [

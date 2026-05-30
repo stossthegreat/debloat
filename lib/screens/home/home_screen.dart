@@ -74,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
           : IndexedStack(
               index: _tab,
               children: [
-                AscendScreen(onJumpToTab: _switchTab),
+                AscendScreen(onJumpToTab: _switchTab, latest: _latest),
                 _ScanHubTab(latest: _latest, protocol: _protocol, onRefresh: _reload),
                 const EyesTabScreen(),
                 const GameTabScreen(),
@@ -111,15 +111,8 @@ class _ScanHubTab extends StatelessWidget {
             // ── Masthead — always visible. The brand chrome.
             MirrorlyMasthead(
               title: 'Mirrorly',
-              subtitle: 'Face. Presence. Game.',
+              subtitle: 'Looks',
               actions: [
-                MastheadAction(
-                  icon: Icons.workspace_premium_rounded,
-                  iconColor: AppColors.red,
-                  borderColor: AppColors.red.withOpacity(0.55),
-                  onTap: () => context.push(
-                      '/paywall', extra: const {'force': true}),
-                ),
                 MastheadAction(
                   icon: Icons.tune,
                   onTap: () => context.push('/settings'),
@@ -729,7 +722,7 @@ class _NavBar extends StatelessWidget {
     // PRESENCE is the renamed Eyes tab. GAME is unchanged. Each tab does
     // ONE thing — no five-tab sprawl, no shouting for attention.
     final items = const <({String label, IconData icon, bool italic})>[
-      (label: 'Home',     icon: Icons.keyboard_double_arrow_up_rounded, italic: false),
+      (label: 'Ascend',   icon: Icons.keyboard_double_arrow_up_rounded, italic: false),
       (label: 'Looks',    icon: Icons.face_retouching_natural_outlined, italic: false),
       (label: 'Presence', icon: Icons.visibility_outlined,               italic: false),
       (label: 'Game',     icon: Icons.chat_bubble_outline_rounded,       italic: true),

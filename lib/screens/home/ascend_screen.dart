@@ -1,118 +1,130 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../models/scan_record.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import '../../widgets/common/mirrorly_components.dart';
 
-/// ASCEND — the home tab. One destination, one daily ritual.
+/// ASCEND — the home tab. One screen, one daily ritual.
 ///
-/// Replaces the old five-tab sprawl (Scan / Mirror / Eyes / Game /
-/// Progress) with a single dashboard the user comes back to every
-/// day: streak + level chips at the top, the potential gap + trait
-/// improvements as the hero, three daily missions (one per pillar:
-/// Looks, Presence, Game), and a "focus" card driving the highest-
-/// ROI fix.
-///
-/// The point: every man's goal is the same — get more girls. Looks
-/// open the door, game keeps her in the room. Mirrorly is the
-/// system. Ascend is where you check in.
-///
-/// Numbers + missions are mocked for now (build-time defaults). Wire
-/// real streak / level / per-pillar score / mission-of-the-day data
-/// in once the home shape is approved.
+/// Consistent masthead with every other tab (small "Mirrorly •" +
+/// "Ascend" subtitle), streak chip only (no level — the user called
+/// it bullshit), three pillar scores out of 10 (Looks / Presence /
+/// Game, all zero until the user actually uses the surface), three
+/// daily missions compact, and the potential card blurred until the
+/// first scan exists.
 class AscendScreen extends StatelessWidget {
   /// Switch the bottom-nav to a specific tab. Wired from HomeScreen
-  /// so tapping a mission row jumps to the correct surface (Looks /
-  /// Presence / Game).
+  /// so tapping a mission row jumps to the correct surface.
   final ValueChanged<int> onJumpToTab;
 
-  /// Mocked daily values until real data lands.
+  /// Latest scan, if any. Drives whether the Potential card unlocks.
+  final ScanRecord? latest;
+
+  /// Streak count. Mocked for now — wire to real ProtocolService
+  /// streak engine when ready.
   final int dayStreak;
-  final int level;
-  final int potentialPoints;
+
+  /// Pillar scores 0..10. Default zero until the user has done a
+  /// scan / lesson / session in each.
+  final int looksScore;
+  final int presenceScore;
+  final int gameScore;
 
   const AscendScreen({
     super.key,
     required this.onJumpToTab,
-    this.dayStreak = 14,
-    this.level = 7,
-    this.potentialPoints = 18,
+    this.latest,
+    this.dayStreak = 0,
+    this.looksScore = 0,
+    this.presenceScore = 0,
+    this.gameScore = 0,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasScan = latest != null;
     return Scaffold(
       backgroundColor: AppColors.base,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.only(bottom: Sp.xxl),
+          padding: const EdgeInsets.only(bottom: Sp.xl),
           children: [
-            // ── Masthead.
-            const _AscendMasthead(),
+            // ── Masthead — consistent with every other tab.
+            MirrorlyMasthead(
+              title: 'Mirrorly',
+              subtitle: 'Ascend',
+              actions: [
+                MastheadAction(
+                  icon: Icons.tune,
+                  onTap: () => context.push('/settings'),
+                ),
+              ],
+            ),
 
             const SizedBox(height: Sp.md),
 
-            // ── Streak + Level chips, top right of the screen but
-            //    BELOW the title (the title leans hard left; the
-            //    chips need their own breathing room).
+            // ── Streak chip (no level).
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  _StatChip(
-                    icon: Icons.local_fire_department_rounded,
-                    value: '$dayStreak',
-                    label: 'DAY STREAK',
-                    color: AppColors.red,
-                  ),
-                  const SizedBox(width: 12),
-                  _StatChip(
-                    icon: Icons.hexagon_outlined,
-                    value: '$level',
-                    label: 'LEVEL',
-                    color: AppColors.textPrimary,
-                  ),
+                  _StreakPill(days: dayStreak),
                 ],
               ),
             ),
 
-            const SizedBox(height: Sp.lg),
+            const SizedBox(height: Sp.md),
 
-            // ── Potential gap hero. Split current/best image on the
-            //    right, big "+N POINTS" on the left, trait deltas
-            //    listed beside the image.
+            // ── Three pillar scores. /10 each. Zero until used.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-              child: _PotentialHero(points: potentialPoints),
-            ).animate().fadeIn(duration: 400.ms)
-              .slideY(begin: 0.04, end: 0, duration: 400.ms,
-                  curve: Curves.easeOut),
+              child: Row(
+                children: [
+                  Expanded(child: _PillarScore(
+                    label: 'LOOKS',
+                    score: looksScore,
+                    color: AppColors.red,
+                  )),
+                  const SizedBox(width: 8),
+                  Expanded(child: _PillarScore(
+                    label: 'PRESENCE',
+                    score: presenceScore,
+                    color: AppColors.accent,
+                  )),
+                  const SizedBox(width: 8),
+                  Expanded(child: _PillarScore(
+                    label: 'GAME',
+                    score: gameScore,
+                    color: AppColors.signalAmber,
+                  )),
+                ],
+              ),
+            ),
 
-            const SizedBox(height: Sp.lg),
+            const SizedBox(height: Sp.md),
 
-            // ── Today's Ascension — 3 missions, one per pillar.
+            // ── Today's Ascension — 3 compact missions.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
               child: _TodaysAscension(onJumpToTab: onJumpToTab),
-            ).animate().fadeIn(delay: 160.ms, duration: 400.ms),
+            ).animate().fadeIn(delay: 120.ms, duration: 400.ms),
 
-            const SizedBox(height: Sp.lg),
+            const SizedBox(height: Sp.md),
 
-            // ── Focus card — highest-ROI fix.
+            // ── Potential card. Blurred + locked until a scan exists,
+            //    then unblurs to show the real looksmax targets the AI
+            //    extracted from the report.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-              child: _FocusCard(
-                title: 'Lose Face Fat',
-                pointGain: 6,
-                body: 'Leaner face = stronger jawline, '
-                      'more definition, more attraction.',
-                onTap: () => onJumpToTab(1), // → Looks tab
-              ),
-            ).animate().fadeIn(delay: 240.ms, duration: 400.ms),
+              child: _PotentialCard(unlocked: hasScan),
+            ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
           ],
         ),
       ),
@@ -120,136 +132,30 @@ class AscendScreen extends StatelessWidget {
   }
 }
 
-// ─── Masthead ───────────────────────────────────────────────────────
-// "ASCEND" italic Playfair + three chevrons → ↑ ↑ ↑, with the
-// "ATTRACTION OS" eyebrow underneath and the tagline below that.
+// ─── Streak pill ───────────────────────────────────────────────────
 
-class _AscendMasthead extends StatelessWidget {
-  const _AscendMasthead();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(Sp.lg, Sp.md, Sp.lg, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'ASCEND',
-                style: GoogleFonts.playfairDisplay(
-                  fontSize: 44,
-                  fontWeight: FontWeight.w800,
-                  fontStyle: FontStyle.italic,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -1.4,
-                  height: 1.0,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Padding(
-                padding: EdgeInsets.only(top: 6),
-                child: _Chevrons(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'ATTRACTION OS',
-            style: AppTypography.label.copyWith(
-              color: AppColors.textTertiary,
-              fontSize: 10.5,
-              letterSpacing: 3.0,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: Sp.md),
-          RichText(
-            text: TextSpan(
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                color: AppColors.textPrimary,
-                height: 1.4,
-                fontWeight: FontWeight.w500,
-              ),
-              children: const [
-                TextSpan(text: 'You don\'t need luck.\n'),
-                TextSpan(text: 'You need '),
-                TextSpan(
-                  text: 'a system',
-                  style: TextStyle(
-                    color: AppColors.red,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                TextSpan(text: '.'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Chevrons extends StatelessWidget {
-  const _Chevrons();
+class _StreakPill extends StatelessWidget {
+  final int days;
+  const _StreakPill({required this.days});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 18,
-      height: 28,
-      child: Stack(
-        children: const [
-          Positioned(top: 0, left: 0, right: 0,
-              child: Icon(Icons.keyboard_arrow_up_rounded,
-                  size: 18, color: AppColors.red)),
-          Positioned(top: 6, left: 0, right: 0,
-              child: Icon(Icons.keyboard_arrow_up_rounded,
-                  size: 18, color: AppColors.red)),
-          Positioned(top: 12, left: 0, right: 0,
-              child: Icon(Icons.keyboard_arrow_up_rounded,
-                  size: 18, color: AppColors.red)),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Stat chip ─────────────────────────────────────────────────────
-// Pill at the top right: glyph + number + label.
-
-class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color color;
-  const _StatChip({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+    final active = days > 0;
+    final color = active ? AppColors.red : AppColors.textTertiary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.surface2,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.35), width: 1),
+        border: Border.all(color: color.withOpacity(0.45), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: color),
+          Icon(Icons.local_fire_department_rounded, size: 16, color: color),
           const SizedBox(width: 8),
           Text(
-            value,
+            '$days',
             style: GoogleFonts.inter(
               fontSize: 15,
               fontWeight: FontWeight.w800,
@@ -260,7 +166,7 @@ class _StatChip extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            label,
+            'DAY STREAK',
             style: AppTypography.label.copyWith(
               color: AppColors.textTertiary,
               fontSize: 9.5,
@@ -274,215 +180,77 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-// ─── Potential hero ───────────────────────────────────────────────
-// Split image of current/best face + trait deltas. Reuses the
-// existing marketing assets as placeholders.
+// ─── Pillar score card ────────────────────────────────────────────
 
-class _PotentialHero extends StatelessWidget {
-  final int points;
-  const _PotentialHero({required this.points});
+class _PillarScore extends StatelessWidget {
+  final String label;
+  final int score;
+  final Color color;
+  const _PillarScore({
+    required this.label,
+    required this.score,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final live = score > 0;
     return Container(
-      clipBehavior: Clip.antiAlias,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
         color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(Rd.xl),
-        border: Border.all(color: AppColors.surface3, width: 1),
+        borderRadius: BorderRadius.circular(Rd.lg),
+        border: Border.all(
+            color: live ? color.withOpacity(0.55) : AppColors.surface3,
+            width: 1),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(Sp.md),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Left: points + body + CTA
-            Expanded(
-              flex: 5,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'YOUR POTENTIAL',
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.textTertiary,
-                      fontSize: 10,
-                      letterSpacing: 2.4,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  RichText(
-                    text: TextSpan(
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w900,
-                        height: 1.0,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: '+$points',
-                          style: const TextStyle(
-                            fontSize: 38,
-                            color: AppColors.red,
-                            letterSpacing: -1.8,
-                          ),
-                        ),
-                        TextSpan(
-                          text: ' POINTS',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: Sp.md),
-                  Text(
-                    'You\'re leaving points on the table. We fix that.',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 12.5,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: Sp.md),
-                  _SeeTransformationButton(),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: Sp.md),
-
-            // ── Right: trait improvements + view-plan link
-            Expanded(
-              flex: 4,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: const [
-                  _TraitDelta(
-                      icon: Icons.face_retouching_natural_outlined,
-                      label: 'JAWLINE',
-                      delta: 4),
-                  SizedBox(height: 8),
-                  _TraitDelta(
-                      icon: Icons.face_outlined,
-                      label: 'FACE FAT',
-                      delta: 6),
-                  SizedBox(height: 8),
-                  _TraitDelta(
-                      icon: Icons.brightness_5_outlined,
-                      label: 'SKIN',
-                      delta: 3),
-                  SizedBox(height: 8),
-                  _TraitDelta(
-                      icon: Icons.accessibility_new_rounded,
-                      label: 'POSTURE',
-                      delta: 2),
-                  SizedBox(height: 8),
-                  _TraitDelta(
-                      icon: Icons.content_cut_rounded,
-                      label: 'HAIR',
-                      delta: 3),
-                  SizedBox(height: 12),
-                  Text(
-                    'TAP TO VIEW PLAN',
-                    style: TextStyle(
-                      fontSize: 9.5,
-                      color: AppColors.red,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.8,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SeeTransformationButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.surface3, width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'SEE TRANSFORMATION',
+            label,
             style: AppTypography.label.copyWith(
-              color: AppColors.textPrimary,
-              fontSize: 9.5,
-              letterSpacing: 1.8,
+              color: color,
+              fontSize: 10,
+              letterSpacing: 1.6,
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(width: 6),
-          const Icon(Icons.arrow_forward_rounded,
-              size: 12, color: AppColors.red),
+          const SizedBox(height: 6),
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: '$score',
+                  style: GoogleFonts.playfairDisplay(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    fontStyle: FontStyle.italic,
+                    color: live ? color : AppColors.textPrimary,
+                    height: 1.0,
+                    letterSpacing: -0.6,
+                  ),
+                ),
+                TextSpan(
+                  text: ' / 10',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textTertiary,
+                    height: 1.0,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _TraitDelta extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final int delta;
-  const _TraitDelta({
-    required this.icon,
-    required this.label,
-    required this.delta,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: AppColors.textSecondary),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: AppTypography.label.copyWith(
-            color: AppColors.textSecondary,
-            fontSize: 10,
-            letterSpacing: 1.6,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          '+$delta',
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            color: AppColors.red,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.2,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ─── Today's Ascension ──────────────────────────────────────────
-// Section title + three mission rows + a CONTINUE ASCENSION CTA.
-// One row per pillar (Looks / Presence / Game). Each row carries its
-// own status: ✓ done, → next, 🔒 not unlocked yet. Tapping a row
-// jumps to that tab.
+// ─── Today's Ascension — 3 missions, compact ─────────────────────
 
 class _TodaysAscension extends StatelessWidget {
   final ValueChanged<int> onJumpToTab;
@@ -506,7 +274,7 @@ class _TodaysAscension extends StatelessWidget {
                 child: Text(
                   'TODAY\'S ASCENSION',
                   style: GoogleFonts.inter(
-                    fontSize: 14,
+                    fontSize: 12,
                     fontWeight: FontWeight.w900,
                     color: AppColors.textPrimary,
                     letterSpacing: 1.6,
@@ -514,34 +282,24 @@ class _TodaysAscension extends StatelessWidget {
                 ),
               ),
               Text(
-                '1 / 3 COMPLETE',
+                '0 / 3',
                 style: AppTypography.label.copyWith(
                   color: AppColors.textTertiary,
                   fontSize: 10,
-                  letterSpacing: 1.6,
+                  letterSpacing: 1.4,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            '3 MISSIONS. 15 MINUTES. ZERO EXCUSES.',
-            style: AppTypography.label.copyWith(
-              color: AppColors.textTertiary,
-              fontSize: 9.5,
-              letterSpacing: 2.0,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: Sp.md),
+          const SizedBox(height: 10),
           _MissionRow(
             color: AppColors.red,
             icon: Icons.face_retouching_natural_outlined,
             category: 'LOOKS',
             title: 'Jaw Posture',
             minutes: 3,
-            state: _MissionState.done,
+            state: _MissionState.current,
             onTap: () => onJumpToTab(1),
           ),
           const _MissionDivider(),
@@ -559,14 +317,10 @@ class _TodaysAscension extends StatelessWidget {
             color: AppColors.signalAmber,
             icon: Icons.chat_bubble_outline_rounded,
             category: 'GAME',
-            title: 'Ice Queen Challenge',
-            minutes: 7,
-            state: _MissionState.locked,
+            title: 'Free Flow',
+            minutes: 3,
+            state: _MissionState.current,
             onTap: () => onJumpToTab(3),
-          ),
-          const SizedBox(height: Sp.md),
-          _ContinueAscensionButton(
-            onTap: () => onJumpToTab(2), // → next incomplete
           ),
         ],
       ),
@@ -581,7 +335,7 @@ class _MissionDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       Container(height: 1, color: AppColors.surface3,
-          margin: const EdgeInsets.symmetric(vertical: 4));
+          margin: const EdgeInsets.symmetric(vertical: 2));
 }
 
 class _MissionRow extends StatelessWidget {
@@ -608,21 +362,19 @@ class _MissionRow extends StatelessWidget {
       onTap: () { HapticFeedback.selectionClick(); onTap(); },
       borderRadius: BorderRadius.circular(Rd.md),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            // ── Coloured glyph tile
             Container(
-              width: 44, height: 44,
+              width: 34, height: 34,
               decoration: BoxDecoration(
                 color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: color.withOpacity(0.45), width: 1),
               ),
-              child: Icon(icon, color: color, size: 22),
+              child: Icon(icon, color: color, size: 17),
             ),
-            const SizedBox(width: 14),
-            // ── Label + title + duration
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -631,43 +383,36 @@ class _MissionRow extends StatelessWidget {
                     category,
                     style: AppTypography.label.copyWith(
                       color: color,
-                      fontSize: 10.5,
-                      letterSpacing: 2.0,
+                      fontSize: 9.5,
+                      letterSpacing: 1.8,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 1),
                   Text(
                     title,
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 18,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
-                      letterSpacing: -0.4,
+                      letterSpacing: -0.2,
                       height: 1.1,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.schedule_rounded,
-                          size: 11, color: AppColors.textTertiary),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$minutes MIN',
-                        style: AppTypography.label.copyWith(
-                          color: AppColors.textTertiary,
-                          fontSize: 10,
-                          letterSpacing: 1.4,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
             ),
-            // ── Status glyph (done / current / locked)
+            const SizedBox(width: 8),
+            Text(
+              '$minutes MIN',
+              style: AppTypography.label.copyWith(
+                color: AppColors.textTertiary,
+                fontSize: 9.5,
+                letterSpacing: 1.4,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(width: 10),
             _MissionStatusGlyph(state: state, color: color),
           ],
         ),
@@ -683,279 +428,225 @@ class _MissionStatusGlyph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (icon, fg, bg, border) = switch (state) {
+    final (icon, fg, border) = switch (state) {
       _MissionState.done => (
           Icons.check_rounded,
           color,
-          Colors.transparent,
           color,
         ),
       _MissionState.current => (
           Icons.arrow_forward_rounded,
           color,
-          Colors.transparent,
           color,
         ),
       _MissionState.locked => (
           Icons.lock_rounded,
           AppColors.textTertiary,
-          Colors.transparent,
           AppColors.surface3,
         ),
     };
     return Container(
-      width: 36, height: 36,
+      width: 28, height: 28,
       decoration: BoxDecoration(
-        color: bg,
         shape: BoxShape.circle,
-        border: Border.all(color: border, width: 1.5),
+        border: Border.all(color: border, width: 1.4),
       ),
-      child: Icon(icon, color: fg, size: 18),
+      child: Icon(icon, color: fg, size: 14),
     );
   }
 }
 
-class _ContinueAscensionButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _ContinueAscensionButton({required this.onTap});
+// ─── Potential card — blurred until the user scans ───────────────
+// Same layout as before; ImageFilter.blur wrapper makes the inside
+// illegible (placeholder data) until a scan exists. After the first
+// scan we swap in real looksmax targets from the report.
+
+class _PotentialCard extends StatelessWidget {
+  final bool unlocked;
+  const _PotentialCard({required this.unlocked});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () { HapticFeedback.mediumImpact(); onTap(); },
-      borderRadius: BorderRadius.circular(Rd.lg),
-      child: Container(
-        width: double.infinity,
-        height: 56,
-        decoration: BoxDecoration(
-          color: AppColors.red,
-          borderRadius: BorderRadius.circular(Rd.lg),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.red.withOpacity(0.35),
-              blurRadius: 22,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'CONTINUE ASCENSION',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: Colors.black,
-                letterSpacing: 1.6,
-              ),
-            ),
-            const SizedBox(width: 10),
-            const Icon(Icons.arrow_forward_rounded,
-                color: Colors.black, size: 18),
-          ],
-        ),
+    final card = Container(
+      padding: const EdgeInsets.all(Sp.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(Rd.xl),
+        border: Border.all(color: AppColors.surface3, width: 1),
       ),
-    );
-  }
-}
-
-// ─── Focus card ────────────────────────────────────────────────────
-// Big-ROI fix for the week. Title + pill + body + before/after thumbs
-// + view-plan CTA.
-
-class _FocusCard extends StatelessWidget {
-  final String title;
-  final int pointGain;
-  final String body;
-  final VoidCallback onTap;
-  const _FocusCard({
-    required this.title,
-    required this.pointGain,
-    required this.body,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () { HapticFeedback.selectionClick(); onTap(); },
-      borderRadius: BorderRadius.circular(Rd.xl),
-      child: Container(
-        padding: const EdgeInsets.all(Sp.md),
-        decoration: BoxDecoration(
-          color: AppColors.surface2,
-          borderRadius: BorderRadius.circular(Rd.xl),
-          border: Border.all(color: AppColors.surface3, width: 1),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Left column.
-            Expanded(
-              flex: 6,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'FOCUS',
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.red,
-                      fontSize: 10.5,
-                      letterSpacing: 2.6,
-                      fontWeight: FontWeight.w800,
-                    ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'YOUR POTENTIAL',
+                  style: AppTypography.label.copyWith(
+                    color: AppColors.textTertiary,
+                    fontSize: 10,
+                    letterSpacing: 2.0,
+                    fontWeight: FontWeight.w700,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    title,
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.6,
-                      height: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
+                ),
+                const SizedBox(height: 4),
+                RichText(
+                  text: TextSpan(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.red.withOpacity(0.18),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                              color: AppColors.red.withOpacity(0.55),
-                              width: 1),
-                        ),
-                        child: Text(
-                          'HIGHEST ROI',
-                          style: AppTypography.label.copyWith(
-                            color: AppColors.red,
-                            fontSize: 9,
-                            letterSpacing: 1.6,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '+$pointGain POINTS',
-                        style: AppTypography.label.copyWith(
+                      TextSpan(
+                        text: '+18',
+                        style: GoogleFonts.inter(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w900,
                           color: AppColors.red,
-                          fontSize: 10,
-                          letterSpacing: 1.4,
-                          fontWeight: FontWeight.w800,
+                          letterSpacing: -1.4,
+                          height: 1.0,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: Sp.md),
-                  Text(
-                    body,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 12.5,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: Sp.md),
-                  Row(
-                    children: [
-                      Text(
-                        'VIEW FULL PLAN',
-                        style: AppTypography.label.copyWith(
+                      TextSpan(
+                        text: ' POINTS',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
-                          fontSize: 10,
-                          letterSpacing: 1.8,
-                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.0,
+                          height: 1.0,
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.arrow_forward_rounded,
-                          size: 12, color: AppColors.red),
                     ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'You\'re leaving points on the table. We fix that.',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: Sp.md),
-            // ── Right: before / after thumbs (reuses marketing assets).
-            Expanded(
-              flex: 5,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: _BeforeAfterThumb(
-                      asset: 'assets/marketing/before.jpg',
-                      label: 'NOW',
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4),
-                    child: Icon(Icons.arrow_forward_rounded,
-                        size: 16, color: AppColors.red),
-                  ),
-                  Expanded(
-                    child: _BeforeAfterThumb(
-                      asset: 'assets/marketing/after.jpg',
-                      label: 'GOAL',
-                      labelColor: AppColors.red,
-                    ),
-                  ),
-                ],
-              ),
+          ),
+          const SizedBox(width: Sp.md),
+          Expanded(
+            flex: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: const [
+                _TraitDelta(label: 'JAWLINE', delta: 4),
+                SizedBox(height: 5),
+                _TraitDelta(label: 'FACE FAT', delta: 6),
+                SizedBox(height: 5),
+                _TraitDelta(label: 'SKIN', delta: 3),
+                SizedBox(height: 5),
+                _TraitDelta(label: 'POSTURE', delta: 2),
+                SizedBox(height: 5),
+                _TraitDelta(label: 'HAIR', delta: 3),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
-  }
-}
 
-class _BeforeAfterThumb extends StatelessWidget {
-  final String asset;
-  final String label;
-  final Color labelColor;
-  const _BeforeAfterThumb({
-    required this.asset,
-    required this.label,
-    this.labelColor = AppColors.textSecondary,
-  });
+    if (unlocked) return card;
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    // Pre-scan: the card sits behind a blur overlay + a single CTA
+    // "Scan to unlock your potential" pill. We blur the card itself
+    // so the silhouette of the layout is visible (creating curiosity)
+    // but the numbers are unreadable.
+    return Stack(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: AspectRatio(
-            aspectRatio: 1,
-            child: Image.asset(
-              asset,
-              fit: BoxFit.cover,
-              alignment: const Alignment(0, -0.2),
-              errorBuilder: (_, __, ___) => Container(
-                color: AppColors.surface1,
-                alignment: Alignment.center,
-                child: const Icon(Icons.face_outlined,
-                    size: 24, color: AppColors.surface3),
+        ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Opacity(opacity: 0.55, child: card),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(Rd.xl),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.10),
+                  Colors.black.withOpacity(0.40),
+                ],
               ),
             ),
           ),
         ),
-        const SizedBox(height: 6),
+        Positioned.fill(
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.red,
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.red.withOpacity(0.35),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.lock_rounded,
+                      size: 14, color: Colors.black),
+                  const SizedBox(width: 8),
+                  Text(
+                    'SCAN TO UNLOCK',
+                    style: AppTypography.label.copyWith(
+                      color: Colors.black,
+                      fontSize: 11,
+                      letterSpacing: 1.8,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TraitDelta extends StatelessWidget {
+  final String label;
+  final int delta;
+  const _TraitDelta({required this.label, required this.delta});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
         Text(
           label,
           style: AppTypography.label.copyWith(
-            color: labelColor,
+            color: AppColors.textSecondary,
             fontSize: 9.5,
-            letterSpacing: 1.8,
-            fontWeight: FontWeight.w800,
+            letterSpacing: 1.4,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '+$delta',
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            color: AppColors.red,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.2,
           ),
         ),
       ],
