@@ -39,6 +39,19 @@ class _GameTabScreenState extends State<GameTabScreen> {
   void initState() {
     super.initState();
     _loadEntitlements();
+    // Listen for cross-app subscription changes — same pattern as Eyes.
+    LocalStoreService.proNotifier.addListener(_onProChanged);
+  }
+
+  @override
+  void dispose() {
+    LocalStoreService.proNotifier.removeListener(_onProChanged);
+    super.dispose();
+  }
+
+  void _onProChanged() {
+    if (!mounted) return;
+    _loadEntitlements();
   }
 
   Future<void> _loadEntitlements() async {
@@ -107,8 +120,6 @@ class _GameTabScreenState extends State<GameTabScreen> {
             //    height (200) so the title sits high on the screen and
             //    the Free Flow card is reachable without scrolling.
             _GameMasthead(
-              onPaywall: () => context.push(
-                  '/paywall', extra: const {'force': true}),
               onSettings: () => context.push('/settings'),
             ),
 
@@ -293,10 +304,8 @@ class _GameTabScreenState extends State<GameTabScreen> {
 // (paywall + tune) layered top-right over the photo.
 
 class _GameMasthead extends StatelessWidget {
-  final VoidCallback onPaywall;
   final VoidCallback onSettings;
   const _GameMasthead({
-    required this.onPaywall,
     required this.onSettings,
   });
 
@@ -359,23 +368,18 @@ class _GameMasthead extends StatelessWidget {
           //    MirrorlyMasthead so every tab reads in one voice. Pushed
           //    high (top: 12) so it doesn't sit dead-centre in empty
           //    space.
+          // Title block — uses the SAME vocabulary as MirrorlyMasthead
+          // on the other tabs so Game reads in one voice with the rest
+          // of the app. No "THE CONSIGLIERE" eyebrow above the title
+          // (no other tab has one), no premium icon in the action row
+          // (the chrome stays light).
           Positioned(
             left: Sp.lg,
-            top: 12,
-            right: 130,
+            top: 16,
+            right: 70,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'The Consigliere'.toUpperCase(),
-                  style: AppTypography.label.copyWith(
-                    color: AppColors.red,
-                    fontSize: 10.5,
-                    letterSpacing: 3.0,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 10),
                 RichText(
                   text: TextSpan(
                     style: GoogleFonts.playfairDisplay(
@@ -403,7 +407,7 @@ class _GameMasthead extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   'She tests you. Lucien corrects you.',
                   style: GoogleFonts.inter(
@@ -418,18 +422,13 @@ class _GameMasthead extends StatelessWidget {
             ),
           ),
 
-          // ── Action chips top-right (over the photo).
+          // ── Action chip top-right — settings only. The paywall
+          // shortcut lives on Scan + Mirror where new users land; the
+          // Game tab is for users already inside the experience.
           Positioned(
             top: 12, right: Sp.lg,
             child: Row(
               children: [
-                MastheadAction(
-                  icon: Icons.workspace_premium_rounded,
-                  iconColor: AppColors.red,
-                  borderColor: AppColors.red.withOpacity(0.55),
-                  onTap: onPaywall,
-                ),
-                const SizedBox(width: 10),
                 MastheadAction(
                   icon: Icons.tune,
                   onTap: onSettings,
