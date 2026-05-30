@@ -1168,22 +1168,22 @@ abstract final class MirrorlyAssets {
   // turn, feedback strip — all three paths point at the same file. When
   // you have dedicated speaking / feedback variants, replace just those
   // two constants and the rest of the code keeps working unchanged.
-  static const lucien         = 'assets/characters/lucien/lucien.jpg';
+  static const lucien         = 'assets/characters/lucien/lucien.png';
   static const lucienHero     = lucien;
   static const lucienSpeaking = lucien;
   static const lucienFeedback = lucien;
 
-  static const arenaWoman     = 'assets/characters/women/arena.jpg';
-  static const iceQueen       = 'assets/characters/women/ice_queen.jpg';
-  static const shyGirl        = 'assets/characters/women/shy_girl.jpg';
-  static const chaosGirl      = 'assets/characters/women/chaos_girl.jpg';
-  static const socialite      = 'assets/characters/women/socialite.jpg';
-  static const intellectual   = 'assets/characters/women/intellectual.jpg';
+  static const arenaWoman     = 'assets/characters/women/arena.png';
+  static const iceQueen       = 'assets/characters/women/ice_queen.png';
+  static const shyGirl        = 'assets/characters/women/shy_girl.png';
+  static const chaosGirl      = 'assets/characters/women/chaos_girl.png';
+  static const socialite      = 'assets/characters/women/socialite.png';
+  static const intellectual   = 'assets/characters/women/intellectual.png';
 
   static const gazeNeutral    = 'assets/eyes/partners/neutral.jpg';
   static const gazeSharp      = 'assets/eyes/partners/sharp.jpg';
   static const gazePlayful    = 'assets/eyes/partners/playful.jpg';
 
-  static const freeFlowHer    = 'assets/game/free_flow_her.jpg';
+  static const freeFlowHer    = 'assets/game/free_flow_her.png';
   static const optimisedSplit = 'assets/scan/optimised_split.jpg';
 }
