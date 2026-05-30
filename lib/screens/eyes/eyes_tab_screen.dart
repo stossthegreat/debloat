@@ -55,22 +55,6 @@ class _EyesTabScreenState extends State<EyesTabScreen> {
     _nextPresence   = _pickNextPresence();
     _completedTotal = _countCompletedTotal();
     _loadEntitlements();
-    // Listen for cross-app subscription changes (purchase from any
-    // tab's masthead, restore on launch, RC refresh on resume) so this
-    // tab unlocks the moment the flag flips, not only when the user
-    // happens to route through here.
-    LocalStoreService.proNotifier.addListener(_onProChanged);
-  }
-
-  @override
-  void dispose() {
-    LocalStoreService.proNotifier.removeListener(_onProChanged);
-    super.dispose();
-  }
-
-  void _onProChanged() {
-    if (!mounted) return;
-    _loadEntitlements();
   }
 
   Future<int> _countCompletedTotal() async {

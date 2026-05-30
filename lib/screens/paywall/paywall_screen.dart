@@ -180,14 +180,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
     switch (outcome) {
       case PurchaseOutcome.success:
-        // Belt-and-suspenders: PurchaseService already calls
-        // setSubscribed(true) when the RC entitlement activates, but
-        // ensure the flag flips even if the entitlement check raced
-        // or the package was a rescue product that the user's RC
-        // config maps to pro. The proNotifier broadcast inside
-        // setSubscribed unlocks every tab live, in place, without
-        // needing a /home rebuild.
-        await LocalStoreService.setSubscribed(true);
         await LocalStoreService.setOnboarded(true);
         if (!mounted) return;
         _forwardOnSuccess();
@@ -229,9 +221,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
     if (!mounted) return;
     switch (outcome) {
       case PurchaseOutcome.success:
-        // Same belt-and-suspenders as the purchase path — broadcast
-        // the unlock via setSubscribed so every tab reloads live.
-        await LocalStoreService.setSubscribed(true);
         _snack('Subscription restored.');
         if (mounted) _forwardOnSuccess();
         break;

@@ -39,19 +39,6 @@ class _GameTabScreenState extends State<GameTabScreen> {
   void initState() {
     super.initState();
     _loadEntitlements();
-    // Listen for cross-app subscription changes — same pattern as Eyes.
-    LocalStoreService.proNotifier.addListener(_onProChanged);
-  }
-
-  @override
-  void dispose() {
-    LocalStoreService.proNotifier.removeListener(_onProChanged);
-    super.dispose();
-  }
-
-  void _onProChanged() {
-    if (!mounted) return;
-    _loadEntitlements();
   }
 
   Future<void> _loadEntitlements() async {
@@ -409,7 +396,17 @@ class _GameMasthead extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'She tests you. Lucien corrects you.',
+                  'She tests you.',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                    color: AppColors.red,
+                    height: 1.35,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                Text(
+                  'Lucien corrects you.',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontStyle: FontStyle.italic,

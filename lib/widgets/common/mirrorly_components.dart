@@ -204,11 +204,11 @@ class DisplayBlock extends StatelessWidget {
     // its own FittedBox which let one line stay big while the other
     // wrapped mid-word — the bug in the Mirror screenshot.
     final display = GoogleFonts.playfairDisplay(
-      fontSize: 44,
+      fontSize: 34,
       fontWeight: FontWeight.w800,
       fontStyle: FontStyle.italic,
-      letterSpacing: -1.6,
-      height: 1.02,
+      letterSpacing: -1.2,
+      height: 1.05,
     );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Sp.lg),

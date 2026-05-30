@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/scan_record.dart';
 
@@ -106,31 +105,15 @@ class LocalStoreService {
     }
   }
 
-  // ── Subscription ────────────────────────────────────────────────────────
-  /// Live broadcast of the pro flag so every entitlement-aware tab can
-  /// react the moment a purchase / restore / cache refresh flips it.
-  /// Without this, tabs cached _pro locally and went stale whenever the
-  /// purchase happened on a path that didn't refresh them (Mirrorly
-  /// masthead premium icon, restore on launch, cross-tab buy) — the user
-  /// would subscribe and the locks wouldn't drop. Every tab now wires
-  /// `addListener` in initState and calls its own _loadEntitlements when
-  /// this fires.
-  static final ValueNotifier<bool> proNotifier = ValueNotifier(false);
-
+  // ── Subscription stub (wired to real IAP later) ─────────────────────────
   static Future<bool> isSubscribed() async {
     final prefs = await SharedPreferences.getInstance();
-    final v = prefs.getBool(_kSubscribed) ?? false;
-    // Keep the notifier in sync with the on-disk truth so listeners
-    // see the right value on a cold read too (not only on writes).
-    if (proNotifier.value != v) proNotifier.value = v;
-    return v;
+    return prefs.getBool(_kSubscribed) ?? false;
   }
 
   static Future<void> setSubscribed(bool v) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kSubscribed, v);
-    // Broadcast — every listener (Eyes tab, Game tab, etc.) reloads.
-    proNotifier.value = v;
   }
 
   // ── Free-tier allowance: Eyes + Game (Auralay tabs) ─────────────────────

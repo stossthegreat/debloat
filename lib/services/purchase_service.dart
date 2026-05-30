@@ -230,21 +230,29 @@ class PurchaseService {
     }
     AnalyticsService.purchaseStarted(pkg.identifier);
     try {
-      // purchasePackage throws on cancel / decline / billing error, so
-      // reaching the next line means APPLE / PLAY ACCEPTED THE PAYMENT.
-      // Trust that signal — do NOT gate on RevenueCat's entitlement
-      // check, which lags badly in sandbox / TestFlight (the receipt
-      // webhook can take minutes to reach RC, during which
-      // entitlement.isActive returns false even though the user just
-      // paid). The previous code returned PurchaseOutcome.error in
-      // that window with "Entitlement did not activate" — the user
-      // saw a failure on a successful purchase and the app stayed
-      // locked. _refreshEntitlementCache reconciles on next launch
-      // (promote-only, so it never wipes this optimistic flip).
-      await Purchases.purchasePackage(pkg);
-      await LocalStoreService.setSubscribed(true);
-      AnalyticsService.purchaseCompleted(pkg.identifier);
-      return PurchaseOutcome.success;
+      final result = await Purchases.purchasePackage(pkg);
+      final isPro = result.entitlements.all[PurchaseConfig.proEntitlementId]?.isActive ?? false;
+      // The rescue one-time IAP is a consumable in Play Console — it
+      // may grant credits (and in the user's RC config, also activates
+      // the `pro` entitlement) but treat any successful rescue
+      // purchase as a success even if the entitlement hasn't flipped
+      // yet, so the paywall doesn't surface a misleading
+      // "entitlement didn't activate" toast on a completed purchase.
+      final isRescue =
+             pkg.identifier.toLowerCase() ==
+                 PurchaseConfig.offering.rescuePackage.toLowerCase()
+          || pkg.identifier.toLowerCase().contains('rescue')
+          || pkg.storeProduct.identifier.toLowerCase().contains('rescue');
+      if (isPro) {
+        await LocalStoreService.setSubscribed(true);
+      }
+      if (isPro || isRescue) {
+        AnalyticsService.purchaseCompleted(pkg.identifier);
+        return PurchaseOutcome.success;
+      }
+      lastErrorMessage = 'Entitlement did not activate.';
+      AnalyticsService.purchaseFailed(pkg.identifier, 'entitlement_inactive');
+      return PurchaseOutcome.error;
     } on PlatformException catch (err) {
       // purchases_flutter throws PlatformException with the underlying
       // RevenueCat error code attached as `details`. Surface both the
@@ -276,15 +284,7 @@ class PurchaseService {
     try {
       final info = await Purchases.restorePurchases();
       final isPro = info.entitlements.all[PurchaseConfig.proEntitlementId]?.isActive ?? false;
-      // PROMOTE-ONLY (see _refreshEntitlementCache for why). If RC
-      // confirms pro, set the flag true. If RC says no entitlement,
-      // leave the existing local flag alone — sandbox restore often
-      // returns no entitlements for accounts that did just purchase,
-      // and we'd rather wrongly leave a non-subscriber unlocked for
-      // one session than wipe a paying user's access.
-      if (isPro) {
-        await LocalStoreService.setSubscribed(true);
-      }
+      await LocalStoreService.setSubscribed(isPro);
       AnalyticsService.restoreCompleted(isPro);
       return isPro ? PurchaseOutcome.success : PurchaseOutcome.noPriorPurchases;
     } catch (_) {
@@ -296,33 +296,11 @@ class PurchaseService {
   //  INTERNAL
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Force a fresh RevenueCat entitlement check and update the local
-  /// subscribed flag (promote-only, see [_refreshEntitlementCache]).
-  /// Call this at any gating decision point where the user may have
-  /// JUST become pro and the local cache hasn't caught up yet — most
-  /// importantly after a promo-code redemption done via Apple's
-  /// native Settings UI, which doesn't fire our purchase() path at
-  /// all. RC's customer-info call ingests the latest receipt and
-  /// returns the current entitlement state.
-  static Future<void> refresh() => _refreshEntitlementCache();
-
   static Future<void> _refreshEntitlementCache() async {
     try {
       final info = await Purchases.getCustomerInfo();
       final isPro = info.entitlements.all[PurchaseConfig.proEntitlementId]?.isActive ?? false;
-      // PROMOTE-ONLY. If RC says pro, mark true. If RC says NOT pro,
-      // leave the local flag alone — RC frequently returns false for
-      // genuinely active purchases in sandbox / TestFlight (network
-      // race, sandbox sync lag, configuration error returning an
-      // empty entitlements map). Blindly writing false here was
-      // wiping legit subscriptions on every launch — the user would
-      // pay, get unlocked, relaunch, and find everything relocked.
-      // Cancellation needs a more reliable signal than a single
-      // getCustomerInfo() call; revisit when we have server-side
-      // validation. Until then: never demote from a background check.
-      if (isPro) {
-        await LocalStoreService.setSubscribed(true);
-      }
+      await LocalStoreService.setSubscribed(isPro);
     } catch (_) {
       // Network fail on launch is not fatal — the cached flag stands.
     }
