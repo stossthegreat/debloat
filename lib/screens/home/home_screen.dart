@@ -235,7 +235,7 @@ class _PathFlow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _step(1, 'Face first', 'Scan your face',
+        _step(1, 'Face first', 'Maxx your looks',
             active: !stepDone, done: stepDone),
         const SizedBox(height: 18),
         _step(2, 'Presence next', 'Train eye contact & voice'),
@@ -300,11 +300,10 @@ class _PathFlow extends StatelessWidget {
   }
 }
 
-// ── Current vs Optimised split card — sits to the right of _PathFlow.
-// Loads assets/scan/optimised_split.jpg (single image, vertical-split
-// composition with CURRENT on left, OPTIMISED on right). Falls back
-// to two silhouettes when the asset hasn't landed yet so the layout
-// still reads as the same shape.
+// ── Face-being-scanned card — sits to the right of _PathFlow.
+// ONE image (assets/scan/face_scan.jpg) showing a face with the
+// scan-mesh / measurement overlay vibe. No split, no labels — single
+// hero, eyebrow at top, lock label at the bottom.
 class _OptimisedSplitCard extends StatelessWidget {
   const _OptimisedSplitCard();
 
@@ -324,34 +323,46 @@ class _OptimisedSplitCard extends StatelessWidget {
             AspectRatio(
               aspectRatio: 4 / 5,
               child: Image.asset(
-                MirrorlyAssets.optimisedSplit,
+                MirrorlyAssets.faceScan,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Row(
-                  children: [
-                    Expanded(child: Container(
-                      color: AppColors.surface1,
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.person_outline_rounded,
-                          size: 40, color: AppColors.surface3),
-                    )),
-                    Container(width: 1, color: AppColors.surface3),
-                    Expanded(child: Container(
-                      color: AppColors.surface1,
-                      alignment: Alignment.center,
-                      child: Icon(Icons.person_rounded,
-                          size: 40, color: AppColors.red.withOpacity(0.6)),
-                    )),
-                  ],
+                alignment: const Alignment(0, -0.1),
+                errorBuilder: (_, __, ___) => Container(
+                  color: AppColors.surface1,
+                  alignment: Alignment.center,
+                  child: Icon(Icons.face_retouching_natural_outlined,
+                      size: 44, color: AppColors.red.withOpacity(0.55)),
                 ),
               ),
             ),
-            const Positioned(
-              left: 10, top: 10,
-              child: _SplitLabel(text: 'CURRENT'),
+            // Bottom shade ramp so the lock label reads on any photo.
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.65),
+                      ],
+                      stops: const [0.55, 1.0],
+                    ),
+                  ),
+                ),
+              ),
             ),
-            const Positioned(
-              right: 10, top: 10,
-              child: _SplitLabel(text: 'OPTIMISED', color: AppColors.red),
+            Positioned(
+              left: 10, top: 10,
+              child: Text(
+                'SCAN',
+                style: AppTypography.label.copyWith(
+                  color: AppColors.red,
+                  fontSize: 9,
+                  letterSpacing: 2.4,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
             Positioned(
               left: 10, right: 10, bottom: 10,
@@ -362,9 +373,9 @@ class _OptimisedSplitCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'See your strongest'.toUpperCase(),
+                      'See your potential'.toUpperCase(),
                       style: AppTypography.label.copyWith(
-                        color: AppColors.textSecondary,
+                        color: AppColors.textPrimary,
                         fontSize: 9,
                         letterSpacing: 1.6,
                         height: 1.3,
@@ -377,24 +388,6 @@ class _OptimisedSplitCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SplitLabel extends StatelessWidget {
-  final String text;
-  final Color color;
-  const _SplitLabel({required this.text, this.color = AppColors.textSecondary});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: AppTypography.label.copyWith(
-        color: color,
-        fontSize: 9,
-        letterSpacing: 2.0,
       ),
     );
   }

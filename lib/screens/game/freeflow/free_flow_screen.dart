@@ -824,6 +824,38 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
                 ),
               ),
               const SizedBox(height: 14),
+              // Press-and-hold instruction directly under the orb so a
+              // brand-new user knows immediately HOW to talk to her.
+              // Visible only while the live phase is idle (not while
+              // she's mid-reply, not while Lucien is reading / scoring).
+              if (_phase == _Phase.live && !_holding && !_herSpeaking)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'HOLD TO SPEAK',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                      letterSpacing: 3.0,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              if (_holding)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'LISTENING — RELEASE TO SEND',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.accent,
+                      fontSize: 11,
+                      letterSpacing: 3.0,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               if (_phase == _Phase.lucien || _phase == _Phase.scoring)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
@@ -1389,23 +1421,55 @@ class _Orb extends StatelessWidget {
         : (holding ? AppColors.accent : AppColors.divider);
     final glowAlpha = holding ? 0.7 : (speaking ? 0.65 : 0.18);
 
-    final Widget w;
-    if (imagePath != null) {
+    // Only show HER face when SHE is speaking. Idle + while the user
+    // is holding-to-speak the orb stays as the red/indigo gradient so
+    // the screen reads as the user's instrument until she takes the
+    // floor — at which point her face fades in inside the same circle.
+    final showFace = speaking && imagePath != null;
+
+    final Widget gradient = AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: holding
+              ? [
+                  AppColors.accent,
+                  AppColors.accent.withValues(alpha: 0.85),
+                ]
+              : [
+                  AppColors.red,
+                  AppColors.red.withValues(alpha: 0.78),
+                ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: rim.withValues(alpha: glowAlpha.clamp(0.0, 1.0)),
+            blurRadius: (speaking || holding) ? 80 : 44,
+            spreadRadius: (speaking || holding) ? 4 : -6,
+          ),
+        ],
+      ),
+    );
+
+    Widget w;
+    if (!showFace) {
+      w = gradient;
+    } else {
       w = AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: const Duration(milliseconds: 240),
         width: size,
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(
-            color: rim,
-            width: speaking ? 3 : (holding ? 2.2 : 1.5),
-          ),
+          border: Border.all(color: rim, width: 3),
           boxShadow: [
             BoxShadow(
               color: rim.withValues(alpha: glowAlpha.clamp(0.0, 1.0)),
-              blurRadius: (speaking || holding) ? 70 : 28,
-              spreadRadius: (speaking || holding) ? 3 : -4,
+              blurRadius: 70,
+              spreadRadius: 3,
             ),
           ],
         ),
@@ -1421,31 +1485,6 @@ class _Orb extends StatelessWidget {
                   size: 64, color: AppColors.surface3),
             ),
           ),
-        ),
-      );
-    } else {
-      // Legacy fallback — no imagePath supplied, render the indigo
-      // gradient orb so the screen still works without the asset.
-      w = AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              AppColors.accent,
-              AppColors.accent.withValues(alpha: holding ? 0.9 : 0.75),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.accent
-                  .withValues(alpha: glowAlpha.clamp(0.0, 1.0)),
-              blurRadius: (speaking || holding) ? 80 : 44,
-              spreadRadius: (speaking || holding) ? 4 : -6,
-            ),
-          ],
         ),
       );
     }
