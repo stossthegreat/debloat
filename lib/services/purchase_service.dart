@@ -284,7 +284,15 @@ class PurchaseService {
     try {
       final info = await Purchases.restorePurchases();
       final isPro = info.entitlements.all[PurchaseConfig.proEntitlementId]?.isActive ?? false;
-      await LocalStoreService.setSubscribed(isPro);
+      // PROMOTE-ONLY (see _refreshEntitlementCache for why). If RC
+      // confirms pro, set the flag true. If RC says no entitlement,
+      // leave the existing local flag alone — sandbox restore often
+      // returns no entitlements for accounts that did just purchase,
+      // and we'd rather wrongly leave a non-subscriber unlocked for
+      // one session than wipe a paying user's access.
+      if (isPro) {
+        await LocalStoreService.setSubscribed(true);
+      }
       AnalyticsService.restoreCompleted(isPro);
       return isPro ? PurchaseOutcome.success : PurchaseOutcome.noPriorPurchases;
     } catch (_) {
@@ -300,7 +308,19 @@ class PurchaseService {
     try {
       final info = await Purchases.getCustomerInfo();
       final isPro = info.entitlements.all[PurchaseConfig.proEntitlementId]?.isActive ?? false;
-      await LocalStoreService.setSubscribed(isPro);
+      // PROMOTE-ONLY. If RC says pro, mark true. If RC says NOT pro,
+      // leave the local flag alone — RC frequently returns false for
+      // genuinely active purchases in sandbox / TestFlight (network
+      // race, sandbox sync lag, configuration error returning an
+      // empty entitlements map). Blindly writing false here was
+      // wiping legit subscriptions on every launch — the user would
+      // pay, get unlocked, relaunch, and find everything relocked.
+      // Cancellation needs a more reliable signal than a single
+      // getCustomerInfo() call; revisit when we have server-side
+      // validation. Until then: never demote from a background check.
+      if (isPro) {
+        await LocalStoreService.setSubscribed(true);
+      }
     } catch (_) {
       // Network fail on launch is not fatal — the cached flag stands.
     }

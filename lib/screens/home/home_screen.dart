@@ -138,13 +138,23 @@ class _ScanHubTab extends StatelessWidget {
 
             const SizedBox(height: Sp.lg),
 
-            // ── 1-2-3 path as a single horizontal row. Each step
-            // carries its own lock state so we don't need a separate
-            // "after the scan unlock" strip below — the path tells the
-            // same story tighter.
+            // ── 1-2-3 path on the LEFT, Current vs Optimised split on
+            // the RIGHT — laid out side-by-side. The path is the
+            // unlock story and the split is the visual hook ("here's
+            // your strongest version"). Together they earn the empty
+            // half of the screen, which paths-alone left dead.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-              child: _PathRow(stepDone: hasScan),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: _PathFlow(stepDone: hasScan)),
+                    const SizedBox(width: Sp.md),
+                    const Expanded(child: _OptimisedSplitCard()),
+                  ],
+                ),
+              ),
             ).animate().fadeIn(duration: 400.ms)
               .slideY(begin: 0.04, end: 0, duration: 400.ms,
                   curve: Curves.easeOut),
@@ -162,20 +172,28 @@ class _ScanHubTab extends StatelessWidget {
               ),
             ).animate().fadeIn(delay: 160.ms, duration: 400.ms),
 
-            // ── Before / After preview for first-time users. Fills the
-            // empty lower half with REAL face transformation proof
-            // (reusing the marketing renders) so the user sees what
-            // "see your strongest version" actually means before the
-            // scan, not just a promise. Hidden once they've scanned —
-            // the snapshot below carries the same load with their own
-            // score.
-            if (!hasScan) ...[
-              const SizedBox(height: Sp.lg),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-                child: const _ScanPreviewHero(),
-              ).animate().fadeIn(delay: 260.ms, duration: 400.ms),
-            ],
+            const SizedBox(height: Sp.lg),
+
+            // ── After the scan, unlock — Presence + Game badges.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+              child: const LockStrip(
+                label: 'After the scan, unlock',
+                highlight: 'Presence  ·  Game',
+                badges: [
+                  LockBadge(
+                    icon: Icons.remove_red_eye_outlined,
+                    label: 'Presence',
+                    color: AppColors.accent,
+                  ),
+                  LockBadge(
+                    icon: Icons.local_fire_department_rounded,
+                    label: 'Game',
+                    color: AppColors.red,
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(delay: 260.ms, duration: 400.ms),
 
             // ── Returning-user extras. Score snapshot + active protocol.
             // Hidden on first impression so the conversion column above
@@ -185,14 +203,14 @@ class _ScanHubTab extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
                 child: _LatestSnapshot(scan: latest!),
-              ).animate().fadeIn(delay: 260.ms, duration: 400.ms),
+              ).animate().fadeIn(delay: 360.ms, duration: 400.ms),
             ],
             if (protocol != null) ...[
               const SizedBox(height: Sp.md),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
                 child: _ActiveProtocolCard(protocol: protocol!),
-              ).animate().fadeIn(delay: 320.ms, duration: 400.ms),
+              ).animate().fadeIn(delay: 420.ms, duration: 400.ms),
             ],
           ],
         ),
@@ -204,97 +222,77 @@ class _ScanHubTab extends StatelessWidget {
 // ── Before / After preview for the Scan tab. Two face renders
 // (assets/marketing/before.jpg + after.jpg) shown side by side under
 // the CURRENT / OPTIMISED labels. Sits below the CTA for pre-scan
-// users so the empty lower half carries real transformation proof
-// instead of dead black space. Falls back to a face glyph if either
-// asset is missing — never crashes the layout.
-class _ScanPreviewHero extends StatelessWidget {
-  const _ScanPreviewHero();
+// ── 1-2-3 path used on the Scan tab — numbered circles, current
+// step painted red, subsequent steps muted. Vertical column, sits
+// beside _OptimisedSplitCard.
+class _PathFlow extends StatelessWidget {
+  final bool stepDone;
+  const _PathFlow({required this.stepDone});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(Rd.xl),
-        border: Border.all(color: AppColors.surface3, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(Sp.md, Sp.md, Sp.md, 8),
-            child: Text(
-              'See your strongest face'.toUpperCase(),
-              style: AppTypography.label.copyWith(
-                color: AppColors.red,
-                fontSize: 10.5,
-                letterSpacing: 2.6,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          AspectRatio(
-            aspectRatio: 16 / 10,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: const [
-                Expanded(child: _ScanPreviewTile(
-                  asset: 'assets/marketing/before.jpg',
-                  label: 'CURRENT',
-                  labelColor: AppColors.textSecondary,
-                )),
-                SizedBox(width: 1),
-                Expanded(child: _ScanPreviewTile(
-                  asset: 'assets/marketing/after.jpg',
-                  label: 'OPTIMISED',
-                  labelColor: AppColors.red,
-                )),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _step(1, 'Face first', 'Scan your face',
+            active: !stepDone, done: stepDone),
+        const SizedBox(height: 18),
+        _step(2, 'Presence next', 'Train eye contact & voice'),
+        const SizedBox(height: 18),
+        _step(3, 'Game after', 'Real roleplay with Lucien'),
+      ],
     );
   }
-}
 
-class _ScanPreviewTile extends StatelessWidget {
-  final String asset;
-  final String label;
-  final Color labelColor;
-  const _ScanPreviewTile({
-    required this.asset,
-    required this.label,
-    required this.labelColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
+  Widget _step(int n, String label, String body,
+      {bool active = false, bool done = false}) {
+    final accent = active || done ? AppColors.red : AppColors.textTertiary;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Image.asset(
-          asset,
-          fit: BoxFit.cover,
-          alignment: const Alignment(0, -0.2),
-          errorBuilder: (_, __, ___) => Container(
-            color: AppColors.surface1,
-            alignment: Alignment.center,
-            child: const Icon(Icons.face_outlined,
-                size: 36, color: AppColors.surface3),
+        Container(
+          width: 26, height: 26,
+          decoration: BoxDecoration(
+            color: done ? AppColors.red.withOpacity(0.18) : Colors.transparent,
+            shape: BoxShape.circle,
+            border: Border.all(color: accent, width: 1.2),
           ),
+          alignment: Alignment.center,
+          child: done
+              ? const Icon(Icons.check_rounded, size: 14, color: AppColors.red)
+              : Text(
+                  '$n',
+                  style: AppTypography.label.copyWith(
+                    color: accent,
+                    fontSize: 12,
+                    letterSpacing: 0,
+                  ),
+                ),
         ),
-        Positioned(
-          left: 10, bottom: 10,
-          child: Text(
-            label,
-            style: AppTypography.label.copyWith(
-              color: labelColor,
-              fontSize: 10,
-              letterSpacing: 2.0,
-              fontWeight: FontWeight.w800,
-            ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label.toUpperCase(),
+                style: AppTypography.label.copyWith(
+                  color: accent,
+                  letterSpacing: 2.0,
+                  fontSize: 10.5,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                body,
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -302,145 +300,101 @@ class _ScanPreviewTile extends StatelessWidget {
   }
 }
 
-// ── 1-2-3 path as a horizontal row of three tiles. Each tile carries
-// its own lock state, so we don't need a separate "after the scan
-// unlock" strip below — the path IS the unlock story.
-class _PathRow extends StatelessWidget {
-  final bool stepDone;
-  const _PathRow({required this.stepDone});
+// ── Current vs Optimised split card — sits to the right of _PathFlow.
+// Loads assets/scan/optimised_split.jpg (single image, vertical-split
+// composition with CURRENT on left, OPTIMISED on right). Falls back
+// to two silhouettes when the asset hasn't landed yet so the layout
+// still reads as the same shape.
+class _OptimisedSplitCard extends StatelessWidget {
+  const _OptimisedSplitCard();
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: _PathTile(
-              n: 1,
-              label: 'Face',
-              body: 'Scan your face',
-              active: !stepDone,
-              done: stepDone,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(Rd.lg),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface2,
+          border: Border.all(color: AppColors.surface3, width: 1),
+          borderRadius: BorderRadius.circular(Rd.lg),
+        ),
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            AspectRatio(
+              aspectRatio: 4 / 5,
+              child: Image.asset(
+                MirrorlyAssets.optimisedSplit,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Row(
+                  children: [
+                    Expanded(child: Container(
+                      color: AppColors.surface1,
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.person_outline_rounded,
+                          size: 40, color: AppColors.surface3),
+                    )),
+                    Container(width: 1, color: AppColors.surface3),
+                    Expanded(child: Container(
+                      color: AppColors.surface1,
+                      alignment: Alignment.center,
+                      child: Icon(Icons.person_rounded,
+                          size: 40, color: AppColors.red.withOpacity(0.6)),
+                    )),
+                  ],
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _PathTile(
-              n: 2,
-              label: 'Presence',
-              body: 'Train eye contact',
-              locked: true,
-              icon: Icons.remove_red_eye_outlined,
+            const Positioned(
+              left: 10, top: 10,
+              child: _SplitLabel(text: 'CURRENT'),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _PathTile(
-              n: 3,
-              label: 'Game',
-              body: 'Roleplay with Lucien',
-              locked: true,
-              icon: Icons.local_fire_department_rounded,
+            const Positioned(
+              right: 10, top: 10,
+              child: _SplitLabel(text: 'OPTIMISED', color: AppColors.red),
             ),
-          ),
-        ],
+            Positioned(
+              left: 10, right: 10, bottom: 10,
+              child: Row(
+                children: [
+                  const Icon(Icons.lock_rounded,
+                      size: 12, color: AppColors.textTertiary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'See your strongest'.toUpperCase(),
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 9,
+                        letterSpacing: 1.6,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _PathTile extends StatelessWidget {
-  final int n;
-  final String label;
-  final String body;
-  final bool active;
-  final bool done;
-  final bool locked;
-  final IconData? icon;
-  const _PathTile({
-    required this.n,
-    required this.label,
-    required this.body,
-    this.active = false,
-    this.done = false,
-    this.locked = false,
-    this.icon,
-  });
+class _SplitLabel extends StatelessWidget {
+  final String text;
+  final Color color;
+  const _SplitLabel({required this.text, this.color = AppColors.textSecondary});
 
   @override
   Widget build(BuildContext context) {
-    final isLive = active || done;
-    final accent = isLive ? AppColors.red : AppColors.textTertiary;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(Rd.lg),
-        border: Border.all(
-          color: isLive
-              ? AppColors.red.withOpacity(0.55)
-              : AppColors.surface3,
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 22, height: 22,
-                decoration: BoxDecoration(
-                  color: done
-                      ? AppColors.red.withOpacity(0.18)
-                      : Colors.transparent,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: accent, width: 1.2),
-                ),
-                alignment: Alignment.center,
-                child: done
-                    ? const Icon(Icons.check_rounded,
-                        size: 12, color: AppColors.red)
-                    : Text(
-                        '$n',
-                        style: AppTypography.label.copyWith(
-                          color: accent,
-                          fontSize: 11,
-                          letterSpacing: 0,
-                        ),
-                      ),
-              ),
-              const Spacer(),
-              if (locked)
-                const Icon(Icons.lock_rounded,
-                    size: 12, color: AppColors.textTertiary)
-              else if (icon != null)
-                Icon(icon, size: 14, color: accent),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            label.toUpperCase(),
-            style: AppTypography.label.copyWith(
-              color: accent,
-              letterSpacing: 1.8,
-              fontSize: 10.5,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            body,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-              fontSize: 11.5,
-              height: 1.3,
-            ),
-          ),
-        ],
+    return Text(
+      text,
+      style: AppTypography.label.copyWith(
+        color: color,
+        fontSize: 9,
+        letterSpacing: 2.0,
       ),
     );
   }
