@@ -230,29 +230,21 @@ class PurchaseService {
     }
     AnalyticsService.purchaseStarted(pkg.identifier);
     try {
-      final result = await Purchases.purchasePackage(pkg);
-      final isPro = result.entitlements.all[PurchaseConfig.proEntitlementId]?.isActive ?? false;
-      // The rescue one-time IAP is a consumable in Play Console — it
-      // may grant credits (and in the user's RC config, also activates
-      // the `pro` entitlement) but treat any successful rescue
-      // purchase as a success even if the entitlement hasn't flipped
-      // yet, so the paywall doesn't surface a misleading
-      // "entitlement didn't activate" toast on a completed purchase.
-      final isRescue =
-             pkg.identifier.toLowerCase() ==
-                 PurchaseConfig.offering.rescuePackage.toLowerCase()
-          || pkg.identifier.toLowerCase().contains('rescue')
-          || pkg.storeProduct.identifier.toLowerCase().contains('rescue');
-      if (isPro) {
-        await LocalStoreService.setSubscribed(true);
-      }
-      if (isPro || isRescue) {
-        AnalyticsService.purchaseCompleted(pkg.identifier);
-        return PurchaseOutcome.success;
-      }
-      lastErrorMessage = 'Entitlement did not activate.';
-      AnalyticsService.purchaseFailed(pkg.identifier, 'entitlement_inactive');
-      return PurchaseOutcome.error;
+      // purchasePackage throws on cancel / decline / billing error, so
+      // reaching the next line means APPLE / PLAY ACCEPTED THE PAYMENT.
+      // Trust that signal — do NOT gate on RevenueCat's entitlement
+      // check, which lags badly in sandbox / TestFlight (the receipt
+      // webhook can take minutes to reach RC, during which
+      // entitlement.isActive returns false even though the user just
+      // paid). The previous code returned PurchaseOutcome.error in
+      // that window with "Entitlement did not activate" — the user
+      // saw a failure on a successful purchase and the app stayed
+      // locked. _refreshEntitlementCache reconciles on next launch
+      // (promote-only, so it never wipes this optimistic flip).
+      await Purchases.purchasePackage(pkg);
+      await LocalStoreService.setSubscribed(true);
+      AnalyticsService.purchaseCompleted(pkg.identifier);
+      return PurchaseOutcome.success;
     } on PlatformException catch (err) {
       // purchases_flutter throws PlatformException with the underlying
       // RevenueCat error code attached as `details`. Surface both the
