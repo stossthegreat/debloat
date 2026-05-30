@@ -1209,5 +1209,8 @@ abstract final class MirrorlyAssets {
   static const gazePlayful    = 'assets/eyes/partners/playful.jpg';
 
   static const freeFlowHer    = 'assets/game/free_flow_her.png';
-  static const optimisedSplit = 'assets/scan/optimised_split.jpg';
+  /// Single image of a face being scanned (mesh / measurement overlay,
+  /// scan-line vibe) — the right-side card on the Scan tab. Drop a
+  /// JPEG at this exact path and it appears. Aspect 4:5 portrait.
+  static const faceScan       = 'assets/scan/face_scan.jpg';
 }
