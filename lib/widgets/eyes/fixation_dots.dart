@@ -79,13 +79,19 @@ class _CinematicEyes extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The eyes themselves — Image.asset wrapped in a "ghostly" filter
+    // stack so they read like a vision, not a literal photo. Slightly
+    // see-through, cooled, slight contrast knock, soft inner vignette
+    // pulling them out of the surrounding black. When the user locks
+    // gaze the ghost wash fades + opacity bumps up — the eyes come
+    // ALIVE under the lock, like she's stepping out of memory into
+    // the room.
     final base = ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // ── The eyes asset itself. Drop a real render at
-          //    assets/eyes/lesson_eyes.jpg and it appears.
+          // ── The asset.
           Image.asset(
             FixationDots.assetPath,
             fit: BoxFit.cover,
@@ -93,29 +99,67 @@ class _CinematicEyes extends StatelessWidget {
               isLocked: isLocked,
             ),
           ),
-          // ── Red glow bloom behind when locked — pulled to the
-          //    edges so the eyes themselves stay clear.
-          if (isLocked)
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    radius: 0.95,
-                    colors: [
-                      Colors.transparent,
-                      AppColors.accent.withValues(alpha: 0.30),
-                    ],
-                    stops: const [0.55, 1.0],
-                  ),
+          // ── COOL GHOST WASH — pale blue-white film over the image
+          //    that fades away on lock. Reads as the eyes being a
+          //    vision until you "summon" them with your hold.
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 320),
+            opacity: isLocked ? 0.0 : 0.28,
+            child: const DecoratedBox(
+              decoration: BoxDecoration(
+                color: Color(0xFFBFD8F0),
+              ),
+            ),
+          ),
+          // ── WARM RIM TINT on lock — soft red bloom from the edges
+          //    that brings the eyes into the warm "she's here" space.
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 320),
+            opacity: isLocked ? 0.45 : 0.0,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  radius: 1.0,
+                  colors: [
+                    Colors.transparent,
+                    AppColors.accent.withValues(alpha: 0.55),
+                  ],
+                  stops: const [0.55, 1.0],
                 ),
               ),
             ),
+          ),
+          // ── DARK INNER VIGNETTE — always on. Pulls the image
+          //    edges into the black background so it doesn't look
+          //    like a pasted-in rectangle.
+          IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  radius: 1.1,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.40),
+                  ],
+                  stops: const [0.55, 1.0],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
 
+    // ── See-through wrapper. Opacity 0.65 idle (she's a vision) →
+    //    0.97 locked (she's in the room with you).
+    final ghostly = AnimatedOpacity(
+      duration: const Duration(milliseconds: 320),
+      opacity: isLocked ? 0.97 : 0.68,
+      child: base,
+    );
+
     // Subtle breathing pulse — slower when locked (eye "settles in").
-    return base
+    return ghostly
         .animate(onPlay: (c) => c.repeat(reverse: true))
         .scale(
           begin: const Offset(1.0, 1.0),
