@@ -111,7 +111,7 @@ class _ScanHubTab extends StatelessWidget {
             // ── Masthead — Mirrorly + tab thesis + actions
             MirrorlyMasthead(
               title: 'Mirrorly',
-              subtitle: 'The face. The presence. The game.',
+              subtitle: 'Face. Presence. Game.',
               actions: [
                 MastheadAction(
                   icon: Icons.workspace_premium_rounded,
@@ -162,6 +162,21 @@ class _ScanHubTab extends StatelessWidget {
               ),
             ).animate().fadeIn(delay: 160.ms, duration: 400.ms),
 
+            // ── Before / After preview for first-time users. Fills the
+            // empty lower half with REAL face transformation proof
+            // (reusing the marketing renders) so the user sees what
+            // "see your strongest version" actually means before the
+            // scan, not just a promise. Hidden once they've scanned —
+            // the snapshot below carries the same load with their own
+            // score.
+            if (!hasScan) ...[
+              const SizedBox(height: Sp.lg),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+                child: const _ScanPreviewHero(),
+              ).animate().fadeIn(delay: 260.ms, duration: 400.ms),
+            ],
+
             // ── Returning-user extras. Score snapshot + active protocol.
             // Hidden on first impression so the conversion column above
             // owns the screen for new users.
@@ -182,6 +197,107 @@ class _ScanHubTab extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Before / After preview for the Scan tab. Two face renders
+// (assets/marketing/before.jpg + after.jpg) shown side by side under
+// the CURRENT / OPTIMISED labels. Sits below the CTA for pre-scan
+// users so the empty lower half carries real transformation proof
+// instead of dead black space. Falls back to a face glyph if either
+// asset is missing — never crashes the layout.
+class _ScanPreviewHero extends StatelessWidget {
+  const _ScanPreviewHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(Rd.xl),
+        border: Border.all(color: AppColors.surface3, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Sp.md, Sp.md, Sp.md, 8),
+            child: Text(
+              'See your strongest face'.toUpperCase(),
+              style: AppTypography.label.copyWith(
+                color: AppColors.red,
+                fontSize: 10.5,
+                letterSpacing: 2.6,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          AspectRatio(
+            aspectRatio: 16 / 10,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: const [
+                Expanded(child: _ScanPreviewTile(
+                  asset: 'assets/marketing/before.jpg',
+                  label: 'CURRENT',
+                  labelColor: AppColors.textSecondary,
+                )),
+                SizedBox(width: 1),
+                Expanded(child: _ScanPreviewTile(
+                  asset: 'assets/marketing/after.jpg',
+                  label: 'OPTIMISED',
+                  labelColor: AppColors.red,
+                )),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScanPreviewTile extends StatelessWidget {
+  final String asset;
+  final String label;
+  final Color labelColor;
+  const _ScanPreviewTile({
+    required this.asset,
+    required this.label,
+    required this.labelColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(
+          asset,
+          fit: BoxFit.cover,
+          alignment: const Alignment(0, -0.2),
+          errorBuilder: (_, __, ___) => Container(
+            color: AppColors.surface1,
+            alignment: Alignment.center,
+            child: const Icon(Icons.face_outlined,
+                size: 36, color: AppColors.surface3),
+          ),
+        ),
+        Positioned(
+          left: 10, bottom: 10,
+          child: Text(
+            label,
+            style: AppTypography.label.copyWith(
+              color: labelColor,
+              fontSize: 10,
+              letterSpacing: 2.0,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
