@@ -17,6 +17,7 @@ import '../../services/analytics_service.dart';
 import '../../services/face_geometry_service.dart';
 import '../../services/face_mesh_service.dart';
 import '../../services/local_store_service.dart';
+import '../../services/purchase_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../config/dev_flags.dart';
@@ -951,6 +952,16 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
     // every post-scan surface (Report, Mirror, Protocol, creator-cuts
     // picker) without a live subscription. Flip back to false before
     // shipping.
+    //
+    // Force a fresh RevenueCat entitlement check before deciding so
+    // promo-code redemptions done in Apple's native Settings (which
+    // don't fire our purchase() path) are recognised the moment the
+    // scan completes. Without this, a user could redeem a code and
+    // STILL land on the paywall because the local cached flag hadn't
+    // caught up to the server-side activation yet.
+    if (!kBypassPaywall) {
+      await PurchaseService.refresh();
+    }
     final subscribed = kBypassPaywall
         ? true
         : await LocalStoreService.isSubscribed();

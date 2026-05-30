@@ -296,6 +296,16 @@ class PurchaseService {
   //  INTERNAL
   // ─────────────────────────────────────────────────────────────────────────
 
+  /// Force a fresh RevenueCat entitlement check and update the local
+  /// subscribed flag (promote-only, see [_refreshEntitlementCache]).
+  /// Call this at any gating decision point where the user may have
+  /// JUST become pro and the local cache hasn't caught up yet — most
+  /// importantly after a promo-code redemption done via Apple's
+  /// native Settings UI, which doesn't fire our purchase() path at
+  /// all. RC's customer-info call ingests the latest receipt and
+  /// returns the current entitlement state.
+  static Future<void> refresh() => _refreshEntitlementCache();
+
   static Future<void> _refreshEntitlementCache() async {
     try {
       final info = await Purchases.getCustomerInfo();
