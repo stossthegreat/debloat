@@ -6,6 +6,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../models/face_metrics.dart';
@@ -639,6 +640,21 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
                 child: FixationDots(isLocked: _metrics.isGoodEyeContact),
               ),
 
+            // ── Cinematic intensity layer — only during the drill.
+            // Dark vignette pulled around the edges so the eyes
+            // become the focal point, plus a pulsing "HOLD" caption
+            // below them that brightens when the user locks gaze.
+            // Hidden during countdown / instruct so the chrome there
+            // stays readable.
+            if (_phase == _Phase.drill)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: _DrillIntensityLayer(
+                    isLocked: _metrics.isGoodEyeContact,
+                  ),
+                ),
+              ),
+
             // Top chrome.
             Positioned(
               top: 6, left: 8, right: 8,
@@ -1177,5 +1193,83 @@ class _Dot extends StatelessWidget {
     ).animate(onPlay: (c) => c.repeat(reverse: true))
       .fadeIn(delay: delay.ms, duration: 500.ms)
       .then().fadeOut(duration: 500.ms);
+  }
+}
+
+// ─── Drill intensity layer ─────────────────────────────────────────
+// Sits on top of FixationDots during the drill phase. Two pieces:
+//   1. A deep vignette around the screen edges so the eyes feel like
+//      a cinema close-up — peripheral attention dies, you're locked
+//      on the pair.
+//   2. A breathing "HOLD" / "STAY" caption below the eyes that
+//      brightens when the gaze engine confirms lock and dims when
+//      the user drifts. Single-word, italic Playfair, no chrome.
+//
+// IgnorePointer-wrapped from the parent so it never intercepts taps.
+
+class _DrillIntensityLayer extends StatelessWidget {
+  final bool isLocked;
+  const _DrillIntensityLayer({required this.isLocked});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // ── Deep cinematic vignette. Pure black at the corners, fades
+        // to transparent toward the centre where the eyes sit.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: const Alignment(0, -0.4),
+              radius: 1.05,
+              colors: [
+                Colors.transparent,
+                Colors.transparent,
+                Colors.black.withValues(alpha: 0.55),
+                Colors.black.withValues(alpha: 0.85),
+              ],
+              stops: const [0.0, 0.35, 0.70, 1.0],
+            ),
+          ),
+        ),
+        // ── Centered HOLD caption sitting just below the eyes
+        // (eyes are at 28% vertical, caption at 50%).
+        Align(
+          alignment: const Alignment(0, 0.05),
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 280),
+            opacity: isLocked ? 0.95 : 0.42,
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 280),
+              style: GoogleFonts.playfairDisplay(
+                fontSize: 22,
+                fontStyle: FontStyle.italic,
+                fontWeight: FontWeight.w800,
+                color: isLocked ? Colors.white : AppColors.textSecondary,
+                letterSpacing: 6.0,
+                height: 1.0,
+                shadows: isLocked
+                    ? [
+                        Shadow(
+                          color: AppColors.accent.withValues(alpha: 0.55),
+                          blurRadius: 14,
+                        ),
+                      ]
+                    : const [],
+              ),
+              child: Text(isLocked ? 'HOLD' : 'STAY'),
+            ),
+          ).animate(onPlay: (c) => c.repeat(reverse: true))
+            .scale(
+              begin: const Offset(1.0, 1.0),
+              end: Offset(isLocked ? 1.06 : 1.02,
+                          isLocked ? 1.06 : 1.02),
+              duration: 1400.ms,
+              curve: Curves.easeInOut,
+            ),
+        ),
+      ],
+    );
   }
 }
