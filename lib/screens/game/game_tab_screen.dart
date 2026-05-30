@@ -289,15 +289,17 @@ class _GameMasthead extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 320,
+      height: 300,
       child: Stack(
         children: [
-          // ── Lucien portrait, right half, full bleed.
+          // ── Lucien portrait, right half, full bleed. The source is a
+          // square render so it crops to a vertical strip — alignment is
+          // pulled slightly up so the face stays in frame.
           Positioned.fill(
             child: Align(
               alignment: Alignment.centerRight,
               child: FractionallySizedBox(
-                widthFactor: 0.62,
+                widthFactor: 0.58,
                 heightFactor: 1.0,
                 child: Stack(
                   fit: StackFit.expand,
@@ -305,7 +307,7 @@ class _GameMasthead extends StatelessWidget {
                     Image.asset(
                       MirrorlyAssets.lucienHero,
                       fit: BoxFit.cover,
-                      alignment: const Alignment(0, -0.2),
+                      alignment: const Alignment(0.1, -0.35),
                       errorBuilder: (_, __, ___) => Container(
                         color: AppColors.surface1,
                         alignment: Alignment.center,
@@ -313,8 +315,9 @@ class _GameMasthead extends StatelessWidget {
                             size: 64, color: AppColors.surface3),
                       ),
                     ),
-                    // Left-side fade so the title block reads against
-                    // the photo regardless of brightness.
+                    // Left-edge fade so the title block reads against
+                    // the photo regardless of brightness — narrower
+                    // than before so more of Lucien stays visible.
                     Positioned.fill(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
@@ -323,10 +326,10 @@ class _GameMasthead extends StatelessWidget {
                             end: Alignment.centerRight,
                             colors: [
                               AppColors.base,
-                              AppColors.base.withOpacity(0.50),
+                              AppColors.base.withOpacity(0.35),
                               Colors.transparent,
                             ],
-                            stops: const [0.0, 0.35, 0.70],
+                            stops: const [0.0, 0.20, 0.45],
                           ),
                         ),
                       ),

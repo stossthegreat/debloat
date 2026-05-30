@@ -12,10 +12,12 @@ the Game tab looks them up by literal path.
 | `socialite.jpg` | THE SOCIALITE — *High status. Filtering hard.* | Glam blonde or brunette, party lighting, knows her power. |
 | `intellectual.jpg` | THE INTELLECTUAL — *Sharp. Skeptical. Earns it slow.* | Refined brunette, neutral expression, bookshelf or gallery setting. |
 
-Format: JPEG, 3:4 portrait, 1500 × 2000 px, sRGB, ~85% quality, ≤ 400 KB.
+Format: JPEG, **square** (1:1), 1500 × 1500 px, sRGB, ~85% quality, ≤ 400 KB.
 
 Art direction (consistent across all six):
-- Dim interior, single warm-red rim light, near-black background
+- Square crop, the face composed in the upper half, the background
+  visible below the shoulders (bar / rooftop / café / club / gallery)
+- Single warm-red rim light, near-black or atmospheric interior
 - Eyes always engaged with the camera
 - Photoreal, cinematic, 50–85 mm lens feel
 - No skin focus, no cleavage focus, no overt sexuality — power, not porn

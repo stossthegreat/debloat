@@ -969,7 +969,7 @@ class RoleplayTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AspectRatio(
-              aspectRatio: 3 / 4,
+              aspectRatio: 1,
               child: _CharacterImage(
                 assetPath: assetPath,
                 fallbackIcon: Icons.face_3_rounded,
@@ -1164,9 +1164,14 @@ class FeedbackStrip extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 abstract final class MirrorlyAssets {
-  static const lucienHero     = 'assets/characters/lucien/hero.jpg';
-  static const lucienSpeaking = 'assets/characters/lucien/speaking.jpg';
-  static const lucienFeedback = 'assets/characters/lucien/feedback.jpg';
+  // One Lucien render covers every Lucien role for now — hero, speaking
+  // turn, feedback strip — all three paths point at the same file. When
+  // you have dedicated speaking / feedback variants, replace just those
+  // two constants and the rest of the code keeps working unchanged.
+  static const lucien         = 'assets/characters/lucien/lucien.jpg';
+  static const lucienHero     = lucien;
+  static const lucienSpeaking = lucien;
+  static const lucienFeedback = lucien;
 
   static const arenaWoman     = 'assets/characters/women/arena.jpg';
   static const iceQueen       = 'assets/characters/women/ice_queen.jpg';
