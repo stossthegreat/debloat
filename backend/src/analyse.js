@@ -235,13 +235,35 @@ Keep it devastating. Cite every measurement. Never soften. Rule out what won't s
     ],
     response_format: { type: 'json_object' },
     temperature: 0.55,
-    // Bumped 2300 → 3200 — the prompt now demands FIVE fixes (was
-    // three) plus a points integer per fix plus the looksmax leverage
-    // hierarchy block. The extra 900 tokens ≈ $0.007 at GPT-4o pricing,
-    // trivial insurance against a truncated JSON parse throw.
-    max_tokens: 3200,
+    // Bumped 3200 → 4500. The 3200 ceiling was being clipped by
+    // GPT-4o on five-fix runs and the response was coming back as
+    // a truncated JSON object — JSON.parse threw, the route 500'd,
+    // and the Flutter side's _retryForever spun the user on the
+    // loading screen indefinitely. 4500 buys ~30% headroom; the
+    // extra ~$0.013/call is trivial insurance.
+    max_tokens: 4500,
   });
 
-  const raw = response.choices[0].message.content;
-  return JSON.parse(raw);
+  const raw = response.choices[0]?.message?.content;
+  if (!raw) {
+    // Empty / null content — surface a clean error so the Flutter
+    // retry path can react, instead of throwing JSON.parse on undefined.
+    throw new Error('analyse: empty completion content');
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    // Most likely cause: the response was truncated and the JSON
+    // object is incomplete. Log a short tail of the raw output so
+    // the failure is diagnosable from Railway logs, then rethrow
+    // with a more useful message than "Unexpected end of JSON input".
+    const tail = raw.length > 240 ? '…' + raw.slice(-240) : raw;
+    console.error(
+      `[analyse] JSON parse failed (${raw.length} chars). Tail: ${tail}`
+    );
+    throw new Error(
+      `analyse: invalid JSON from model — ${err.message}. ` +
+      `Length ${raw.length}. Likely a max_tokens truncation; bump the limit.`
+    );
+  }
 }

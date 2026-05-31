@@ -197,12 +197,24 @@ class MirrorApiService {
     required String label,
     required Future<T> Function() run,
   }) async {
+    // CAP: after 6 attempts (≈3 min of backoff + per-call timeout)
+    // give up and rethrow. The old infinite loop was leaving users
+    // stuck on the "Identity anchored. 5 layers compiling." spinner
+    // forever when the backend deterministically failed — better to
+    // surface the failure to the caller so the screen can render an
+    // error state with a manual retry.
+    const int _maxAttempts = 6;
     var attempt = 0;
     while (true) {
       attempt++;
       try {
         return await run();
       } catch (err) {
+        if (attempt >= _maxAttempts) {
+          // ignore: avoid_print
+          print('[$label] giving up after $attempt attempts: $err');
+          rethrow;
+        }
         final seconds = _backoffSeconds(attempt);
         // ignore: avoid_print
         print('[$label] attempt $attempt failed: $err — retry in ${seconds}s');
