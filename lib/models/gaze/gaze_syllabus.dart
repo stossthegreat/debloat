@@ -24,34 +24,44 @@ abstract final class GazeSyllabus {
       id: 'the_lock',
       number: 1,
       name: 'THE LOCK',
-      oneLine: 'Three seconds on one eye. Don\'t flinch first.',
-      objective: 'Pick one eye. Lock. Three seconds. You break.',
+      oneLine: 'Twelve seconds. One iris. You break first.',
+      objective: 'Twelve seconds on one iris. Brow dead. You break.',
       story: [
-        'Three seconds without flinching reads as the rarest signal a '
-            'man can send: power. Her brain logs you before she knows why.',
+        'Most men crack at second three. The one who holds twelve '
+            'without flinching is the one she remembers — power before '
+            'a single word is spoken. That is the entire game.',
       ],
       demo: [
-        'Pick her LEFT eye. Not both — one. Lock onto the iris like '
-            'you\'re reading it. Brow stays soft, no scowl. Mouth still. '
-            'Three slow breaths through your chest. You don\'t drift. '
-            'You break when YOU decide — never when it gets heavy.',
+        'Her LEFT eye — the iris, the dark wet centre. Not both eyes, '
+            'not a wide stare. ONE iris. Drop every muscle in your '
+            'brow until it goes dead like you just woke up. Top lid '
+            'down a millimetre — heavy, not closed. Jaw unclenched. '
+            'Throat soft. Now don\'t move. Twelve seconds. Breathe '
+            'slow through your nose into your chest, not your '
+            'shoulders. The second it gets heavy is the second she '
+            'feels it — that is when you stay. You break when YOU '
+            'decide. Never sooner.',
       ],
       instruct: [
-        'One eye. Lock. Go.',
+        'One iris. Brow dead. Twelve seconds. Go.',
       ],
       drillSeconds: 12,
       targetBlinks: 3,
       weights: {
-        GazeDimension.eyeStability: 0.45,
-        GazeDimension.blinkControl: 0.15,
+        // No smileControl on THE LOCK — this drill is pure hold, the
+        // mouth is irrelevant. Re-distributed across the three axes
+        // that actually matter for an unflinching stare.
+        GazeDimension.eyeStability: 0.55,
+        GazeDimension.blinkControl: 0.20,
         GazeDimension.rhythm:       0.00,
-        GazeDimension.tension:      0.30,
-        GazeDimension.smileControl: 0.10,
+        GazeDimension.tension:      0.25,
+        GazeDimension.smileControl: 0.00,
       },
       isRhythmLesson: false,
       correction: [
-        'You blinked the second it got heavy — she felt the flinch.',
-        'Hold it like you expected it. Again.',
+        'You blinked the second it got heavy — she felt the flinch '
+            'before your eyelid hit the bottom.',
+        'Hold it like you were always going to. Again.',
       ],
     ),
 

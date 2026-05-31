@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../models/protocol.dart';
 import '../../models/scan_record.dart';
 import '../../services/local_store_service.dart';
@@ -37,6 +39,15 @@ class _HomeScreenState extends State<HomeScreen> {
   ScanRecord? _latest;
   Protocol?   _protocol;
   bool _loading = true;
+  // Pillar scores, each /10. Read on _reload from the same places the
+  // individual tabs already write to:
+  //   - LOOKS  ← latest scan.score (out of 100)
+  //   - AURA   ← AuralayAppProvider auraScore SharedPref (out of 100)
+  //   - GAME   ← Free Flow / Council best score SharedPref (out of 100)
+  int _looksScore = 0;
+  int _auraScore  = 0;
+  int _gameScore  = 0;
+  int _dayStreak  = 0;
 
   @override
   void initState() {
@@ -52,17 +63,32 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _reload() async {
     final latest   = await LocalStoreService.latestScan();
     final protocol = await ProtocolService.loadActive();
+    final prefs    = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
       _latest   = latest;
       _protocol = protocol;
       _loading  = false;
+      // /100 → /10 across the board so the Ascend pillars read the
+      // same scale the Eyes / Game share cards do.
+      _looksScore = ((latest?.score ?? 0) / 10).round().clamp(0, 10);
+      _auraScore  = ((prefs.getInt('aura_score')  ?? 0) / 10).round().clamp(0, 10);
+      _gameScore  = ((prefs.getInt('game_score')  ?? 0) / 10).round().clamp(0, 10);
+      _dayStreak  = protocol?.effectiveStreak
+          ?? (prefs.getInt('streak_days') ?? 0);
     });
   }
 
   void _switchTab(int i) {
     HapticFeedback.selectionClick();
     setState(() => _tab = i);
+    // Re-read scan + pillar prefs whenever the user returns to the
+    // Ascend tab — keeps LOOKS / AURA / GAME live the moment they
+    // finish a lesson elsewhere in the app.
+    if (i == 0) {
+      // ignore: discarded_futures
+      _reload();
+    }
   }
 
   @override
@@ -74,7 +100,14 @@ class _HomeScreenState extends State<HomeScreen> {
           : IndexedStack(
               index: _tab,
               children: [
-                AscendScreen(onJumpToTab: _switchTab, latest: _latest),
+                AscendScreen(
+                  onJumpToTab: _switchTab,
+                  latest:      _latest,
+                  dayStreak:   _dayStreak,
+                  looksScore:  _looksScore,
+                  auraScore:   _auraScore,
+                  gameScore:   _gameScore,
+                ),
                 _ScanHubTab(latest: _latest, protocol: _protocol, onRefresh: _reload),
                 const EyesTabScreen(),
                 const GameTabScreen(),
@@ -624,11 +657,17 @@ class _LatestSnapshot extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text('${scan.score}',
+              // Looks pillar — /10 to match the Ascend pillar cards
+              //    and the Aura / Game / share-card scoring scale.
+              //    The underlying [ScanRecord.score] is still 0-100
+              //    so the report screen + share card retain their
+              //    granular maths; only the headline number on this
+              //    snapshot card scales down for parity.
+              Text('${(scan.score / 10).round().clamp(0, 10)}',
                 style: AppTypography.display.copyWith(
                   fontSize: 44, color: AppColors.red,
                   letterSpacing: -2.2, height: 1)),
-              Text('/ 100',
+              Text('/ 10',
                 style: AppTypography.label.copyWith(
                   color: AppColors.textTertiary, fontSize: 9, letterSpacing: 1.8)),
             ],
