@@ -243,16 +243,20 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen> {
       //    before Selene\'s instructions land.
       _eventSub = _session.events.listen(_onEvent);
 
-      // 3) Mint the session via the backend. The body shape matches
-      //    the existing 'lesson' contract; we override the persona
-      //    client-side after session.created arrives.
+      // 3) Mint the session via the backend through the FREEFLOW
+      //    contract, NOT the 'lesson' contract. Reason: the lesson
+      //    route on the backend hardcodes Lucien\'s male voice and
+      //    only the freeflow route reads body.voice and forwards it
+      //    to OpenAI\'s session-create call (same path the Game-tab
+      //    women already use — ice_queen, arena, chaos_girl, …).
+      //    Selene\'s instructions then get fully overridden via
+      //    session.update once session.created lands, so the
+      //    freeflow default persona never speaks a word.
       await _session.connect(body: {
-        'teacherId':  'selene',
-        'mode':       'lesson',
-        'topic':      'gaze_${widget.lesson.id}',
-        'lessonName': widget.lesson.name,
-        'voice':      SeleneGaze.voice,
-        'targetLines': const [],
+        'mode':            'freeflow',
+        'vibeLabel':       'selene',
+        'voice':           SeleneGaze.voice,
+        'scenarioSetting': 'an eye-contact masterclass',
       });
 
       // 6) Mic streaming — push every chunk continuously. Server VAD
