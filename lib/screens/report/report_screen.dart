@@ -21,7 +21,7 @@ import '../../services/trait_builder_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../services/share_service.dart';
-import '../../widgets/common/ai_consent_dialog.dart';
+import '../../widgets/common/fullscreen_image.dart';
 import '../../widgets/report/archetype_card.dart';
 import '../../widgets/report/feature_grid.dart';
 import '../../widgets/report/hero_card.dart';
@@ -48,18 +48,14 @@ class ReportScreen extends StatefulWidget {
 
 class _ReportScreenState extends State<ReportScreen> {
   MirrorAnalysis? _analysis;
+  String? _error;
   // Populated once the scan image is persisted. Passed to chat/tryon so the
-  // advisor can fire renders inline using the real scan image.
+  // advisor can fire Flux renders inline using the real scan image.
   String? _savedImagePath;
   // GPT-4o Vision honest-looks rating. Fires in parallel with /scan so
   // the added latency is absorbed. Null = model refused (rare) and the
   // dual-score hero degrades to geometry-only.
   HonestRating? _honest;
-  // Hero render state. _generating flips true the moment the user taps
-  // GENERATE on the hero card. _localUrl holds the maxed image URL once
-  // /maximize lands (overrides the empty url on _analysis).
-  bool _generating = false;
-  String? _localUrl;
 
   static const _loadingCopy = [
     'Resolving skin micro-texture',
@@ -74,28 +70,6 @@ class _ReportScreenState extends State<ReportScreen> {
   void initState() {
     super.initState();
     _rotateCopy();
-    // Defer the actual API kick-off by one frame so the in-app
-    // AI consent dialog (5.1.2(i)) can render on top of /report
-    // when the user first arrives. The scan flow already gates,
-    // but /report is also reachable via paywall-success and any
-    // future deep link, so we re-check here.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _gateAndRun());
-  }
-
-  Future<void> _gateAndRun() async {
-    // App Store guideline 5.1.2(i) — never fire /analyse or /rate
-    // (both ship the photo to OpenAI) until the user has tapped
-    // ALLOW in AiConsentDialog. ensure() short-circuits to true
-    // when the persisted flag is already set, so users who
-    // accepted during scan don't see it again. If they decline
-    // here, fall back to /home — the report cannot be produced
-    // without the third-party AI calls.
-    final consented = await AiConsentDialog.ensure(context);
-    if (!mounted) return;
-    if (!consented) {
-      context.go('/home');
-      return;
-    }
     _run();
   }
 
@@ -107,99 +81,36 @@ class _ReportScreenState extends State<ReportScreen> {
     });
   }
 
-  /// Error message surfaced when analyse exhausts its retry budget.
-  /// Null while we're still trying / when a previous successful run
-  /// has populated [_analysis].
-  String? _runError;
-
   Future<void> _run() async {
-    if (mounted) setState(() => _runError = null);
     try {
-      await _runInner();
-    } catch (err) {
-      // analyse/rate hit the retry cap. Surface the error so the
-      // build method can render a clean retry state instead of
-      // leaving the apprentice on the loading spinner indefinitely.
-      if (mounted) setState(() => _runError = err.toString());
+      // Fire /scan and /rate in parallel. Rate is ~3s, scan is ~10s, so
+      // running concurrently keeps the perceived loading time flat.
+      // Rate degrades gracefully to null on refusal / failure — the
+      // report still renders in geometry-only mode.
+      final imageB64 = base64Encode(widget.imageBytes);
+
+      final scanFuture   = MirrorApiService.scan(
+        imageBytes:  widget.imageBytes,
+        geometry:    widget.geometry,
+        extraImages: widget.extraImages,
+      );
+      final honestFuture = HonestRatingService.rate(imageBase64: imageB64);
+
+      final results = await Future.wait<dynamic>([scanFuture, honestFuture]);
+      final result = results[0] as MirrorAnalysis;
+      final honest = results[1] as HonestRating?;
+
+      if (mounted) {
+        setState(() {
+          _analysis = result;
+          _honest   = honest;
+        });
+      }
+      // Persist the scan so it lights up Progress + Advisor tabs.
+      await _persistScan(result);
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
     }
-  }
-
-  Future<void> _runInner() async {
-    // Fire /analyse and /rate in parallel. Both are GPT calls (~6–12s
-    // analyse, ~3s rate), so running concurrently keeps the perceived
-    // loading time flat at the slower of the two.
-    //
-    // We deliberately do NOT call /maximize here. The Replicate hero
-    // render adds 60–90s on top of analyse, which buried the user
-    // staring at a loading screen. Now the report renders the moment
-    // GPT lands; the hero card carries an on-image GENERATE button
-    // that fires /maximize on user tap (mirror-tab pattern). User can
-    // start reading the analysis immediately and scroll back when
-    // they want the maxed image.
-    //
-    // Failure handling: MirrorApiService.analyseOnly retries FOREVER
-    // internally — only returns on success. Honest rating degrades to
-    // null on model refusal.
-    final imageB64 = base64Encode(widget.imageBytes);
-
-    final analyseFuture = MirrorApiService.analyseOnly(
-      imageBytes:  widget.imageBytes,
-      geometry:    widget.geometry,
-      extraImages: widget.extraImages,
-    );
-    final honestFuture  = HonestRatingService.rate(imageBase64: imageB64);
-
-    final results = await Future.wait<dynamic>([analyseFuture, honestFuture]);
-    final result  = results[0] as MirrorAnalysis;
-    final honest  = results[1] as HonestRating?;
-
-    if (!mounted) return;
-    setState(() {
-      _analysis = result;
-      _honest   = honest;
-    });
-    // Persist the scan so it lights up Progress + Advisor tabs. The
-    // maximizedImageUrl will be empty here; it gets filled in later
-    // when the user taps GENERATE on the hero (see _generate()).
-    await _persistScan(result);
-  }
-
-  /// Fire /maximize on user tap of the on-hero GENERATE button. Cheap
-  /// guard against double-taps, optimistic UI: flip the spinner state
-  /// up, await the URL, swap it in. Errors don't surface — maximizeOnly
-  /// retries forever, so this only returns on success.
-  Future<void> _generate() async {
-    final a = _analysis;
-    if (a == null || _generating) return;
-
-    // 5.1.2(i) gate — /maximize ships the photo to Replicate.
-    // Users reach this from a manual GENERATE tap on the hero
-    // card, which can happen long after the original scan
-    // consent (e.g. after they revoke from Settings).
-    final consented = await AiConsentDialog.ensure(context);
-    if (!mounted) return;
-    if (!consented) return;
-
-    setState(() => _generating = true);
-
-    final improve = a.report.fixes
-        .map((f) => f.visualRequest.isNotEmpty ? f.visualRequest : f.title)
-        .toList();
-
-    final url = await MirrorApiService.maximizeOnly(
-      imageBytes: widget.imageBytes,
-      improve:    improve,
-    );
-    if (!mounted) return;
-    setState(() {
-      _localUrl   = url;
-      _generating = false;
-    });
-
-    // Backfill the persisted scan so the Progress tab gets the maxed
-    // twin once the user actually generates it.
-    final updated = a.copyWithMaximizedImageUrl(url);
-    await _persistScan(updated);
   }
 
   Future<void> _persistScan(MirrorAnalysis a) async {
@@ -221,6 +132,7 @@ class _ReportScreenState extends State<ReportScreen> {
     // Snapshot the AI-recommended fixes + their projected delta onto
     // the scan record so the Ascend POTENTIAL card can render the
     // headline + per-fix points without re-hitting /report later.
+    // (Pure persistence — no layout change to this screen.)
     final fixSummaries = a.report.fixes.map((f) => ScanFixSummary(
           title:    f.title,
           points:   f.points,
@@ -263,76 +175,48 @@ class _ReportScreenState extends State<ReportScreen> {
     return Scaffold(
       backgroundColor: AppColors.base,
       body: SafeArea(
-        child: _analysis != null
-            ? _buildReport(_analysis!)
-            : (_runError != null
-                ? _buildError(_runError!)
-                : _buildLoading()),
-      ),
-    );
-  }
-
-  /// Surfaced when /analyse + /rate both exhaust the retry cap. Gives
-  /// the apprentice a way out of the spinner with a single tap to
-  /// retry — no more "spinning for ages" trap.
-  Widget _buildError(String message) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.warning_amber_rounded,
-                color: AppColors.signalAmber, size: 32),
-            const SizedBox(height: 14),
-            Text('READ FAILED',
-              style: AppTypography.label.copyWith(
-                color: AppColors.signalAmber,
-                letterSpacing: 2.8, fontSize: 11,
-                fontWeight: FontWeight.w900)),
-            const SizedBox(height: 6),
-            Text('The analyser couldn\'t finish your scan. '
-                 'Tap to try again — your photo is still here.',
-              textAlign: TextAlign.center,
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textSecondary, fontSize: 13, height: 1.45)),
-            const SizedBox(height: 22),
-            SizedBox(
-              width: 220, height: 48,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.red,
-                  foregroundColor: AppColors.base,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(Rd.lg)),
-                ),
-                onPressed: _run,
-                child: const Text('Try Again',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800, letterSpacing: 0.4)),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: () => context.go('/home'),
-              child: Text('Back to Home',
-                style: AppTypography.label.copyWith(
-                  color: AppColors.textTertiary,
-                  letterSpacing: 2.0, fontSize: 11,
-                  fontWeight: FontWeight.w800)),
-            ),
-          ],
-        ),
+        child: _analysis == null
+            ? _buildLoading()
+            : _buildReport(_analysis!),
       ),
     );
   }
 
   Widget _buildLoading() {
-    // No error screen, ever. MirrorApiService.scan and maximizeOnly
-    // retry forever; they only return on success. If the user ever
-    // navigates here without connectivity, they'll see the loading
-    // state until connectivity returns — but they never see a
-    // "Server hiccup" or "Try again" prompt.
+    if (_error != null) {
+      // Translate raw backend errors into a human message. We never show
+      // "Backend 500: {"error":"Request to ...api.replicate.com... 429
+      // Too Many Requests: ..."}" to the user — that's an internal
+      // stack-dump and it scares people.
+      final friendly = _friendlyError(_error!);
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(friendly.title, style: AppTypography.h3.copyWith(
+                color: AppColors.signalRed)),
+              const SizedBox(height: 12),
+              Text(friendly.body,
+                style: AppTypography.bodySmall,
+                textAlign: TextAlign.center),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () { setState(() => _error = null); _run(); },
+                child: const Text('Try again'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => context.go('/home'),
+                child: const Text('Back to home'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -365,6 +249,41 @@ class _ReportScreenState extends State<ReportScreen> {
     return 62;
   }
 
+  /// Convert backend stack-dump errors into a human message. Raw
+  /// backend JSON never reaches the user — they see a clean sentence
+  /// plus Try Again. 429s get their own copy since they're transient.
+  ({String title, String body}) _friendlyError(String raw) {
+    final lower = raw.toLowerCase();
+    if (lower.contains('429') || lower.contains('too many requests') ||
+        lower.contains('throttled') || lower.contains('rate limit')) {
+      return (
+        title: 'Slight wait',
+        body: 'We\'re rendering a lot of scans right now. '
+              'Give it a few seconds and try again.',
+      );
+    }
+    if (lower.contains('timeout') || lower.contains('timed out') ||
+        lower.contains('socket')) {
+      return (
+        title: 'Connection dropped',
+        body: 'Check your connection and try again. '
+              'Your scan is safe.',
+      );
+    }
+    if (lower.contains('500') || lower.contains('502') ||
+        lower.contains('503') || lower.contains('504')) {
+      return (
+        title: 'Server hiccup',
+        body: 'Something on our end — it\'s usually temporary. '
+              'Try again in a moment.',
+      );
+    }
+    return (
+      title: 'Scan didn\'t complete',
+      body: 'Something interrupted the render. Try again.',
+    );
+  }
+
   /// Potential delta — how many points a full maximisation could add.
   /// Capped at 22 so users believe the number.
   int _potentialDelta(int score) {
@@ -373,106 +292,27 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   /// Build the 3 micro-proof one-liners shown under the hero + on the share
-  /// card. Each line covers a DIFFERENT feature category and a DIFFERENT
-  /// rhetorical angle — so users never see "hunter eyes beat 88% of men"
-  /// on line 1 and "ideal eye spacing — top 20%" on line 2. Three beats:
-  ///
-  ///   1 · FEATURE FLEX     — cultural name + measurement   ("Hunter eyes — +3.2° tilt")
-  ///   2 · MEASUREMENT      — number + percentile            ("Symmetry 91/100 — top 8%")
-  ///   3 · PERCENTILE FLEX  — rarity framing                 ("Dominant frame, rarer than 92% of men")
-  ///
-  /// Falls back to neutral but punchy lines when fewer than 3 unique
-  /// categories surfaced (e.g. a dim scan with only one strength trait).
+  /// card. Pulls the top-3 STRENGTH traits and renders their pre-composed
+  /// emotional heroLine strings — "Your hunter eyes beat 88% of men" reads
+  /// and shares harder than "TOP 12% HUNTER EYES". Falls back to neutral
+  /// but punchy lines when fewer than 3 strengths surfaced.
   List<String> _buildMicroProofs(List<Trait> traits) {
-    // Pick one trait per feature category so the three bullets never
-    // double up on the same feature (e.g. HUNTER EYES + IDEAL EYE SPACING
-    // both collapsing to eyes).
-    final byCategory = <String, Trait>{};
-    for (final t in traits.where((t) => t.kind == TraitKind.strength)) {
-      final cat = _categoryOf(t.name);
-      byCategory.putIfAbsent(cat, () => t);
-      if (byCategory.length == 3) break;
-    }
-    final picks = byCategory.values.toList();
-
-    final lines = <String>[
-      if (picks.isNotEmpty) _flexLine(picks[0]),
-      if (picks.length >= 2) _measureLine(picks[1]),
-      if (picks.length >= 3) _percentileLine(picks[2]),
-    ];
-
-    // Fallbacks — three distinct angles so the fallback trio doesn't
-    // repeat itself either.
-    const fallbacks = [
-      'Measured profile — 16 geometry points',
-      'Proportions on spec — balanced frame',
-      'Structured archetype — bones rarer than most',
+    final strengths = traits
+        .where((t) => t.kind == TraitKind.strength)
+        .take(3)
+        .toList();
+    final lines = [
+      for (final t in strengths)
+        t.heroLine.trim().isNotEmpty ? t.heroLine : t.name,
     ];
     while (lines.length < 3) {
-      lines.add(fallbacks[lines.length]);
+      lines.add(const [
+        'Measured profile — 16 geometry points',
+        'Balanced frame — proportions check',
+        'Structured archetype — bones on spec',
+      ][lines.length]);
     }
     return lines;
-  }
-
-  /// Coarse feature-category key so we dedupe eyes vs symmetry vs frame.
-  static String _categoryOf(String traitName) {
-    final n = traitName.toUpperCase();
-    if (n.contains('EYE')) return 'EYES';
-    if (n.contains('SYMMETRY')) return 'SYMMETRY';
-    if (n.contains('BROW')) return 'BROW';
-    if (n.contains('LIP')) return 'LIPS';
-    if (n.contains('FRAME') || n.contains('DOMINANT')) return 'FRAME';
-    if (n.contains('THIRD') || n.contains('PROPORTION') || n.contains('GOLDEN')) {
-      return 'PROPORTIONS';
-    }
-    if (n.contains('JAW') || n.contains('CHIN')) return 'JAW';
-    return n;
-  }
-
-  /// Bullet 1 — name the feature, cite the measurement. Shareable on its
-  /// own. Pulls from the trait's pre-composed `detail` (e.g. "+3.1° TILT").
-  static String _flexLine(Trait t) {
-    final name = _culturalName(t.name);
-    final detail = t.detail.trim();
-    return detail.isEmpty ? name : '$name — $detail';
-  }
-
-  /// Bullet 2 — lead with the feature and its measurement, add a
-  /// percentile label as a secondary flex. Different rhythm from bullet 1
-  /// so it doesn't read as a repeat.
-  static String _measureLine(Trait t) {
-    final name = _culturalName(t.name);
-    final detail = t.detail.trim();
-    final pct = t.pct.trim();
-    if (detail.isEmpty && pct.isEmpty) return name;
-    if (detail.isEmpty) return '$name — $pct';
-    if (pct.isEmpty) return '$name at $detail';
-    return '$name $detail — $pct';
-  }
-
-  /// Bullet 3 — the punchy percentile flex. "TOP 3%" lands harder
-  /// than "rarer than 97% of men" — shorter, screenshot-ready, and
-  /// the cultural-norm way looksmax content frames rarity. Skips the
-  /// measurement detail so the shape contrasts with bullets 1 & 2.
-  static String _percentileLine(Trait t) {
-    final name = _culturalName(t.name);
-    final pct = t.pct.trim();
-    return pct.isEmpty ? name : '$name — $pct';
-  }
-
-  /// Map the trait's grid-label ("HUNTER EYES", "RARE SYMMETRY") to the
-  /// short cultural phrase the bullets render with.
-  static String _culturalName(String raw) {
-    final n = raw.toUpperCase();
-    if (n.contains('HUNTER')) return 'Hunter eyes';
-    if (n.contains('SYMMETRY')) return 'Symmetry';
-    if (n.contains('MODEL LIPS') || n == 'LIPS') return 'Model lips';
-    if (n.contains('DOMINANT FRAME')) return 'Dominant frame';
-    if (n.contains('GOLDEN THIRDS')) return 'Golden thirds';
-    if (n.contains('DOMINANT BROW')) return 'Dominant brow';
-    if (n.contains('IDEAL EYE SPACING')) return 'Eye spacing';
-    // Default: title-case the raw trait name.
-    return raw[0].toUpperCase() + raw.substring(1).toLowerCase();
   }
 
   Widget _buildReport(MirrorAnalysis a) {
@@ -493,25 +333,18 @@ class _ReportScreenState extends State<ReportScreen> {
 
     // The tagline under the before/after on both the results hero and
     // the share card. Priority order:
-    //   1. The honest-rating viral killer line (_honest.note) — built to
-    //      the 3-beat template "<feature> — <metric>. <verdict>."
-    //   2. The top strength trait's pre-composed heroLine — already
-    //      punchy, already anchored to a real geometry metric. Better
-    //      fallback than the longer GPT prose verdict when /rate refused.
-    //   3. GPT analyse `oneLineVerdict` — longer, measurement-cited.
-    //   4. Strongest-axis fallback so it never defaults blank.
+    //   1. The honest-rating viral killer line (_honest.note) — one
+    //      sentence leading with the strongest feature, built for
+    //      shareability. Freshest per user, never templated.
+    //   2. The GPT analyse `oneLineVerdict` — longer, measurement-cited.
+    //   3. A computed fallback anchored to their actual strongest axis
+    //      so it never defaults to the same string twice.
     final honestNote = (_honest?.note ?? '').trim();
-    final topStrengthLine = traits
-        .where((t) => t.kind == TraitKind.strength)
-        .map((t) => t.heroLine.trim())
-        .firstWhere((s) => s.isNotEmpty, orElse: () => '');
     final tagline = honestNote.isNotEmpty
         ? honestNote
-        : (topStrengthLine.isNotEmpty
-            ? topStrengthLine
-            : (a.report.oneLineVerdict.trim().isNotEmpty
-                ? a.report.oneLineVerdict
-                : '${score.strongestAxis.$1} carries the frame.'));
+        : (a.report.oneLineVerdict.trim().isNotEmpty
+            ? a.report.oneLineVerdict
+            : '${score.strongestAxis.$1} carries the frame.');
 
     // 6-axis radar values (each 0..1) built from the same measurements
     // used by the trait system.
@@ -562,18 +395,16 @@ class _ReportScreenState extends State<ReportScreen> {
                   currentScore:   _honest?.score ?? score.value,
                   projectedScore: projected,
                   tagline:        tagline,
-                  // Keep one score-flex line so the share card has a
-                  // proof number. The other two come straight from the
-                  // on-screen micro-proofs so what gets shared matches
-                  // what the user saw — no two different bullet sets,
-                  // no bullets that all key on the same feature.
+                  // First two bullets = the two scores (our moat, named).
+                  // Third bullet = the top strength trait so the card
+                  // still flexes something specific.
                   microProofs: [
                     if (_honest != null)
                       'HONEST LOOKS · ${_honest!.score}/100'
                     else
                       'BONES · ${score.value}/100',
-                    if (microProofs.isNotEmpty) microProofs[0],
-                    if (microProofs.length >= 2) microProofs[1],
+                    'BONE STRUCTURE · ${score.value}/100',
+                    microProofs.isNotEmpty ? microProofs.first : 'MEASURED PROFILE',
                   ],
                   text: '${_honest?.score ?? score.value} → $projected. '
                         'Same face. mirrorly.app',
@@ -584,32 +415,12 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.lg),
 
-          // ── 0 · HERO CARD ─ before/after first. User direction:
-          //    "it start with before after etc then goes down to the
-          //    rest". Visual hook leads, scores follow.
-          HeroCard(
-            currentScore:     _honest?.score ?? score.value,
-            projectedScore:   projected,
-            tagline:          tagline,
-            beforeBytes:      widget.imageBytes,
-            afterUrl:         _localUrl ?? (a.maximizedImageUrl.isNotEmpty
-                                ? a.maximizedImageUrl
-                                : null),
-            correctionsCount: correctionsCount,
-            microProofs:      microProofs,
-            onGenerate:       _generate,
-            isGenerating:     _generating,
-          ),
-
-          const SizedBox(height: Sp.md),
-
-          // ── 1 · DUAL-SCORE ─ honest (big) + bone structure (under).
-          //    Two scores is the moat. Honest is GPT-4o Vision's real-
-          //    photo read — skin, eye area, proportions — with no
-          //    geometry context so bones can't bail out a bad face.
-          //    Bone structure is our on-device math, shown smaller as
-          //    the companion number. Degrades to geometry-only if the
-          //    vision pass refused.
+          // ── 0 · DUAL-SCORE HERO ─ honest (big) + bone structure (under) ─
+          // Two scores is the moat. Honest is GPT-4o Vision's real-photo
+          // read — skin, eye area, proportions — with no geometry context
+          // so bones can't bail out a bad face. Bone structure is our
+          // on-device measurement math, shown smaller as the companion
+          // number. Degrades to geometry-only if the vision model refused.
           _DualScoreHero(
             honest:    _honest,
             geometry:  score.value,
@@ -617,33 +428,53 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.md),
 
-          // ── 2 · TRAITS GRID — REMOVED per user feedback
-          //    The Umax-style state-labelled badges (DOMINANT BROW /
-          //    LONG LOWER / TIGHTEN UP / ASYMMETRICAL / SOLID FRAMING /
-          //    HUNTER EYES) read as clinical labels instead of
-          //    actionable steps. User: "no names other than mogged."
-          //    Fix cards below carry the real signal now.
-          // TraitGrid(traits: traits)
-          //   .animate().fadeIn(delay: 1600.ms, duration: 500.ms),
+          // ── 1 · HERO CARD ─ score → projected, tagline, B/A, proofs ────
+          HeroCard(
+            currentScore:     _honest?.score ?? score.value,
+            projectedScore:   projected,
+            tagline:          tagline,
+            beforeBytes:      widget.imageBytes,
+            afterUrl:         a.maximizedImageUrl,
+            correctionsCount: correctionsCount,
+            microProofs:      microProofs,
+          ),
 
-          // ── 3 · RADAR CHART — REMOVED per user feedback
-          //    The full hexagon radar takes a screenful and adds no
-          //    actionable info. User: "we much is closer to the
-          //    bottom" — saved for a smaller version we'll bring back
-          //    inside the geometry collapsed panel later.
-          // RadarChart(
-          //   values: radarValues,
-          //   labels: const ['EYES', 'JAW', 'SYMMETRY', 'LIPS', 'FWHR', 'BALANCE'],
-          // ).animate().fadeIn(delay: 1900.ms, duration: 500.ms),
+          const SizedBox(height: Sp.md),
+
+          // ── 2 · TRAITS GRID ─ Umax secret sauce, ours backed by mesh ───
+          TraitGrid(traits: traits)
+            .animate().fadeIn(delay: 1600.ms, duration: 500.ms),
+
+          const SizedBox(height: Sp.md),
+
+          // ── 3 · RADAR ─ "measured, not guessed" proof ──────────────────
+          RadarChart(
+            values: radarValues,
+            labels: const ['EYES', 'JAW', 'SYMMETRY', 'LIPS', 'FWHR', 'BALANCE'],
+          ).animate().fadeIn(delay: 1900.ms, duration: 500.ms),
+
+          const SizedBox(height: Sp.md),
+
+          // ── 4 · APPLY ALL FIXES ────────────────────────────────────────
+          // BeforeAfterCard removed — the hero card now carries the B/A
+          // moment, and showing it twice diluted the impact.
+          //
+          // When the hero URL is empty (Replicate was down during /scan and
+          // we returned report-only), the button's state morphs to a
+          // "Generate hero image" retry that hits /maximize directly. No
+          // re-scan required.
+          _ApplyAllFixesButton(
+            maximizedImageUrl: a.maximizedImageUrl,
+            imageBytes:        widget.imageBytes,
+            improveList:       a.report.fixes
+                .map((f) => f.visualRequest.trim())
+                .where((s) => s.isNotEmpty)
+                .toList(),
+          ).animate().fadeIn(delay: 2400.ms, duration: 400.ms),
 
           const SizedBox(height: Sp.xl),
 
-          // GENERATE moved onto the hero card itself (see HeroCard's
-          // _afterHalf — when no maxed URL is present the right side
-          // renders a big red GENERATE button that fires _generate()).
-          // No standalone CTA above the fix cards any more.
-
-          // ── 4 · FIX HEADLINES (text only — no per-fix Flux render) ─────
+          // ── 5 · FIX HEADLINES (text only — no per-fix Flux render) ─────
           // We deliberately don't render per-fix inline try-ons any more
           // (each tap on "See it" fired a fresh /tryon → 3 extra Nano
           // Banana calls per scan). The hero "Final form" already shows
@@ -655,12 +486,8 @@ class _ReportScreenState extends State<ReportScreen> {
               color: AppColors.textTertiary, letterSpacing: 3.0, fontSize: 10)),
           const SizedBox(height: Sp.sm),
           ...a.report.fixes.asMap().entries.map((e) =>
-            _FixTextCard(
-              index: e.key + 1,
-              fix: e.value,
-              geometry: widget.geometry,
-              pulldown: a.report.pulldown,
-            ).animate().fadeIn(delay: Duration(milliseconds: 2600 + e.key * 120))),
+            _FixTextCard(index: e.key + 1, fix: e.value)
+              .animate().fadeIn(delay: Duration(milliseconds: 2600 + e.key * 120))),
 
           const SizedBox(height: Sp.xl),
 
@@ -688,13 +515,27 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.xl),
 
-          // The standalone "Mog Stance" protocol card + duplicate verdict
-          // that used to live here were stacking on top of the deeper-
-          // analysis blocks visually — the report was reading as a pile
-          // of red-bordered cards. The per-fix "ADD TO STREAK" buttons
-          // above already commit a fix to the user's daily streak, so
-          // the dedicated protocol card is redundant. Done/Consult sits
-          // immediately after the deeper analysis now.
+          // Verdict
+          _Verdict(text: a.report.verdict)
+            .animate().fadeIn(delay: 1500.ms, duration: 500.ms)
+            .slideY(begin: 0.05, end: 0,
+                delay: 1500.ms, duration: 500.ms, curve: Curves.easeOut),
+
+          const SizedBox(height: Sp.xl),
+
+          // ── 8 · PROTOCOL CTA ─ the final commit moment ─────────────────
+          // Moved to sit just above the Done/Consult row so it's the last
+          // thing the user sees as they finish reading. Auto-prescribed
+          // 60-day routine keyed to the scan's pulldown axis. If a
+          // protocol is already active the card morphs to "Continue day
+          // X" rather than overwriting it.
+          _ProtocolCtaCard(
+            pulldown: a.report.pulldown,
+            geometry: widget.geometry,
+          ).animate().fadeIn(delay: 3200.ms, duration: 400.ms),
+
+          const SizedBox(height: Sp.xl),
+
           Row(
             children: [
               Expanded(
@@ -829,6 +670,212 @@ class _DeeperAnalysisPanel extends StatelessWidget {
   }
 }
 
+// ── APPLY ALL FIXES — the primary transformation moment ─────────────────────
+class _ApplyAllFixesButton extends StatefulWidget {
+  final String maximizedImageUrl;
+  /// Captured selfie bytes — needed to call /maximize for the retry path
+  /// if the original /scan returned an empty hero url.
+  final Uint8List imageBytes;
+  /// The three visualRequest strings from the fix cards (same thing /scan
+  /// normally feeds to maximize as the "improve" list).
+  final List<String> improveList;
+
+  const _ApplyAllFixesButton({
+    required this.maximizedImageUrl,
+    required this.imageBytes,
+    required this.improveList,
+  });
+
+  @override
+  State<_ApplyAllFixesButton> createState() => _ApplyAllFixesButtonState();
+}
+
+class _ApplyAllFixesButtonState extends State<_ApplyAllFixesButton> {
+  bool _applied = false;
+  String? _localUrl;   // populated by a successful retry
+  bool _retrying = false;
+  String? _retryError;
+
+  String get _effectiveUrl =>
+      (_localUrl != null && _localUrl!.isNotEmpty)
+          ? _localUrl!
+          : widget.maximizedImageUrl;
+
+  /// Single tap handler for the APPLY ALL FIXES button. Handles both
+  /// cases transparently:
+  ///   · URL already present (normal scan) → reveal the hero image.
+  ///   · URL empty (Replicate was down during /scan) → fire /maximize
+  ///     right here, wait, then reveal. Same button, same interaction —
+  ///     the user never sees a separate "retry" card.
+  Future<void> _onApplyTap() async {
+    if (_retrying) return;
+    HapticFeedback.heavyImpact();
+
+    // Fast path — we already have a URL, just reveal it.
+    if (_effectiveUrl.isNotEmpty) {
+      setState(() => _applied = true);
+      return;
+    }
+
+    // Slow path — render on demand.
+    setState(() { _retrying = true; _retryError = null; });
+    try {
+      final url = await MirrorApiService.maximizeOnly(
+        imageBytes: widget.imageBytes,
+        improve:    widget.improveList,
+      );
+      if (!mounted) return;
+      setState(() {
+        _localUrl = url;
+        _retrying = false;
+        _applied  = true; // reveal immediately; the tap was the commit
+      });
+    } catch (err) {
+      if (!mounted) return;
+      setState(() {
+        _retryError = _friendlyRetryError(err);
+        _retrying = false;
+      });
+    }
+  }
+
+  String _friendlyRetryError(Object err) {
+    final s = err.toString().toLowerCase();
+    if (s.contains('timeout') || s.contains('timed out')) {
+      return 'Render is taking too long. Try once more.';
+    }
+    if (s.contains('429')) {
+      return 'We\'re rendering a lot of scans right now. Try again in a moment.';
+    }
+    if (RegExp(r'\b50\d\b').hasMatch(s)) {
+      return 'Image service had a hiccup. Try again.';
+    }
+    if (s.contains('socket') || s.contains('network')) {
+      return 'Connection dropped. Check your network and try again.';
+    }
+    return 'Couldn\'t render. Try again.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final url = _effectiveUrl;
+
+    // ─── Hero revealed — final form ─────────────────────────────────────
+    if (_applied && url.isNotEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(Sp.md),
+        decoration: BoxDecoration(
+          color: AppColors.surface1,
+          borderRadius: BorderRadius.circular(Rd.xl),
+          border: Border.all(color: AppColors.divider, width: 0.8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('◆ FINAL FORM UNLOCKED',
+              style: AppTypography.label.copyWith(
+                color: AppColors.red, letterSpacing: 3.2, fontSize: 10,
+                fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(Rd.lg),
+              child: AspectRatio(
+                aspectRatio: 3 / 4,
+                child: GestureDetector(
+                  onTap: () => FullscreenImage.open(context,
+                    url: url, caption: 'MAXIMIZED · you, applied'),
+                  child: Image.network(url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _errorBox()),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text('Tap to open fullscreen · share · screenshot',
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textSecondary, fontSize: 11,
+                fontStyle: FontStyle.italic)),
+          ],
+        ),
+      ).animate()
+        .fadeIn(duration: 450.ms)
+        .scale(begin: const Offset(0.92, 0.92), end: const Offset(1, 1),
+            duration: 450.ms, curve: Curves.easeOutBack);
+    }
+
+    // ─── CTA — Apply all fixes (same button, both paths) ────────────────
+    // When url is present, tap → instant reveal.
+    // When url is empty,  tap → fire /maximize in-place → reveal on
+    // success. Same visual affordance either way; the only surface-level
+    // difference is the spinner during the slow path. The old separate
+    // "retry card" is gone — users get one button, one interaction.
+    return Column(
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _retrying ? null : _onApplyTap,
+            borderRadius: BorderRadius.circular(Rd.lg),
+            child: Container(
+              width: double.infinity, height: 58,
+              decoration: BoxDecoration(
+                color: AppColors.red,
+                borderRadius: BorderRadius.circular(Rd.lg),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.red.withValues(alpha: 0.45),
+                    blurRadius: 22, offset: const Offset(0, 6)),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (_retrying) ...[
+                    const SizedBox(
+                      width: 18, height: 18,
+                      child: CircularProgressIndicator(
+                        color: AppColors.base, strokeWidth: 2.2)),
+                    const SizedBox(width: 12),
+                    Text('RENDERING…',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.base, letterSpacing: 3.0,
+                        fontSize: 13, fontWeight: FontWeight.w900)),
+                  ] else ...[
+                    const Icon(Icons.auto_awesome,
+                      size: 18, color: AppColors.base),
+                    const SizedBox(width: 10),
+                    Text('APPLY ALL FIXES',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.base, letterSpacing: 3.0,
+                        fontSize: 13, fontWeight: FontWeight.w900)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Retry error surfaces just below the button — stays visible on
+        // the same screen as the CTA so the user can tap again without
+        // scrolling or navigating.
+        if (_retryError != null) ...[
+          const SizedBox(height: 8),
+          Text(_retryError!,
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.signalAmber, fontSize: 11.5)),
+        ],
+      ],
+    );
+  }
+
+  Widget _errorBox() => Container(
+    color: AppColors.surface1,
+    alignment: Alignment.center,
+    child: Text('Maximized render unavailable',
+      style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted)),
+  );
+}
+
 class _ConsultCard extends StatelessWidget {
   final VoidCallback onTap;
   const _ConsultCard({required this.onTap});
@@ -887,6 +934,163 @@ class _ConsultCard extends StatelessWidget {
   }
 }
 
+// ── Protocol CTA card — auto-prescribe the 60-day routine keyed to the
+// scan's pulldown axis. Smart-state: shows "Start" for a fresh user, and
+// "Continue day X · N-day streak" if they already have an active protocol.
+// Never overwrites an existing protocol — the user ends it explicitly from
+// the Protocol screen if they want to start over.
+class _ProtocolCtaCard extends StatefulWidget {
+  final String pulldown;
+  final FaceGeometry geometry;
+  const _ProtocolCtaCard({
+    required this.pulldown, required this.geometry,
+  });
+
+  @override
+  State<_ProtocolCtaCard> createState() => _ProtocolCtaCardState();
+}
+
+class _ProtocolCtaCardState extends State<_ProtocolCtaCard> {
+  Protocol? _active;
+  bool _loading = true;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActive();
+  }
+
+  Future<void> _loadActive() async {
+    final p = await ProtocolService.loadActive();
+    if (!mounted) return;
+    setState(() { _active = p; _loading = false; });
+  }
+
+  Future<void> _onTap() async {
+    if (_busy) return;
+    HapticFeedback.mediumImpact();
+    setState(() => _busy = true);
+    try {
+      // Existing protocol? Continue it — do not overwrite a run in progress.
+      if (_active != null) {
+        if (!mounted) return;
+        context.push('/protocol');
+        return;
+      }
+      // Fresh — auto-prescribe and push.
+      final scan = await LocalStoreService.latestScan();
+      if (scan == null) return;
+      await ProtocolService.startForScan(
+        scan,
+        pulldown: widget.pulldown,
+        geometry: widget.geometry,
+      );
+      if (!mounted) return;
+      context.push('/protocol');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      // Reserve approximate card height so the layout doesn't jump once the
+      // active protocol check resolves.
+      return const SizedBox(height: 168);
+    }
+
+    final hasActive = _active != null;
+    // Resolve the canonical axis from the prose pulldown + geometry so the
+    // card shows a short clean label ("Jaw definition"), not the full
+    // 2-sentence backend pulldown. This is the same resolution used when
+    // the user actually taps Start — so what they see matches what they'll
+    // get.
+    final resolvedAxis = ProtocolService.resolveAxis(
+      pulldown: widget.pulldown,
+      geometry: widget.geometry,
+    );
+
+    final header = hasActive ? 'ACTIVE · 60-DAY PROTOCOL' : '60-DAY PROTOCOL';
+    final headline = hasActive
+        ? _active!.title
+        : 'Targeting ${resolvedAxis.toLowerCase()}.';
+    final body = hasActive
+        ? 'Day ${_active!.currentDay} of ${_active!.lengthDays}. '
+          '${_active!.effectiveStreak}-day streak. Tap to log today.'
+        : 'A daily routine built from your scan — morning, midday, '
+          'evening, night — time-banded and evidence-aware. Streak locks '
+          'it in. Rescans at day 14, 30, 60.';
+    final btnText = hasActive ? 'Continue today' : 'Start the 60-day plan';
+
+    return Container(
+      padding: const EdgeInsets.all(Sp.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(Rd.xl),
+        border: Border.all(
+          color: AppColors.red.withValues(alpha: 0.32), width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(header,
+                style: AppTypography.label.copyWith(
+                  color: AppColors.red,
+                  letterSpacing: 2.8, fontSize: 10,
+                  fontWeight: FontWeight.w800)),
+              const Spacer(),
+              if (hasActive) ...[
+                Icon(Icons.local_fire_department,
+                  size: 13, color: AppColors.red),
+                const SizedBox(width: 2),
+                Text('${_active!.effectiveStreak}',
+                  style: AppTypography.measurement.copyWith(
+                    color: AppColors.red,
+                    fontSize: 12, fontWeight: FontWeight.w800)),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(headline,
+            style: AppTypography.h1.copyWith(
+              fontSize: 22, letterSpacing: -0.4, height: 1.15)),
+          const SizedBox(height: 6),
+          Text(body,
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 12.5, height: 1.5)),
+          const SizedBox(height: Sp.md),
+          SizedBox(
+            width: double.infinity, height: 50,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.red,
+                foregroundColor: AppColors.base,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(Rd.lg)),
+                elevation: 0,
+              ),
+              onPressed: _busy ? null : _onTap,
+              child: _busy
+                  ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(
+                        color: AppColors.base, strokeWidth: 2))
+                  : Text(btnText,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14, letterSpacing: 0.4)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 // ── Share button (top-right of report header) ───────────────────────────────
 class _ShareButton extends StatelessWidget {
@@ -982,72 +1186,20 @@ class _Block extends StatelessWidget {
 // hero "Final form" already shows the combined maximized twin; users who
 // want to drill into a single change can do it one at a time via the
 // Mirror chat, which remains the only per-user render surface.
-class _FixTextCard extends StatefulWidget {
+class _FixTextCard extends StatelessWidget {
   final int index;
   final Fix fix;
-  final FaceGeometry geometry;
-  final String pulldown;
-  const _FixTextCard({
-    required this.index,
-    required this.fix,
-    required this.geometry,
-    required this.pulldown,
-  });
-
-  @override
-  State<_FixTextCard> createState() => _FixTextCardState();
-}
-
-class _FixTextCardState extends State<_FixTextCard> {
-  bool _committed = false;
-  bool _busy = false;
-
-  Future<void> _onCommit() async {
-    if (_busy || _committed) return;
-    setState(() => _busy = true);
-    HapticFeedback.mediumImpact();
-    final p = await ProtocolService.commitFix(
-      fix:      widget.fix,
-      geometry: widget.geometry,
-      pulldown: widget.pulldown,
-    );
-    if (!mounted) return;
-    setState(() {
-      _busy = false;
-      _committed = p != null;
-    });
-    if (p != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('"${widget.fix.title}" added to your streak',
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textPrimary, fontSize: 13)),
-          backgroundColor: AppColors.surface2,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(milliseconds: 1800),
-          action: SnackBarAction(
-            label: 'OPEN',
-            textColor: AppColors.red,
-            onPressed: () => context.push('/protocol'),
-          ),
-        ),
-      );
-    }
-  }
+  const _FixTextCard({required this.index, required this.fix});
 
   @override
   Widget build(BuildContext context) {
-    final index = widget.index;
-    final fix   = widget.fix;
     return Container(
       margin: const EdgeInsets.only(bottom: Sp.md),
       padding: const EdgeInsets.all(Sp.md),
       decoration: BoxDecoration(
         color: AppColors.surface1,
         borderRadius: BorderRadius.circular(Rd.lg),
-        // Red accent — user explicitly said NOT the blue cards. Brand
-        // red carries the "this is what makes you look better" tone.
-        border: Border.all(color: AppColors.red.withValues(alpha: 0.30)),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.14)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1057,7 +1209,7 @@ class _FixTextCardState extends State<_FixTextCard> {
             children: [
               Text('$index',
                 style: AppTypography.h1.copyWith(
-                  color: AppColors.red, fontSize: 30, letterSpacing: -1)),
+                  color: AppColors.accent, fontSize: 28, letterSpacing: -1)),
               const SizedBox(width: Sp.sm),
               Expanded(
                 child: Column(
@@ -1080,128 +1232,16 @@ class _FixTextCardState extends State<_FixTextCard> {
           const Divider(height: 1),
           const SizedBox(height: Sp.sm),
           Text('DO THIS', style: AppTypography.label.copyWith(
-            color: AppColors.red, fontSize: 9, letterSpacing: 1.8)),
+            color: AppColors.measure, fontSize: 9, letterSpacing: 1.8)),
           const SizedBox(height: 4),
           Text(fix.action, style: AppTypography.body.copyWith(
             color: AppColors.textPrimary, fontSize: 14, height: 1.55)),
-          const SizedBox(height: Sp.md),
-          // ── Projected point gain + COMMIT row.
-          //    Backend (analyse.js) now returns a `points` integer per
-          //    fix — projected delta to the user's overall LOOKS score
-          //    from doing this fix. Older reports without the field
-          //    default to 0, so the gauge stays hidden until the
-          //    backend has shipped the prompt bump.
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (fix.points > 0) ...[
-                Container(
-                  width: 76,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.red.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(Rd.lg),
-                    border: Border.all(
-                        color: AppColors.red.withValues(alpha: 0.55),
-                        width: 1),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '+${fix.points}',
-                        style: AppTypography.h1.copyWith(
-                          color: AppColors.red,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -1.0,
-                        ),
-                      ),
-                      Text(
-                        'POINTS',
-                        style: AppTypography.label.copyWith(
-                          color: AppColors.red,
-                          fontSize: 8.5,
-                          letterSpacing: 1.6,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Expanded(
-                child: InkWell(
-                  onTap: _committed
-                      ? () => context.push('/protocol')
-                      : _onCommit,
-                  borderRadius: BorderRadius.circular(Rd.lg),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: _committed
-                          ? AppColors.signalGreen.withValues(alpha: 0.18)
-                          : AppColors.red,
-                      borderRadius: BorderRadius.circular(Rd.lg),
-                      border: _committed
-                          ? Border.all(
-                              color: AppColors.signalGreen, width: 1)
-                          : null,
-                      boxShadow: _committed
-                          ? null
-                          : [BoxShadow(
-                              color: AppColors.red.withValues(alpha: 0.32),
-                              blurRadius: 18,
-                              offset: const Offset(0, 6),
-                            )],
-                    ),
-                    child: _busy
-                        ? const SizedBox(
-                            height: 18, width: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.black),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                _committed
-                                    ? Icons.check_rounded
-                                    : Icons.local_fire_department,
-                                color: _committed
-                                    ? AppColors.signalGreen
-                                    : Colors.black,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _committed
-                                    ? 'IN YOUR STREAK'
-                                    : 'ADD TO STREAK',
-                                style: AppTypography.label.copyWith(
-                                  color: _committed
-                                      ? AppColors.signalGreen
-                                      : Colors.black,
-                                  fontSize: 12,
-                                  letterSpacing: 2.2,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(height: Sp.sm),
           Row(
             children: [
               _Chip(label: fix.timeline, color: AppColors.textTertiary),
               const SizedBox(width: 8),
-              _Chip(label: 'RESCAN DAY ${fix.rescanDay}', color: AppColors.textTertiary),
+              _Chip(label: 'RESCAN DAY ${fix.rescanDay}', color: AppColors.accent),
             ],
           ),
         ],
@@ -1230,6 +1270,38 @@ class _Chip extends StatelessWidget {
   );
 }
 
+// ── Verdict ───────────────────────────────────────────────────────────────────
+class _Verdict extends StatelessWidget {
+  final String text;
+  const _Verdict({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(Sp.lg),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(Rd.xl),
+        border: Border.all(color: AppColors.accentBorder),
+        boxShadow: [BoxShadow(
+          color: AppColors.accent.withValues(alpha: 0.06),
+          blurRadius: 24,
+        )],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('VERDICT', style: AppTypography.label.copyWith(
+            color: AppColors.accent, letterSpacing: 2.5)),
+          const SizedBox(height: Sp.md),
+          Text(text, style: AppTypography.body.copyWith(
+            height: 1.75, color: AppColors.textPrimary)),
+        ],
+      ),
+    );
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  DUAL SCORE HERO

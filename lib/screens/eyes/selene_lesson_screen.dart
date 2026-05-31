@@ -98,6 +98,14 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
   // kickoff message sent. Guards against double-firing if
   // session.created arrives more than once.
   bool _seleneArmed = false;
+  // Beat-driven lesson runner. Selene was stopping after the first
+  // response because the realtime model decides when its OWN turn
+  // ends. Solution: each lesson beat is its own response.create
+  // call, fired sequentially on ResponseDone. She physically cannot
+  // stop short — Flutter keeps her going beat by beat until the arc
+  // is complete.
+  int _beatIdx = 0;
+  bool _lessonDone = false;
   // Drives the breathing pulse on the AuralayFaceOverlayPainter so
   // the white lines on his eyelids feel alive — same animation the
   // scripted lesson uses.
@@ -344,17 +352,23 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
       },
     });
 
-    // Second guard — inject a system-level reinforcement that the
-    // backend\'s persona cannot have set, so even if updateSession
-    // got partially rejected the conversation itself anchors on
-    // Selene as a woman teaching eye contact, NOT Lucien.
-    _session.sendTextMessage(
-      'SYSTEM RESET. You are Selene, a 27-year-old woman teaching '
-      'seductive eye contact. You are NOT Lucien. Do NOT quote '
-      'aphorisms. Do NOT philosophise. Begin NOW with line one of '
-      'your OPEN: "Sit up. Phone at eye level. Look at me." Then '
-      'continue the THE LOCK lesson exactly as briefed.',
-    );
+    // Kick off beat 1 of the lesson. ResponseDone on each beat will
+    // auto-advance to the next via [_sendNextBeat] in [_onEvent].
+    _sendNextBeat();
+  }
+
+  /// Fire the next lesson beat as its own response.create. Called
+  /// once at session.created (beat 1), then on every ResponseDone
+  /// (beats 2-7). Stops auto-advancing after the close so Selene
+  /// listens for him at the end.
+  void _sendNextBeat() {
+    final beats = SeleneGaze.theLockBeats;
+    if (_beatIdx >= beats.length) {
+      _lessonDone = true;
+      return;
+    }
+    _session.sendTextMessage(beats[_beatIdx]);
+    _beatIdx++;
   }
 
   // ─── PCM playback feed ─────────────────────────────────────────────
@@ -407,6 +421,10 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
       FlutterPcmSound.start();
     } else if (e is ResponseDone) {
       setState(() => _herSpeaking = false);
+      // Auto-advance the lesson to the next beat. After the final
+      // beat (CLOSE) this is a no-op so Selene waits for him to
+      // pick "again" vs "next".
+      if (!_lessonDone) _sendNextBeat();
     } else if (e is FunctionCallRequested) {
       _onFunctionCall(e);
     } else if (e is RawEvent && e.type == 'session.created') {
