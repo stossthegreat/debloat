@@ -33,14 +33,11 @@ class FixationDots extends StatelessWidget {
   static const String assetPath = 'assets/eyes/lesson_eyes.jpg';
 
   /// Display box aspect ratio. The full opaque band in the source
-  /// PNG is ~4.5:1 (lashes + eyeshadow + eyes), but the user only
-  /// wants the IRISES visible — the surrounding makeup was reading
-  /// as a "red square" around the eyes. A tighter 2.8:1 box with
-  /// BoxFit.cover crops the makeup wings from both sides; the iris
-  /// pair sits in the centre untouched. The vertical transparent
-  /// padding is still cropped away by cover so there\'s no box
-  /// edges, no gradient, no border — just two eyes.
-  static const double _eyeBandAspect = 2.8;
+  /// PNG is ~4.5:1 (lashes + eyeshadow + eyes). 3.4:1 is the sweet
+  /// spot — wide enough that BoxFit.cover crops most of the outer
+  /// eyeshadow wings (no "red square" effect) yet still wider than
+  /// the eyes themselves so they read as a horizontal lock target.
+  static const double _eyeBandAspect = 3.4;
 
   @override
   Widget build(BuildContext context) {
@@ -52,13 +49,18 @@ class FixationDots extends StatelessWidget {
         builder: (_, constraints) {
           final w = constraints.maxWidth;
           final h = constraints.maxHeight;
-          // Compact lock target — 42% of screen width. User feedback:
-          // "make them way smaller so user can be closer." Big eyes
-          // read as a screensaver; small eyes pull the apprentice's
-          // gaze into a tight focal point — that\'s the whole drill.
-          final imgW = w * 0.42;
+          // 55% of screen width — bumped from 42% so the eyes have
+          // real presence as a lock target without going back to the
+          // poster-size 96% that was reading as a screensaver. With
+          // the 3.4:1 aspect this lands a wide, compact band that
+          // sits cleanly above the apprentice\'s own camera face.
+          final imgW = w * 0.55;
           final imgH = imgW / _eyeBandAspect;
-          final y    = h * 0.22;
+          // Vertical offset bumped 0.22 → 0.32 so the eye band sits
+          // a touch lower on the screen — the previous position was
+          // hugging the top chrome and reading as a logo more than
+          // a face-to-face lock target.
+          final y    = h * 0.32;
           return Stack(
             children: [
               Positioned(

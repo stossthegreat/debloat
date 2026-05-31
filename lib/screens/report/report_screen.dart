@@ -107,7 +107,24 @@ class _ReportScreenState extends State<ReportScreen> {
     });
   }
 
+  /// Error message surfaced when analyse exhausts its retry budget.
+  /// Null while we're still trying / when a previous successful run
+  /// has populated [_analysis].
+  String? _runError;
+
   Future<void> _run() async {
+    if (mounted) setState(() => _runError = null);
+    try {
+      await _runInner();
+    } catch (err) {
+      // analyse/rate hit the retry cap. Surface the error so the
+      // build method can render a clean retry state instead of
+      // leaving the apprentice on the loading spinner indefinitely.
+      if (mounted) setState(() => _runError = err.toString());
+    }
+  }
+
+  Future<void> _runInner() async {
     // Fire /analyse and /rate in parallel. Both are GPT calls (~6–12s
     // analyse, ~3s rate), so running concurrently keeps the perceived
     // loading time flat at the slower of the two.
@@ -246,9 +263,66 @@ class _ReportScreenState extends State<ReportScreen> {
     return Scaffold(
       backgroundColor: AppColors.base,
       body: SafeArea(
-        child: _analysis == null
-            ? _buildLoading()
-            : _buildReport(_analysis!),
+        child: _analysis != null
+            ? _buildReport(_analysis!)
+            : (_runError != null
+                ? _buildError(_runError!)
+                : _buildLoading()),
+      ),
+    );
+  }
+
+  /// Surfaced when /analyse + /rate both exhaust the retry cap. Gives
+  /// the apprentice a way out of the spinner with a single tap to
+  /// retry — no more "spinning for ages" trap.
+  Widget _buildError(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.warning_amber_rounded,
+                color: AppColors.signalAmber, size: 32),
+            const SizedBox(height: 14),
+            Text('READ FAILED',
+              style: AppTypography.label.copyWith(
+                color: AppColors.signalAmber,
+                letterSpacing: 2.8, fontSize: 11,
+                fontWeight: FontWeight.w900)),
+            const SizedBox(height: 6),
+            Text('The analyser couldn\'t finish your scan. '
+                 'Tap to try again — your photo is still here.',
+              textAlign: TextAlign.center,
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textSecondary, fontSize: 13, height: 1.45)),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: 220, height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.red,
+                  foregroundColor: AppColors.base,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Rd.lg)),
+                ),
+                onPressed: _run,
+                child: const Text('Try Again',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800, letterSpacing: 0.4)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () => context.go('/home'),
+              child: Text('Back to Home',
+                style: AppTypography.label.copyWith(
+                  color: AppColors.textTertiary,
+                  letterSpacing: 2.0, fontSize: 11,
+                  fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
       ),
     );
   }

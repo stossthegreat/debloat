@@ -20,6 +20,7 @@ import '../../services/gaze/selene_persona.dart';
 import '../../services/realtime_session.dart';
 import '../../theme/auralay_app_colors.dart';
 import '../../theme/auralay_app_typography.dart';
+import '../../widgets/eyes/auralay_face_overlay_painter.dart';
 import '../../widgets/eyes/fixation_dots.dart';
 
 /// SELENE — live AI gaze lesson.
@@ -53,7 +54,8 @@ class SeleneLessonScreen extends StatefulWidget {
   State<SeleneLessonScreen> createState() => _SeleneLessonScreenState();
 }
 
-class _SeleneLessonScreenState extends State<SeleneLessonScreen> {
+class _SeleneLessonScreenState extends State<SeleneLessonScreen>
+    with SingleTickerProviderStateMixin {
   // Camera + face metrics.
   CameraController? _camera;
   bool _cameraReady = false;
@@ -96,12 +98,20 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen> {
   // kickoff message sent. Guards against double-firing if
   // session.created arrives more than once.
   bool _seleneArmed = false;
+  // Drives the breathing pulse on the AuralayFaceOverlayPainter so
+  // the white lines on his eyelids feel alive — same animation the
+  // scripted lesson uses.
+  late final AnimationController _loopAnim;
 
   // ─── Lifecycle ──────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
+    _loopAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat();
     // ignore: discarded_futures
     AudioSession.configureForPlayAndRecord();
     // ignore: discarded_futures
@@ -114,6 +124,7 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen> {
   @override
   void dispose() {
     _disposed = true;
+    _loopAnim.dispose();
     // ignore: discarded_futures
     WakelockPlus.disable();
     _pcmWatchdog?.cancel();
@@ -321,7 +332,14 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen> {
         'type':                'server_vad',
         'threshold':           0.5,
         'prefix_padding_ms':   300,
-        'silence_duration_ms': 500,
+        // Bumped 500 → 2500 — Selene\'s prompted cadence has her
+        // pausing about a second between sentences ("Sit up… phone
+        // at eye level… look at me."). At the 500ms threshold the
+        // server VAD was ending her turn after the first line and
+        // she\'d stop the lesson entirely. 2.5 seconds is past her
+        // longest natural in-line pause but short enough that the
+        // apprentice can still interrupt by speaking >0.5s.
+        'silence_duration_ms': 2500,
         'create_response':     true,
       },
     });
@@ -441,12 +459,31 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Camera passthrough (used for face metrics; visually
-            // suppressed by the heavy vignette below so only the eye
-            // band stays bright).
+            // Camera passthrough — same _CameraLayer pattern the
+            // scripted lesson uses (Transform.scale based on aspect
+            // ratio so the apprentice\'s head doesn\'t get squished
+            // into a narrow strip) + the AuralayFaceOverlayPainter
+            // overlay so the white lines above his eyelids show in
+            // real time, fed by the same MediaPipe FaceMetrics as
+            // every other gaze screen.
             if (_cameraReady && _camera != null)
               Positioned.fill(
-                child: CameraPreview(_camera!),
+                child: _CameraLayer(
+                  controller: _camera!,
+                  overlay: AnimatedBuilder(
+                    animation: _loopAnim,
+                    builder: (_, __) => LayoutBuilder(
+                      builder: (_, c) => CustomPaint(
+                        size: Size(c.maxWidth, c.maxHeight),
+                        painter: AuralayFaceOverlayPainter(
+                          metrics:  _metrics,
+                          pulse:    _loopAnim.value,
+                          isLocked: _metrics.isGoodEyeContact,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             // Deep vignette — same treatment as the scripted drill.
             // Only the eye band stays visible; the apprentice's own
@@ -674,3 +711,27 @@ class _LiveVignette extends StatelessWidget {
 /// Top-level helper — opens Selene's live lesson 1.
 GazeLesson seleneLesson1() =>
     GazeSyllabus.byId('the_lock');
+
+/// Aspect-aware camera wrapper. Mirrors the scripted lesson\'s
+/// _CameraLayer so the apprentice\'s head doesn\'t get stretched
+/// into a narrow strip when the device\'s aspect ratio doesn\'t
+/// match the sensor\'s. Transform.scale + center crop is the
+/// standard Flutter Camera-fit-the-screen pattern.
+class _CameraLayer extends StatelessWidget {
+  final CameraController controller;
+  final Widget overlay;
+  const _CameraLayer({required this.controller, required this.overlay});
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    var scale = size.aspectRatio * controller.value.aspectRatio;
+    if (scale < 1) scale = 1 / scale;
+    return ClipRect(
+      child: Transform.scale(
+        scale: scale,
+        alignment: Alignment.center,
+        child: Center(child: CameraPreview(controller, child: overlay)),
+      ),
+    );
+  }
+}
