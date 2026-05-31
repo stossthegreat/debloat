@@ -55,14 +55,18 @@ import '../../models/gaze/gaze_lesson.dart';
 ///     smileControl; etc.
 abstract final class GazeScorer {
   /// Eye-contact threshold for "locked on" per frame. Bumped from
-  /// 0.5 to 0.7 — at 0.5 the score read full lock on attempts where
-  /// the apprentice was clearly drifting. 0.7 is closer to "actually
-  /// looking at the camera with intent."
-  static const double _lockThreshold = 0.7;
+  /// 0.7 to 0.82 — the user reported scoring a perfect 10/10 on
+  /// their first attempt at THE LOCK, which is impossible if the
+  /// metric is honest. At 0.7 the threshold was passing on any
+  /// "looking-at-the-screen" frame including drift. 0.82 requires
+  /// a true lock — eyes centred on the camera, not glancing past.
+  static const double _lockThreshold = 0.82;
 
   /// Blink-over-target soft penalty per extra blink. Each blink
   /// beyond the lesson's target costs this much, capped at 0 floor.
-  static const double _blinkPenalty = 0.22;
+  /// Bumped from 0.22 → 0.30 so a single over-blink shows up in
+  /// the dial instead of barely registering.
+  static const double _blinkPenalty = 0.30;
 
   /// Ideal smile strength for lessons that want a SMALL deliberate
   /// smile. Both higher and lower than this lose points; the curve

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../models/face_metrics.dart';
@@ -377,7 +378,27 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
     });
     await _speak(verdict);
     if (_disposed || !mounted) return;
+    // Persist the AURA pillar score for the Ascend tab — keep the
+    // running BEST across all gaze sessions so the pillar reads as
+    // "what I've actually pulled off", not the dip from the last
+    // bad rep. The Ascend pillar reads `aura_score` on tab open.
+    final gaze = _result?.gazeScore ?? 0;
+    if (gaze > 0) {
+      // ignore: discarded_futures
+      _persistAura(gaze);
+    }
     setState(() => _phase = _Phase.score);
+  }
+
+  /// Update the persisted AURA pillar score (Ascend) with the best
+  /// score we've seen across all gaze sessions. Best-of semantics so
+  /// a single bad rep can't tank the pillar number.
+  Future<void> _persistAura(int gazeScore) async {
+    final prefs = await SharedPreferences.getInstance();
+    final prev = prefs.getInt('aura_score') ?? 0;
+    if (gazeScore > prev) {
+      await prefs.setInt('aura_score', gazeScore.clamp(0, 100));
+    }
   }
 
   /// Lucien's spoken verdict — confirms the gaze was really judged.
@@ -594,6 +615,7 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
     if (_phase == _Phase.score && _result != null) {
       return GazeShareCard(
         result:        _result!,
+        lesson:        widget.lesson,
         previousBest:  _previousBest,
         weeklyDelta:   _weeklyDelta,
         quote:         _stampQuote(),
@@ -1216,20 +1238,23 @@ class _DrillIntensityLayer extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // ── Deep cinematic vignette. Pure black at the corners, fades
-        // to transparent toward the centre where the eyes sit.
+        // ── Deep cinematic vignette. Black almost everywhere — only
+        //    the eyes band stays visible. The apprentice should see
+        //    HER EYES and almost nothing else; their own camera face
+        //    is suppressed to a barely-there silhouette so it doesn't
+        //    compete with the gaze target.
         DecoratedBox(
           decoration: BoxDecoration(
             gradient: RadialGradient(
-              center: const Alignment(0, -0.4),
-              radius: 1.05,
+              center: const Alignment(0, -0.55),
+              radius: 0.85,
               colors: [
                 Colors.transparent,
                 Colors.transparent,
-                Colors.black.withValues(alpha: 0.55),
-                Colors.black.withValues(alpha: 0.85),
+                Colors.black.withValues(alpha: 0.82),
+                Colors.black.withValues(alpha: 0.95),
               ],
-              stops: const [0.0, 0.35, 0.70, 1.0],
+              stops: const [0.0, 0.30, 0.65, 1.0],
             ),
           ),
         ),

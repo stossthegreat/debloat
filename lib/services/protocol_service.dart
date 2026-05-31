@@ -1,4 +1,5 @@
 import '../models/face_geometry.dart';
+import '../models/mirror_analysis.dart';
 import '../models/protocol.dart';
 import '../models/scan_record.dart';
 import 'local_store_service.dart';
@@ -169,6 +170,68 @@ class ProtocolService {
       if (haystack.contains(n)) return true;
     }
     return false;
+  }
+
+  /// Commit a single Fix from the report to the user's streak. If no
+  /// protocol is active yet, auto-start one keyed to the fix's axis so
+  /// the user has a streak surface to land on. Then append the fix as a
+  /// daily task they can tick off. Returns the resulting Protocol.
+  ///
+  /// Idempotent on fix title — committing the same fix twice does not
+  /// duplicate the row.
+  static Future<Protocol?> commitFix({
+    required Fix fix,
+    required FaceGeometry geometry,
+    required String pulldown,
+  }) async {
+    Protocol? p = await loadActive();
+    if (p == null) {
+      final scan = await LocalStoreService.latestScan();
+      if (scan == null) return null;
+      p = await startForScan(scan, pulldown: pulldown, geometry: geometry);
+    }
+    final next = p.withAddedTask(_fixToTask(fix));
+    if (!identical(next, p)) await save(next);
+    return next;
+  }
+
+  /// Convert a Fix card from the report into a DailyTask the user can
+  /// tick off in the protocol screen. Picks a time band + category from
+  /// the prose so the task lands in the right section of the schedule.
+  static DailyTask _fixToTask(Fix fix) {
+    final t = '${fix.action.toLowerCase()} ${fix.timeline.toLowerCase()}';
+    TimeBand band = TimeBand.ongoing;
+    if (_anyOf(t, ['morning', 'wake', 'breakfast'])) {
+      band = TimeBand.am;
+    } else if (_anyOf(t, ['midday', 'lunch', 'noon'])) {
+      band = TimeBand.midday;
+    } else if (_anyOf(t, ['evening', 'after work', 'dinner'])) {
+      band = TimeBand.pm;
+    } else if (_anyOf(t, ['bed', 'night', 'sleep'])) {
+      band = TimeBand.night;
+    }
+    TaskCategory cat = TaskCategory.habit;
+    final h = '${fix.title.toLowerCase()} ${fix.action.toLowerCase()}';
+    if (_anyOf(h, ['skin', 'tret', 'cera', 'serum', 'moistur', 'spf',
+                   'acne', 'cleanse'])) {
+      cat = TaskCategory.skin;
+    } else if (_anyOf(h, ['gum', 'chew', 'mew', 'masseter', 'jaw',
+                          'press', 'lift'])) {
+      cat = TaskCategory.exercise;
+    } else if (_anyOf(h, ['protein', 'creatine', 'cut ', 'body fat',
+                          'sodium', 'meal'])) {
+      cat = TaskCategory.nutrition;
+    } else if (_anyOf(h, ['hair', 'barber', 'beard', 'brow', 'lash',
+                          'shave', 'trim'])) {
+      cat = TaskCategory.grooming;
+    }
+    return DailyTask(
+      title: fix.title,
+      detail: fix.action,
+      duration: fix.timeline.isNotEmpty ? fix.timeline : null,
+      category: cat,
+      timeBand: band,
+    );
   }
 
   /// Maps the canonical axis key → template. Exact-match: callers MUST

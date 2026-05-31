@@ -496,24 +496,9 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.lg),
 
-          // ── 0 · DUAL-SCORE HERO ─ honest (big) + bone structure (under) ─
-          // Two scores is the moat. Honest is GPT-4o Vision's real-photo
-          // read — skin, eye area, proportions — with no geometry context
-          // so bones can't bail out a bad face. Bone structure is our
-          // on-device measurement math, shown smaller as the companion
-          // number. Degrades to geometry-only if the vision model refused.
-          _DualScoreHero(
-            honest:    _honest,
-            geometry:  score.value,
-          ),
-
-          const SizedBox(height: Sp.md),
-
-          // ── 1 · HERO CARD ─ score → projected, tagline, B/A, proofs ────
-          // afterUrl prefers the locally-rendered URL (set when the user
-          // taps GENERATE) over the analyse-time URL (which is empty in
-          // the new flow). The hero handles its own generate state via
-          // onGenerate + isGenerating; no separate CTA below the card.
+          // ── 0 · HERO CARD ─ before/after first. User direction:
+          //    "it start with before after etc then goes down to the
+          //    rest". Visual hook leads, scores follow.
           HeroCard(
             currentScore:     _honest?.score ?? score.value,
             projectedScore:   projected,
@@ -526,6 +511,20 @@ class _ReportScreenState extends State<ReportScreen> {
             microProofs:      microProofs,
             onGenerate:       _generate,
             isGenerating:     _generating,
+          ),
+
+          const SizedBox(height: Sp.md),
+
+          // ── 1 · DUAL-SCORE ─ honest (big) + bone structure (under).
+          //    Two scores is the moat. Honest is GPT-4o Vision's real-
+          //    photo read — skin, eye area, proportions — with no
+          //    geometry context so bones can't bail out a bad face.
+          //    Bone structure is our on-device math, shown smaller as
+          //    the companion number. Degrades to geometry-only if the
+          //    vision pass refused.
+          _DualScoreHero(
+            honest:    _honest,
+            geometry:  score.value,
           ),
 
           const SizedBox(height: Sp.md),
@@ -568,8 +567,12 @@ class _ReportScreenState extends State<ReportScreen> {
               color: AppColors.textTertiary, letterSpacing: 3.0, fontSize: 10)),
           const SizedBox(height: Sp.sm),
           ...a.report.fixes.asMap().entries.map((e) =>
-            _FixTextCard(index: e.key + 1, fix: e.value)
-              .animate().fadeIn(delay: Duration(milliseconds: 2600 + e.key * 120))),
+            _FixTextCard(
+              index: e.key + 1,
+              fix: e.value,
+              geometry: widget.geometry,
+              pulldown: a.report.pulldown,
+            ).animate().fadeIn(delay: Duration(milliseconds: 2600 + e.key * 120))),
 
           const SizedBox(height: Sp.xl),
 
@@ -597,27 +600,13 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.xl),
 
-          // Verdict
-          _Verdict(text: a.report.verdict)
-            .animate().fadeIn(delay: 1500.ms, duration: 500.ms)
-            .slideY(begin: 0.05, end: 0,
-                delay: 1500.ms, duration: 500.ms, curve: Curves.easeOut),
-
-          const SizedBox(height: Sp.xl),
-
-          // ── 8 · PROTOCOL CTA ─ the final commit moment ─────────────────
-          // Moved to sit just above the Done/Consult row so it's the last
-          // thing the user sees as they finish reading. Auto-prescribed
-          // 60-day routine keyed to the scan's pulldown axis. If a
-          // protocol is already active the card morphs to "Continue day
-          // X" rather than overwriting it.
-          _ProtocolCtaCard(
-            pulldown: a.report.pulldown,
-            geometry: widget.geometry,
-          ).animate().fadeIn(delay: 3200.ms, duration: 400.ms),
-
-          const SizedBox(height: Sp.xl),
-
+          // The standalone "Mog Stance" protocol card + duplicate verdict
+          // that used to live here were stacking on top of the deeper-
+          // analysis blocks visually — the report was reading as a pile
+          // of red-bordered cards. The per-fix "ADD TO STREAK" buttons
+          // above already commit a fix to the user's daily streak, so
+          // the dedicated protocol card is redundant. Done/Consult sits
+          // immediately after the deeper analysis now.
           Row(
             children: [
               Expanded(
@@ -810,163 +799,6 @@ class _ConsultCard extends StatelessWidget {
   }
 }
 
-// ── Protocol CTA card — auto-prescribe the 60-day routine keyed to the
-// scan's pulldown axis. Smart-state: shows "Start" for a fresh user, and
-// "Continue day X · N-day streak" if they already have an active protocol.
-// Never overwrites an existing protocol — the user ends it explicitly from
-// the Protocol screen if they want to start over.
-class _ProtocolCtaCard extends StatefulWidget {
-  final String pulldown;
-  final FaceGeometry geometry;
-  const _ProtocolCtaCard({
-    required this.pulldown, required this.geometry,
-  });
-
-  @override
-  State<_ProtocolCtaCard> createState() => _ProtocolCtaCardState();
-}
-
-class _ProtocolCtaCardState extends State<_ProtocolCtaCard> {
-  Protocol? _active;
-  bool _loading = true;
-  bool _busy = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadActive();
-  }
-
-  Future<void> _loadActive() async {
-    final p = await ProtocolService.loadActive();
-    if (!mounted) return;
-    setState(() { _active = p; _loading = false; });
-  }
-
-  Future<void> _onTap() async {
-    if (_busy) return;
-    HapticFeedback.mediumImpact();
-    setState(() => _busy = true);
-    try {
-      // Existing protocol? Continue it — do not overwrite a run in progress.
-      if (_active != null) {
-        if (!mounted) return;
-        context.push('/protocol');
-        return;
-      }
-      // Fresh — auto-prescribe and push.
-      final scan = await LocalStoreService.latestScan();
-      if (scan == null) return;
-      await ProtocolService.startForScan(
-        scan,
-        pulldown: widget.pulldown,
-        geometry: widget.geometry,
-      );
-      if (!mounted) return;
-      context.push('/protocol');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) {
-      // Reserve approximate card height so the layout doesn't jump once the
-      // active protocol check resolves.
-      return const SizedBox(height: 168);
-    }
-
-    final hasActive = _active != null;
-    // Resolve the canonical axis from the prose pulldown + geometry so the
-    // card shows a short clean label ("Jaw definition"), not the full
-    // 2-sentence backend pulldown. This is the same resolution used when
-    // the user actually taps Start — so what they see matches what they'll
-    // get.
-    final resolvedAxis = ProtocolService.resolveAxis(
-      pulldown: widget.pulldown,
-      geometry: widget.geometry,
-    );
-
-    final header = hasActive ? 'ACTIVE · 60-DAY PROTOCOL' : '60-DAY PROTOCOL';
-    final headline = hasActive
-        ? _active!.title
-        : 'Targeting ${resolvedAxis.toLowerCase()}.';
-    final body = hasActive
-        ? 'Day ${_active!.currentDay} of ${_active!.lengthDays}. '
-          '${_active!.effectiveStreak}-day streak. Tap to log today.'
-        : 'A daily routine built from your scan — morning, midday, '
-          'evening, night — time-banded and evidence-aware. Streak locks '
-          'it in. Rescans at day 14, 30, 60.';
-    final btnText = hasActive ? 'Continue today' : 'Start the 60-day plan';
-
-    return Container(
-      padding: const EdgeInsets.all(Sp.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(Rd.xl),
-        border: Border.all(
-          color: AppColors.red.withValues(alpha: 0.32), width: 0.8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(header,
-                style: AppTypography.label.copyWith(
-                  color: AppColors.red,
-                  letterSpacing: 2.8, fontSize: 10,
-                  fontWeight: FontWeight.w800)),
-              const Spacer(),
-              if (hasActive) ...[
-                Icon(Icons.local_fire_department,
-                  size: 13, color: AppColors.red),
-                const SizedBox(width: 2),
-                Text('${_active!.effectiveStreak}',
-                  style: AppTypography.measurement.copyWith(
-                    color: AppColors.red,
-                    fontSize: 12, fontWeight: FontWeight.w800)),
-              ],
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(headline,
-            style: AppTypography.h1.copyWith(
-              fontSize: 22, letterSpacing: -0.4, height: 1.15)),
-          const SizedBox(height: 6),
-          Text(body,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-              fontSize: 12.5, height: 1.5)),
-          const SizedBox(height: Sp.md),
-          SizedBox(
-            width: double.infinity, height: 50,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.red,
-                foregroundColor: AppColors.base,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Rd.lg)),
-                elevation: 0,
-              ),
-              onPressed: _busy ? null : _onTap,
-              child: _busy
-                  ? const SizedBox(
-                      width: 20, height: 20,
-                      child: CircularProgressIndicator(
-                        color: AppColors.base, strokeWidth: 2))
-                  : Text(btnText,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14, letterSpacing: 0.4)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ── Share button (top-right of report header) ───────────────────────────────
 class _ShareButton extends StatelessWidget {
@@ -1062,13 +894,63 @@ class _Block extends StatelessWidget {
 // hero "Final form" already shows the combined maximized twin; users who
 // want to drill into a single change can do it one at a time via the
 // Mirror chat, which remains the only per-user render surface.
-class _FixTextCard extends StatelessWidget {
+class _FixTextCard extends StatefulWidget {
   final int index;
   final Fix fix;
-  const _FixTextCard({required this.index, required this.fix});
+  final FaceGeometry geometry;
+  final String pulldown;
+  const _FixTextCard({
+    required this.index,
+    required this.fix,
+    required this.geometry,
+    required this.pulldown,
+  });
+
+  @override
+  State<_FixTextCard> createState() => _FixTextCardState();
+}
+
+class _FixTextCardState extends State<_FixTextCard> {
+  bool _committed = false;
+  bool _busy = false;
+
+  Future<void> _onCommit() async {
+    if (_busy || _committed) return;
+    setState(() => _busy = true);
+    HapticFeedback.mediumImpact();
+    final p = await ProtocolService.commitFix(
+      fix:      widget.fix,
+      geometry: widget.geometry,
+      pulldown: widget.pulldown,
+    );
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _committed = p != null;
+    });
+    if (p != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('"${widget.fix.title}" added to your streak',
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.textPrimary, fontSize: 13)),
+          backgroundColor: AppColors.surface2,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(milliseconds: 1800),
+          action: SnackBarAction(
+            label: 'OPEN',
+            textColor: AppColors.red,
+            onPressed: () => context.push('/protocol'),
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final index = widget.index;
+    final fix   = widget.fix;
     return Container(
       margin: const EdgeInsets.only(bottom: Sp.md),
       padding: const EdgeInsets.all(Sp.md),
@@ -1164,39 +1046,63 @@ class _FixTextCard extends StatelessWidget {
               ],
               Expanded(
                 child: InkWell(
-                  onTap: () {
-                    HapticFeedback.mediumImpact();
-                    context.go('/home', extra: {'initialTab': 1});
-                  },
+                  onTap: _committed
+                      ? () => context.push('/protocol')
+                      : _onCommit,
                   borderRadius: BorderRadius.circular(Rd.lg),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
-                      color: AppColors.red,
+                      color: _committed
+                          ? AppColors.signalGreen.withValues(alpha: 0.18)
+                          : AppColors.red,
                       borderRadius: BorderRadius.circular(Rd.lg),
-                      boxShadow: [BoxShadow(
-                        color: AppColors.red.withValues(alpha: 0.32),
-                        blurRadius: 18,
-                        offset: const Offset(0, 6),
-                      )],
+                      border: _committed
+                          ? Border.all(
+                              color: AppColors.signalGreen, width: 1)
+                          : null,
+                      boxShadow: _committed
+                          ? null
+                          : [BoxShadow(
+                              color: AppColors.red.withValues(alpha: 0.32),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6),
+                            )],
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'COMMIT TO STREAK',
-                          style: AppTypography.label.copyWith(
-                            color: Colors.black,
-                            fontSize: 12,
-                            letterSpacing: 2.2,
-                            fontWeight: FontWeight.w900,
+                    child: _busy
+                        ? const SizedBox(
+                            height: 18, width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.black),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _committed
+                                    ? Icons.check_rounded
+                                    : Icons.local_fire_department,
+                                color: _committed
+                                    ? AppColors.signalGreen
+                                    : Colors.black,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _committed
+                                    ? 'IN YOUR STREAK'
+                                    : 'ADD TO STREAK',
+                                style: AppTypography.label.copyWith(
+                                  color: _committed
+                                      ? AppColors.signalGreen
+                                      : Colors.black,
+                                  fontSize: 12,
+                                  letterSpacing: 2.2,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.arrow_forward_rounded,
-                            color: Colors.black, size: 16),
-                      ],
-                    ),
                   ),
                 ),
               ),
@@ -1236,38 +1142,6 @@ class _Chip extends StatelessWidget {
   );
 }
 
-// ── Verdict ───────────────────────────────────────────────────────────────────
-class _Verdict extends StatelessWidget {
-  final String text;
-  const _Verdict({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(Sp.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(Rd.xl),
-        border: Border.all(color: AppColors.accentBorder),
-        boxShadow: [BoxShadow(
-          color: AppColors.accent.withValues(alpha: 0.06),
-          blurRadius: 24,
-        )],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('VERDICT', style: AppTypography.label.copyWith(
-            color: AppColors.accent, letterSpacing: 2.5)),
-          const SizedBox(height: Sp.md),
-          Text(text, style: AppTypography.body.copyWith(
-            height: 1.75, color: AppColors.textPrimary)),
-        ],
-      ),
-    );
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  DUAL SCORE HERO

@@ -34,6 +34,11 @@ import '../../theme/auralay_app_typography.dart';
 /// iOS — same fix that landed everywhere else.
 class GazeShareCard extends StatelessWidget {
   final GazeResult result;
+  /// The lesson the result is for. Used to decide which dimension
+  /// rows to RENDER vs MARK DIMMED on the breakdown — a lesson with
+  /// `smileControl: 0` weight shouldn't surface a SMILE CONTROL
+  /// score on its card (the dim was never measured for this drill).
+  final GazeLesson lesson;
   /// Previous best score on this lesson, if any. Drives the BEST/NEW
   /// chip + delta surfaced next to the headline score.
   final int? previousBest;
@@ -51,6 +56,7 @@ class GazeShareCard extends StatelessWidget {
   const GazeShareCard({
     super.key,
     required this.result,
+    required this.lesson,
     required this.previousBest,
     required this.weeklyDelta,
     required this.quote,
@@ -59,11 +65,20 @@ class GazeShareCard extends StatelessWidget {
     required this.onClose,
   });
 
+  /// True when [dim] carries non-zero weight on the active lesson —
+  /// i.e. the score actually means something for this drill.
+  bool _scored(GazeDimension dim) =>
+      (lesson.weights[dim] ?? 0) > 0.0001;
+
   @override
   Widget build(BuildContext context) {
-    // Scored out of 10 (internally 0–100).
-    final score = (result.gazeScore / 10).round().clamp(0, 10).toInt();
-    final prev10 = previousBest == null ? null : (previousBest! / 10).round();
+    // Scored out of 10 (internally 0–100). Floor so 95 reads as 9,
+    // not 10 — the apprentice has to actually earn the perfect
+    // round-up. User feedback: "anyone gets 10 first turn they're
+    // done." Now you only see 10 when the underlying magnetic score
+    // hits 100.
+    final score = (result.gazeScore / 10).floor().clamp(0, 10).toInt();
+    final prev10 = previousBest == null ? null : (previousBest! / 10).floor();
     final isNewBest = prev10 == null || score > prev10;
     final delta = prev10 == null ? null : (score - prev10);
 
@@ -145,33 +160,32 @@ class GazeShareCard extends StatelessWidget {
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          _DimRow(
-                            label: 'EYE STABILITY',
-                            pct: result.dimPct(GazeDimension.eyeStability),
-                          ),
-                          _DimRow(
-                            label: 'BLINK CONTROL',
-                            pct: result.dimPct(GazeDimension.blinkControl),
-                            note: '${result.blinks} blinks in ${result.drillSeconds}s',
-                          ),
-                          _DimRow(
-                            label: 'TENSION',
-                            pct: result.dimPct(GazeDimension.tension),
-                          ),
-                          _DimRow(
-                            label: 'SMILE CONTROL',
-                            pct: result.dimPct(GazeDimension.smileControl),
-                          ),
-                          _DimRow(
-                            label: 'RHYTHM',
-                            pct: result.dimPct(GazeDimension.rhythm),
-                            dimmed: (result.dims[GazeDimension.rhythm] ?? 0) ==
-                                1.0 &&
-                                result.dimPct(GazeDimension.rhythm) == 100 &&
-                                // Heuristic: not-a-rhythm-lesson shows up as
-                                // exactly 100. Mark it dim with an em-dash.
-                                _isLikelyNonRhythm(result),
-                          ),
+                          if (_scored(GazeDimension.eyeStability))
+                            _DimRow(
+                              label: 'EYE STABILITY',
+                              pct: result.dimPct(GazeDimension.eyeStability),
+                            ),
+                          if (_scored(GazeDimension.blinkControl))
+                            _DimRow(
+                              label: 'BLINK CONTROL',
+                              pct: result.dimPct(GazeDimension.blinkControl),
+                              note: '${result.blinks} blinks in ${result.drillSeconds}s',
+                            ),
+                          if (_scored(GazeDimension.tension))
+                            _DimRow(
+                              label: 'TENSION',
+                              pct: result.dimPct(GazeDimension.tension),
+                            ),
+                          if (_scored(GazeDimension.smileControl))
+                            _DimRow(
+                              label: 'SMILE CONTROL',
+                              pct: result.dimPct(GazeDimension.smileControl),
+                            ),
+                          if (_scored(GazeDimension.rhythm))
+                            _DimRow(
+                              label: 'RHYTHM',
+                              pct: result.dimPct(GazeDimension.rhythm),
+                            ),
 
                           const SizedBox(height: 18),
                           Container(height: 0.5, color: AppColors.divider),
@@ -258,14 +272,6 @@ class GazeShareCard extends StatelessWidget {
     );
   }
 
-  /// Cheap heuristic — if the rhythm score is exactly 1.0 (the pinned
-  /// value for non-rhythm lessons) AND none of the other dims are
-  /// exactly 1.0, this is almost certainly a non-rhythm lesson where
-  /// we should dim the rhythm row rather than show 100%.
-  static bool _isLikelyNonRhythm(GazeResult r) {
-    return (r.dims[GazeDimension.rhythm] ?? 0) == 1.0 &&
-        (r.dims[GazeDimension.eyeStability] ?? 0) < 1.0;
-  }
 }
 
 class _ScoreHero extends StatelessWidget {
