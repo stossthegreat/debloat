@@ -109,9 +109,10 @@ class _ScanHubTab extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: Sp.xl),
           children: [
             // ── Masthead — always visible. The brand chrome.
+            //    Only the Ascend tab carries the "Mirrorly" wordmark;
+            //    every other tab uses just its own name as the title.
             MirrorlyMasthead(
-              title: 'Mirrorly',
-              subtitle: 'Looks',
+              title: 'Looks',
               actions: [
                 MastheadAction(
                   icon: Icons.tune,

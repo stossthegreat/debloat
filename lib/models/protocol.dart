@@ -144,6 +144,28 @@ class Protocol {
   /// through the streak-aware path.
   Protocol withDayCompleted(int day) => withTodayChecked();
 
+  /// Append a user-committed task (typically a fix the user chose to add
+  /// from the report) to the existing daily task list. Idempotent on the
+  /// task title — committing the same fix twice does not duplicate the
+  /// row.
+  Protocol withAddedTask(DailyTask task) {
+    final titleKey = task.title.trim().toLowerCase();
+    final exists = dailyTasks.any(
+      (t) => t.title.trim().toLowerCase() == titleKey);
+    if (exists) return this;
+    return Protocol(
+      id: id, startedAt: startedAt, lengthDays: lengthDays, title: title,
+      targetAxis: targetAxis, summary: summary,
+      dailyTasks: [...dailyTasks, task],
+      milestones: milestones,
+      completedDays: completedDays,
+      lastCheckIn: lastCheckIn,
+      currentStreak: currentStreak,
+      longestStreak: longestStreak,
+      freezeDays: freezeDays,
+    );
+  }
+
   Protocol _copyWith({
     Set<int>? completedDays,
     DateTime? lastCheckIn,
