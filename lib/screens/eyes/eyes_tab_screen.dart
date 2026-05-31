@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../config/dev_flags.dart';
 import '../../models/gaze/gaze_lesson.dart';
@@ -188,6 +190,21 @@ class _EyesTabScreenState extends State<EyesTabScreen> {
               'The man who breaks first loses. Train the eyes she actually meets.',
               emphasised: true,
             ).animate().fadeIn(delay: 80.ms, duration: 400.ms),
+
+            const SizedBox(height: Sp.lg),
+
+            // ── SELENE — live AI lesson entry. Tap launches THE LOCK
+            //    as a live realtime session: Selene runs the entire
+            //    arc (frame, theory, drill call, real-time coaching
+            //    against the apprentice's live face metrics, debrief),
+            //    no scripted TTS. The card sits above the scripted
+            //    lesson card so first-time visitors land here.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+              child: _SeleneLiveCard(
+                onTap: () => context.push('/eyes/live/the_lock'),
+              ),
+            ).animate().fadeIn(delay: 120.ms, duration: 400.ms),
 
             const SizedBox(height: Sp.lg),
 
@@ -469,6 +486,128 @@ class _CompactLessonRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// SELENE entry card — sits above the scripted lesson cards. Black with
+/// a thin red border + warm radial glow; italic Playfair title; tap
+/// routes to /eyes/live/the_lock. The card reads as the apex item on
+/// the tab so first-time visitors land in the live lesson.
+class _SeleneLiveCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _SeleneLiveCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () { HapticFeedback.mediumImpact(); onTap(); },
+        borderRadius: BorderRadius.circular(Rd.xl),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(Sp.md, Sp.md, Sp.md, Sp.md),
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            borderRadius: BorderRadius.circular(Rd.xl),
+            border: Border.all(
+              color: AppColors.red.withValues(alpha: 0.55), width: 0.9),
+            gradient: RadialGradient(
+              center: const Alignment(-0.6, -0.6),
+              radius: 1.4,
+              colors: [
+                AppColors.red.withValues(alpha: 0.18),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 1.0],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.red.withValues(alpha: 0.22),
+                blurRadius: 22, offset: const Offset(0, 6)),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.red,
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Text('LIVE',
+                            style: AppTypography.label.copyWith(
+                              color: Colors.black, fontSize: 9,
+                              letterSpacing: 2.0,
+                              fontWeight: FontWeight.w900)),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('NEW',
+                          style: AppTypography.label.copyWith(
+                            color: AppColors.red, fontSize: 9,
+                            letterSpacing: 2.6,
+                            fontWeight: FontWeight.w900)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text('Selene',
+                      style: GoogleFonts.playfairDisplay(
+                        color: AppColors.textPrimary,
+                        fontSize: 28,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.6,
+                        height: 1.0,
+                      )),
+                    const SizedBox(height: 4),
+                    Text('THE LOCK — masterclass, in her voice.',
+                      style: GoogleFonts.inter(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                        height: 1.45,
+                        fontStyle: FontStyle.italic,
+                      )),
+                    const SizedBox(height: 4),
+                    Text(
+                      'She frames it, teaches the science, calls the '
+                      'drill, then coaches you live against your face. '
+                      'No script.',
+                      style: GoogleFonts.inter(
+                        color: AppColors.textTertiary,
+                        fontSize: 11.5,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Container(
+                width: 48, height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.red,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.red.withValues(alpha: 0.55),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: const Icon(Icons.mic_rounded,
+                    color: Colors.black, size: 24),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

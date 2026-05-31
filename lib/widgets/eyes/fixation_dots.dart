@@ -32,10 +32,13 @@ class FixationDots extends StatelessWidget {
   /// of truth — change here, every gaze lesson updates.
   static const String assetPath = 'assets/eyes/lesson_eyes.jpg';
 
-  /// Aspect ratio of the lesson_eyes asset (width / height). Matches
-  /// the 1536×1024 source PNG — wider than the 16:6 letterbox the
-  /// widget used to assume, so the eyes display un-cropped.
-  static const double _assetAspect = 1536.0 / 1024.0;
+  /// Aspect ratio of the OPAQUE EYE BAND inside the source PNG —
+  /// not the full PNG canvas. The asset is 1536 × 1024 but the
+  /// actual eyes occupy ~1463 × 323 (vertical 30%-62%), so the
+  /// useful aspect is ~4.5:1. Sizing the display box to this
+  /// ratio + BoxFit.cover crops the transparent top/bottom away
+  /// and the eyes fill the band the way the user shot it.
+  static const double _eyeBandAspect = 1463.0 / 323.0;
 
   @override
   Widget build(BuildContext context) {
@@ -47,10 +50,10 @@ class FixationDots extends StatelessWidget {
         builder: (_, constraints) {
           final w = constraints.maxWidth;
           final h = constraints.maxHeight;
-          // Big — the eyes ARE the screen. 92% of width.
-          final imgW = w * 0.92;
-          final imgH = imgW / _assetAspect;
-          final y    = h * 0.10;
+          // Big — the eyes ARE the screen. 96% of width.
+          final imgW = w * 0.96;
+          final imgH = imgW / _eyeBandAspect;
+          final y    = h * 0.22;
           return Stack(
             children: [
               Positioned(
@@ -84,20 +87,20 @@ class _CinematicEyes extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Solid black plate UNDER the PNG so the apprentice's own face in
-    // the camera feed doesn't show through the band of pixels where
-    // the eyes live. The PNG is transparent — the black gives it a
-    // backdrop without painting a visible rectangle (the surrounding
-    // session vignette already darkens the edges so the plate blends
-    // into the scene).
+    // No black backdrop — the source PNG already has a transparent
+    // background, and the drill vignette behind us is already deep
+    // enough to suppress the apprentice's own camera feed. Painting
+    // a black rectangle here was hiding the eyes inside a square;
+    // dropping it lets the eyes float on the vignette the way the
+    // user shot them.
     final base = Stack(
       fit: StackFit.expand,
       children: [
-        const DecoratedBox(decoration: BoxDecoration(color: Colors.black)),
-        // The eyes asset itself — contain so we keep the full crop.
+        // The eyes asset. cover + center crops the transparent top
+        // and bottom of the source PNG so the eye band fills the box.
         Image.asset(
           FixationDots.assetPath,
-          fit: BoxFit.contain,
+          fit: BoxFit.cover,
           alignment: Alignment.center,
           errorBuilder: (_, __, ___) => _MissingAssetFallback(
             isLocked: isLocked,
@@ -107,11 +110,11 @@ class _CinematicEyes extends StatelessWidget {
         // brings the eyes into the warm "she's here" space.
         AnimatedOpacity(
           duration: const Duration(milliseconds: 320),
-          opacity: isLocked ? 0.55 : 0.0,
+          opacity: isLocked ? 0.40 : 0.0,
           child: const DecoratedBox(
             decoration: BoxDecoration(
               gradient: RadialGradient(
-                radius: 1.0,
+                radius: 1.1,
                 colors: [
                   Colors.transparent,
                   AppColors.accent,

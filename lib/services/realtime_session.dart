@@ -176,6 +176,45 @@ class RealtimeSession {
     _sendEvent({'type': 'response.create'});
   }
 
+  /// Override session-level config after connect — instructions, voice,
+  /// turn_detection, tools, modalities, temperature. Lets a single
+  /// realtime persona on the backend be reshaped per-lesson client-side
+  /// without a backend redeploy. Pass only the keys you want to change;
+  /// the OpenAI session keeps the rest.
+  ///
+  /// Example for the Selene live gaze lesson:
+  ///   updateSession({
+  ///     'instructions': SeleneGaze.theLockPrompt,
+  ///     'voice': 'shimmer',
+  ///     'tools': SeleneGaze.tools,
+  ///     'turn_detection': {'type': 'server_vad', 'create_response': false},
+  ///   });
+  void updateSession(Map<String, dynamic> sessionPatch) {
+    _sendEvent({
+      'type': 'session.update',
+      'session': sessionPatch,
+    });
+  }
+
+  /// Reply to a model-issued tool call with its result. The Realtime API
+  /// requires two events: a `function_call_output` conversation item
+  /// carrying the JSON output keyed by [callId], then a `response.create`
+  /// so the model continues with the new information.
+  void sendFunctionCallOutput({
+    required String callId,
+    required String output,
+  }) {
+    _sendEvent({
+      'type': 'conversation.item.create',
+      'item': {
+        'type': 'function_call_output',
+        'call_id': callId,
+        'output': output,
+      },
+    });
+    _sendEvent({'type': 'response.create'});
+  }
+
   void _sendEvent(Map<String, dynamic> ev) {
     _ws?.sink.add(jsonEncode(ev));
   }
@@ -249,6 +288,20 @@ class RealtimeSession {
         _eventCtrl.add(const RealtimeEvent.userSpeechStopped());
         break;
 
+      // Tool-call from the model. The Realtime API streams the JSON
+      // argument string in `response.function_call_arguments.delta`
+      // and signals completion via `…done`. We surface only the
+      // completed call so the UI can synchronously look up live
+      // metrics + reply with `sendFunctionCallOutput`.
+      case 'response.function_call_arguments.done':
+        final name   = data['name']    as String?;
+        final callId = data['call_id'] as String?;
+        final args   = (data['arguments'] as String?) ?? '{}';
+        if (name != null && callId != null) {
+          _eventCtrl.add(RealtimeEvent.functionCall(name, callId, args));
+        }
+        break;
+
       // Errors from OpenAI.
       case 'error':
         final err = data['error'] as Map<String, dynamic>?;
@@ -295,8 +348,20 @@ sealed class RealtimeEvent {
   const factory RealtimeEvent.error(String code, String message) =
       RealtimeErrorEvent;
   const factory RealtimeEvent.closed() = SessionClosed;
+  const factory RealtimeEvent.functionCall(
+    String name,
+    String callId,
+    String argumentsJson,
+  ) = FunctionCallRequested;
   const factory RealtimeEvent.raw(String type, Map<String, dynamic> data) =
       RawEvent;
+}
+
+class FunctionCallRequested extends RealtimeEvent {
+  final String name;
+  final String callId;
+  final String argumentsJson;
+  const FunctionCallRequested(this.name, this.callId, this.argumentsJson);
 }
 
 class AudioDelta extends RealtimeEvent {

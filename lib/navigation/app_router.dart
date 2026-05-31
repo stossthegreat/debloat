@@ -15,6 +15,8 @@ import '../screens/splash/splash_screen.dart';
 
 // ── Auralay graft (Eyes + Game tabs) ───────────────────────────────────────
 import '../screens/debug/diagnostic_screen.dart';
+import '../screens/eyes/selene_lesson_screen.dart';
+import '../models/gaze/gaze_syllabus.dart';
 import '../screens/lessons/lesson_detail_screen.dart';
 import '../screens/test/charisma_test_screen.dart';
 import '../screens/test/result_reveal_screen.dart';
@@ -152,6 +154,19 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/you',
       builder: (_, __) => const HomeScreen(initialTab: 4),
+    ),
+
+    // SELENE — live AI gaze lesson. Realtime API persona that frames,
+    // teaches, runs the drill, coaches in real time against the
+    // apprentice's face metrics, and debriefs in her own voice. The
+    // proof build ships THE LOCK; other lessons fall through to the
+    // same persona until each gets its own masterclass prompt.
+    GoRoute(
+      path: '/eyes/live/:id',
+      builder: (_, state) {
+        final id = state.pathParameters['id'] ?? 'the_lock';
+        return SeleneLessonScreen(lesson: GazeSyllabus.byId(id));
+      },
     ),
 
     // Debug HUD (Auralay's diagnostic console, gated behind 5-tap easter
