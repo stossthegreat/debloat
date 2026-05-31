@@ -56,7 +56,11 @@ class FixationDots extends StatelessWidget {
           // sits cleanly above the apprentice\'s own camera face.
           final imgW = w * 0.55;
           final imgH = imgW / _eyeBandAspect;
-          final y    = h * 0.22;
+          // Vertical offset bumped 0.22 → 0.32 so the eye band sits
+          // a touch lower on the screen — the previous position was
+          // hugging the top chrome and reading as a logo more than
+          // a face-to-face lock target.
+          final y    = h * 0.32;
           return Stack(
             children: [
               Positioned(
