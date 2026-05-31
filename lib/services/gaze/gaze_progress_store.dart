@@ -64,6 +64,30 @@ abstract final class GazeProgressStore {
     }
   }
 
+  /// Total attempts logged in history. Caps at the history-cap
+  /// (currently 100), which is fine because the progression cap below
+  /// already saturates at 24.
+  static Future<int> attemptCount() async {
+    final hist = await _readHistory();
+    return hist.length;
+  }
+
+  /// Progression multiplier applied to every shown / persisted gaze
+  /// score. Floors at 0.40 (a perfect rep on session #1 caps at 4/10)
+  /// and ramps linearly to 1.00 at 24 sessions. The point is that the
+  /// apprentice can\'t hit a 10/10 by getting lucky once — they have
+  /// to actually drill through the curriculum first.
+  ///
+  /// Curve:
+  ///   0 attempts   → 0.40    (4/10 ceiling)
+  ///   8 attempts   → 0.60    (6/10 ceiling)
+  ///   16 attempts  → 0.80    (8/10 ceiling)
+  ///   24 attempts  → 1.00    (uncapped — real score surfaces)
+  static Future<double> progressionCap() async {
+    final n = await attemptCount();
+    return (0.40 + n * 0.025).clamp(0.40, 1.00);
+  }
+
   /// How many Gaze lessons the apprentice has scored above zero on.
   static Future<int> completedCount() async {
     int n = 0;

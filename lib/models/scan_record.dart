@@ -14,6 +14,20 @@ class ScanRecord {
   final String? capturedImagePath; // local path — null if not persisted to disk
   final String? maximizedImageUrl; // backend-returned Flux twin
 
+  /// AI-projected lift to the user's LOOKS score from completing all of
+  /// the fixes the backend surfaced on this scan's report. Sum of the
+  /// per-fix `points` (1-8 each, sum lands 12-22 by prompt design).
+  /// 0 when the report didn't return points (older scans).
+  final int projectedDelta;
+
+  /// Headline copy for each recommended fix — used by the Ascend
+  /// POTENTIAL card so the user sees WHAT the AI actually said, not
+  /// just an aggregate. Each entry is the user-facing fix title from
+  /// the report (e.g. "Lean to 13% body fat", "Push hair off forehead",
+  /// "Tretinoin 0.025% nightly"). Empty list for legacy / pre-prompt
+  /// reports.
+  final List<ScanFixSummary> fixHeadlines;
+
   const ScanRecord({
     required this.id,
     required this.takenAt,
@@ -24,6 +38,8 @@ class ScanRecord {
     required this.archetypeMatchPct,
     this.capturedImagePath,
     this.maximizedImageUrl,
+    this.projectedDelta = 0,
+    this.fixHeadlines = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -45,6 +61,8 @@ class ScanRecord {
     'archetypeMatchPct':  archetypeMatchPct,
     'capturedImagePath':  capturedImagePath,
     'maximizedImageUrl':  maximizedImageUrl,
+    'projectedDelta':     projectedDelta,
+    'fixHeadlines':       fixHeadlines.map((f) => f.toJson()).toList(),
   };
 
   factory ScanRecord.fromJson(Map<String, dynamic> j) => ScanRecord(
@@ -68,6 +86,40 @@ class ScanRecord {
     archetypeMatchPct:  (j['archetypeMatchPct'] as num?)?.toInt() ?? 0,
     capturedImagePath:  j['capturedImagePath'] as String?,
     maximizedImageUrl:  j['maximizedImageUrl'] as String?,
+    projectedDelta:     (j['projectedDelta']     as num?)?.toInt() ?? 0,
+    fixHeadlines: ((j['fixHeadlines'] as List?) ?? [])
+        .map((e) => ScanFixSummary.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
+}
+
+/// Slim summary of a single AI-recommended fix, persisted alongside the
+/// scan so the Ascend POTENTIAL card can render the headline + points
+/// without having to round-trip the report endpoint.
+class ScanFixSummary {
+  final String title;
+  /// Projected delta to the LOOKS score from completing this fix
+  /// (0..8, per the analyse.js prompt).
+  final int points;
+  /// Time window the fix is realistic in — "30 days", "2 weeks", …
+  final String timeline;
+
+  const ScanFixSummary({
+    required this.title,
+    required this.points,
+    required this.timeline,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'title':    title,
+    'points':   points,
+    'timeline': timeline,
+  };
+
+  factory ScanFixSummary.fromJson(Map<String, dynamic> j) => ScanFixSummary(
+    title:    (j['title']    as String?) ?? '',
+    points:   ((j['points']   as num?)?.toInt()) ?? 0,
+    timeline: (j['timeline'] as String?) ?? '',
   );
 }
 

@@ -92,6 +92,10 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen> {
   String _connectError = '';
   String _herCaption = '';
   bool _herSpeaking = false;
+  // True once Selene\'s persona override has been pushed AND a
+  // kickoff message sent. Guards against double-firing if
+  // session.created arrives more than once.
+  bool _seleneArmed = false;
 
   // ─── Lifecycle ──────────────────────────────────────────────────────
 
@@ -231,47 +235,25 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen> {
         if (_pcmQueue.isNotEmpty) _kickPcmIfStalled();
       });
 
-      // 2) Subscribe to Realtime events.
+      // 2) Subscribe to Realtime events. We wait for session.created
+      //    (broadcast as a RawEvent below) before pushing our persona
+      //    override + kickoff — otherwise the backend\'s default
+      //    Lucien-flavoured persona has time to fire a response and
+      //    the apprentice hears a male voice quoting aphorisms
+      //    before Selene\'s instructions land.
       _eventSub = _session.events.listen(_onEvent);
 
-      // 3) Mint the session via the backend. The body shape matches the
-      //    existing 'lesson' contract — we override the persona client-
-      //    side via session.update on the very next tick, so the
-      //    backend's persona for 'lesson' is effectively bypassed and we
-      //    don't need a backend deploy to ship Selene.
+      // 3) Mint the session via the backend. The body shape matches
+      //    the existing 'lesson' contract; we override the persona
+      //    client-side after session.created arrives.
       await _session.connect(body: {
         'teacherId':  'selene',
         'mode':       'lesson',
         'topic':      'gaze_${widget.lesson.id}',
         'lessonName': widget.lesson.name,
+        'voice':      SeleneGaze.voice,
         'targetLines': const [],
       });
-
-      // 4) Override with the full Selene persona for THIS lesson —
-      //    instructions, voice, tools, server VAD without auto-create
-      //    so we control when she replies.
-      _session.updateSession({
-        'instructions': _promptForLesson(widget.lesson),
-        'voice':        SeleneGaze.voice,
-        'modalities':   ['audio', 'text'],
-        'tools':        SeleneGaze.tools,
-        'tool_choice':  'auto',
-        'turn_detection': {
-          'type':            'server_vad',
-          'threshold':       0.5,
-          'prefix_padding_ms': 300,
-          'silence_duration_ms': 500,
-          'create_response': true,
-        },
-      });
-
-      // 5) Kick her off — she's instructed to open with the FRAME, no
-      //    "hello", no "ready", but the Realtime API needs a response
-      //    request to start speaking unprompted.
-      _session.sendTextMessage(
-        'Begin the lesson. The man is already watching you. '
-        'Start with the FRAME, in your voice.',
-      );
 
       // 6) Mic streaming — push every chunk continuously. Server VAD
       //    handles turn-taking. The Selene persona never expects a
@@ -308,6 +290,49 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen> {
     // masterclass written (THE DROP, SOFT EYES, …).
     if (l.id == 'the_lock') return SeleneGaze.theLockPrompt;
     return SeleneGaze.theLockPrompt; // placeholder while the others land
+  }
+
+  /// Arm Selene the instant the realtime session opens. Three things
+  /// have to happen IN THIS ORDER before the model has a chance to
+  /// reply with whatever default persona the backend handed it:
+  ///   1. session.update — overrides instructions / voice / tools so
+  ///      the model is Selene, not Lucien.
+  ///   2. conversation.item.create system message — second layer of
+  ///      identity reinforcement; if the backend\'s default persona
+  ///      is still leaking through, this hard-pins her character on
+  ///      the conversation itself.
+  ///   3. response.create with the kickoff cue — only NOW do we
+  ///      invite her to speak.
+  void _armSelene() {
+    if (_seleneArmed) return;
+    _seleneArmed = true;
+
+    _session.updateSession({
+      'instructions': _promptForLesson(widget.lesson),
+      'voice':        SeleneGaze.voice,
+      'modalities':   ['audio', 'text'],
+      'tools':        SeleneGaze.tools,
+      'tool_choice':  'auto',
+      'turn_detection': {
+        'type':                'server_vad',
+        'threshold':           0.5,
+        'prefix_padding_ms':   300,
+        'silence_duration_ms': 500,
+        'create_response':     true,
+      },
+    });
+
+    // Second guard — inject a system-level reinforcement that the
+    // backend\'s persona cannot have set, so even if updateSession
+    // got partially rejected the conversation itself anchors on
+    // Selene as a woman teaching eye contact, NOT Lucien.
+    _session.sendTextMessage(
+      'SYSTEM RESET. You are Selene, a 27-year-old woman teaching '
+      'seductive eye contact. You are NOT Lucien. Do NOT quote '
+      'aphorisms. Do NOT philosophise. Begin NOW with line one of '
+      'your OPEN: "Sit up. Phone at eye level. Look at me." Then '
+      'continue the THE LOCK lesson exactly as briefed.',
+    );
   }
 
   // ─── PCM playback feed ─────────────────────────────────────────────
@@ -362,6 +387,11 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen> {
       setState(() => _herSpeaking = false);
     } else if (e is FunctionCallRequested) {
       _onFunctionCall(e);
+    } else if (e is RawEvent && e.type == 'session.created') {
+      // Backend has minted the session; OpenAI is ready to accept
+      // overrides. Push Selene\'s persona + kickoff BEFORE the model
+      // has any chance to emit a default-persona response.
+      _armSelene();
     }
   }
 
@@ -611,9 +641,10 @@ class _LiveDot extends StatelessWidget {
   }
 }
 
-/// Deep cinematic vignette — only the eye band stays visible. Mirrors
-/// the scripted lesson's _DrillIntensityLayer so the two surfaces look
-/// the same. No HOLD/STAY caption here — Selene's voice carries that.
+/// Soft edge vignette only — mirrors the scripted lesson's gentle
+/// treatment. NO heavy black-out; the camera passthrough stays fully
+/// visible so the apprentice's own face is part of the frame the way
+/// every previous version of this surface worked.
 class _LiveVignette extends StatelessWidget {
   const _LiveVignette();
   @override
@@ -621,15 +652,15 @@ class _LiveVignette extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: RadialGradient(
-          center: const Alignment(0, -0.55),
-          radius: 0.85,
+          center: const Alignment(0, -0.40),
+          radius: 1.10,
           colors: [
             Colors.transparent,
             Colors.transparent,
-            Colors.black.withValues(alpha: 0.82),
-            Colors.black.withValues(alpha: 0.95),
+            Colors.black.withValues(alpha: 0.40),
+            Colors.black.withValues(alpha: 0.70),
           ],
-          stops: const [0.0, 0.30, 0.65, 1.0],
+          stops: const [0.0, 0.40, 0.80, 1.0],
         ),
       ),
     );

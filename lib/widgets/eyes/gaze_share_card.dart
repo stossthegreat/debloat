@@ -48,6 +48,12 @@ class GazeShareCard extends StatelessWidget {
   /// story content so different lessons leave different fingerprints
   /// on the share.
   final String quote;
+  /// Practice-gated cap applied to the displayed magnetic score.
+  /// 0.40 on the first attempt, ramps to 1.00 at 24 logged attempts.
+  /// A perfect rep on session #1 still only surfaces as 4/10 — they
+  /// have to drill through the curriculum to earn the 10.
+  /// See [GazeProgressStore.progressionCap].
+  final double progressionCap;
 
   final VoidCallback onAgain;
   final VoidCallback onNext;
@@ -63,6 +69,7 @@ class GazeShareCard extends StatelessWidget {
     required this.onAgain,
     required this.onNext,
     required this.onClose,
+    this.progressionCap = 1.0,
   });
 
   /// True when [dim] carries non-zero weight on the active lesson —
@@ -70,15 +77,29 @@ class GazeShareCard extends StatelessWidget {
   bool _scored(GazeDimension dim) =>
       (lesson.weights[dim] ?? 0) > 0.0001;
 
+  /// Verdict word for the CAPPED /10 score so the badge tracks what
+  /// the apprentice actually sees, not the raw magnetic underneath.
+  static String _badgeForCapped(int outOf10) {
+    if (outOf10 >= 9) return 'MAGNETIC';
+    if (outOf10 >= 7) return 'STEADY';
+    if (outOf10 >= 5) return 'EMERGING';
+    return 'WORK TO DO';
+  }
+
   @override
   Widget build(BuildContext context) {
     // Scored out of 10 (internally 0–100). Floor so 95 reads as 9,
     // not 10 — the apprentice has to actually earn the perfect
-    // round-up. User feedback: "anyone gets 10 first turn they're
-    // done." Now you only see 10 when the underlying magnetic score
-    // hits 100.
-    final score = (result.gazeScore / 10).floor().clamp(0, 10).toInt();
-    final prev10 = previousBest == null ? null : (previousBest! / 10).floor();
+    // round-up. THEN multiply by the progression cap so the headline
+    // number is gated on PRACTICE, not just one good rep. A magnetic
+    // 100 with a 0.40 cap surfaces as 4/10; same magnetic 100 after
+    // 24 sessions surfaces as 10/10. Real teaching reflects time
+    // invested, not luck.
+    final score =
+        (result.gazeScore * progressionCap / 10).floor().clamp(0, 10).toInt();
+    final prev10 = previousBest == null
+        ? null
+        : (previousBest! * progressionCap / 10).floor();
     final isNewBest = prev10 == null || score > prev10;
     final delta = prev10 == null ? null : (score - prev10);
 
@@ -148,9 +169,13 @@ class GazeShareCard extends StatelessWidget {
 
                   const SizedBox(height: 14),
 
-                  // Badge.
+                  // Badge — derived from the CAPPED score (not the raw
+                  // magnetic) so the apprentice never sees "MAGNETIC"
+                  // while the headline reads 4/10. Until they've
+                  // drilled enough sessions to lift the cap, the badge
+                  // honestly reflects what their practice level means.
                   Center(
-                    child: _BadgePill(badge: result.badge),
+                    child: _BadgePill(badge: _badgeForCapped(score)),
                   ),
 
                   const SizedBox(height: 26),
@@ -233,7 +258,7 @@ class GazeShareCard extends StatelessWidget {
                       kindLabel: 'THE GAZE',
                       subLabel:  result.lessonName,
                       score:     score,
-                      badge:     result.badge,
+                      badge:     _badgeForCapped(score),
                       verdict:   quote,
                       stats: [
                         (label: 'EYE STABILITY', score: (result.dimPct(GazeDimension.eyeStability) / 10).round()),

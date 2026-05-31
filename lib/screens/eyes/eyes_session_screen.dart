@@ -113,6 +113,12 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
   GazeResult? _result;
   int? _previousBest;
   int? _weeklyDelta;
+  /// Practice-gated cap on the displayed gaze score. Ramps from 0.40
+  /// at session #1 to 1.00 at session #24 so a single perfect rep
+  /// can\'t inflate the headline — the apprentice has to drill
+  /// through the curriculum to earn the 10. Read from
+  /// [GazeProgressStore.progressionCap] before the result lands.
+  double _progressionCap = 1.0;
 
   // ─── Debug log ────────────────────────────────────────────────────
   final List<DebugEvent> _events = [];
@@ -381,8 +387,10 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
     // Persist the AURA pillar score for the Ascend tab — keep the
     // running BEST across all gaze sessions so the pillar reads as
     // "what I've actually pulled off", not the dip from the last
-    // bad rep. The Ascend pillar reads `aura_score` on tab open.
-    final gaze = _result?.gazeScore ?? 0;
+    // bad rep. Apply the same progression cap the share card uses so
+    // the Ascend pillar number matches what they just saw on the
+    // score reveal — no "lesson card showed 4/10 but Ascend says 7".
+    final gaze = ((_result?.gazeScore ?? 0) * _progressionCap).round();
     if (gaze > 0) {
       // ignore: discarded_futures
       _persistAura(gaze);
@@ -562,6 +570,10 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
       samples: _samples,
       blinks:  _drillBlinks,
     );
+    // Read the cap BEFORE recording — the cap counts PRIOR attempts,
+    // not the one we\'re about to log. Otherwise session #1 picks up
+    // the bump from session #1 logging itself.
+    _progressionCap = await GazeProgressStore.progressionCap();
     _previousBest = await GazeProgressStore.record(result);
     _weeklyDelta  = await GazeProgressStore.weeklyImprovement();
     if (_disposed || !mounted) return;
@@ -614,14 +626,15 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
     // Score share card replaces everything.
     if (_phase == _Phase.score && _result != null) {
       return GazeShareCard(
-        result:        _result!,
-        lesson:        widget.lesson,
-        previousBest:  _previousBest,
-        weeklyDelta:   _weeklyDelta,
-        quote:         _stampQuote(),
-        onAgain:       _again,
-        onNext:        _nextLesson,
-        onClose:       _closeScreen,
+        result:         _result!,
+        lesson:         widget.lesson,
+        previousBest:   _previousBest,
+        weeklyDelta:    _weeklyDelta,
+        quote:          _stampQuote(),
+        progressionCap: _progressionCap,
+        onAgain:        _again,
+        onNext:         _nextLesson,
+        onClose:        _closeScreen,
       );
     }
 
@@ -1239,22 +1252,25 @@ class _DrillIntensityLayer extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         // ── Deep cinematic vignette. Black almost everywhere — only
-        //    the eyes band stays visible. The apprentice should see
-        //    HER EYES and almost nothing else; their own camera face
-        //    is suppressed to a barely-there silhouette so it doesn't
-        //    compete with the gaze target.
+        //    the eyes band stays visible. SUBTLE EDGE VIGNETTE ONLY —
+        //    the user kept asking why the screen was blacking out and
+        //    "doing some weird thing with the camera". Heavy fade had
+        //    pure-black inner ring suppressing the camera face. Now
+        //    just a soft edge darkening so the camera passthrough
+        //    stays fully visible (the way the original scripted
+        //    lesson always was), the eye target sits over the top.
         DecoratedBox(
           decoration: BoxDecoration(
             gradient: RadialGradient(
-              center: const Alignment(0, -0.55),
-              radius: 0.85,
+              center: const Alignment(0, -0.40),
+              radius: 1.10,
               colors: [
                 Colors.transparent,
                 Colors.transparent,
-                Colors.black.withValues(alpha: 0.82),
-                Colors.black.withValues(alpha: 0.95),
+                Colors.black.withValues(alpha: 0.40),
+                Colors.black.withValues(alpha: 0.70),
               ],
-              stops: const [0.0, 0.30, 0.65, 1.0],
+              stops: const [0.0, 0.40, 0.80, 1.0],
             ),
           ),
         ),
