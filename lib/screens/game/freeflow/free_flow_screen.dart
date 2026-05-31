@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_pcm_sound/flutter_pcm_sound.dart';
 import 'package:record/record.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../config/dev_flags.dart';
@@ -609,6 +610,13 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         _result = score;
         _phase = _Phase.scored;
       });
+      // Persist the GAME pillar score for the Ascend tab — best-of
+      // semantics so a single fumbled session can't tank the pillar
+      // number. FreeFlowScore is already 0..10, so we multiply by
+      // 10 to land in the same 0..100 storage band the LOOKS and
+      // AURA pillars use (home_screen divides by 10 to display).
+      // ignore: discarded_futures
+      _persistGame(score.score);
       if (score.audioBytes != null && score.audioBytes!.isNotEmpty) {
         try {
           await _lucienPlayer
@@ -618,6 +626,16 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     } catch (e) {
       _fail(e.toString());
     }
+  }
+
+  /// Best-of update of the GAME pillar score read by the Ascend tab.
+  /// FreeFlowScore is 0..10 — multiply by 10 to match the 0..100
+  /// storage band used by the LOOKS + AURA pillars.
+  Future<void> _persistGame(int scoreOutOfTen) async {
+    final prefs = await SharedPreferences.getInstance();
+    final next = (scoreOutOfTen * 10).clamp(0, 100);
+    final prev = prefs.getInt('game_score') ?? 0;
+    if (next > prev) await prefs.setInt('game_score', next);
   }
 
   void _fail(String msg) {

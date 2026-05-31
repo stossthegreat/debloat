@@ -37,7 +37,9 @@ class FixationDots extends StatelessWidget {
   /// actual eyes occupy ~1463 × 323 (vertical 30%-62%), so the
   /// useful aspect is ~4.5:1. Sizing the display box to this
   /// ratio + BoxFit.cover crops the transparent top/bottom away
-  /// and the eyes fill the band the way the user shot it.
+  /// and the eyes fill the band the way the user shot it. No
+  /// container, no gradient, no border — just the transparent
+  /// PNG on top of whatever the drill vignette renders behind it.
   static const double _eyeBandAspect = 1463.0 / 323.0;
 
   @override
@@ -50,10 +52,12 @@ class FixationDots extends StatelessWidget {
         builder: (_, constraints) {
           final w = constraints.maxWidth;
           final h = constraints.maxHeight;
-          // Big — the eyes ARE the screen. 96% of width.
-          final imgW = w * 0.96;
+          // Smaller — the user wanted them tighter so the eye lock
+          // feels focused, not "filling the screen". 68% of width
+          // lands a compact, dead-centre target.
+          final imgW = w * 0.68;
           final imgH = imgW / _eyeBandAspect;
-          final y    = h * 0.22;
+          final y    = h * 0.26;
           return Stack(
             children: [
               Positioned(
@@ -87,44 +91,18 @@ class _CinematicEyes extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // No black backdrop — the source PNG already has a transparent
-    // background, and the drill vignette behind us is already deep
-    // enough to suppress the apprentice's own camera feed. Painting
-    // a black rectangle here was hiding the eyes inside a square;
-    // dropping it lets the eyes float on the vignette the way the
-    // user shot them.
-    final base = Stack(
-      fit: StackFit.expand,
-      children: [
-        // The eyes asset. cover + center crops the transparent top
-        // and bottom of the source PNG so the eye band fills the box.
-        Image.asset(
-          FixationDots.assetPath,
-          fit: BoxFit.cover,
-          alignment: Alignment.center,
-          errorBuilder: (_, __, ___) => _MissingAssetFallback(
-            isLocked: isLocked,
-          ),
-        ),
-        // WARM RIM TINT on lock — soft red bloom from the edges that
-        // brings the eyes into the warm "she's here" space.
-        AnimatedOpacity(
-          duration: const Duration(milliseconds: 320),
-          opacity: isLocked ? 0.40 : 0.0,
-          child: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                radius: 1.1,
-                colors: [
-                  Colors.transparent,
-                  AppColors.accent,
-                ],
-                stops: [0.55, 1.0],
-              ),
-            ),
-          ),
-        ),
-      ],
+    // Just the asset — no black plate, no warm rim, no border. The
+    // PNG is transparent by design; the drill vignette around it
+    // handles every bit of mood. cover + center crops the
+    // transparent top/bottom of the source PNG so the eye band
+    // fills the SizedBox cleanly with no box edges.
+    final base = Image.asset(
+      FixationDots.assetPath,
+      fit: BoxFit.cover,
+      alignment: Alignment.center,
+      errorBuilder: (_, __, ___) => _MissingAssetFallback(
+        isLocked: isLocked,
+      ),
     );
 
     // Subtle breathing pulse — slower when locked (eye "settles in").

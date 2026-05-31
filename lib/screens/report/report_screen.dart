@@ -201,6 +201,18 @@ class _ReportScreenState extends State<ReportScreen> {
       setState(() => _savedImagePath = savedPath);
     }
 
+    // Snapshot the AI-recommended fixes + their projected delta onto
+    // the scan record so the Ascend POTENTIAL card can render the
+    // headline + per-fix points without re-hitting /report later.
+    final fixSummaries = a.report.fixes.map((f) => ScanFixSummary(
+          title:    f.title,
+          points:   f.points,
+          timeline: f.timeline,
+        )).toList();
+    final projectedDelta = fixSummaries.fold<int>(
+      0, (sum, f) => sum + f.points,
+    );
+
     final record = ScanRecord(
       id:                 id,
       takenAt:            DateTime.now(),
@@ -211,6 +223,8 @@ class _ReportScreenState extends State<ReportScreen> {
       archetypeMatchPct:  (match.match * 100).round(),
       capturedImagePath:  savedPath,
       maximizedImageUrl:  a.maximizedImageUrl,
+      projectedDelta:     projectedDelta,
+      fixHeadlines:       fixSummaries,
     );
     await LocalStoreService.saveScan(record);
 

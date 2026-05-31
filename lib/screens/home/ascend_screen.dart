@@ -4,7 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../models/scan_record.dart';
+import '../../models/scan_record.dart' show ScanRecord, ScanFixSummary;
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/mirrorly_components.dart';
@@ -87,6 +87,28 @@ class AscendScreen extends StatelessWidget {
                 ],
               ),
             ),
+
+            // ── POTENTIAL CARD — AI-projected gains from the latest
+            //    scan. Appears only after a scan + a non-empty fix
+            //    list. The headline is the sum of per-fix `points`
+            //    the backend prompt returned (12-22 range typical);
+            //    each row names the specific fix the AI surfaced so
+            //    the user sees what they're committing to, not just
+            //    an aggregate number. Tap routes to the Looks tab
+            //    where each fix can be added to the streak.
+            if (hasScan &&
+                latest!.fixHeadlines.isNotEmpty &&
+                latest!.projectedDelta > 0) ...[
+              const SizedBox(height: Sp.md),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+                child: _PotentialCard(
+                  delta:  latest!.projectedDelta,
+                  fixes:  latest!.fixHeadlines,
+                  onTap:  () => onJumpToTab(1),
+                ),
+              ).animate().fadeIn(delay: 90.ms, duration: 400.ms),
+            ],
 
             const SizedBox(height: Sp.md),
 
@@ -689,6 +711,185 @@ class _StreakAward extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── POTENTIAL CARD ─────────────────────────────────────────────────
+// Post-scan card: "+N to LOOKS" + a stacked list of the AI-
+// recommended fixes with their projected per-fix points. Tap routes
+// to the Looks tab where each fix has its own ADD TO STREAK button.
+
+class _PotentialCard extends StatelessWidget {
+  final int delta;
+  final List<ScanFixSummary> fixes;
+  final VoidCallback onTap;
+  const _PotentialCard({
+    required this.delta,
+    required this.fixes,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Top 3 fixes by points — the rest get hidden behind a "+N more"
+    // chip so the card never grows past a screenful even when the
+    // backend returns 5+ fixes.
+    final ranked = [...fixes]..sort((a, b) => b.points.compareTo(a.points));
+    final shown = ranked.take(3).toList();
+    final extra = ranked.length - shown.length;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () { HapticFeedback.selectionClick(); onTap(); },
+        borderRadius: BorderRadius.circular(Rd.xl),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(Sp.md, Sp.md, Sp.md, 14),
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            borderRadius: BorderRadius.circular(Rd.xl),
+            border: Border.all(
+              color: AppColors.red.withValues(alpha: 0.45), width: 0.9),
+            gradient: RadialGradient(
+              center: const Alignment(-0.7, -0.8),
+              radius: 1.3,
+              colors: [
+                AppColors.red.withValues(alpha: 0.16),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 1.0],
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('YOUR POTENTIAL',
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.red, letterSpacing: 2.6,
+                      fontSize: 10, fontWeight: FontWeight.w900)),
+                  const Spacer(),
+                  Text('+$delta',
+                    style: GoogleFonts.playfairDisplay(
+                      color: AppColors.red,
+                      fontSize: 32,
+                      fontStyle: FontStyle.italic,
+                      fontWeight: FontWeight.w900,
+                      height: 1.0,
+                      letterSpacing: -1.2,
+                    )),
+                  const SizedBox(width: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 5),
+                    child: Text('LOOKS',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.textTertiary,
+                        fontSize: 9, letterSpacing: 1.8,
+                        fontWeight: FontWeight.w800)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text('Real moves your AI surfaced. Time-bound.',
+                style: GoogleFonts.inter(
+                  color: AppColors.textSecondary,
+                  fontSize: 12.5, fontStyle: FontStyle.italic,
+                  height: 1.4,
+                )),
+              const SizedBox(height: 14),
+              for (var i = 0; i < shown.length; i++) ...[
+                _PotentialRow(fix: shown[i]),
+                if (i != shown.length - 1)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Container(height: 0.6, color: AppColors.divider),
+                  ),
+              ],
+              if (extra > 0) ...[
+                const SizedBox(height: 10),
+                Text('+ $extra more',
+                  style: AppTypography.label.copyWith(
+                    color: AppColors.textTertiary,
+                    fontSize: 10, letterSpacing: 1.8,
+                    fontWeight: FontWeight.w800)),
+              ],
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                decoration: BoxDecoration(
+                  color: AppColors.red,
+                  borderRadius: BorderRadius.circular(Rd.lg),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('OPEN PROTOCOL',
+                      style: AppTypography.label.copyWith(
+                        color: Colors.black, fontSize: 11.5,
+                        letterSpacing: 2.4,
+                        fontWeight: FontWeight.w900)),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.arrow_forward_rounded,
+                        color: Colors.black, size: 16),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PotentialRow extends StatelessWidget {
+  final ScanFixSummary fix;
+  const _PotentialRow({required this.fix});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(fix.title,
+                style: AppTypography.h1.copyWith(
+                  color: AppColors.textPrimary,
+                  fontSize: 14.5, letterSpacing: -0.2, height: 1.25),
+                maxLines: 2, overflow: TextOverflow.ellipsis),
+              if (fix.timeline.trim().isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(fix.timeline,
+                  style: AppTypography.label.copyWith(
+                    color: AppColors.textTertiary, fontSize: 10,
+                    letterSpacing: 1.6, fontWeight: FontWeight.w700)),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppColors.red.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: AppColors.red.withValues(alpha: 0.55), width: 0.7),
+          ),
+          child: Text('+${fix.points}',
+            style: GoogleFonts.playfairDisplay(
+              color: AppColors.red, fontSize: 16,
+              fontWeight: FontWeight.w900,
+              fontStyle: FontStyle.italic,
+              letterSpacing: -0.4, height: 1.0)),
+        ),
+      ],
     );
   }
 }
