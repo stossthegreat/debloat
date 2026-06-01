@@ -193,20 +193,18 @@ class _EyesTabScreenState extends State<EyesTabScreen> {
 
             const SizedBox(height: Sp.lg),
 
-            // ── SELENE — live AI lesson entry. Tap launches THE LOCK
-            //    as a live realtime session: Selene runs the entire
-            //    arc (frame, theory, drill call, real-time coaching
-            //    against the apprentice's live face metrics, debrief),
-            //    no scripted TTS. The card sits above the scripted
-            //    lesson card so first-time visitors land here.
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-              child: _SeleneLiveCard(
-                onTap: () => context.push('/eyes/live/the_lock'),
-              ),
-            ).animate().fadeIn(delay: 120.ms, duration: 400.ms),
-
-            const SizedBox(height: Sp.lg),
+            // ── SELENE entry card — commented out for the ship build
+            //    while her live AI architecture gets rebuilt as a
+            //    standalone "master of eye contact + seductive
+            //    rhetoric" persona. Keep the screen + route in place
+            //    so we can uncomment one line and turn her back on.
+            // Padding(
+            //   padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+            //   child: _SeleneLiveCard(
+            //     onTap: () => context.push('/eyes/live/the_lock'),
+            //   ),
+            // ).animate().fadeIn(delay: 120.ms, duration: 400.ms),
+            // const SizedBox(height: Sp.lg),
 
             // ── PART ONE — Eye Contact (gaze training).
             // Card is intentionally NOT shown as locked even after the

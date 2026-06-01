@@ -657,17 +657,11 @@ class _LatestSnapshot extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Looks pillar — /10 to match the Ascend pillar cards
-              //    and the Aura / Game / share-card scoring scale.
-              //    The underlying [ScanRecord.score] is still 0-100
-              //    so the report screen + share card retain their
-              //    granular maths; only the headline number on this
-              //    snapshot card scales down for parity.
-              Text('${(scan.score / 10).round().clamp(0, 10)}',
+              Text('${scan.score}',
                 style: AppTypography.display.copyWith(
                   fontSize: 44, color: AppColors.red,
                   letterSpacing: -2.2, height: 1)),
-              Text('/ 10',
+              Text('/ 100',
                 style: AppTypography.label.copyWith(
                   color: AppColors.textTertiary, fontSize: 9, letterSpacing: 1.8)),
             ],

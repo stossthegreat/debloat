@@ -14,4 +14,4 @@
 ///   · PaywallScreen, if opened manually, auto-routes back to /home.
 ///
 /// **FLIP THIS TO FALSE BEFORE SHIPPING.**
-const kBypassPaywall = true;
+const kBypassPaywall = false;

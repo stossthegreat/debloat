@@ -33,7 +33,7 @@ abstract final class AuralayDevFlags {
 
   /// True in dev to skip purchase checks so every gated feature opens.
   /// Flip false before App Store / Play Store submission.
-  static const kBypassPaywall = true;
+  static const kBypassPaywall = false;
 
   /// Master switch for the in-session debug overlay (bottom-left bug icon
   /// + log strip) on every screen. OFF for production. Flip true to bring
