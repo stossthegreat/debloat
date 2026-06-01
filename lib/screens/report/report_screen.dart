@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/face_geometry.dart';
 import '../../models/mirror_analysis.dart';
@@ -156,6 +157,18 @@ class _ReportScreenState extends State<ReportScreen> {
       fixHeadlines:       fixSummaries,
     );
     await LocalStoreService.saveScan(record);
+
+    // Stamp today as the LOOKS completion day so the Ascend tab\'s
+    // Today\'s Ascension card ticks LOOKS off the moment a fresh
+    // scan persists. Pure side-effect — no layout change.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      await prefs.setInt(
+        'looks_done_ymd',
+        now.year * 10000 + now.month * 100 + now.day,
+      );
+    } catch (_) {}
 
     // Also save the Flux twin into the Generation Vault so it shows up in the
     // gallery on the Progress tab.

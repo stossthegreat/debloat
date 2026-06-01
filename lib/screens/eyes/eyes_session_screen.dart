@@ -399,14 +399,20 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
   }
 
   /// Update the persisted AURA pillar score (Ascend) with the best
-  /// score we've seen across all gaze sessions. Best-of semantics so
-  /// a single bad rep can't tank the pillar number.
+  /// score we've seen across all gaze sessions, and stamp today as
+  /// the last AURA completion day so the Today\'s Ascension card
+  /// ticks AURA off.
   Future<void> _persistAura(int gazeScore) async {
     final prefs = await SharedPreferences.getInstance();
     final prev = prefs.getInt('aura_score') ?? 0;
     if (gazeScore > prev) {
       await prefs.setInt('aura_score', gazeScore.clamp(0, 100));
     }
+    final now = DateTime.now();
+    await prefs.setInt(
+      'aura_done_ymd',
+      now.year * 10000 + now.month * 100 + now.day,
+    );
   }
 
   /// Lucien's spoken verdict — confirms the gaze was really judged.

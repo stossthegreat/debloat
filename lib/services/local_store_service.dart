@@ -1,7 +1,5 @@
 import 'dart:convert';
-import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../config/purchase_config.dart';
 import '../models/scan_record.dart';
 
 /// Single source of truth for everything persisted on-device.
@@ -108,35 +106,9 @@ class LocalStoreService {
   }
 
   // ── Subscription stub (wired to real IAP later) ─────────────────────────
-  ///
-  /// Cache-first, RevenueCat-fallback. The local SharedPreferences flag
-  /// is the fast path — set true after PurchaseService confirms an
-  /// entitlement at init / purchase / restore. When the cache says
-  /// FALSE we hit RevenueCat live with a 2s timeout to self-heal the
-  /// stale-cache case: user had no sub at app launch (cache → false),
-  /// purchased on App Store / restored on a fresh install / RC took a
-  /// moment to identify the user — without this live fallback every
-  /// gate would stay locked until the next cold launch.
   static Future<bool> isSubscribed() async {
     final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool(_kSubscribed) ?? false) return true;
-    try {
-      final info = await Purchases.getCustomerInfo()
-          .timeout(const Duration(seconds: 2));
-      final isPro = info.entitlements
-              .all[PurchaseConfig.proEntitlementId]
-              ?.isActive
-          ?? false;
-      if (isPro) {
-        // Self-heal — write the cache so the next gate is fast.
-        await prefs.setBool(_kSubscribed, true);
-      }
-      return isPro;
-    } catch (_) {
-      // RevenueCat not configured / network timeout / Purchases.configure
-      // hasn't run yet — fall back to the cached false.
-      return false;
-    }
+    return prefs.getBool(_kSubscribed) ?? false;
   }
 
   static Future<void> setSubscribed(bool v) async {

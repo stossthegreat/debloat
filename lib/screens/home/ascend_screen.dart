@@ -21,6 +21,12 @@ class AscendScreen extends StatelessWidget {
   final int looksScore;
   final int auraScore;
   final int gameScore;
+  /// True if a scan / protocol check-in lands today.
+  final bool looksDoneToday;
+  /// True if a gaze lesson completed today.
+  final bool auraDoneToday;
+  /// True if a Free Flow session completed today.
+  final bool gameDoneToday;
 
   const AscendScreen({
     super.key,
@@ -30,6 +36,9 @@ class AscendScreen extends StatelessWidget {
     this.looksScore = 0,
     this.auraScore = 0,
     this.gameScore = 0,
+    this.looksDoneToday = false,
+    this.auraDoneToday = false,
+    this.gameDoneToday = false,
   });
 
   @override
@@ -118,6 +127,9 @@ class AscendScreen extends StatelessWidget {
               child: _TodaysAscension(
                 onJumpToTab: onJumpToTab,
                 hasScan: hasScan,
+                looksDone: looksDoneToday,
+                auraDone:  auraDoneToday,
+                gameDone:  gameDoneToday,
               ),
             ).animate().fadeIn(delay: 120.ms, duration: 400.ms),
           ],
@@ -265,9 +277,15 @@ class _PillarScore extends StatelessWidget {
 class _TodaysAscension extends StatelessWidget {
   final ValueChanged<int> onJumpToTab;
   final bool hasScan;
+  final bool looksDone;
+  final bool auraDone;
+  final bool gameDone;
   const _TodaysAscension({
     required this.onJumpToTab,
     required this.hasScan,
+    required this.looksDone,
+    required this.auraDone,
+    required this.gameDone,
   });
 
   @override
@@ -295,14 +313,20 @@ class _TodaysAscension extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
-                '0 / 3',
-                style: AppTypography.label.copyWith(
-                  color: AppColors.textTertiary,
-                  fontSize: 10,
-                  letterSpacing: 1.4,
-                  fontWeight: FontWeight.w800,
-                ),
+              Builder(
+                builder: (_) {
+                  final done =
+                      (looksDone ? 1 : 0) + (auraDone ? 1 : 0) + (gameDone ? 1 : 0);
+                  return Text(
+                    '$done / 3',
+                    style: AppTypography.label.copyWith(
+                      color: done == 3 ? AppColors.signalGreen : AppColors.textTertiary,
+                      fontSize: 10,
+                      letterSpacing: 1.4,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -329,6 +353,7 @@ class _TodaysAscension extends StatelessWidget {
             category: 'LOOKS',
             title: hasScan ? 'Mog Streak' : 'Scan your face',
             minutes: hasScan ? 3 : 1,
+            done: looksDone,
             onTap: () {
               if (hasScan) {
                 onJumpToTab(1);
@@ -346,6 +371,7 @@ class _TodaysAscension extends StatelessWidget {
             category: 'AURA',
             title: 'Eye Contact Drill',
             minutes: 5,
+            done: auraDone,
             onTap: () => onJumpToTab(2),
           ),
           const _MissionDivider(),
@@ -355,6 +381,7 @@ class _TodaysAscension extends StatelessWidget {
             category: 'GAME',
             title: 'Free Flow',
             minutes: 3,
+            done: gameDone,
             onTap: () => onJumpToTab(3),
           ),
         ],
@@ -378,6 +405,10 @@ class _MissionRow extends StatelessWidget {
   final String title;
   final int minutes;
   final VoidCallback onTap;
+  /// True if this pillar already has a completion logged today.
+  /// Swaps the chase arrow for a green check and the row reads as
+  /// done. Tap still works so the user can run another rep.
+  final bool done;
   const _MissionRow({
     required this.color,
     required this.icon,
@@ -385,6 +416,7 @@ class _MissionRow extends StatelessWidget {
     required this.title,
     required this.minutes,
     required this.onTap,
+    this.done = false,
   });
 
   @override
@@ -444,7 +476,21 @@ class _MissionRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            // Pulsing chase arrow — gives every mission row life.
+            // Done-today swaps the pulsing chase arrow for a static
+            // green check. Lets the user see at a glance which of the
+            // three pillars they\'ve already touched today.
+            if (done)
+              Container(
+                width: 30, height: 30,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.signalGreen.withOpacity(0.16),
+                  border: Border.all(color: AppColors.signalGreen, width: 1.4),
+                ),
+                child: const Icon(Icons.check_rounded,
+                    color: AppColors.signalGreen, size: 16),
+              )
+            else
             Container(
               width: 30, height: 30,
               decoration: BoxDecoration(
