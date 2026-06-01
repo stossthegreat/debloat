@@ -606,17 +606,16 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         creator:    _creator,
       );
       if (_disposed || !mounted) return;
+      // Persist FIRST so the pref is on disk before any animation
+      // tears the screen down. Awaited rather than fire-and-forget —
+      // a fast back-tap was beating the SharedPreferences write and
+      // the Ascend GAME pillar stayed at zero.
+      await _persistGame(score.score);
+      if (_disposed || !mounted) return;
       setState(() {
         _result = score;
         _phase = _Phase.scored;
       });
-      // Persist the GAME pillar score for the Ascend tab — best-of
-      // semantics so a single fumbled session can't tank the pillar
-      // number. FreeFlowScore is already 0..10, so we multiply by
-      // 10 to land in the same 0..100 storage band the LOOKS and
-      // AURA pillars use (home_screen divides by 10 to display).
-      // ignore: discarded_futures
-      _persistGame(score.score);
       if (score.audioBytes != null && score.audioBytes!.isNotEmpty) {
         try {
           await _lucienPlayer
