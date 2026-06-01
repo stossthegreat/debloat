@@ -627,14 +627,21 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     }
   }
 
-  /// Best-of update of the GAME pillar score read by the Ascend tab.
-  /// FreeFlowScore is 0..10 — multiply by 10 to match the 0..100
-  /// storage band used by the LOOKS + AURA pillars.
+  /// Best-of update of the GAME pillar score + stamp today as the
+  /// last GAME completion day. FreeFlowScore is 0..10 — multiply by
+  /// 10 to match the 0..100 storage band used by the LOOKS + AURA
+  /// pillars. Today\'s YMD stamp powers the Today\'s Ascension card
+  /// tick on the Ascend tab.
   Future<void> _persistGame(int scoreOutOfTen) async {
     final prefs = await SharedPreferences.getInstance();
     final next = (scoreOutOfTen * 10).clamp(0, 100);
     final prev = prefs.getInt('game_score') ?? 0;
     if (next > prev) await prefs.setInt('game_score', next);
+    final now = DateTime.now();
+    await prefs.setInt(
+      'game_done_ymd',
+      now.year * 10000 + now.month * 100 + now.day,
+    );
   }
 
   void _fail(String msg) {

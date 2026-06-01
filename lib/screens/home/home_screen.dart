@@ -48,6 +48,18 @@ class _HomeScreenState extends State<HomeScreen> {
   int _auraScore  = 0;
   int _gameScore  = 0;
   int _dayStreak  = 0;
+  // Today\'s Ascension — which pillars have a completion logged TODAY.
+  // Each session screen writes its `<pillar>_done_ymd` int (year*10000 +
+  // month*100 + day) to SharedPreferences when a rep lands; here we
+  // read each and compare against today\'s YMD.
+  bool _looksDoneToday = false;
+  bool _auraDoneToday  = false;
+  bool _gameDoneToday  = false;
+
+  static int _todayYmd() {
+    final n = DateTime.now();
+    return n.year * 10000 + n.month * 100 + n.day;
+  }
 
   @override
   void initState() {
@@ -76,6 +88,10 @@ class _HomeScreenState extends State<HomeScreen> {
       _gameScore  = ((prefs.getInt('game_score')  ?? 0) / 10).round().clamp(0, 10);
       _dayStreak  = protocol?.effectiveStreak
           ?? (prefs.getInt('streak_days') ?? 0);
+      final today = _todayYmd();
+      _looksDoneToday = (prefs.getInt('looks_done_ymd') ?? 0) == today;
+      _auraDoneToday  = (prefs.getInt('aura_done_ymd')  ?? 0) == today;
+      _gameDoneToday  = (prefs.getInt('game_done_ymd')  ?? 0) == today;
     });
   }
 
@@ -101,12 +117,15 @@ class _HomeScreenState extends State<HomeScreen> {
               index: _tab,
               children: [
                 AscendScreen(
-                  onJumpToTab: _switchTab,
-                  latest:      _latest,
-                  dayStreak:   _dayStreak,
-                  looksScore:  _looksScore,
-                  auraScore:   _auraScore,
-                  gameScore:   _gameScore,
+                  onJumpToTab:    _switchTab,
+                  latest:         _latest,
+                  dayStreak:      _dayStreak,
+                  looksScore:     _looksScore,
+                  auraScore:      _auraScore,
+                  gameScore:      _gameScore,
+                  looksDoneToday: _looksDoneToday,
+                  auraDoneToday:  _auraDoneToday,
+                  gameDoneToday:  _gameDoneToday,
                 ),
                 _ScanHubTab(latest: _latest, protocol: _protocol, onRefresh: _reload),
                 const EyesTabScreen(),

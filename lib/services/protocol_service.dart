@@ -1,3 +1,5 @@
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/face_geometry.dart';
 import '../models/mirror_analysis.dart';
 import '../models/protocol.dart';
@@ -45,6 +47,17 @@ class ProtocolService {
   static Future<Protocol> markDayComplete(Protocol p, int day) async {
     final updated = p.withDayCompleted(day);
     await save(updated);
+    // Stamp today as the LOOKS pillar completion day so the Ascend
+    // tab\'s Today\'s Ascension card ticks LOOKS off when a protocol
+    // task is logged.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      await prefs.setInt(
+        'looks_done_ymd',
+        now.year * 10000 + now.month * 100 + now.day,
+      );
+    } catch (_) {}
     // Reschedule the 8pm nudge against the NEW state — live vs at-risk vs
     // broken copy changes, and "completed today" pushes the next nudge to
     // tomorrow automatically.
