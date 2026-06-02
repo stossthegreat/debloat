@@ -487,10 +487,12 @@ class _CompactLessonRow extends StatelessWidget {
   }
 }
 
-/// SELENE entry card — sits above the scripted lesson cards. Black with
-/// a thin red border + warm radial glow; italic Playfair title; tap
-/// routes to /eyes/live/the_lock. The card reads as the apex item on
-/// the tab so first-time visitors land in the live lesson.
+/// SELENE entry card — the APEX card on the Aura tab. Hero-treated
+/// (no horizontal padding, taller than CharacterCard, full-width
+/// asset crop) so it reads as the headline event vs the scripted
+/// CharacterCards below — those are episodes, this is the film. The
+/// cinematic eyes asset (same one used during the live drill itself)
+/// is the visual core so the card and the lesson share a face.
 class _SeleneLiveCard extends StatelessWidget {
   final VoidCallback onTap;
   const _SeleneLiveCard({required this.onTap});
@@ -503,103 +505,154 @@ class _SeleneLiveCard extends StatelessWidget {
         onTap: () { HapticFeedback.mediumImpact(); onTap(); },
         borderRadius: BorderRadius.circular(Rd.xl),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(Sp.md, Sp.md, Sp.md, Sp.md),
+          height: 220,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: AppColors.surface1,
             borderRadius: BorderRadius.circular(Rd.xl),
             border: Border.all(
-              color: AppColors.red.withValues(alpha: 0.55), width: 0.9),
-            gradient: RadialGradient(
-              center: const Alignment(-0.6, -0.6),
-              radius: 1.4,
-              colors: [
-                AppColors.red.withValues(alpha: 0.18),
-                Colors.transparent,
-              ],
-              stops: const [0.0, 1.0],
-            ),
+              color: AppColors.red.withValues(alpha: 0.55), width: 1.0),
             boxShadow: [
               BoxShadow(
-                color: AppColors.red.withValues(alpha: 0.22),
-                blurRadius: 22, offset: const Offset(0, 6)),
+                color: AppColors.red.withValues(alpha: 0.28),
+                blurRadius: 28, offset: const Offset(0, 8)),
             ],
           ),
-          child: Row(
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              Expanded(
+              // Cinematic eyes — same asset that runs during the live
+              // drill. Filling the whole card collapses the visual gap
+              // between "she on the card" and "she in the session."
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/eyes/lesson_eyes.jpg',
+                  fit: BoxFit.cover,
+                  alignment: const Alignment(0, -0.25),
+                  errorBuilder: (_, __, ___) => Container(
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+              // Bottom-up dark gradient so the title + body always
+              // sit on a legible surface no matter what the eyes asset
+              // looks like.
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end:   Alignment.topCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.95),
+                        Colors.black.withValues(alpha: 0.55),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.55, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+              // Top-left chrome — LIVE pulse + NEW.
+              Positioned(
+                top: 14, left: 14,
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.red,
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: Text('LIVE',
+                        style: AppTypography.label.copyWith(
+                          color: Colors.black, fontSize: 10,
+                          letterSpacing: 2.2,
+                          fontWeight: FontWeight.w900)),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('with Selene',
+                      style: GoogleFonts.inter(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        fontSize: 11,
+                        letterSpacing: 1.4,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w700,
+                        shadows: [Shadow(
+                          color: Colors.black.withValues(alpha: 0.85),
+                          blurRadius: 6)],
+                      )),
+                  ],
+                ),
+              ),
+              // Top-right — pulsing mic circle. Same affordance as
+              // before but pulled to the corner so the eyes own the
+              // centre frame.
+              Positioned(
+                top: 12, right: 12,
+                child: Container(
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.red,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.red.withValues(alpha: 0.65),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4)),
+                    ],
+                  ),
+                  child: const Icon(Icons.mic_rounded,
+                      color: Colors.black, size: 22),
+                ),
+              ),
+              // Bottom-left — title block + body + CTA hint.
+              Positioned(
+                left: 18, right: 18, bottom: 16,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.red,
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                          child: Text('LIVE',
-                            style: AppTypography.label.copyWith(
-                              color: Colors.black, fontSize: 9,
-                              letterSpacing: 2.0,
-                              fontWeight: FontWeight.w900)),
-                        ),
-                        const SizedBox(width: 8),
-                        Text('NEW',
-                          style: AppTypography.label.copyWith(
-                            color: AppColors.red, fontSize: 9,
-                            letterSpacing: 2.6,
-                            fontWeight: FontWeight.w900)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
                     Text('Selene',
                       style: GoogleFonts.playfairDisplay(
-                        color: AppColors.textPrimary,
-                        fontSize: 28,
+                        color: Colors.white,
+                        fontSize: 36,
                         fontStyle: FontStyle.italic,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: -0.6,
+                        letterSpacing: -0.8,
                         height: 1.0,
+                        shadows: [Shadow(
+                          color: Colors.black.withValues(alpha: 0.85),
+                          blurRadius: 12)],
                       )),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text('THE LOCK — masterclass, in her voice.',
                       style: GoogleFonts.inter(
-                        color: AppColors.textSecondary,
-                        fontSize: 12.5,
-                        height: 1.45,
+                        color: Colors.white.withValues(alpha: 0.92),
+                        fontSize: 13,
+                        height: 1.4,
                         fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w600,
+                        shadows: [Shadow(
+                          color: Colors.black.withValues(alpha: 0.85),
+                          blurRadius: 8)],
                       )),
                     const SizedBox(height: 4),
                     Text(
                       'She frames it, teaches the science, calls the '
-                      'drill, then coaches you live against your face. '
-                      'No script.',
+                      'drill, then coaches you live against your face.',
                       style: GoogleFonts.inter(
-                        color: AppColors.textTertiary,
+                        color: Colors.white.withValues(alpha: 0.78),
                         fontSize: 11.5,
                         height: 1.45,
+                        shadows: [Shadow(
+                          color: Colors.black.withValues(alpha: 0.85),
+                          blurRadius: 6)],
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 14),
-              Container(
-                width: 48, height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.red,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.red.withValues(alpha: 0.55),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: const Icon(Icons.mic_rounded,
-                    color: Colors.black, size: 24),
               ),
             ],
           ),

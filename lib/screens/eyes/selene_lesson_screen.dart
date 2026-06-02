@@ -9,6 +9,7 @@ import 'package:flutter_pcm_sound/flutter_pcm_sound.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:record/record.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../models/face_metrics.dart';
@@ -102,6 +103,14 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
                                           // doesn\'t pop off the
                                           // instant the timer hits 0.
   }
+
+  /// Per-frame samples of eyeContactScore captured during the 12s
+  /// drill. Averaged on lesson close to produce the AURA pillar
+  /// score the Today\'s Ascension card reads. Without this Selene
+  /// completions never ticked off AURA and the home counter sat
+  /// at 0 / 3 no matter how many drills the apprentice ran.
+  final List<double> _drillEcsSamples = [];
+  bool _persistedThisRun = false;
 
   // UI state.
   bool _disposed = false;
@@ -224,10 +233,44 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
         }
       }
       _wasBlinking = isClosed;
+      // Sample eye-contact score during the drill so we can compute
+      // the AURA pillar score at lesson close. Bound the buffer so
+      // an extended replay session doesn\'t balloon memory.
+      if (_drillActive) {
+        _drillEcsSamples.add(m.eyeContactScore);
+        if (_drillEcsSamples.length > 600) {
+          _drillEcsSamples.removeRange(0, _drillEcsSamples.length - 600);
+        }
+      }
       setState(() => _metrics = m);
     } catch (_) {} finally {
       _processing = false;
     }
+  }
+
+  /// Stamp today\'s AURA completion so the Ascend tab\'s Today\'s
+  /// Ascension card ticks AURA off. Mirrors the scripted lesson\'s
+  /// _persistAura in eyes_session_screen.dart so both lesson paths
+  /// feed the same counter the home screen reads. Idempotent across
+  /// AGAIN replays inside the same session via _persistedThisRun —
+  /// the first close stamps the day, subsequent replays still
+  /// recompute the score but don\'t spam writes.
+  Future<void> _persistAuraCompletion() async {
+    if (_drillEcsSamples.isEmpty) return;
+    final avgEcs = _drillEcsSamples.reduce((a, b) => a + b) /
+        _drillEcsSamples.length;
+    final score = (avgEcs * 100).round().clamp(0, 100);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final prev = prefs.getInt('aura_score') ?? 0;
+      if (score > prev) await prefs.setInt('aura_score', score);
+      final now = DateTime.now();
+      await prefs.setInt(
+        'aura_done_ymd',
+        now.year * 10000 + now.month * 100 + now.day,
+      );
+      _persistedThisRun = true;
+    } catch (_) {}
   }
 
   bool _isBlinking(FaceMetrics m) {
@@ -381,6 +424,11 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
     final beats = SeleneGaze.theLockBeats;
     if (_beatIdx >= beats.length) {
       if (mounted) setState(() => _lessonDone = true);
+      // Lesson reached close → stamp AURA completion so the home
+      // tab\'s Today\'s Ascension counter ticks up. Fire-and-forget;
+      // failure here must never block the UI.
+      // ignore: discarded_futures
+      _persistAuraCompletion();
       return;
     }
     _session.sendTextMessage(beats[_beatIdx]);
@@ -391,13 +439,15 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
   /// preamble. He already heard those; another rep means another
   /// lock. Resets the drill clock + blink count, jumps to BEAT 4
   /// (THE CALL + DRILL), and lets the auto-advance run debrief →
-  /// read-her-back → close again.
+  /// read-her-back → close again. We keep _persistedThisRun true
+  /// across replays so we don\'t double-stamp the same day.
   void _runAgain() {
     if (!mounted) return;
     HapticFeedback.mediumImpact();
     setState(() {
       _drillStartedAt = null;
       _drillBlinks    = 0;
+      _drillEcsSamples.clear();
       _lessonDone     = false;
       _beatIdx        = 3; // 0-indexed — beat 4 is "THE CALL + DRILL"
     });
