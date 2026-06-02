@@ -26,7 +26,17 @@ import '../../theme/auralay_app_colors.dart';
 class FixationDots extends StatelessWidget {
   /// True when the gaze engine has locked on — eyes "wake up."
   final bool isLocked;
-  const FixationDots({super.key, required this.isLocked});
+  /// True only during the 12-second drill phase. When false the entire
+  /// eye-target overlay is hidden so the apprentice\'s own face is
+  /// clean during intro / theory / debrief / close beats — no more
+  /// "whose face is on screen?" confusion. Selene\'s eyes only appear
+  /// when she\'s actually calling the lock.
+  final bool active;
+  const FixationDots({
+    super.key,
+    required this.isLocked,
+    this.active = true,
+  });
 
   /// Asset path the lesson-eyes image is loaded from. Single source
   /// of truth — change here, every gaze lesson updates.
@@ -41,6 +51,9 @@ class FixationDots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Hidden outside the drill phase — clean camera view for intro,
+    // theory, debrief, close. Only the lock itself surfaces Selene\'s eyes.
+    if (!active) return const SizedBox.shrink();
     // CRITICAL: IgnorePointer wraps the WHOLE widget so the
     // Positioned.fill we sit inside doesn't absorb taps. Without
     // this every button on the session screens becomes dead.

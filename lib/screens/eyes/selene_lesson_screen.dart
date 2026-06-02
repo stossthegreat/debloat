@@ -88,6 +88,21 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
   DateTime? _drillStartedAt;
   static const int _drillSeconds = 12;
 
+  /// True only while the 12s lock drill is actively running. Drives
+  /// whether Selene\'s cinematic eyes overlay is rendered — they
+  /// appear ONLY for the lock, never for intro / theory / debrief /
+  /// close. Without this the female-eyes asset sat over the
+  /// apprentice\'s face for the whole session and read as "whose
+  /// face am I looking at?"
+  bool get _drillActive {
+    if (_drillStartedAt == null) return false;
+    final elapsed =
+        DateTime.now().difference(_drillStartedAt!).inMilliseconds / 1000.0;
+    return elapsed < _drillSeconds + 1.0; // 1s tail so the overlay
+                                          // doesn\'t pop off the
+                                          // instant the timer hits 0.
+  }
+
   // UI state.
   bool _disposed = false;
   bool _connecting = true;
@@ -360,15 +375,33 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
   /// Fire the next lesson beat as its own response.create. Called
   /// once at session.created (beat 1), then on every ResponseDone
   /// (beats 2-7). Stops auto-advancing after the close so Selene
-  /// listens for him at the end.
+  /// listens for him at the end — and so the AGAIN / NEXT controls
+  /// surface for him to pick.
   void _sendNextBeat() {
     final beats = SeleneGaze.theLockBeats;
     if (_beatIdx >= beats.length) {
-      _lessonDone = true;
+      if (mounted) setState(() => _lessonDone = true);
       return;
     }
     _session.sendTextMessage(beats[_beatIdx]);
     _beatIdx++;
+  }
+
+  /// AGAIN — restart the rep without the intro / theory / moves
+  /// preamble. He already heard those; another rep means another
+  /// lock. Resets the drill clock + blink count, jumps to BEAT 4
+  /// (THE CALL + DRILL), and lets the auto-advance run debrief →
+  /// read-her-back → close again.
+  void _runAgain() {
+    if (!mounted) return;
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _drillStartedAt = null;
+      _drillBlinks    = 0;
+      _lessonDone     = false;
+      _beatIdx        = 3; // 0-indexed — beat 4 is "THE CALL + DRILL"
+    });
+    _sendNextBeat();
   }
 
   // ─── PCM playback feed ─────────────────────────────────────────────
@@ -507,9 +540,15 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
             // Only the eye band stays visible; the apprentice's own
             // camera face is suppressed to a barely-there silhouette.
             const Positioned.fill(child: _LiveVignette()),
-            // The eye target — Selene's eyes.
+            // The eye target — Selene's eyes. Only surfaces during the
+            // 12s lock drill; hidden for intro / theory / debrief / close
+            // so the apprentice\'s camera view stays clean and there\'s
+            // no overlap with his own face during the teaching beats.
             Positioned.fill(
-              child: FixationDots(isLocked: _metrics.isGoodEyeContact),
+              child: FixationDots(
+                isLocked: _metrics.isGoodEyeContact,
+                active:   _drillActive,
+              ),
             ),
 
             // Top chrome — THE GAZE / lesson chip / live indicator / close.
@@ -612,6 +651,35 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
                       ],
                     ),
                   ),
+                ),
+              ),
+
+            // AGAIN / NEXT — surfaces only after the close beat (BEAT 7).
+            // Selene says "Again. Or next." and now there\'s an actual
+            // control. Voice picks up nothing reliably mid-room, so the
+            // tap is the foolproof path. AGAIN re-runs the drill only
+            // (skips intro/theory). NEXT closes the lesson cleanly.
+            if (_lessonDone)
+              Positioned(
+                left: 24, right: 24, bottom: 28,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _SeleneCta(
+                        label: 'AGAIN',
+                        filled: true,
+                        onTap: _runAgain,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _SeleneCta(
+                        label: 'NEXT',
+                        filled: false,
+                        onTap: _closeScreen,
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -729,6 +797,61 @@ class _LiveVignette extends StatelessWidget {
 /// Top-level helper — opens Selene's live lesson 1.
 GazeLesson seleneLesson1() =>
     GazeSyllabus.byId('the_lock');
+
+/// Big bottom-row CTA — appears as the AGAIN / NEXT pair when
+/// Selene\'s lesson reaches the close beat. Filled accent for the
+/// primary action (AGAIN), outlined for the secondary (NEXT).
+/// Kept local so it can stay tight to the lesson\'s visual language
+/// without leaking through to other screens.
+class _SeleneCta extends StatelessWidget {
+  final String label;
+  final bool filled;
+  final VoidCallback onTap;
+  const _SeleneCta({
+    required this.label,
+    required this.filled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () { HapticFeedback.mediumImpact(); onTap(); },
+        borderRadius: BorderRadius.circular(100),
+        child: Container(
+          height: 56,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: filled ? AppColors.accent : Colors.transparent,
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(
+              color: filled
+                ? AppColors.accent
+                : AppColors.accent.withValues(alpha: 0.55),
+              width: 1.4,
+            ),
+            boxShadow: filled
+              ? [BoxShadow(
+                  color: AppColors.accent.withValues(alpha: 0.45),
+                  blurRadius: 18, offset: const Offset(0, 6))]
+              : null,
+          ),
+          child: Text(
+            label,
+            style: AppTypography.label.copyWith(
+              color: filled ? Colors.black : AppColors.accent,
+              fontSize: 13,
+              letterSpacing: 3.2,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// Aspect-aware camera wrapper. Mirrors the scripted lesson\'s
 /// _CameraLayer so the apprentice\'s head doesn\'t get stretched
