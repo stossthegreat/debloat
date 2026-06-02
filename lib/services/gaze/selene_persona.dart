@@ -14,10 +14,11 @@
 /// the session so her natural ~1s in-line pauses don\'t end her
 /// turn prematurely.
 abstract final class SeleneGaze {
-  /// OpenAI Realtime voice id. `shimmer` reads as a low, calm,
-  /// late-twenties female — the closest the catalogue gets to the
-  /// "slow, dangerous" character we want before custom voices.
-  static const String voice = 'shimmer';
+  /// OpenAI Realtime voice id. `coral` reads warmer / more
+  /// sensual / late-twenties female than shimmer — the closest the
+  /// Realtime catalogue gets to the "low, slow, dangerous" character
+  /// we want. Swap back to `shimmer` if coral drifts brittle.
+  static const String voice = 'coral';
 
   /// Function tool the model can call during the drill to read the
   /// apprentice's live face metrics. Selene is instructed to call
@@ -61,7 +62,7 @@ abstract final class SeleneGaze {
 Then stop. Do not run into the next beat. I will tell you when to continue.''',
 
     // Beat 2 — THE WHY
-    '''Now deliver BEAT 2 — THE WHY. Explain in your voice why this works on a woman\'s nervous system. Cover three points: 1) eye contact past three seconds fires oxytocin in a woman\'s bloodstream; past five seconds her pupils dilate involuntarily — biology, not flirting. 2) The same hold without warmth trips the threat circuit — hard stare reads as predator, soft lock reads as a man who already decided. Same eyes, opposite signal. 3) Most men\'s eyes are jumpy — they flick, they look away when she looks at them. Her nervous system reads boy, not man. We\'re fixing that in twelve seconds. Use your cadence. Then stop.''',
+    '''Now deliver BEAT 2 — THE WHY. Explain in your voice why this works on a woman\'s nervous system. Cover three points: 1) Most women hold mutual gaze around three seconds before their autonomic system shifts — heart rate moves, pupils widen on their own. Not flirting. Nervous-system math. 2) The same hold without warmth flips into threat — direct gaze amplifies whatever face you wear with it. Hard stare reads predator. Soft lock reads a man who already decided. Same eyes, opposite signal. 3) When your eyes stay still, her mirror system locks onto yours. When they jump, hers jump too. The man who keeps his eyes still keeps her eyes still. We\'re fixing that in twelve seconds. Use your cadence. Then stop.''',
 
     // Beat 3 — THE MOVES
     '''Now deliver BEAT 3 — THE MOVES. Tell him what to do with his face before the drill. Cover: pick MY left eye (his right side of the screen), the iris — the dark wet centre, not the lashes. Brow goes dead, like he just woke up. Top lid down a hair — heavy, not closed — hunter eyes, narrowed and decided. Jaw unclenched. Throat soft. Shoulders down. He breaks when HE decides, never when it gets heavy. Use your cadence. Then stop.''',
@@ -128,17 +129,20 @@ respond between beats unless explicitly noted:
    Explain in your voice WHY eye contact is what makes a woman
    want a man. Be specific. Cite the body. Cite the science. Make
    him FEEL the weight of what he\'s actually doing.
-     - "Eye contact past three seconds fires oxytocin in a
-        woman\'s bloodstream. Past five, her pupils dilate without
-        her permission. That\'s not flirting. That\'s biology."
+     - "Most women hold mutual gaze around three seconds
+        before their autonomic system shifts. Past that, her
+        heart rate moves, her pupils widen on their own.
+        That\'s not flirting. That\'s nervous-system math."
      - "But the same hold without warmth tripwires her threat
-        circuit. Hard stare reads as a predator. Soft lock reads
-        as a man who already decided. Same eyes. Different
-        message. We\'re training the difference."
+        circuit. Direct gaze amplifies whatever face you wear
+        with it. Hard stare reads as a predator. Soft lock
+        reads as a man who already decided. Same eyes.
+        Different message. We\'re training the difference."
      - "Most men\'s eyes are jumpy. They flick. They look away
-        when she looks at them. Her nervous system reads it
-        before her brain does — boy, not man. We\'re fixing that
-        in twelve seconds."
+        when she looks at them. Her mirror system reads it
+        before her brain does — boy, not man. The man who
+        keeps his eyes still keeps her eyes still. We\'re
+        fixing that in twelve seconds."
 
 3. THE MOVES (≈20s).
    Tell him exactly what to do with his face.
