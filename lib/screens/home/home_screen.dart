@@ -12,6 +12,7 @@ import '../../services/protocol_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/mirrorly_components.dart';
+import '../../widgets/report/aspect_protocol_cards.dart';
 import '../eyes/eyes_tab_screen.dart';
 import '../game/game_tab_screen.dart';
 import 'ascend_screen.dart';
@@ -76,6 +77,45 @@ class _HomeScreenState extends State<HomeScreen> {
     final latest   = await LocalStoreService.latestScan();
     final protocol = await ProtocolService.loadActive();
     final prefs    = await SharedPreferences.getInstance();
+
+    // Bro: "why are streaks not showing when I\'ve done all three
+    // lessons." Compute the TRIPLE STREAK — consecutive days where
+    // all 3 pillars (LOOKS / AURA / GAME) were completed. The old
+    // _dayStreak only read protocol.effectiveStreak, which is a
+    // per-protocol streak — it didn\'t know about pillar completion
+    // at all. We now stamp triple_streak_count on the first reload
+    // each day where all 3 are done; the home masthead reads
+    // max(protocol streak, triple streak) so whichever the user
+    // earned is what they see.
+    final today    = _todayYmd();
+    final looksOk  = (prefs.getInt('looks_done_ymd') ?? 0) == today;
+    final auraOk   = (prefs.getInt('aura_done_ymd')  ?? 0) == today;
+    final gameOk   = (prefs.getInt('game_done_ymd')  ?? 0) == today;
+    final allThree = looksOk && auraOk && gameOk;
+    int tripleStreak = prefs.getInt('triple_streak_count') ?? 0;
+    final lastTripleYmd = prefs.getInt('triple_streak_last_ymd') ?? 0;
+    if (allThree && lastTripleYmd != today) {
+      // Update once per day. If yesterday was a hit, continue;
+      // otherwise reset to 1 (first day of a new streak).
+      final yYesterdayDate = DateTime.now().subtract(const Duration(days: 1));
+      final yesterdayYmd = yYesterdayDate.year * 10000 +
+          yYesterdayDate.month * 100 + yYesterdayDate.day;
+      tripleStreak = (lastTripleYmd == yesterdayYmd) ? tripleStreak + 1 : 1;
+      await prefs.setInt('triple_streak_count',   tripleStreak);
+      await prefs.setInt('triple_streak_last_ymd', today);
+    } else if (!allThree && lastTripleYmd != today) {
+      // User hasn\'t hit 3/3 today AND yesterday wasn\'t a hit
+      // either — streak is dead. Reset so we don\'t falsely
+      // resurrect a stale count.
+      final yYesterdayDate = DateTime.now().subtract(const Duration(days: 1));
+      final yesterdayYmd = yYesterdayDate.year * 10000 +
+          yYesterdayDate.month * 100 + yYesterdayDate.day;
+      if (lastTripleYmd != yesterdayYmd && lastTripleYmd != 0) {
+        tripleStreak = 0;
+        await prefs.setInt('triple_streak_count', 0);
+      }
+    }
+
     if (!mounted) return;
     setState(() {
       _latest   = latest;
@@ -86,12 +126,14 @@ class _HomeScreenState extends State<HomeScreen> {
       _looksScore = ((latest?.score ?? 0) / 10).round().clamp(0, 10);
       _auraScore  = ((prefs.getInt('aura_score')  ?? 0) / 10).round().clamp(0, 10);
       _gameScore  = ((prefs.getInt('game_score')  ?? 0) / 10).round().clamp(0, 10);
-      _dayStreak  = protocol?.effectiveStreak
-          ?? (prefs.getInt('streak_days') ?? 0);
-      final today = _todayYmd();
-      _looksDoneToday = (prefs.getInt('looks_done_ymd') ?? 0) == today;
-      _auraDoneToday  = (prefs.getInt('aura_done_ymd')  ?? 0) == today;
-      _gameDoneToday  = (prefs.getInt('game_done_ymd')  ?? 0) == today;
+      // _dayStreak is the bigger of the protocol streak and the
+      // triple-pillar streak — whichever the user actually
+      // earned, that\'s what the masthead chip displays.
+      final protocolStreak = protocol?.effectiveStreak ?? 0;
+      _dayStreak = protocolStreak > tripleStreak ? protocolStreak : tripleStreak;
+      _looksDoneToday = looksOk;
+      _auraDoneToday  = auraOk;
+      _gameDoneToday  = gameOk;
     });
   }
 
@@ -263,6 +305,26 @@ class _ScanHubTab extends StatelessWidget {
                   child: _ActiveProtocolCard(protocol: protocol!),
                 ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
               ],
+
+              const SizedBox(height: Sp.lg),
+
+              // ── 60-day aspect protocols — SKIN / JAW / DEBLOAT /
+              //    HAIR. Bro: "where are the streak protocols, they
+              //    should show on my looks tab under scan button."
+              //    These were only on the report page before. Adding
+              //    them to the Looks tab so a returning user can pick
+              //    a protocol any time without needing to re-scan.
+              //    Each card has the same daily-plan teaser + START
+              //    THIS PLAN CTA as the report version; tapping
+              //    routes to /protocol with the right axis and
+              //    auto-starts via ProtocolService.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+                child: AspectProtocolCards(
+                  geometry:       latest!.geometry,
+                  savedImagePath: latest!.capturedImagePath,
+                ),
+              ).animate().fadeIn(delay: 140.ms, duration: 400.ms),
 
               const SizedBox(height: Sp.md),
 
