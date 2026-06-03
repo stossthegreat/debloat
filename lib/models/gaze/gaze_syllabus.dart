@@ -43,10 +43,15 @@ abstract final class GazeSyllabus {
             'decide. Never sooner.',
       ],
       instruct: [
-        'One iris. Brow dead. Twelve seconds. Go.',
+        'One iris. Brow dead. Four seconds. Go.',
       ],
-      drillSeconds: 12,
-      targetBlinks: 3,
+      // Binetti 2016: 3.3s mean preferred mutual gaze (95% CI 3.2-3.4)
+      // across 498 participants from 56 countries. Moore 1985:
+      // female-solicitation glance pattern is 2-3s × 3 bouts. Four
+      // seconds sits at the upper edge of comfortable for THE LOCK —
+      // first contact, decisive, not creepy.
+      drillSeconds: 4,
+      targetBlinks: 1,
       weights: {
         // No smileControl on THE LOCK — this drill is pure hold, the
         // mouth is irrelevant. Re-distributed across the three axes
@@ -85,8 +90,11 @@ abstract final class GazeSyllabus {
       instruct: [
         'Lock. Drop slow. Down only. Go.',
       ],
-      drillSeconds: 12,
-      targetBlinks: 3,
+      // 5s = lock-to-her-eye for ~2s, slow drop down to mouth for ~1s,
+      // ~2s on the lip, climb back. The journey is the move; rushing
+      // kills it. 12s was holding-style stare-off territory.
+      drillSeconds: 5,
+      targetBlinks: 2,
       weights: {
         GazeDimension.eyeStability: 0.35,
         GazeDimension.blinkControl: 0.10,
@@ -123,8 +131,12 @@ abstract final class GazeSyllabus {
       instruct: [
         'Brow dead. Lids half. Mouth corner. Lock. Go.',
       ],
-      drillSeconds: 12,
-      targetBlinks: 4,
+      // 5s is enough to set the smoulder and hold it — past that it
+      // tips into "less trustworthy" territory (Tracy / Live Science:
+      // heavy-lid gaze reads as sexually-interested AND less
+      // trustworthy at sustained durations).
+      drillSeconds: 5,
+      targetBlinks: 2,
       weights: {
         GazeDimension.eyeStability: 0.35,
         GazeDimension.blinkControl: 0.10,
@@ -159,8 +171,11 @@ abstract final class GazeSyllabus {
       instruct: [
         'Caught. Hold. One mouth corner. Go.',
       ],
-      drillSeconds: 10,
-      targetBlinks: 3,
+      // CAUGHT is by definition a brief beat — she catches you, you
+      // hold past comfortable (~2-3s past the catch instant) and the
+      // smile arrives. 3s captures the whole micro-arc.
+      drillSeconds: 3,
+      targetBlinks: 1,
       weights: {
         GazeDimension.eyeStability: 0.40,
         GazeDimension.blinkControl: 0.10,
@@ -233,7 +248,10 @@ abstract final class GazeSyllabus {
       instruct: [
         'Lock. Slow blink. Heavy. Go.',
       ],
-      drillSeconds: 12,
+      // 6s = lock + two slow blinks with the lock held between. Long
+      // enough to practise the cadence, short enough not to be a
+      // stare-off.
+      drillSeconds: 6,
       targetBlinks: 2,
       weights: {
         GazeDimension.eyeStability: 0.35,
@@ -270,8 +288,11 @@ abstract final class GazeSyllabus {
       instruct: [
         'Left eye. Right eye. Mouth — slow. Back up. Go.',
       ],
-      drillSeconds: 12,
-      targetBlinks: 3,
+      // Sophie Rose Lloyd 17M-view canonical timing: left eye ~1s →
+      // lips ~2s → right eye ~1s. Plus a half-beat re-entry. 5s is
+      // the budget for one clean triangle.
+      drillSeconds: 5,
+      targetBlinks: 1,
       weights: {
         GazeDimension.eyeStability: 0.30,
         GazeDimension.blinkControl: 0.10,
@@ -344,8 +365,11 @@ abstract final class GazeSyllabus {
       instruct: [
         'Find her. Hold past comfort. Break first. Go.',
       ],
-      drillSeconds: 10,
-      targetBlinks: 3,
+      // ENTRANCE is a cross-room initiation — Moore 1985\'s ≤3s
+      // glance is the documented signal. 4s gives a half-beat past
+      // comfortable before you break first.
+      drillSeconds: 4,
+      targetBlinks: 1,
       weights: {
         GazeDimension.eyeStability: 0.40,
         GazeDimension.blinkControl: 0.10,

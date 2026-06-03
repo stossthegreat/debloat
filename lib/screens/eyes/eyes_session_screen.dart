@@ -459,8 +459,15 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
   Future<void> _speak(String text) async {
     if (_disposed) return;
     try {
+      // Female voice — Selene — replacing Lucien on the scripted
+      // gaze lessons per bro\'s call: "put her voice into the eye
+      // contact only lessons. Make sure those are using the real
+      // seductive timings etc." The scripted flow is the proven
+      // pedagogy (chunked TTS + face metrics + verdict). The live
+      // realtime Selene experiment is commented out on the Aura
+      // tab for now — see _SeleneLiveCard in eyes_tab_screen.dart.
       final bytes =
-          await AuralayApi.diabloSpeak(text: text, mode: 'lucien');
+          await AuralayApi.diabloSpeak(text: text, mode: 'selene');
       if (_disposed || !mounted) return;
       if (bytes != null && bytes.isNotEmpty) {
         await _player.play(BytesSource(bytes, mimeType: 'audio/mpeg'));

@@ -193,16 +193,26 @@ class _EyesTabScreenState extends State<EyesTabScreen> {
 
             const SizedBox(height: Sp.lg),
 
-            // ── SELENE — live AI lesson entry. Tap launches THE LOCK
-            //    as a live realtime session.
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-              child: _SeleneLiveCard(
-                onTap: () => context.push('/eyes/live/the_lock'),
-              ),
-            ).animate().fadeIn(delay: 120.ms, duration: 400.ms),
-
-            const SizedBox(height: Sp.lg),
+            // ── SELENE — LIVE realtime experiment — COMMENTED OUT
+            //
+            // Bro\'s call after testing build 86: the realtime
+            // architecture (timed sub-reps + Flutter conductor + model
+            // performing cues) doesn\'t deliver the masterclass feel
+            // — feels stop-start, rushed, not deliberate. Her VOICE is
+            // now wired into the scripted gaze lessons below
+            // (eyes_session_screen.dart — mode: \'selene\'), which
+            // have the proven chunked-narration flow. Live Selene
+            // moves to a v2 lab — not deleted, just gated off the
+            // Aura tab until the architecture catches up.
+            //
+            // Padding(
+            //   padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+            //   child: _SeleneLiveCard(
+            //     onTap: () => context.push(\'/eyes/live/the_lock\'),
+            //   ),
+            // ).animate().fadeIn(delay: 120.ms, duration: 400.ms),
+            //
+            // const SizedBox(height: Sp.lg),
 
             // ── PART ONE — Eye Contact (gaze training).
             // Card is intentionally NOT shown as locked even after the
@@ -238,7 +248,13 @@ class _EyesTabScreenState extends State<EyesTabScreen> {
                         ),
                         if (upcoming.isNotEmpty) ...[
                           const SizedBox(height: 10),
-                          _NextLessonsStrip(lessons: upcoming),
+                          // Lessons in the strip are now tappable —
+                          // pick any of the 12 to start it directly,
+                          // not just the "next" auto-pick.
+                          _NextLessonsStrip(
+                            lessons: upcoming,
+                            onPick:  _onEyeContactBegin,
+                          ),
                         ],
                       ],
                     ),
@@ -345,49 +361,62 @@ class _ProgressStrip extends StatelessWidget {
 }
 
 // ─── Next-lessons strip ─────────────────────────────────────────────
-// Horizontal scroll of every remaining lesson as small locked chips.
-// Lets the user see WHAT'S COMING without inflating card height the
-// way a full vertical list does. Chips aren't tappable — they're
-// previews, not entry points; tapping the main play button always
-// runs the current lesson and the rest follow naturally.
+// Horizontal scroll of every remaining lesson as TAPPABLE chips.
+// Bro\'s call: "let users choose which lesson they want when they
+// want." Each chip is a chip-shaped button — tap fires the start
+// handler with that lesson, same entry point the main play button
+// uses for the current pick. Lock icon removed (it lied — taps
+// always work; the gating happens in the start handler against the
+// paywall).
 
 class _NextLessonsStrip extends StatelessWidget {
-  final List<GazeLesson> lessons;
-  const _NextLessonsStrip({required this.lessons});
+  final List<GazeLesson>            lessons;
+  final ValueChanged<GazeLesson>    onPick;
+  const _NextLessonsStrip({required this.lessons, required this.onPick});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 30,
+      height: 32,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: lessons.length,
         separatorBuilder: (_, __) => const SizedBox(width: 6),
         itemBuilder: (_, i) {
           final l = lessons[i];
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.surface2,
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: AppColors.surface3, width: 1),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${l.number.toString().padLeft(2, '0')} · ${l.name}',
-                  style: AppTypography.label.copyWith(
-                    color: AppColors.textTertiary,
-                    fontSize: 10.5,
-                    letterSpacing: 1.4,
-                    fontWeight: FontWeight.w700,
-                  ),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onPick(l);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppColors.surface2,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: AppColors.surface3, width: 1),
                 ),
-                const SizedBox(width: 6),
-                const Icon(Icons.lock_rounded,
-                    size: 11, color: AppColors.textMuted),
-              ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${l.number.toString().padLeft(2, '0')} · ${l.name}',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.textPrimary,
+                        fontSize: 10.5,
+                        letterSpacing: 1.4,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(Icons.play_arrow_rounded,
+                        size: 12, color: AppColors.red),
+                  ],
+                ),
+              ),
             ),
           );
         },
