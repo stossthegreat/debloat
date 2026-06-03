@@ -85,31 +85,83 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
   static const int _feedFrames = 2400;        // 100ms @ 24kHz
   static const int _pcmStallMs = 500;
 
-  // Drill clock — starts the FIRST time Selene calls read_gaze.
+  // Drill clock — starts when Beat 4 fires. Used by _onFunctionCall
+  // to compute secondsElapsed / secondsRemaining for Selene\'s
+  // coaching cues during the lock. Per-lesson because different
+  // lessons run different drill lengths (THE LOCK = 12s, THE SILENT
+  // HOLD = 25s, etc).
   DateTime? _drillStartedAt;
-  static const int _drillSeconds = 12;
+  int get _drillSeconds => widget.lesson.drillSeconds;
 
-  /// Flutter-controlled drill phase flag. Goes TRUE the instant we
-  /// fire Beat 4 (THE CALL + DRILL) — not on first read_gaze, because
-  /// the realtime model isn\'t reliable about calling the tool right
-  /// away. Goes FALSE when the 12s timer expires. Drives BOTH the
-  /// eyes overlay visibility AND the auto-advance gate (responses
-  /// during the drill phase don\'t bump _beatIdx — the timer does).
-  bool _inDrillPhase = false;
+  // ─── Lesson conductor — Flutter directs, model performs ──────────
+  //
+  // Every beat in SeleneGaze.theLockBeats is a contract: a cue +
+  // a Flutter-side floor (minimum wall-clock time) + an eyes-overlay
+  // state. The conductor enforces all three so the lesson cannot
+  // rush.
+
+  /// Index of the NEXT beat to fire on _sendNextBeat. Post-increments
+  /// inside that method so this points one past the currently active
+  /// beat.
+  int _beatIdx = 0;
+
+  /// Wall-clock when the currently active beat fired. Used to
+  /// reason about elapsed phase time. Null between beats.
+  DateTime? _phaseStartedAt;
+
+  /// Flips true when the realtime model emits ResponseDone for the
+  /// current beat. Required (alongside _phaseFloorMet) before we
+  /// will advance to the next beat.
+  bool _phaseResponseDone = false;
+
+  /// Flips true when the floor timer for the current beat expires.
+  /// Required (alongside _phaseResponseDone) before we will
+  /// advance. This is what stops the lesson from racing — even if
+  /// the model rips through its lines in 5 seconds, Flutter holds
+  /// the beat on screen until the floor for that beat elapses.
+  bool _phaseFloorMet = false;
+
+  /// Per-beat timer that flips _phaseFloorMet to true after the
+  /// beat\'s floorMs elapses. Cancelled and re-armed on every beat.
+  Timer? _phaseFloorTimer;
+
+  /// The 12-second DRILL clock. Hard-gated: when Beat 4 fires this
+  /// starts, and only this timer is allowed to advance the lesson
+  /// to Beat 5 — ResponseDones during the drill are ignored entirely
+  /// (the model is firing short coaching lines via read_gaze and
+  /// each one would otherwise fire a ResponseDone).
   Timer? _drillTimer;
-  /// Inter-beat advance timer. After each non-drill ResponseDone we
-  /// wait ~2.5s in deliberate silence before firing the next beat.
-  /// This is what kills the "bouncing too fast" feel — the model
-  /// stops mid-sentence and Flutter, not the model, decides when the
-  /// next line lands.
-  Timer? _advanceTimer;
-  static const int _interBeatDelayMs = 2500;
 
-  /// True while the eyes overlay should be on screen. Driven by the
-  /// Flutter-side drill phase flag (set on Beat 4 fire, cleared by
-  /// the 12s timer) — does NOT depend on the model calling read_gaze
-  /// because the model can\'t be trusted to fire the tool in time.
-  bool get _drillActive => _inDrillPhase;
+  /// True while Beat 4 (the lock itself) is the active phase. Drives
+  /// both the auto-advance suppression and the eyes overlay being
+  /// pinned on. Set by _sendNextBeat when Beat 4 fires, cleared by
+  /// _drillTimer when 12 wall-clock seconds elapse.
+  bool _inDrillPhase = false;
+
+  /// True while Selene\'s cinematic eyes asset should be visible.
+  /// Driven by [SeleneBeat.showEyes] on the active beat — Beat 3
+  /// (THE MOVES — "pick my left eye, the iris") and Beat 4 (the
+  /// lock itself) both show them. Every other beat clears the
+  /// overlay so the apprentice\'s own face is clean while she
+  /// teaches.
+  bool _showEyes = false;
+
+  /// Final breath of silence between a beat ending and the next one
+  /// firing, after both ResponseDone AND floor are met. Adds a
+  /// deliberate "she finished — now there is a beat — now next"
+  /// rhythm so the lesson never bounces line-to-line.
+  Timer? _advanceTimer;
+  static const int _interBeatBreathMs = 1500;
+
+  /// The Selene beats for THIS lesson, generated once on
+  /// connect from [SeleneGaze.beatsFor]. Every lesson in
+  /// [GazeSyllabus] now flows through the same beat structure with
+  /// content rendered from its own pedagogy (story / demo / instruct
+  /// / correction / drillSeconds), so THE LOCK, THE DROP, SOFT EYES,
+  /// CAUGHT, etc. all run on the identical conductor without per-
+  /// lesson code branches here.
+  late final List<SeleneBeat> _beats;
+  late final GazeLesson? _nextLesson;
 
   /// Per-frame samples of eyeContactScore captured during the 12s
   /// drill. Averaged on lesson close to produce the AURA pillar
@@ -147,6 +199,13 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
   @override
   void initState() {
     super.initState();
+    // Build the Selene beat arc for THIS lesson + look up the next
+    // lesson in the syllabus so Beat 7\'s close line references it.
+    final all = GazeSyllabus.all;
+    final idx = all.indexWhere((l) => l.id == widget.lesson.id);
+    _nextLesson = (idx >= 0 && idx < all.length - 1) ? all[idx + 1] : null;
+    _beats = SeleneGaze.beatsFor(widget.lesson, nextLesson: _nextLesson);
+
     _loopAnim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2400),
@@ -169,6 +228,7 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
     _pcmWatchdog?.cancel();
     _drillTimer?.cancel();
     _advanceTimer?.cancel();
+    _phaseFloorTimer?.cancel();
     _micSub?.cancel();
     _eventSub?.cancel();
     // ignore: discarded_futures
@@ -424,18 +484,15 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
     _sendNextBeat();
   }
 
-  /// Fire the next lesson beat as its own response.create. Called
-  /// once at session.created (beat 1), then on every ResponseDone
-  /// — but with an enforced 2.5s silent gap between teaching beats
-  /// so Selene doesn\'t "bounce" line-to-line. Beat 4 (THE CALL +
-  /// DRILL) is the exception: when it fires we set the drill phase
-  /// flag and start the 12-second Flutter timer, and only when the
-  /// timer expires does the lesson advance to BEAT 5 (DEBRIEF).
-  /// This means the actual 12 seconds of locked gaze are real time
-  /// the apprentice spends locking, not the gap between two model
-  /// responses 200ms apart.
+  /// Fire the next beat in Selene\'s lesson arc. Each beat is a
+  /// [SeleneBeat] contract: a cue + a wall-clock floor + an eyes-
+  /// overlay state. Flutter is the conductor — the model performs
+  /// the cue, Flutter holds the lesson on the beat until BOTH the
+  /// floor has elapsed AND the model has emitted ResponseDone.
+  /// Beat 4 is the exception: it\'s a hard 12-second wall-clock
+  /// drill, advanced by [_drillTimer] only.
   void _sendNextBeat() {
-    final beats = SeleneGaze.theLockBeats;
+    final beats = _beats;
     if (_beatIdx >= beats.length) {
       if (mounted) setState(() => _lessonDone = true);
       // Lesson reached close → stamp AURA completion so the home
@@ -446,37 +503,71 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
       return;
     }
 
-    // Beat 4 (0-indexed = 3) is THE CALL + DRILL. Open the drill
-    // phase BEFORE firing so the eyes overlay is on screen the
-    // instant Selene says "twelve seconds. begin." The 12s timer
-    // is what advances us to BEAT 5 — not ResponseDone.
-    final firingDrillBeat = (_beatIdx == 3);
-    if (firingDrillBeat) {
-      _drillStartedAt = DateTime.now();
-      _drillEcsSamples.clear();
-      _drillTimer?.cancel();
-      if (mounted) setState(() => _inDrillPhase = true);
-      _drillTimer = Timer(const Duration(seconds: _drillSeconds), () {
-        if (!mounted) return;
-        setState(() => _inDrillPhase = false);
-        _sendNextBeat();
+    final beat = beats[_beatIdx];
+    final isDrill = (_beatIdx == 3); // Beat 4 (0-indexed) is THE DRILL.
+
+    // Reset per-beat state BEFORE firing so a stray ResponseDone
+    // from the previous beat can\'t accidentally advance us.
+    _phaseStartedAt    = DateTime.now();
+    _phaseResponseDone = false;
+    _phaseFloorMet     = false;
+    _phaseFloorTimer?.cancel();
+    _advanceTimer?.cancel();
+
+    if (mounted) {
+      setState(() {
+        _showEyes     = beat.showEyes;
+        _inDrillPhase = isDrill;
       });
     }
 
-    _session.sendTextMessage(beats[_beatIdx]);
+    if (isDrill) {
+      // Hard 12-second wall-clock drill. ResponseDone during this
+      // phase is ignored; the timer is the only thing that advances.
+      _drillStartedAt = DateTime.now();
+      _drillEcsSamples.clear();
+      _drillTimer?.cancel();
+      _drillTimer = Timer(Duration(seconds: _drillSeconds), () {
+        if (!mounted) return;
+        setState(() {
+          _inDrillPhase = false;
+          _showEyes     = false;
+        });
+        _sendNextBeat();
+      });
+    } else {
+      // Teaching beat. Floor timer is what enforces "this beat must
+      // stay on screen at least floorMs." Combined with the
+      // ResponseDone gate in _onEvent, the lesson cannot advance
+      // until BOTH are met.
+      _phaseFloorTimer = Timer(
+        Duration(milliseconds: beat.floorMs),
+        () {
+          if (!mounted) return;
+          _phaseFloorMet = true;
+          _tryAdvance();
+        },
+      );
+    }
+
+    _session.sendTextMessage(beat.cue);
     _beatIdx++;
   }
 
-  /// Schedule the next teaching beat after a deliberate silent gap.
-  /// Called from the ResponseDone handler whenever the model finishes
-  /// speaking and we are NOT in the drill phase. The 2.5s gap is what
-  /// turns "she stopped — instantly the next line" into a real beat
-  /// of silence the apprentice can absorb in. If the user cancels
-  /// (closes the screen, hits AGAIN, etc.) the timer is cancelled.
-  void _scheduleNextBeat() {
+  /// Advance to the next beat IFF: model is done speaking the
+  /// current cue AND the wall-clock floor for the current beat has
+  /// elapsed. Called from the ResponseDone handler and from the
+  /// floor timer expiry — whichever lands last triggers the actual
+  /// advance, after a final 1.5-second breath of silence so the
+  /// transition reads as deliberate rather than racing.
+  void _tryAdvance() {
+    if (!mounted) return;
+    if (_lessonDone) return;
+    if (_inDrillPhase) return; // drill timer owns advance during the lock
+    if (!_phaseResponseDone || !_phaseFloorMet) return;
     _advanceTimer?.cancel();
     _advanceTimer = Timer(
-      const Duration(milliseconds: _interBeatDelayMs),
+      const Duration(milliseconds: _interBeatBreathMs),
       () {
         if (!mounted) return;
         if (_lessonDone || _inDrillPhase) return;
@@ -487,23 +578,28 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
 
   /// AGAIN — restart the rep without the intro / theory / moves
   /// preamble. He already heard those; another rep means another
-  /// lock. Cancels any pending advance / drill timers, resets the
-  /// drill clock + blink count, jumps to BEAT 4 (THE CALL + DRILL),
-  /// and lets the auto-advance run debrief → read-her-back → close
-  /// again. We keep _persistedThisRun true across replays so we
-  /// don\'t double-stamp the same day on the AURA pillar.
+  /// lock. Cancels every pending timer and resets the per-beat
+  /// state cleanly, then jumps to BEAT 4 (THE CALL + DRILL). The
+  /// AURA persistence flag stays sticky so the day isn\'t double-
+  /// stamped across replays.
   void _runAgain() {
     if (!mounted) return;
     HapticFeedback.mediumImpact();
     _advanceTimer?.cancel();
     _drillTimer?.cancel();
+    _phaseFloorTimer?.cancel();
     setState(() {
-      _drillStartedAt = null;
-      _drillBlinks    = 0;
+      _drillStartedAt    = null;
+      _drillBlinks       = 0;
       _drillEcsSamples.clear();
-      _inDrillPhase   = false;
-      _lessonDone     = false;
-      _beatIdx        = 3; // 0-indexed — beat 4 is "THE CALL + DRILL"
+      _lastCoachingCue   = '';
+      _inDrillPhase      = false;
+      _showEyes          = false;
+      _phaseStartedAt    = null;
+      _phaseResponseDone = false;
+      _phaseFloorMet     = false;
+      _lessonDone        = false;
+      _beatIdx           = 3; // 0-indexed — beat 4 is "THE CALL + DRILL"
     });
     _sendNextBeat();
   }
@@ -582,15 +678,15 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
       FlutterPcmSound.start();
     } else if (e is ResponseDone) {
       setState(() => _herSpeaking = false);
-      // Auto-advance the lesson to the next beat — with two gates:
-      //   1. _inDrillPhase: don\'t advance while the 12s lock is live.
-      //      The drill timer fires the debrief beat when time is up.
-      //   2. _lessonDone: stop after BEAT 7 so the AGAIN / NEXT buttons
-      //      can surface and Selene waits for the apprentice to pick.
-      // Outside those, schedule with a deliberate 2.5s gap of silence
-      // so the lesson doesn\'t bounce line-to-line.
+      // ResponseDone is ONE of the two conditions that allow advance.
+      // The other is the per-beat floor timer. _tryAdvance gates on
+      // both. During the drill phase, ResponseDones come from the
+      // model\'s short coaching cues (one per read_gaze metric
+      // breach) and are entirely ignored — the drill timer owns
+      // advance there.
       if (_lessonDone || _inDrillPhase) return;
-      _scheduleNextBeat();
+      _phaseResponseDone = true;
+      _tryAdvance();
     } else if (e is FunctionCallRequested) {
       _onFunctionCall(e);
     } else if (e is RawEvent && e.type == 'session.created') {
@@ -599,6 +695,51 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
       // has any chance to emit a default-persona response.
       _armSelene();
     }
+  }
+
+  /// Tracks the last coaching cue Flutter handed to Selene so we
+  /// don\'t repeat the same line multiple times in a single drill —
+  /// once she says "you drifted", we don\'t fire it again until the
+  /// metric recovers and breaches again later.
+  String _lastCoachingCue = '';
+
+  /// Resolve the most pressing coaching cue from the current face
+  /// metrics. Returns an empty string when no cue should fire
+  /// (silence is the lock). Priority order is TIER 0 (drift) → TIER
+  /// 1 (blinks) → TIER 2 (tension) → TIER 3 (warm approval / time
+  /// signal). Cues are imperative, ≤6 words, external-focus per the
+  /// motor-learning literature (Wulf 2013).
+  String _resolveCoachingCue({
+    required double eyeContactScore,
+    required double blinkRate,
+    required double tensionScore,
+    required double secondsElapsed,
+    required double secondsRemaining,
+  }) {
+    // Final beat — call her break verdict.
+    if (secondsRemaining <= 0.0) {
+      if (eyeContactScore < 0.5) return 'and break. you held what you could.';
+      return ''; // strong hold → silence, let him break first
+    }
+    // T0 — has he completely drifted off?
+    if (eyeContactScore < 0.55) return 'you drifted. find my left eye.';
+    // T1 — anxious blinks
+    if (blinkRate > 28) return 'stop blinking. dead lid.';
+    if (blinkRate > 22) return 'slow your blinks.';
+    // T2 — tense body
+    if (tensionScore < 0.55) return 'drop your shoulders.';
+    // T2.5 — mid-range hold, push for the smolder
+    if (eyeContactScore < 0.75 && secondsElapsed > 4.0) {
+      return 'tighten. narrow your lids.';
+    }
+    // T3 — strong hold, late in the drill
+    if (secondsRemaining < 4.0 && eyeContactScore > 0.7) {
+      return 'almost. hold it.';
+    }
+    if (eyeContactScore > 0.82 && secondsRemaining > 6.0) {
+      return "good. don\'t move.";
+    }
+    return '';
   }
 
   void _onFunctionCall(FunctionCallRequested e) {
@@ -610,7 +751,8 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
       );
       return;
     }
-    // First call → drill clock starts.
+    // First call → drill clock starts (idempotent — Beat 4 already
+    // set this when the beat fired; this is the fallback path).
     _drillStartedAt ??= DateTime.now();
     final elapsed = DateTime.now().difference(_drillStartedAt!).inMilliseconds / 1000.0;
     final remaining = (_drillSeconds - elapsed).clamp(0.0, _drillSeconds.toDouble());
@@ -618,15 +760,37 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
     // Round the metrics to two decimals so Selene never sees noise.
     final m = _metrics;
     final tensionScore = ((m.headStability + m.composureScore) / 2.0).clamp(0.0, 1.0);
+
+    // Resolve the live coaching cue from Flutter — the model uses
+    // this directly (Beat 4 cue tells it: "say exactly coachingCue
+    // or stay silent"). Flutter is the brain, Selene is the voice.
+    // Debounce so the same cue doesn\'t repeat within the same
+    // drill — once she says "you drifted" we don\'t fire it again
+    // until the metric recovers and breaches again later.
+    String cue = _resolveCoachingCue(
+      eyeContactScore:  m.eyeContactScore,
+      blinkRate:        m.blinkRate,
+      tensionScore:     tensionScore,
+      secondsElapsed:   elapsed,
+      secondsRemaining: remaining,
+    );
+    if (cue == _lastCoachingCue) cue = '';
+    if (cue.isNotEmpty) _lastCoachingCue = cue;
+
     final result = <String, dynamic>{
-      'eyeContactScore':  double.parse(m.eyeContactScore.toStringAsFixed(2)),
-      'blinkRate':        double.parse(m.blinkRate.toStringAsFixed(1)),
-      'tensionScore':     double.parse(tensionScore.toStringAsFixed(2)),
-      'headStability':    double.parse(m.headStability.toStringAsFixed(2)),
+      'eyeContactScore':   double.parse(m.eyeContactScore.toStringAsFixed(2)),
+      'blinkRate':         double.parse(m.blinkRate.toStringAsFixed(1)),
+      'tensionScore':      double.parse(tensionScore.toStringAsFixed(2)),
+      'headStability':     double.parse(m.headStability.toStringAsFixed(2)),
       'smileAuthenticity': double.parse(m.smileAuthenticity.toStringAsFixed(2)),
-      'secondsElapsed':   double.parse(elapsed.toStringAsFixed(1)),
-      'secondsRemaining': double.parse(remaining.toStringAsFixed(1)),
-      'drillBlinks':      _drillBlinks,
+      'secondsElapsed':    double.parse(elapsed.toStringAsFixed(1)),
+      'secondsRemaining':  double.parse(remaining.toStringAsFixed(1)),
+      'drillBlinks':       _drillBlinks,
+      // FLUTTER → SELENE coaching directive. Beat 4\'s cue instructs
+      // Selene to say this line verbatim if non-empty, otherwise to
+      // stay silent. This is the closed-loop reactive coaching path
+      // — metrics in, cue out, voiced immediately.
+      'coachingCue':       cue,
     };
     _session.sendFunctionCallOutput(
       callId: e.callId,
@@ -673,14 +837,17 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
             // Only the eye band stays visible; the apprentice's own
             // camera face is suppressed to a barely-there silhouette.
             const Positioned.fill(child: _LiveVignette()),
-            // The eye target — Selene's eyes. Only surfaces during the
-            // 12s lock drill; hidden for intro / theory / debrief / close
-            // so the apprentice\'s camera view stays clean and there\'s
-            // no overlap with his own face during the teaching beats.
+            // The eye target — Selene\'s cinematic eyes. Visible
+            // during BEAT 3 (THE MOVES — she\'s telling him to "pick
+            // my left eye, the iris" so the overlay makes the
+            // instruction concrete) AND BEAT 4 (the 12s lock itself).
+            // Every other beat hides them so the apprentice\'s own
+            // camera view is clean while she teaches. State is read
+            // straight off the active SeleneBeat.showEyes.
             Positioned.fill(
               child: FixationDots(
                 isLocked: _metrics.isGoodEyeContact,
-                active:   _drillActive,
+                active:   _showEyes,
               ),
             ),
 
@@ -807,7 +974,10 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: _SeleneCta(
-                        label: 'NEXT',
+                        // Label tells the apprentice WHERE the next
+                        // tap goes — to the next lesson in the
+                        // syllabus, not just out of the screen.
+                        label: _nextLesson != null ? 'NEXT LESSON' : 'DONE',
                         filled: false,
                         onTap: _goToNextLesson,
                       ),
