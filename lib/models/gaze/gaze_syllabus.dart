@@ -24,19 +24,20 @@ abstract final class GazeSyllabus {
       id: 'the_lock',
       number: 1,
       name: 'THE LOCK',
-      oneLine: 'Twelve seconds. One iris. You break first.',
-      objective: 'Twelve seconds on one iris. Brow dead. You break.',
+      oneLine: 'Four seconds. One iris. You break first.',
+      objective: 'Four seconds on one iris. Brow dead. You break.',
       story: [
-        'Most men crack at second three. The one who holds twelve '
-            'without flinching is the one she remembers — power before '
-            'a single word is spoken. That is the entire game.',
+        'Three seconds is the comfortable line — measured across '
+            'five hundred people from fifty-six countries. The man '
+            'who holds four — past her preferred — is the man she '
+            'remembers. Power before a single word.',
       ],
       demo: [
         'Her LEFT eye — the iris, the dark wet centre. Not both eyes, '
             'not a wide stare. ONE iris. Drop every muscle in your '
             'brow until it goes dead like you just woke up. Top lid '
             'down a millimetre — heavy, not closed. Jaw unclenched. '
-            'Throat soft. Now don\'t move. Twelve seconds. Breathe '
+            'Throat soft. Now don\'t move. Four seconds. Breathe '
             'slow through your nose into your chest, not your '
             'shoulders. The second it gets heavy is the second she '
             'feels it — that is when you stay. You break when YOU '

@@ -76,12 +76,19 @@ class _ReportScreenState extends State<ReportScreen> {
     'Rendering maximized composite',
     'Finalizing preserve list',
   ];
-  int _copyIdx = 0;
+  int  _copyIdx       = 0;
+  bool _slowResponse  = false; // flips true after 60s — shows
+                               // the "taking longer than usual"
+                               // band + a Try Again CTA so the
+                               // user knows the screen isn\'t
+                               // frozen, just waiting on a slow
+                               // backend.
 
   @override
   void initState() {
     super.initState();
     _rotateCopy();
+    _watchForSlowResponse();
     _run();
   }
 
@@ -90,6 +97,17 @@ class _ReportScreenState extends State<ReportScreen> {
       if (!mounted || _analysis != null) return;
       setState(() => _copyIdx = (_copyIdx + 1) % _loadingCopy.length);
       _rotateCopy();
+    });
+  }
+
+  /// After 60s of waiting, surface a "slow response" CTA so the
+  /// user can decide to either keep waiting or retry. Without this
+  /// the screen looked frozen on a slow backend — bro: "people
+  /// don\'t actually know if it\'s really loading."
+  void _watchForSlowResponse() {
+    Future.delayed(const Duration(seconds: 60), () {
+      if (!mounted || _analysis != null || _error != null) return;
+      setState(() => _slowResponse = true);
     });
   }
 
@@ -241,23 +259,114 @@ class _ReportScreenState extends State<ReportScreen> {
       );
     }
 
-    return Center(
+    // Loading state. Bro: "the way it loads people don\'t actually
+    // know if it\'s really loading." Bigger spinner, step counter
+    // ("3 of 5"), an honest "this can take up to a minute" line so
+    // the user knows we\'re working not stuck, and the actual step
+    // text rotates every 2s as before.
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(
-            width: 44, height: 44,
-            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
+          SizedBox(
+            width: 60, height: 60,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              color: AppColors.accent,
+              backgroundColor: AppColors.surface2,
+            ),
           ),
-          const SizedBox(height: 24),
-          Text(_loadingCopy[_copyIdx].toUpperCase(),
-            key: ValueKey(_copyIdx),
+          const SizedBox(height: 28),
+          Text(
+            'STEP ${_copyIdx + 1} OF ${_loadingCopy.length}',
             style: AppTypography.label.copyWith(
-              color: AppColors.measure, letterSpacing: 2.5, fontSize: 11)),
-          const SizedBox(height: 6),
-          Text('Identity anchored. ${_loadingCopy.length} layers compiling.',
-            style: AppTypography.bodySmall.copyWith(
-              fontSize: 11, color: AppColors.textTertiary)),
+              color: AppColors.accent,
+              letterSpacing: 3.0, fontSize: 10,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: Text(_loadingCopy[_copyIdx].toUpperCase(),
+              key: ValueKey(_copyIdx),
+              textAlign: TextAlign.center,
+              style: AppTypography.label.copyWith(
+                color: AppColors.textPrimary,
+                letterSpacing: 2.2,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              )),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Analysing your face across 5 layers — face mesh, '
+            'geometry, archetype, skin texture, and the final hero '
+            'render. This usually lands in 20-40 seconds, sometimes '
+            'up to a minute on a busy backend.',
+            textAlign: TextAlign.center,
+            style: AppTypography.body.copyWith(
+              fontSize: 12,
+              height: 1.45,
+              color: AppColors.textTertiary,
+            ),
+          ),
+          // Slow-response escape hatch — after 60s of waiting the
+          // user gets a "still working, take longer than usual" band
+          // and a Try Again button. Lets them choose between waiting
+          // out a slow backend or retrying.
+          if (_slowResponse) ...[
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.signalAmber.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.signalAmber.withValues(alpha: 0.45),
+                  width: 0.8),
+              ),
+              child: Column(
+                children: [
+                  Text('TAKING LONGER THAN USUAL',
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.signalAmber,
+                      letterSpacing: 2.4, fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    )),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Backend is slow but we\'re still working. '
+                    'Wait it out, or tap to retry.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.body.copyWith(
+                      fontSize: 11.5,
+                      height: 1.4,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _slowResponse = false;
+                        _copyIdx      = 0;
+                      });
+                      _watchForSlowResponse();
+                      _run();
+                    },
+                    child: Text('RETRY',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.signalAmber,
+                        letterSpacing: 2.6, fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      )),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ).animate().fadeIn(duration: 400.ms),
     );
