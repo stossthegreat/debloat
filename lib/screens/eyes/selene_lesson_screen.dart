@@ -171,6 +171,15 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
   final List<double> _drillEcsSamples = [];
   bool _persistedThisRun = false;
 
+  /// Stats from the most recent completed drill. AGAIN injects these
+  /// into the Beat 4 cue so Selene opens the next rep with a
+  /// correction anchored in what just happened ("last rep: you blinked
+  /// 14 times. this rep: cut them in half. again.") instead of just
+  /// re-firing the same script. Bro: "go again this time blink less
+  /// or whatever — you know what I mean." Null on the FIRST rep of a
+  /// fresh session, populated after the drill clock expires.
+  _PriorAttempt? _priorAttempt;
+
   // UI state.
   bool _disposed = false;
   bool _connecting = true;
@@ -528,6 +537,22 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
       _drillTimer?.cancel();
       _drillTimer = Timer(Duration(seconds: _drillSeconds), () {
         if (!mounted) return;
+        // Snapshot drill stats BEFORE we tear down the in-drill state
+        // so AGAIN can read them on the next rep. Average eye-contact
+        // score across the held samples + blink count is enough for
+        // Selene to anchor a corrective opening line on the rerun.
+        final samples = List<double>.from(_drillEcsSamples);
+        final avgEcs  = samples.isEmpty
+            ? 0.0
+            : samples.reduce((a, b) => a + b) / samples.length;
+        final minEcs  = samples.isEmpty
+            ? 0.0
+            : samples.reduce((a, b) => a < b ? a : b);
+        _priorAttempt = _PriorAttempt(
+          avgEyeContact: avgEcs,
+          minEyeContact: minEcs,
+          blinks:        _drillBlinks,
+        );
         setState(() {
           _inDrillPhase = false;
           _showEyes     = false;
@@ -549,8 +574,40 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
       );
     }
 
-    _session.sendTextMessage(beat.cue);
+    // For BEAT 4, prepend a "PRIOR REP" coaching directive if AGAIN
+    // landed us here with stats from the previous drill. The model
+    // uses this to open the new rep with a correction anchored in
+    // what just happened ("last rep — your eyes drifted around
+    // second seven. this rep, stay on the iris. twelve seconds.
+    // begin."). Without this, AGAIN re-runs the exact same script
+    // and the rerun feels mechanical instead of taught.
+    final cueToSend = isDrill && _priorAttempt != null
+        ? '${_priorAttemptDirective(_priorAttempt!)}\n\n${beat.cue}'
+        : beat.cue;
+
+    _session.sendTextMessage(cueToSend);
     _beatIdx++;
+  }
+
+  /// Build a short corrective directive for the model to prepend to
+  /// the Beat 4 cue when AGAIN is the entry point. Six words max for
+  /// the line itself; the surrounding prompt frame tells the model
+  /// to deliver it BEFORE "twelve seconds. begin." so the apprentice
+  /// hears the correction first, then the call.
+  String _priorAttemptDirective(_PriorAttempt p) {
+    String hint;
+    if (p.avgEyeContact < 0.55) {
+      hint = 'this rep, do not look away from my iris.';
+    } else if (p.blinks > 10) {
+      hint = 'this rep, half the blinks.';
+    } else if (p.avgEyeContact < 0.72) {
+      hint = 'this rep, narrow the lids a hair more.';
+    } else if (p.minEyeContact < 0.45) {
+      hint = 'this rep, do not drift past second seven.';
+    } else {
+      hint = 'this rep, hold it heavier.';
+    }
+    return '''[PRIOR REP CONTEXT] He just finished a rep. Before you deliver "Twelve seconds. Begin." on this Beat 4, FIRST say a single short coaching line that names what happened and what to fix. Use this exact corrective hint, in your voice, low and slow: "$hint" Then pause 1.5 seconds. THEN run Beat 4 normally.''';
   }
 
   /// Advance to the next beat IFF: model is done speaking the
@@ -671,8 +728,13 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
     } else if (e is ResponseStarted) {
       // Top of every turn — flush the queue + restart the engine so
       // the next reply lands without underrun, exactly like Free Flow.
+      // Wrap _herCaption clear in setState so the on-screen transcript
+      // refreshes immediately between beats; without this the caption
+      // from beat N stays on screen until beat N+1\'s first delta
+      // lands, and on screenshots that looked like multiple beats
+      // were stacking into one wall of text.
       _pcmQueue.clear();
-      _herCaption = '';
+      setState(() => _herCaption = '');
       // ignore: discarded_futures
       FlutterPcmSound.start();
     } else if (e is ResponseDone) {
@@ -704,10 +766,15 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
 
   /// Resolve the most pressing coaching cue from the current face
   /// metrics. Returns an empty string when no cue should fire
-  /// (silence is the lock). Priority order is TIER 0 (drift) → TIER
-  /// 1 (blinks) → TIER 2 (tension) → TIER 3 (warm approval / time
-  /// signal). Cues are imperative, ≤6 words, external-focus per the
-  /// motor-learning literature (Wulf 2013).
+  /// (silence is the lock). Tier ladder:
+  ///   T-1  no face / camera blind — must coach, can\'t practise without
+  ///   T0   sustained drift — eyes nowhere near the iris
+  ///   T1   anxious blinks
+  ///   T2   tense body
+  ///   T2.5 mid-range hold, push for the smolder
+  ///   T3   warm approval / time signal during a strong hold
+  /// Cues are imperative, ≤6 words, external-focus per the motor-
+  /// learning literature (Wulf 2013).
   String _resolveCoachingCue({
     required double eyeContactScore,
     required double blinkRate,
@@ -715,28 +782,58 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
     required double secondsElapsed,
     required double secondsRemaining,
   }) {
-    // Final beat — call her break verdict.
+    // Final beat — call her break verdict (varied so the same
+    // phrasing doesn\'t fire every rep).
     if (secondsRemaining <= 0.0) {
-      if (eyeContactScore < 0.5) return 'and break. you held what you could.';
-      return ''; // strong hold → silence, let him break first
+      if (eyeContactScore >= 0.78) return ''; // strong → silence, let him break first
+      if (eyeContactScore >= 0.55) return 'and break. you found me at the end.';
+      return 'and break. you held what you could.';
     }
-    // T0 — has he completely drifted off?
+
+    // T-1 — MediaPipe sees no face at all (or near-zero score for
+    // sustained beats). Without this fallback Selene goes silent
+    // when the user holds their phone wrong, which reads as broken
+    // instead of corrective. Bro: "even if you don\'t get enough
+    // data from MediaPipe… she says we\'re going again, this time
+    // softer your eyes."
+    if (eyeContactScore < 0.20) {
+      if (secondsElapsed > 3.0) return 'center your face. let me see you.';
+      return 'phone at eye level. look at the lens.';
+    }
+
+    // T0 — completely off the iris.
     if (eyeContactScore < 0.55) return 'you drifted. find my left eye.';
-    // T1 — anxious blinks
-    if (blinkRate > 28) return 'stop blinking. dead lid.';
-    if (blinkRate > 22) return 'slow your blinks.';
-    // T2 — tense body
+
+    // T1 — anxious blinks (only meaningful past the first 2s of the
+    // drill, otherwise startle blinks fire and read as a problem
+    // when they\'re not).
+    if (secondsElapsed > 2.0) {
+      if (blinkRate > 28) return 'stop blinking. dead lid.';
+      if (blinkRate > 22) return 'slow your blinks.';
+    }
+
+    // T2 — tense body.
     if (tensionScore < 0.55) return 'drop your shoulders.';
-    // T2.5 — mid-range hold, push for the smolder
+
+    // T2.5 — mid-range hold, push for the smolder.
     if (eyeContactScore < 0.75 && secondsElapsed > 4.0) {
       return 'tighten. narrow your lids.';
     }
-    // T3 — strong hold, late in the drill
-    if (secondsRemaining < 4.0 && eyeContactScore > 0.7) {
-      return 'almost. hold it.';
+
+    // T3 — time-aware approval / final-stretch cues.
+    if (secondsRemaining < 3.0 && eyeContactScore > 0.7) {
+      return 'almost. don\'t move.';
     }
-    if (eyeContactScore > 0.82 && secondsRemaining > 6.0) {
-      return "good. don\'t move.";
+    if (eyeContactScore > 0.82 && secondsRemaining > 6.0 && secondsElapsed > 2.0) {
+      return 'good. that\'s the lock.';
+    }
+    // T4 — sustained mid-band hold that\'s NEITHER bad nor strong.
+    // Without a cue here Selene stays silent the whole drill on a
+    // mediocre rep, which reads as broken. A single mid-drill
+    // tightening nudge gives her presence without monologue.
+    if (eyeContactScore >= 0.6 && eyeContactScore <= 0.78 &&
+        secondsElapsed > 5.0 && secondsRemaining > 3.0) {
+      return 'half a millimetre tighter.';
     }
     return '';
   }
@@ -1099,6 +1196,21 @@ class _LiveVignette extends StatelessWidget {
 /// Top-level helper — opens Selene's live lesson 1.
 GazeLesson seleneLesson1() =>
     GazeSyllabus.byId('the_lock');
+
+/// Snapshot of the most recent completed drill. Selene reads this
+/// when AGAIN fires the next rep so her opening line is a
+/// correction anchored in what just happened, not a generic
+/// re-run of the same Beat 4 script.
+class _PriorAttempt {
+  final double avgEyeContact; // 0..1
+  final double minEyeContact; // 0..1
+  final int    blinks;
+  const _PriorAttempt({
+    required this.avgEyeContact,
+    required this.minEyeContact,
+    required this.blinks,
+  });
+}
 
 /// Big bottom-row CTA — appears as the AGAIN / NEXT pair when
 /// Selene\'s lesson reaches the close beat. Filled accent for the

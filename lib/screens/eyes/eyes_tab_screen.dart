@@ -521,14 +521,16 @@ class _SeleneLiveCard extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Cinematic eyes — same asset that runs during the live
-              // drill. Filling the whole card collapses the visual gap
-              // between "she on the card" and "she in the session."
+              // Selene\'s face on the card — the ice-queen character
+              // portrait, not the cinematic eyes-only asset. Bro:
+              // "instead of the eyes on the Selene card put image of
+              // ice queen." Same alignment + fit so the gradient
+              // overlay still works.
               Positioned.fill(
                 child: Image.asset(
-                  'assets/eyes/lesson_eyes.jpg',
+                  'assets/characters/women/ice_queen.png',
                   fit: BoxFit.cover,
-                  alignment: const Alignment(0, -0.25),
+                  alignment: const Alignment(0, -0.15),
                   errorBuilder: (_, __, ___) => Container(
                     color: Colors.black,
                   ),

@@ -7,22 +7,17 @@ import '../../models/face_geometry.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 
-/// ASPECT PROTOCOL CARDS — replaces the loose "FIXES" text cards.
+/// ASPECT PROTOCOL CARDS — the four things that actually move the
+/// needle on a man\'s face over 60 days. Plain English. Real action,
+/// no jargon. Each card opens a /protocol screen that auto-starts
+/// the right ProtocolService template against the latest scan.
 ///
-/// Three named axes the apprentice can actually move in 60 days. Each
-/// card shows: the axis, a science-anchored daily-plan teaser (three
-/// rolling phases over the 60 days), and a START 60-DAY PROTOCOL CTA
-/// that routes to `/protocol` with that axis as the chosen pulldown
-/// — the existing ProtocolService picks up the right template and
-/// scheduler.
-///
-/// Skin = highest-ROI by evidence (tretinoin + SPF + sleep). Jaw =
-/// the bones+composition axis users care about most. Hair = AGA early-
-/// stage intervention with the strongest RCT base in the literature.
-/// The other six protocol axes (Hunter Eyes, Symmetry, Chin, Posture,
-/// Puffiness, Foundations) stay available through ProtocolService
-/// but aren\'t surfaced as top-level cards — the data is unanimous
-/// that those three carry most of the realistic ROI.
+/// Order — sleep is the cheapest fastest visible win, so SKIN
+/// (sleep + SPF + retinol routine) leads. JAW second (body comp +
+/// training is the bones-and-leanness lever). DEBLOAT third (water
+/// + sodium + alcohol fixes facial puffiness within DAYS, visible
+/// in the mirror tomorrow). HAIR fourth (the longest-feedback
+/// intervention — judged at 6 months).
 class AspectProtocolCards extends StatelessWidget {
   final FaceGeometry geometry;
   final String?      savedImagePath;
@@ -34,7 +29,7 @@ class AspectProtocolCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final aspects = _aspects(geometry);
+    final aspects = _aspects;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -45,7 +40,7 @@ class AspectProtocolCards extends StatelessWidget {
             fontSize: 10.5,
             fontWeight: FontWeight.w900)),
         const SizedBox(height: 4),
-        Text('Each plan targets ONE axis. Clean. Daily. Science.',
+        Text('Pick one. Do it daily. Re-scan day 30 and day 60.',
           style: GoogleFonts.inter(
             color: AppColors.textTertiary,
             fontSize: 11.5,
@@ -58,11 +53,15 @@ class AspectProtocolCards extends StatelessWidget {
             aspect: aspects[i],
             onTap: () {
               HapticFeedback.mediumImpact();
+              // Pass the axis pulldown string in extras — the router
+              // forwards it to ProtocolScreen, which auto-starts a
+              // protocol on the chosen axis when none is active.
+              // Avoids the "No active protocol" dead end.
               context.push(
                 '/protocol',
                 extra: {
-                  'axis':           aspects[i].axisKey,
                   'pulldown':       aspects[i].pulldownString,
+                  'axis':           aspects[i].axisKey,
                   'geometry':       geometry,
                   'savedImagePath': savedImagePath,
                 },
@@ -75,65 +74,76 @@ class AspectProtocolCards extends StatelessWidget {
     );
   }
 
-  // ─── Aspect catalogue ──────────────────────────────────────────────────
+  // ─── The four aspects, in plain English ────────────────────────────────
   //
-  // Order is by realistic ROI per the verified-evidence research: skin
-  // (tretinoin + SPF + sleep) is the cheapest fastest visible win, jaw
-  // is the structural one most users came for, hair is the AGA
-  // intervention with the deepest RCT base. Each entry carries the
-  // axis key used by ProtocolService and the three 14/30/60 day-band
-  // teasers rendered on the card body.
-  List<_Aspect> _aspects(FaceGeometry g) {
-    return [
-      _Aspect(
-        axisKey:        'skin',
-        pulldownString: 'Skin',
-        title:          'SKIN',
-        oneLiner:       'The fastest visible win on the face.',
-        evidence:       'Tretinoin + SPF50 + 7-9h sleep — RCT-backed',
-        color:          AppColors.signalGreen,
-        phases: const [
-          _Phase(label: 'DAYS 1-14',  body: 'Baseline photos. SPF 30+ every AM. Tretinoin 0.025% every third night. Sleep on your back.'),
-          _Phase(label: 'DAYS 15-30', body: 'Tretinoin nightly. Add niacinamide 5% AM. Alcohol ≤4/wk. Track skin clarity sub-score weekly.'),
-          _Phase(label: 'DAYS 31-60', body: 'Re-scan day 45 and 60. Hydration audit. Ramp retinoid if tolerated. Lock the routine.'),
-        ],
-      ),
-      _Aspect(
-        axisKey:        'jaw',
-        pulldownString: 'Jaw definition',
-        title:          'JAW',
-        oneLiner:       'Bones, masseter, and the 12-14% body-fat unlock.',
-        evidence:       'Sell 2017: upper-body strength = 70% of body attractiveness variance',
-        color:          AppColors.red,
-        phases: const [
-          _Phase(label: 'DAYS 1-14',  body: 'Baseline weight + side profile. Compound lifts 3-5×/wk. Neck training 2×/wk. Protein 1.6-2.2 g/kg.'),
-          _Phase(label: 'DAYS 15-30', body: 'Bodyfat audit. If above 18%, lean cut. Hard gum 10 min/day for masseter. Track week-over-week jaw line photo.'),
-          _Phase(label: 'DAYS 31-60', body: 'Re-scan day 45. Refine beard line along the inferior mandibular border. Reassess composition vs jaw definition score.'),
-        ],
-      ),
-      _Aspect(
-        axisKey:        'hair',
-        pulldownString: 'Hair',
-        title:          'HAIR',
-        oneLiner:       'AGA early-stage intervention — measurable in 6 months.',
-        evidence:       'Kaufman 2003: finasteride 1mg = 93% reduction in further visible loss at 5 years',
-        color:          AppColors.measure,
-        phases: const [
-          _Phase(label: 'DAYS 1-14',  body: 'Hairline baseline photo at the same lighting + angle. Sleep on a silk pillowcase. Audit hairline progression with a derm if Norwood 2+.'),
-          _Phase(label: 'DAYS 15-30', body: 'Topical minoxidil 5% AM + PM if recession visible. Hairline track every 2 weeks. Consult re: oral finasteride 1mg.'),
-          _Phase(label: 'DAYS 31-60', body: 'Re-scan + hairline photo day 60. Expect shedding wks 2-8, regrowth phase. Judge density at 6 months, not now.'),
-        ],
-      ),
-    ];
-  }
+  // Every line is something a 22-year-old can do without a doctor, a
+  // gym, or a $200 stack. Where a real intervention helps (tretinoin,
+  // minoxidil, finasteride) we name it but don\'t pretend a card is a
+  // prescription. The "WHY" line at the bottom of each card gives the
+  // one-sentence reason that lever works — the user gets the what AND
+  // the why without wading through a paper.
+  List<_Aspect> get _aspects => const [
+    _Aspect(
+      axisKey:        'skin',
+      pulldownString: 'Skin',
+      title:          'SKIN',
+      oneLiner:       'The fastest visible win. You\'ll see it in 4 weeks.',
+      color:          AppColors.signalGreen,
+      phases: [
+        _Phase(label: 'EVERY MORNING', body: 'Wash your face. SPF 30+ before you leave the house. Drink a full glass of water.'),
+        _Phase(label: 'EVERY NIGHT',   body: 'Wash again. A tiny pump of retinol cream every third night for week 1, then every other night. Sleep on your back.'),
+        _Phase(label: 'EVERY WEEK',    body: 'One photo in the same light. No alcohol on weekdays. No touching your face during the day.'),
+      ],
+      why: 'Sun + sleep + retinol fix more skin in 30 days than any product stack.',
+    ),
+    _Aspect(
+      axisKey:        'jaw',
+      pulldownString: 'Jaw definition',
+      title:          'JAW',
+      oneLiner:       'The single biggest face change you control.',
+      color:          AppColors.red,
+      phases: [
+        _Phase(label: 'EVERY MORNING', body: 'Eat protein at breakfast — eggs, yogurt, or shake. Walk 20 minutes before you sit down to anything.'),
+        _Phase(label: 'TRAINING DAYS', body: '4 lifts a week. Push press, dips, pull-ups, deadlift. Train your neck twice a week. Hard food at lunch.'),
+        _Phase(label: 'EVERY WEEK',    body: 'Weigh in. Hit 1g protein per pound of bodyweight. Trim your beard along your jaw line, not below it.'),
+      ],
+      why: 'Lean to 12-14% body fat, train shoulders, and your jaw appears. Bones don\'t change. Composition does.',
+    ),
+    _Aspect(
+      axisKey:        'debloat',
+      pulldownString: 'Puffiness',
+      title:          'DEBLOAT',
+      oneLiner:       'Visible tomorrow morning. The cheapest fix on the list.',
+      color:          AppColors.signalAmber,
+      phases: [
+        _Phase(label: 'EVERY DAY',     body: 'Drink 2.5 litres of water. Cut salty processed food. No alcohol for 14 days straight.'),
+        _Phase(label: 'EVERY NIGHT',   body: 'Sleep on your back, on two pillows so your head is slightly raised. 8 hours, dark room.'),
+        _Phase(label: 'EVERY MORNING', body: 'Splash cold water on your face for 30 seconds. Walk for 15 minutes before you eat.'),
+      ],
+      why: 'Most face puffiness is water + sodium + bad sleep. Cut the three for two weeks and your face sharpens overnight.',
+    ),
+    _Aspect(
+      axisKey:        'hair',
+      pulldownString: 'Hair',
+      title:          'HAIR',
+      oneLiner:       'Long game. Worth it. Judge it at 6 months, not next week.',
+      color:          AppColors.measure,
+      phases: [
+        _Phase(label: 'EVERY DAY',     body: 'A daily multivitamin. Massage your scalp for 2 minutes when you wash your hair. Gentle shampoo, not the cheapest one.'),
+        _Phase(label: 'EVERY NIGHT',   body: 'Silk pillowcase — friction during sleep breaks hair shafts. 7-9 hours of sleep. Don\'t go to bed with wet hair.'),
+        _Phase(label: 'IF RECEDING',   body: 'See a doctor about minoxidil or oral finasteride. They\'re the only two with real evidence. Photo your hairline today so you can compare in 6 months.'),
+      ],
+      why: 'The earlier you act on a moving hairline, the more you keep. Most men wait years too long.',
+    ),
+  ];
 }
 
 class _Aspect {
-  final String        axisKey;        // ProtocolService canonical key
-  final String        pulldownString; // String resolveAxis maps to axisKey
+  final String        axisKey;        // canonical aspect key
+  final String        pulldownString; // forwarded to /protocol → ProtocolService
   final String        title;
   final String        oneLiner;
-  final String        evidence;       // ≤80 chars, science-anchored
+  final String        why;
   final Color         color;
   final List<_Phase>  phases;
   const _Aspect({
@@ -141,7 +151,7 @@ class _Aspect {
     required this.pulldownString,
     required this.title,
     required this.oneLiner,
-    required this.evidence,
+    required this.why,
     required this.color,
     required this.phases,
   });
@@ -197,7 +207,7 @@ class _AspectCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text('60-day protocol',
+                    child: Text('60-day plan',
                       style: GoogleFonts.inter(
                         color: AppColors.textTertiary,
                         fontSize: 11,
@@ -218,13 +228,6 @@ class _AspectCard extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                   height: 1.25,
                 )),
-              const SizedBox(height: 6),
-              Text(aspect.evidence,
-                style: GoogleFonts.inter(
-                  color: AppColors.textTertiary,
-                  fontSize: 11,
-                  height: 1.4,
-                )),
               const SizedBox(height: 12),
               for (final p in aspect.phases) ...[
                 _PhaseRow(phase: p, color: aspect.color),
@@ -232,20 +235,51 @@ class _AspectCard extends StatelessWidget {
               ],
               const SizedBox(height: 12),
               Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: aspect.color.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: aspect.color.withValues(alpha: 0.3), width: 0.6),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('WHY ',
+                      style: AppTypography.label.copyWith(
+                        color: aspect.color,
+                        fontSize: 9,
+                        letterSpacing: 1.8,
+                        fontWeight: FontWeight.w900)),
+                    Expanded(
+                      child: Text(aspect.why,
+                        style: GoogleFonts.inter(
+                          color: AppColors.textSecondary,
+                          fontSize: 11.5,
+                          height: 1.4,
+                          fontStyle: FontStyle.italic,
+                        )),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 11),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: aspect.color.withValues(alpha: 0.12),
+                  color: aspect.color,
                   borderRadius: BorderRadius.circular(100),
-                  border: Border.all(
-                    color: aspect.color.withValues(alpha: 0.55),
-                    width: 1.0,
-                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: aspect.color.withValues(alpha: 0.4),
+                      blurRadius: 14, offset: const Offset(0, 4)),
+                  ],
                 ),
-                child: Text('START 60-DAY PROTOCOL',
+                child: Text('START THIS PLAN',
                   style: AppTypography.label.copyWith(
-                    color: aspect.color,
+                    color: Colors.black,
                     fontSize: 11,
                     letterSpacing: 2.4,
                     fontWeight: FontWeight.w900,

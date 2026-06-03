@@ -25,6 +25,7 @@ import '../../services/share_service.dart';
 import '../../widgets/common/fullscreen_image.dart';
 import '../../widgets/report/aspect_protocol_cards.dart';
 import '../../widgets/report/hero_card.dart';
+import '../../widgets/report/hidden_depth_panel.dart';
 import '../../widgets/report/per_trait_scores.dart';
 import '../../widgets/report/trait_grid.dart';
 
@@ -54,6 +55,19 @@ class _ReportScreenState extends State<ReportScreen> {
   // the added latency is absorbed. Null = model refused (rare) and the
   // dual-score hero degrades to geometry-only.
   HonestRating? _honest;
+
+  // ─── HeroCard GENERATE button wiring ──────────────────────────────────
+  //
+  // The HeroCard owns the on-image GENERATE button (right half of the
+  // before/after split, fires when no afterUrl is present yet). The
+  // parent — that\'s us — is responsible for actually calling /maximize
+  // when the button is tapped and feeding the resulting url back in. In
+  // the redesign I forgot to pass onGenerate + isGenerating, which made
+  // the GENERATE button a dead pixel. _localMaximizedUrl holds a
+  // url-from-retry so a successful tap surfaces the maxed image even if
+  // the original /scan returned empty.
+  bool   _generatingHero = false;
+  String _localMaximizedUrl = '';
 
   static const _loadingCopy = [
     'Resolving skin micro-texture',
@@ -301,6 +315,38 @@ class _ReportScreenState extends State<ReportScreen> {
     return (headroom * 0.55).round();
   }
 
+  /// Called when the user taps the GENERATE button on the HeroCard\'s
+  /// after side. Fires /maximize against the scan\'s improve list and
+  /// drops the resulting url into [_localMaximizedUrl] so HeroCard
+  /// stops showing the placeholder. Already-have-url path is a no-op
+  /// (HeroCard automatically renders the image).
+  Future<void> _generateHero(MirrorAnalysis a) async {
+    if (_generatingHero) return;
+    final existing = _localMaximizedUrl.isNotEmpty
+        ? _localMaximizedUrl
+        : a.maximizedImageUrl;
+    if (existing.isNotEmpty) return; // image already on screen
+    HapticFeedback.heavyImpact();
+    setState(() => _generatingHero = true);
+    try {
+      final url = await MirrorApiService.maximizeOnly(
+        imageBytes: widget.imageBytes,
+        improve:    a.report.fixes
+          .map((f) => f.visualRequest.trim())
+          .where((s) => s.isNotEmpty)
+          .toList(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _localMaximizedUrl = url;
+        _generatingHero    = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _generatingHero = false);
+    }
+  }
+
   /// Build the 3 micro-proof one-liners shown under the hero + on the share
   /// card. Pulls the top-3 STRENGTH traits and renders their pre-composed
   /// emotional heroLine strings — "Your hunter eyes beat 88% of men" reads
@@ -433,14 +479,23 @@ class _ReportScreenState extends State<ReportScreen> {
           const SizedBox(height: Sp.md),
 
           // ── 1 · HERO CARD ─ score → projected, tagline, B/A, proofs ────
+          // GENERATE button on the after-side fires onGenerate (parent
+          // calls /maximize). I broke this by not wiring the callback in
+          // the previous redesign — bro specifically called it out
+          // ("you broke the generate button which I asked you not to
+          // touch"). Now wired: tap → spinner → maxed image arrives.
           HeroCard(
             currentScore:     _honest?.score ?? score.value,
             projectedScore:   projected,
             tagline:          tagline,
             beforeBytes:      widget.imageBytes,
-            afterUrl:         a.maximizedImageUrl,
+            afterUrl:         _localMaximizedUrl.isNotEmpty
+                                  ? _localMaximizedUrl
+                                  : a.maximizedImageUrl,
             correctionsCount: correctionsCount,
             microProofs:      microProofs,
+            isGenerating:     _generatingHero,
+            onGenerate:       () => _generateHero(a),
           ),
 
           const SizedBox(height: Sp.md),
@@ -457,36 +512,30 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.md),
 
-          // ── 3 · GEOMETRY BREAKDOWN ─ the one on-device math grid ───────
-          // Was the Umax-style trait grid surfaced alongside three other
-          // mash sections (radar, archetype, hidden-depth). Those are
-          // gone now; this is THE geometry section, period.
+          // ── 3 · GEOMETRY BREAKDOWN ─ trait grid + 16-metric panel ─────
+          // The trait grid is the heat-mapped per-feature read; the
+          // hidden-depth panel beneath it surfaces the raw measurements
+          // (eye tilt, FWHR, jaw angle, eye spacing, etc.) with each
+          // row\'s ideal range and a status dot. Bro called this out
+          // explicitly — "bring back the geometry chart, that was right"
+          // — so it\'s restored under the trait grid as ONE clean
+          // geometry section.
           TraitGrid(traits: traits)
             .animate().fadeIn(delay: 1700.ms, duration: 500.ms),
 
           const SizedBox(height: Sp.md),
 
-          // ── 4 · APPLY ALL FIXES ────────────────────────────────────────
-          // The transformation moment. Tapping reveals the Final Form
-          // composite if the /scan returned one, otherwise retries the
-          // maximize render inline. No re-scan required.
-          _ApplyAllFixesButton(
-            maximizedImageUrl: a.maximizedImageUrl,
-            imageBytes:        widget.imageBytes,
-            improveList:       a.report.fixes
-                .map((f) => f.visualRequest.trim())
-                .where((s) => s.isNotEmpty)
-                .toList(),
-          ).animate().fadeIn(delay: 1900.ms, duration: 400.ms),
+          HiddenDepthPanel(geometry: widget.geometry)
+            .animate().fadeIn(delay: 1850.ms, duration: 500.ms),
 
           const SizedBox(height: Sp.xl),
 
-          // ── 5 · 60-DAY ASPECT PROTOCOLS ────────────────────────────────
-          // Replaces the old free-text "FIXES" cards. Three named axes
-          // — SKIN, JAW, HAIR — each with a 14/30/60-day phase plan
-          // anchored to verified-evidence interventions. Tapping any
-          // card routes to /protocol with that axis as the chosen
-          // pulldown so ProtocolService picks the matching template.
+          // ── 4 · 60-DAY ASPECT PROTOCOLS ────────────────────────────────
+          // The standalone "Apply All Fixes" CTA below the geometry
+          // section is gone — bro called it out as redundant ("the big
+          // cta that says apply all fixes doesn\'t need to be there").
+          // The HeroCard\'s GENERATE button carries the maximize action
+          // now, and the protocol cards carry the prescriptive surface.
           AspectProtocolCards(
             geometry:       widget.geometry,
             savedImagePath: _savedImagePath,

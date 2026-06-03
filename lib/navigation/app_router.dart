@@ -65,7 +65,23 @@ final appRouter = GoRouter(
     ),
     GoRoute(path: '/scan',     builder: (_, __) => const ScanScreen()),
     GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
-    GoRoute(path: '/protocol', builder: (_, __) => const ProtocolScreen()),
+    GoRoute(
+      path: '/protocol',
+      builder: (_, state) {
+        // Optional extras — the report\'s aspect-protocol cards pass
+        // {pulldown: "Skin"} (or "Jaw definition", "Hair", "Puffiness")
+        // so the screen auto-starts a brand-new protocol on the right
+        // axis when none is active. Home tab tap passes nothing, falls
+        // back to Foundations against the latest scan inside the screen.
+        String? startPulldown;
+        final extra = state.extra;
+        if (extra is Map) {
+          final v = extra['pulldown'];
+          if (v is String && v.trim().isNotEmpty) startPulldown = v.trim();
+        }
+        return ProtocolScreen(startPulldown: startPulldown);
+      },
+    ),
     GoRoute(path: '/terms',    builder: (_, __) => LegalScreen(doc: termsDoc)),
     GoRoute(path: '/privacy',  builder: (_, __) => LegalScreen(doc: privacyDoc)),
     GoRoute(

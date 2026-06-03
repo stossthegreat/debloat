@@ -4,12 +4,21 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/protocol.dart';
+import '../../services/local_store_service.dart';
 import '../../services/protocol_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 
 class ProtocolScreen extends StatefulWidget {
-  const ProtocolScreen({super.key});
+  /// Optional axis to start a brand-new protocol on if none is active
+  /// when the screen opens. Pass the pulldown string ("Skin", "Jaw
+  /// definition", "Hair", "Puffiness", ...) and ProtocolService picks
+  /// the matching template. Without this the screen falls back to the
+  /// latest scan\'s pulldown to derive an axis, or — if that also
+  /// fails — the Foundations axis (safe default) so the user never
+  /// lands on "No active protocol."
+  final String? startPulldown;
+  const ProtocolScreen({super.key, this.startPulldown});
   @override
   State<ProtocolScreen> createState() => _ProtocolScreenState();
 }
@@ -24,8 +33,37 @@ class _ProtocolScreenState extends State<ProtocolScreen> {
     _load();
   }
 
+  /// Resolve / auto-start the active protocol. Order of precedence:
+  ///   1. Already-active protocol → use it. Never overwrite a run
+  ///      in progress.
+  ///   2. [startPulldown] passed in (aspect-card tap on the report) →
+  ///      start a fresh protocol on that axis.
+  ///   3. Latest scan\'s pulldown prose → derive an axis and start.
+  ///   4. Latest scan with no pulldown → start a Foundations protocol
+  ///      so the user always lands on something actionable instead of
+  ///      a dead empty state.
+  /// Bro: "even on home where it says potential open protocol there\'s
+  /// no protocol there" — this is the fix path.
   Future<void> _load() async {
-    final p = await ProtocolService.loadActive();
+    var p = await ProtocolService.loadActive();
+    if (p == null) {
+      try {
+        final scan = await LocalStoreService.latestScan();
+        if (scan != null) {
+          // Aspect cards pass the axis they map to ("Skin", "Jaw
+          // definition", "Hair", "Puffiness"). Without that we default
+          // to "Foundations" — the catch-all template covering sleep,
+          // SPF, posture and lifting, which suits any user as a
+          // starting point and is the safest auto-start choice.
+          final pulldown = (widget.startPulldown ?? 'Foundations').trim();
+          p = await ProtocolService.startForScan(
+            scan,
+            pulldown: pulldown,
+            geometry: scan.geometry,
+          );
+        }
+      } catch (_) {/* fall through to empty state */}
+    }
     if (!mounted) return;
     setState(() { _p = p; _loading = false; });
   }
