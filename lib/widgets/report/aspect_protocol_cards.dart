@@ -4,26 +4,35 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/face_geometry.dart';
+import '../../models/protocol.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 
 /// ASPECT PROTOCOL CARDS — four small, clean tiles. SKIN / JAW /
-/// DEBLOAT / HAIR. Same visual language as _ActiveProtocolCard on
-/// the Looks tab: eyebrow + title + one-line hook + arrow. THE
-/// DAILY PLAN DETAILS LIVE INSIDE /protocol, not on the tile —
-/// bro\'s call: "clean to the point cards they commit with clean
-/// easy plans insides not fucking essays."
+/// DEBLOAT / HAIR. Each tile renders in one of two states:
 ///
-/// Tapping a tile pushes /protocol with the chosen axis as the
-/// pulldown extra; ProtocolService picks up the matching template
-/// and auto-starts a fresh plan if none is active.
+///   • COMMITTED → user has tapped to start this axis. Tile shows
+///                 "DAY X / 60" + day count + tap to open the
+///                 routine.
+///   • AVAILABLE → no run for this axis yet. Tile shows the
+///                 one-line hook + tap to commit (which starts
+///                 the protocol via /protocol).
+///
+/// Bro: "if they commit only one fucking shows" — the two-section
+/// duplicate (active-tile-on-top + available-tile-below) is gone.
+/// Each axis renders exactly once, in whichever state it\'s in.
 class AspectProtocolCards extends StatelessWidget {
-  final FaceGeometry geometry;
-  final String?      savedImagePath;
+  final FaceGeometry         geometry;
+  final String?              savedImagePath;
+  /// Every active protocol the user has committed to, keyed by
+  /// canonical axis. When present, the matching aspect tile
+  /// renders in its COMMITTED state; absent axes render AVAILABLE.
+  final Map<String, Protocol> activeProtocols;
   const AspectProtocolCards({
     super.key,
     required this.geometry,
     this.savedImagePath,
+    this.activeProtocols = const {},
   });
 
   @override
@@ -49,7 +58,8 @@ class AspectProtocolCards extends StatelessWidget {
         const SizedBox(height: 12),
         for (int i = 0; i < aspects.length; i++) ...[
           _AspectTile(
-            aspect: aspects[i],
+            aspect:    aspects[i],
+            committed: activeProtocols[aspects[i].pulldownString],
             onTap: () {
               HapticFeedback.mediumImpact();
               context.push(
@@ -121,11 +131,17 @@ class _Aspect {
 
 class _AspectTile extends StatelessWidget {
   final _Aspect       aspect;
+  final Protocol?     committed; // non-null when the user has started this axis
   final VoidCallback  onTap;
-  const _AspectTile({required this.aspect, required this.onTap});
+  const _AspectTile({
+    required this.aspect,
+    required this.committed,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isCommitted = committed != null;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -136,13 +152,17 @@ class _AspectTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface1,
             borderRadius: BorderRadius.circular(Rd.xl),
-            border: Border.all(color: AppColors.divider, width: 0.8),
+            border: Border.all(
+              color: isCommitted
+                ? aspect.color.withValues(alpha: 0.55)
+                : AppColors.divider,
+              width: isCommitted ? 1.0 : 0.8),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Eyebrow row — axis tag in colour + arrow on the right,
-              // mirroring "PROTOCOL · DAY X / 60" on the active card.
+              // Eyebrow row — axis tag in colour + status (day count
+              // for committed, "60-day plan" for available) + arrow.
               Row(
                 children: [
                   Container(
@@ -163,9 +183,14 @@ class _AspectTile extends StatelessWidget {
                         fontWeight: FontWeight.w900)),
                   ),
                   const SizedBox(width: 8),
-                  Text('60-day plan',
+                  Text(
+                    isCommitted
+                      ? 'Day ${committed!.currentDay} / ${committed!.lengthDays}'
+                      : '60-day plan',
                     style: AppTypography.label.copyWith(
-                      color: AppColors.textTertiary,
+                      color: isCommitted
+                        ? aspect.color
+                        : AppColors.textTertiary,
                       fontSize: 9,
                       letterSpacing: 2.0,
                       fontWeight: FontWeight.w700)),
@@ -175,13 +200,18 @@ class _AspectTile extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              // Title + one-liner, stacked like _ActiveProtocolCard\'s
-              // protocol.title + targeting line.
+              // Title + sub-line. Available tile shows the hook;
+              // committed tile shows the day-count + streak so the
+              // user sees momentum without opening the routine.
               Text(aspect.title,
                 style: AppTypography.h1.copyWith(
                   fontSize: 20, letterSpacing: -0.4)),
               const SizedBox(height: 2),
-              Text(aspect.oneLiner,
+              Text(
+                isCommitted
+                  ? '${committed!.completedDays.length} days logged · '
+                    '${committed!.effectiveStreak}-day streak'
+                  : aspect.oneLiner,
                 style: AppTypography.bodySmall.copyWith(
                   color: AppColors.textSecondary, fontSize: 12.5)),
             ],

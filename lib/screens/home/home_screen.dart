@@ -351,38 +351,24 @@ class _ScanHubTab extends StatelessWidget {
                 ),
               ).animate().fadeIn(delay: 80.ms, duration: 400.ms),
 
-              // Every active protocol — one compact tile each. Bro\'s
-              // multi-commit model: SKIN + JAW + DEBLOAT + HAIR can
-              // all run in parallel; each appears here as its own
-              // tile (instead of one global "active" tile).
-              if (activeProtocols.isNotEmpty) ...[
-                const SizedBox(height: Sp.md),
-                for (final entry in activeProtocols.entries) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-                    child: _ActiveProtocolCard(protocol: entry.value),
-                  ).animate().fadeIn(delay: 140.ms, duration: 400.ms),
-                  const SizedBox(height: 8),
-                ],
-              ],
-
               const SizedBox(height: Sp.lg),
 
-              // 60-day aspect tiles — SKIN / JAW / DEBLOAT / HAIR.
-              // Bro: "all these protocols you created none of them
-              // are commitable. They should show in the scan tab
-              // and need to be clearer." Tiles are now compact
-              // single-line summaries matching _ActiveProtocolCard\'s
-              // visual language. Tapping any one starts that protocol
-              // (or silently swaps from a different active one — see
-              // protocol_screen.dart _load).
+              // SKIN / JAW / DEBLOAT / HAIR — single section. Each
+              // tile renders COMMITTED (day count, streak) or
+              // AVAILABLE (one-liner hook) depending on whether the
+              // user has started that axis. Bro: "if they commit
+              // only one fucking shows" — no separate active-tile-
+              // on-top + available-tile-below sections anymore;
+              // each axis renders exactly once in whichever state
+              // it is in.
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
                 child: AspectProtocolCards(
-                  geometry:       latest!.geometry,
-                  savedImagePath: latest!.capturedImagePath,
+                  geometry:         latest!.geometry,
+                  savedImagePath:   latest!.capturedImagePath,
+                  activeProtocols:  activeProtocols,
                 ),
-              ).animate().fadeIn(delay: 180.ms, duration: 400.ms),
+              ).animate().fadeIn(delay: 140.ms, duration: 400.ms),
 
               const SizedBox(height: Sp.md),
 
