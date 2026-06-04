@@ -89,6 +89,24 @@ class LocalStoreService {
   }
 
   // ── Protocol (active 60-day program) ─────────────────────────────────────
+  //
+  // Two storage shapes coexist:
+  //   • _kActiveProto  : SINGLE-PROTOCOL legacy key (one active at a time).
+  //                      Kept for backward compat with installed builds.
+  //   • protocol.active.<axis> : per-axis keys so the user can run multiple
+  //                              protocols in parallel — SKIN + JAW + DEBLOAT
+  //                              + HAIR all live as independent runs each
+  //                              with their own day counter, streak, and
+  //                              completion log. Bro: "they should be able
+  //                              to commit them all."
+  //
+  // First call to loadAllProtocols() migrates the legacy single-protocol
+  // value into its targetAxis-keyed slot so existing users don\'t lose
+  // their run.
+
+  static String _protocolKeyFor(String axis) =>
+      'protocol.active.${axis.toLowerCase().replaceAll(' ', '_')}';
+
   static Future<Map<String, dynamic>?> loadProtocolJson() async {
     final prefs = await SharedPreferences.getInstance();
     final s = prefs.getString(_kActiveProto);
@@ -103,6 +121,77 @@ class LocalStoreService {
     } else {
       await prefs.setString(_kActiveProto, jsonEncode(j));
     }
+  }
+
+  /// Read the per-axis active protocol slot. Falls back to the legacy
+  /// single-active value if the per-axis slot is empty AND the legacy
+  /// value\'s targetAxis matches — one-time migration on read.
+  static Future<Map<String, dynamic>?> loadProtocolJsonFor(String axis) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _protocolKeyFor(axis);
+    final s = prefs.getString(key);
+    if (s != null) {
+      try { return jsonDecode(s) as Map<String, dynamic>; } catch (_) {}
+    }
+    // Legacy migration — if the old single-active slot holds a run for
+    // THIS axis, copy it under the new per-axis key.
+    final legacy = await loadProtocolJson();
+    if (legacy != null && legacy['targetAxis'] == axis) {
+      await prefs.setString(key, jsonEncode(legacy));
+      await prefs.remove(_kActiveProto);
+      return legacy;
+    }
+    return null;
+  }
+
+  /// Write a protocol into its per-axis slot. Passing null removes the
+  /// slot. Does not touch other axes.
+  static Future<void> saveProtocolJsonFor(
+      String axis, Map<String, dynamic>? j) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _protocolKeyFor(axis);
+    if (j == null) {
+      await prefs.remove(key);
+    } else {
+      await prefs.setString(key, jsonEncode(j));
+    }
+  }
+
+  /// Load every active protocol the user has committed to. Returns a
+  /// map keyed by canonical axis name. Empty when no protocols are
+  /// running. Also performs the legacy migration: if the old
+  /// single-active slot is populated, it\'s lifted into the new
+  /// per-axis storage on first call and removed from the legacy key.
+  static Future<Map<String, Map<String, dynamic>>> loadAllProtocols() async {
+    final prefs  = await SharedPreferences.getInstance();
+    final result = <String, Map<String, dynamic>>{};
+
+    // Migrate legacy single-active value if present and not already
+    // copied across.
+    final legacy = await loadProtocolJson();
+    if (legacy != null) {
+      final axis = legacy['targetAxis'] as String?;
+      if (axis != null) {
+        final key = _protocolKeyFor(axis);
+        if (prefs.getString(key) == null) {
+          await prefs.setString(key, jsonEncode(legacy));
+        }
+        await prefs.remove(_kActiveProto);
+      }
+    }
+
+    // Scan every key beginning with the per-axis prefix.
+    for (final k in prefs.getKeys()) {
+      if (!k.startsWith('protocol.active.')) continue;
+      final raw = prefs.getString(k);
+      if (raw == null) continue;
+      try {
+        final j = jsonDecode(raw) as Map<String, dynamic>;
+        final axis = j['targetAxis'] as String?;
+        if (axis != null) result[axis] = j;
+      } catch (_) {/* skip corrupted slot */}
+    }
+    return result;
   }
 
   // ── Subscription stub (wired to real IAP later) ─────────────────────────

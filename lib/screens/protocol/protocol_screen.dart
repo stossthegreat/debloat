@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/protocol.dart';
+import '../../models/scan_record.dart';
 import '../../services/local_store_service.dart';
 import '../../services/protocol_service.dart';
 import '../../theme/app_colors.dart';
@@ -43,17 +44,21 @@ class _ProtocolScreenState extends State<ProtocolScreen> {
   /// axis than the currently-active protocol, we silently end
   /// the old and start the requested one. The user\'s tap on
   /// the new tile IS the commit.
+  /// Multi-protocol resolver. The user can have SKIN + JAW + DEBLOAT
+  /// + HAIR all running in parallel — each one lives in its own
+  /// per-axis slot. This screen always shows the SPECIFIC axis the
+  /// user tapped (via startPulldown), never some other active run.
   Future<void> _load() async {
-    var p = await ProtocolService.loadActive();
+    Protocol? p;
 
-    // Did the user tap a specific aspect tile? Resolve the canonical
-    // axis from the pulldown string so we can compare against any
-    // existing active protocol.
+    // Resolve the requested axis from the pulldown string if the
+    // user came in via an aspect tile.
     String? requestedAxis;
+    ScanRecord? scan;
     if (widget.startPulldown != null &&
         widget.startPulldown!.trim().isNotEmpty) {
       try {
-        final scan = await LocalStoreService.latestScan();
+        scan = await LocalStoreService.latestScan();
         if (scan != null) {
           requestedAxis = ProtocolService.resolveAxis(
             pulldown: widget.startPulldown!,
@@ -63,30 +68,38 @@ class _ProtocolScreenState extends State<ProtocolScreen> {
       } catch (_) {/* fall through */}
     }
 
-    final shouldSwap = p != null &&
-        requestedAxis != null &&
-        p.targetAxis != requestedAxis;
-
-    if (p == null || shouldSwap) {
-      try {
-        final scan = await LocalStoreService.latestScan();
-        if (scan != null) {
-          // Tile tap with no active protocol → start the requested
-          // axis. Tile tap with a different active protocol → swap
-          // (silently end the old, start the new). Without a tile
-          // tap → fall back to Foundations.
-          final pulldown = (widget.startPulldown ?? 'Foundations').trim();
-          if (shouldSwap) {
-            await ProtocolService.save(null); // end the old run
-          }
+    if (requestedAxis != null) {
+      // Specific axis requested → load THAT axis. If it doesn\'t
+      // exist yet, start it without touching any other active run.
+      p = await ProtocolService.loadActiveFor(requestedAxis);
+      if (p == null && scan != null) {
+        try {
           p = await ProtocolService.startForScan(
             scan,
-            pulldown: pulldown,
+            pulldown: widget.startPulldown!,
             geometry: scan.geometry,
           );
-        }
-      } catch (_) {/* fall through to empty state */}
+        } catch (_) {/* fall through */}
+      }
+    } else {
+      // No specific axis (e.g. opened from the Looks tab\'s active
+      // tile via the masthead protocol icon). Fall back to whatever
+      // active protocol exists, or auto-start Foundations.
+      p = await ProtocolService.loadActive();
+      if (p == null) {
+        try {
+          scan ??= await LocalStoreService.latestScan();
+          if (scan != null) {
+            p = await ProtocolService.startForScan(
+              scan,
+              pulldown: 'Foundations',
+              geometry: scan.geometry,
+            );
+          }
+        } catch (_) {/* fall through to empty state */}
+      }
     }
+
     if (!mounted) return;
     setState(() { _p = p; _loading = false; });
   }

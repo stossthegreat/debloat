@@ -39,6 +39,11 @@ class _HomeScreenState extends State<HomeScreen> {
   late int _tab;
   ScanRecord? _latest;
   Protocol?   _protocol;
+  /// Every active protocol the user has committed to, keyed by axis.
+  /// Bro\'s multi-commit model — SKIN, JAW, DEBLOAT, HAIR can all be
+  /// running in parallel and each one surfaces as its own tile on
+  /// the Looks tab.
+  Map<String, Protocol> _activeProtocols = const {};
   bool _loading = true;
   // Pillar scores, each /10. Read on _reload from the same places the
   // individual tabs already write to:
@@ -74,8 +79,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _reload() async {
-    final latest   = await LocalStoreService.latestScan();
-    final protocol = await ProtocolService.loadActive();
+    final latest     = await LocalStoreService.latestScan();
+    final all        = await ProtocolService.loadAllActive();
+    // Pick a representative active protocol for the legacy _protocol
+    // field (used by the masthead streak chip + the Today\'s Ascension
+    // streak fallback). Prefer the longest-streak one so the masthead
+    // reflects the user\'s best running streak across all axes.
+    Protocol? protocol;
+    for (final p in all.values) {
+      if (protocol == null ||
+          p.effectiveStreak > protocol.effectiveStreak) {
+        protocol = p;
+      }
+    }
     final prefs    = await SharedPreferences.getInstance();
 
     // Bro: "why are streaks not showing when I\'ve done all three
@@ -118,9 +134,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted) return;
     setState(() {
-      _latest   = latest;
-      _protocol = protocol;
-      _loading  = false;
+      _latest          = latest;
+      _protocol        = protocol;
+      _activeProtocols = all;
+      _loading         = false;
       // /100 → /10 across the board so the Ascend pillars read the
       // same scale the Eyes / Game share cards do.
       _looksScore = ((latest?.score ?? 0) / 10).round().clamp(0, 10);
@@ -169,7 +186,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   auraDoneToday:  _auraDoneToday,
                   gameDoneToday:  _gameDoneToday,
                 ),
-                _ScanHubTab(latest: _latest, protocol: _protocol, onRefresh: _reload),
+                _ScanHubTab(
+                  latest:           _latest,
+                  protocol:         _protocol,
+                  activeProtocols:  _activeProtocols,
+                  onRefresh:        _reload,
+                ),
                 const EyesTabScreen(),
                 const GameTabScreen(),
               ],
@@ -186,10 +208,22 @@ class _HomeScreenState extends State<HomeScreen> {
 //  Tab 0 — Scan hub
 // ═══════════════════════════════════════════════════════════════════════════
 class _ScanHubTab extends StatelessWidget {
-  final ScanRecord? latest;
-  final Protocol?   protocol;
-  final Future<void> Function() onRefresh;
-  const _ScanHubTab({required this.latest, required this.protocol, required this.onRefresh});
+  final ScanRecord?              latest;
+  /// Legacy single active protocol — used by tiles that only know
+  /// how to render one. The Looks tab itself uses [activeProtocols]
+  /// to render every committed run.
+  final Protocol?                protocol;
+  /// Every active protocol the user has committed to, keyed by
+  /// canonical axis. Each surfaces as its own compact tile under
+  /// the scan button.
+  final Map<String, Protocol>    activeProtocols;
+  final Future<void> Function()  onRefresh;
+  const _ScanHubTab({
+    required this.latest,
+    required this.protocol,
+    required this.activeProtocols,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -317,15 +351,19 @@ class _ScanHubTab extends StatelessWidget {
                 ),
               ).animate().fadeIn(delay: 80.ms, duration: 400.ms),
 
-              // Active protocol — small clean tile UNDER the scan
-              // button. Surfaces only when the user has actually
-              // committed to a plan.
-              if (protocol != null) ...[
+              // Every active protocol — one compact tile each. Bro\'s
+              // multi-commit model: SKIN + JAW + DEBLOAT + HAIR can
+              // all run in parallel; each appears here as its own
+              // tile (instead of one global "active" tile).
+              if (activeProtocols.isNotEmpty) ...[
                 const SizedBox(height: Sp.md),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-                  child: _ActiveProtocolCard(protocol: protocol!),
-                ).animate().fadeIn(delay: 140.ms, duration: 400.ms),
+                for (final entry in activeProtocols.entries) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+                    child: _ActiveProtocolCard(protocol: entry.value),
+                  ).animate().fadeIn(delay: 140.ms, duration: 400.ms),
+                  const SizedBox(height: 8),
+                ],
               ],
 
               const SizedBox(height: Sp.lg),
@@ -649,7 +687,12 @@ class _ActiveProtocolCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.push('/protocol'),
+        // Pass the axis so the protocol screen loads THIS specific
+        // run (not whichever legacy "active" comes back first). Each
+        // tile maps to one axis-keyed protocol slot.
+        onTap: () => context.push('/protocol', extra: {
+          'pulldown': protocol.targetAxis,
+        }),
         borderRadius: BorderRadius.circular(Rd.xl),
         child: Container(
           padding: const EdgeInsets.all(Sp.md),

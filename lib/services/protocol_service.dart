@@ -29,24 +29,81 @@ const _axisFoundations = 'Foundations';
 /// training, fin/min/tret is referenced natively but never dose-prescribed,
 /// and orbital / mandibular "bone smashing" is never surfaced.
 class ProtocolService {
+  /// Load THE active protocol — legacy single-active API. Returns
+  /// the first active protocol found across all per-axis slots so
+  /// pre-multi-protocol call sites keep working unchanged. New
+  /// code should call [loadAllActive] or [loadActiveFor].
   static Future<Protocol?> loadActive() async {
-    final j = await LocalStoreService.loadProtocolJson();
+    final all = await loadAllActive();
+    if (all.isEmpty) return null;
+    return all.values.first;
+  }
+
+  /// Load every active protocol the user has committed to, keyed by
+  /// canonical axis. Empty when nothing is running. The Looks tab
+  /// surfaces each one as its own compact tile so SKIN / JAW /
+  /// DEBLOAT / HAIR can all run in parallel.
+  static Future<Map<String, Protocol>> loadAllActive() async {
+    final raw = await LocalStoreService.loadAllProtocols();
+    final out = <String, Protocol>{};
+    raw.forEach((axis, j) {
+      try { out[axis] = Protocol.fromJson(j); } catch (_) {}
+    });
+    return out;
+  }
+
+  /// Load the active protocol for a specific axis (e.g. 'Skin',
+  /// 'Jaw definition', 'Hair', 'Puffiness'). Returns null when the
+  /// axis has no run.
+  static Future<Protocol?> loadActiveFor(String axis) async {
+    final j = await LocalStoreService.loadProtocolJsonFor(axis);
     if (j == null) return null;
     try { return Protocol.fromJson(j); } catch (_) { return null; }
   }
 
+  /// Save the legacy single-active slot. Kept so existing call sites
+  /// compile; new code should call [saveFor].
   static Future<void> save(Protocol? p) async {
-    await LocalStoreService.saveProtocolJson(p?.toJson());
-    // Null means "end protocol" — tear down scheduled notifications so
-    // the user isn't nudged about a routine that no longer exists.
     if (p == null) {
+      // Nuke ALL per-axis runs in addition to the legacy slot. This
+      // is the "end everything" semantic the old API had.
+      await LocalStoreService.saveProtocolJson(null);
+      final all = await LocalStoreService.loadAllProtocols();
+      for (final axis in all.keys) {
+        await LocalStoreService.saveProtocolJsonFor(axis, null);
+      }
+      await NotificationService.cancelAllProtocolNotifications();
+      return;
+    }
+    await saveFor(p.targetAxis, p);
+  }
+
+  /// Save the active protocol for one specific axis without touching
+  /// the others. End by passing null. This is what the multi-commit
+  /// flow uses — committing SKIN doesn\'t blow away the active JAW
+  /// protocol.
+  static Future<void> saveFor(String axis, Protocol? p) async {
+    await LocalStoreService.saveProtocolJsonFor(axis, p?.toJson());
+    if (p == null) {
+      // Notifications are global today; tearing them down on any
+      // end is the safest move so a stale nudge doesn\'t fire for
+      // a protocol that no longer exists. The next markDayComplete
+      // on any remaining run re-schedules.
       await NotificationService.cancelAllProtocolNotifications();
     }
   }
 
+  /// End the active protocol for one specific axis (without touching
+  /// the others). Convenience over [saveFor].
+  static Future<void> endFor(String axis) async {
+    await saveFor(axis, null);
+  }
+
   static Future<Protocol> markDayComplete(Protocol p, int day) async {
     final updated = p.withDayCompleted(day);
-    await save(updated);
+    // Save under the protocol\'s own axis so a multi-protocol user
+    // doesn\'t accidentally blow away a different running plan.
+    await saveFor(updated.targetAxis, updated);
     // Stamp today as the LOOKS pillar completion day so the Ascend
     // tab\'s Today\'s Ascension card ticks LOOKS off when a protocol
     // task is logged.
@@ -87,7 +144,9 @@ class ProtocolService {
       milestones: template.milestones,
       completedDays: const {},
     );
-    await save(protocol);
+    // saveFor (not save) so committing a NEW axis doesn\'t kill any
+    // other active protocol the user already has running.
+    await saveFor(axis, protocol);
 
     // First protocol start is the right moment to ask for notification
     // permission — the user has just committed to a 60-day run, so the
