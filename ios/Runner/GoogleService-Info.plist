@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  PLACEHOLDER — REPLACE BEFORE iOS RELEASE.
+
+  This file is a template. Until it's swapped for the real
+  GoogleService-Info.plist downloaded from your Firebase project,
+  Firebase.initializeApp() will throw on launch and AnalyticsService
+  silently no-ops on every iOS device.
+
+  HOW TO REPLACE (two paths — pick one):
+
+  PATH A — download from Firebase Console (recommended):
+    1. https://console.firebase.google.com → Mirrorly project →
+       Project settings → Your apps → tap the iOS section → Add
+       app (or "Add another app" if iOS is already registered).
+    2. Bundle ID: com.mirrorly.app   (MUST match exactly —
+       Android uses com.mirrorly.mirrorly, iOS is different).
+    3. App nickname: Mirrorly iOS (or whatever).
+    4. Skip the App Store ID for now.
+    5. Click "Register app" → "Download GoogleService-Info.plist".
+    6. Drag the downloaded file INTO ios/Runner/ in Finder, then
+       open Runner.xcodeproj in Xcode and drag the file into the
+       "Runner" target (CRITICAL — it has to be in the "Copy
+       Bundle Resources" build phase, not just sitting on disk).
+    7. Overwrite this placeholder when prompted.
+
+  PATH B — manually fill in this file's values:
+    Only do this if you can't run Xcode. Edit the strings below
+    by copy-pasting the matching values from your Firebase
+    Console → Project settings → Your apps → iOS app config.
+    Then commit.
+
+  SHARED VALUES (same on iOS + Android — already known from
+  the Android google-services.json placeholder):
+    PROJECT_ID       — mirrorly-app
+    STORAGE_BUCKET   — mirrorly-app.appspot.com
+    GCM_SENDER_ID    — your Firebase project_number
+                       (12-digit numeric, NOT the all-zeros
+                       placeholder you see in the Android file)
+
+  iOS-SPECIFIC VALUES (different from Android — must come from
+  the iOS app slot in Firebase Console):
+    BUNDLE_ID         — com.mirrorly.app  (already correct below)
+    API_KEY           — iOS-specific Firebase API key
+    GOOGLE_APP_ID     — iOS-specific Firebase app ID
+                        (format: 1:NUMBER:ios:HEX)
+    CLIENT_ID         — OAuth client ID for iOS
+                        (format: NUMBER-HEX.apps.googleusercontent.com)
+    REVERSED_CLIENT_ID — reverse of CLIENT_ID
+                        (com.googleusercontent.apps.NUMBER-HEX)
+-->
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>REPLACE_WITH_IOS_API_KEY_FROM_FIREBASE</string>
+	<key>GCM_SENDER_ID</key>
+	<string>REPLACE_WITH_FIREBASE_PROJECT_NUMBER</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.mirrorly.app</string>
+	<key>PROJECT_ID</key>
+	<string>mirrorly-app</string>
+	<key>STORAGE_BUCKET</key>
+	<string>mirrorly-app.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false/>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<true/>
+	<key>IS_APPINVITE_ENABLED</key>
+	<false/>
+	<key>IS_GCM_ENABLED</key>
+	<false/>
+	<key>IS_SIGNIN_ENABLED</key>
+	<false/>
+	<key>GOOGLE_APP_ID</key>
+	<string>REPLACE_WITH_IOS_GOOGLE_APP_ID_FROM_FIREBASE</string>
+	<key>CLIENT_ID</key>
+	<string>REPLACE_WITH_IOS_CLIENT_ID_FROM_FIREBASE</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>REPLACE_WITH_IOS_REVERSED_CLIENT_ID_FROM_FIREBASE</string>
+</dict>
+</plist>

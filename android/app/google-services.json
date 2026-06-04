@@ -1,47 +1,55 @@
 {
+  "_README": [
+    "PLACEHOLDER — REPLACE BEFORE Android RELEASE.",
+    "",
+    "This file is a template. Until it's swapped for the real",
+    "google-services.json downloaded from your Firebase project,",
+    "Firebase.initializeApp() will throw on launch and AnalyticsService",
+    "silently no-ops on every Android device.",
+    "",
+    "HOW TO REPLACE:",
+    "  1. https://console.firebase.google.com -> Mirrorly project ->",
+    "     Project settings -> Your apps -> tap the Android section ->",
+    "     Add app (or 'Add another app' if Android is already there).",
+    "  2. Package name: com.mirrorly.mirrorly  (MUST match exactly --",
+    "     iOS uses com.mirrorly.app, Android is different).",
+    "  3. App nickname: Mirrorly Android (or whatever).",
+    "  4. Skip SHA-1 unless you wire Auth / Dynamic Links later.",
+    "  5. Click 'Register app' -> 'Download google-services.json'.",
+    "  6. Drop the downloaded file at android/app/google-services.json,",
+    "     overwriting this placeholder.",
+    "",
+    "The Android plugin (com.google.gms.google-services in",
+    "android/app/build.gradle.kts) is already wired and the",
+    "classpath in android/settings.gradle.kts is set -- once the",
+    "real file lands, Android analytics activates on next build."
+  ],
   "project_info": {
-    "project_number": "000000000000",
+    "project_number": "REPLACE_WITH_FIREBASE_PROJECT_NUMBER",
     "project_id": "mirrorly-app",
     "storage_bucket": "mirrorly-app.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "mobilesdk_app_id": "REPLACE_WITH_ANDROID_GOOGLE_APP_ID_FROM_FIREBASE",
         "android_client_info": {
           "package_name": "com.mirrorly.mirrorly"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "000000000000-mirrorly.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.mirrorly.mirrorly",
-            "certificate_hash": "c227d7bea2387040166ae3d9bd23398d60dc08de"
-          }
-        },
-        {
-          "client_id": "000000000000-mirrorly.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSy-mirrorly-placeholder-replace-from-firebase"
+          "current_key": "REPLACE_WITH_ANDROID_API_KEY_FROM_FIREBASE"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "000000000000-mirrorly.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }
   ],
   "configuration_version": "1"
 }
+</content>
