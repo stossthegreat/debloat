@@ -1,38 +1,13 @@
 {
-  "_README": [
-    "PLACEHOLDER — REPLACE BEFORE Android RELEASE.",
-    "",
-    "This file is a template. Until it's swapped for the real",
-    "google-services.json downloaded from your Firebase project,",
-    "Firebase.initializeApp() will throw on launch and AnalyticsService",
-    "silently no-ops on every Android device.",
-    "",
-    "HOW TO REPLACE:",
-    "  1. https://console.firebase.google.com -> Mirrorly project ->",
-    "     Project settings -> Your apps -> tap the Android section ->",
-    "     Add app (or 'Add another app' if Android is already there).",
-    "  2. Package name: com.mirrorly.mirrorly  (MUST match exactly --",
-    "     iOS uses com.mirrorly.app, Android is different).",
-    "  3. App nickname: Mirrorly Android (or whatever).",
-    "  4. Skip SHA-1 unless you wire Auth / Dynamic Links later.",
-    "  5. Click 'Register app' -> 'Download google-services.json'.",
-    "  6. Drop the downloaded file at android/app/google-services.json,",
-    "     overwriting this placeholder.",
-    "",
-    "The Android plugin (com.google.gms.google-services in",
-    "android/app/build.gradle.kts) is already wired and the",
-    "classpath in android/settings.gradle.kts is set -- once the",
-    "real file lands, Android analytics activates on next build."
-  ],
   "project_info": {
-    "project_number": "REPLACE_WITH_FIREBASE_PROJECT_NUMBER",
-    "project_id": "mirrorly-app",
-    "storage_bucket": "mirrorly-app.appspot.com"
+    "project_number": "18046958403",
+    "project_id": "mirrorly-f5a1b",
+    "storage_bucket": "mirrorly-f5a1b.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "REPLACE_WITH_ANDROID_GOOGLE_APP_ID_FROM_FIREBASE",
+        "mobilesdk_app_id": "1:18046958403:android:a30b7c849c91d683cdcdf6",
         "android_client_info": {
           "package_name": "com.mirrorly.mirrorly"
         }
@@ -40,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "REPLACE_WITH_ANDROID_API_KEY_FROM_FIREBASE"
+          "current_key": "AIzaSyBNbzoG8rMZeA0wT4Mb8aBy0Bl-m_H3Yj0"
         }
       ],
       "services": {
