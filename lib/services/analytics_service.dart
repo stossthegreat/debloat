@@ -27,9 +27,14 @@ class AnalyticsService {
     try {
       await Firebase.initializeApp();
       _fa = FirebaseAnalytics.instance;
+      // iOS GoogleService-Info.plist ships with IS_ANALYTICS_ENABLED=false
+      // (Firebase Console default when GA isn't toggled on at project setup).
+      // Force collection on at runtime so events actually flow without
+      // needing to re-download the plist.
+      await _fa!.setAnalyticsCollectionEnabled(true);
       if (kDebugMode) {
         // ignore: avoid_print
-        print('[Analytics] Firebase initialised.');
+        print('[Analytics] Firebase initialised + collection enabled.');
       }
     } catch (err) {
       // ignore: avoid_print
