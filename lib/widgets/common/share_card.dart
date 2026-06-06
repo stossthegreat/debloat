@@ -119,51 +119,81 @@ class ShareCard extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 22),
 
-              // ── 3 · TAGLINE — the one statement under the images. RED. ──
-              //  Sourced from the /rate "viral killer line" (strength-led,
-              //  screenshot-worthy) so it's never templated across users.
+              // ── 3 · TAGLINE — WHITE italic, identical to in-app HeroCard.
+              // Sourced from the /rate "viral killer line" (strength-led,
+              // screenshot-worthy) so it's never templated across users.
+              // The in-app card prints this in white at 26pt; scaling
+              // 2.7× for the 1080px share width → ~70pt.
               Center(
                 child: Text(tagline,
                   textAlign: TextAlign.center,
                   maxLines: 3, overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.playfairDisplay(
-                    color: ShareCard.accentRed,
-                    fontSize: 46, letterSpacing: -0.7,
+                    color: Colors.white,
+                    fontSize: 56, letterSpacing: -0.7,
                     fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w600, height: 1.2,
+                    fontWeight: FontWeight.w500, height: 1.22,
                   )),
               ),
 
-              // Tight gap — proofs sit right under the tagline so they
-              // never get clipped by chat-app previews that overlay a
-              // reply bar at the bottom.
-              const SizedBox(height: 16),
+              const SizedBox(height: 26),
 
-              // ── 4 · PROOF LINES — CAPS, WHITE, companion scale ──
-              // Shrunk from 32 → 24 so they read as supporting beats to
-              // the red tagline above, matching the smaller hero bullets.
+              // ── 4 · PROOF LINES — CAPS, WHITE, same proportions as in-app.
+              // HeroCard runs these at 15pt against ~393pt-wide screens;
+              // share card is 1080pt wide so 40pt keeps the relative scale.
               for (var i = 0; i < proofs.length; i++) ...[
                 Text(proofs[i].toUpperCase(),
+                  textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     color: Colors.white,
-                    fontSize: 24, letterSpacing: 1.4,
-                    fontWeight: FontWeight.w700, height: 1.25,
+                    fontSize: 28, letterSpacing: 1.6,
+                    fontWeight: FontWeight.w700, height: 1.35,
                   )),
-                if (i != proofs.length - 1) const SizedBox(height: 6),
+                if (i != proofs.length - 1) const SizedBox(height: 10),
               ],
 
-              const SizedBox(height: 16),
+              const Spacer(),
 
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text('mirrorly.app',
-                  style: GoogleFonts.inter(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 18, letterSpacing: 0.6,
-                    fontWeight: FontWeight.w500,
-                  )),
+              // ── 5 · CTA — clear, centred, brand red, button-style block.
+              // Replaces the previous tiny grey "mirrorly.app" footer that
+              // was lost at the corner. Anyone who sees the card knows
+              // exactly where to go and that it's free.
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 38, vertical: 22),
+                  decoration: BoxDecoration(
+                    color: ShareCard.accentRed,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: ShareCard.accentRed.withValues(alpha: 0.45),
+                        blurRadius: 32, spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('SCAN YOUR FACE',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 32, letterSpacing: 2.4,
+                          fontWeight: FontWeight.w900, height: 1,
+                        )),
+                      const SizedBox(height: 8),
+                      Text('MIRRORLY.APP',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          fontSize: 22, letterSpacing: 3.2,
+                          fontWeight: FontWeight.w600, height: 1,
+                        )),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
