@@ -113,13 +113,16 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Future<void> _run() async {
     try {
-      // Fire /scan and /rate in parallel. Rate is ~3s, scan is ~10s, so
-      // running concurrently keeps the perceived loading time flat.
-      // Rate degrades gracefully to null on refusal / failure — the
-      // report still renders in geometry-only mode.
+      // Fire /analyse (GPT only, ~6–12s) and /rate (~3s) in parallel.
+      // /scan would chain Replicate maximize behind it (~60–90s, can
+      // hang on slow Replicate) — far too long for the loading screen.
+      // The hero photo generates on demand when the user taps the
+      // HeroCard's GENERATE button, which fires /maximize via
+      // _generateHero. Until then a.maximizedImageUrl is empty and
+      // HeroCard renders its built-in GENERATE prompt on the after side.
       final imageB64 = base64Encode(widget.imageBytes);
 
-      final scanFuture   = MirrorApiService.scan(
+      final scanFuture   = MirrorApiService.analyseOnly(
         imageBytes:  widget.imageBytes,
         geometry:    widget.geometry,
         extraImages: widget.extraImages,
