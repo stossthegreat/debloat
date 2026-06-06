@@ -90,15 +90,15 @@ class ShareCard extends StatelessWidget {
               // Push pics down a little so the score row breathes.
               const SizedBox(height: 16),
 
-              // ── 2 · IMAGE (Mirrorly wordmark + RED on NOW side) ──
-              // Aspect history: 5:6 → 5:8 → 5:11 → 5:15 → 5:11.25.
-              // The 5:15 version was filling almost the whole frame and
-              // the bullets were getting pushed under chat-app preview
-              // bars. Trim back 25% of the height (15 × 0.75 = 11.25)
-              // and drop the Flexible.tight wrap so the column packs
-              // up — bullets sit higher, more breathing room top + bottom.
+              // ── 2 · IMAGE — matches the on-screen HeroCard exactly ──
+              // 10:9 (slightly wider than square) is the same crop the
+              // user sees on the report screen — face + shoulders visible,
+              // hair + chin intact. Tall narrow crops (the previous
+              // 5/11.25) forced BoxFit.cover to zoom hard into the middle
+              // of the face and cut off both top and bottom — the share
+              // looked nothing like the in-app card.
               AspectRatio(
-                aspectRatio: 5 / 11.25,
+                aspectRatio: 10 / 9,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: Row(
