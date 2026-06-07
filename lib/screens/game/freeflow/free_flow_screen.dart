@@ -328,6 +328,20 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     if (_disposed) return;
     _lastFeedMs = DateTime.now().millisecondsSinceEpoch;
     if (_pcmQueue.isEmpty) {
+      // Queue drained. Playback has actually finished — flip the
+      // speaking flag NOW (not on ResponseDone, which fires when the
+      // server stops generating, often several seconds before the
+      // audio finishes playing out of the device speaker). The
+      // SERVER-DONE-too-early flip is what made her face flash up
+      // in the orb for a split second then vanish while she was
+      // still talking.
+      if (_herSpeaking && !_responseActive) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!_disposed && mounted && _pcmQueue.isEmpty && !_responseActive) {
+            setState(() => _herSpeaking = false);
+          }
+        });
+      }
       // Keep the engine warm with a beat of silence so it never dies on a
       // brief underrun between audio bursts.
       FlutterPcmSound.feed(
@@ -410,7 +424,11 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       // Leave _pcmStarted true — the engine stays warm (silence) between
       // turns; the stall detector revives it if iOS ever kills it.
       _log('info', 'RESP', 'response.done · audioDeltas=$_audioDeltaCount');
-      setState(() => _herSpeaking = false);
+      // DO NOT flip _herSpeaking here. ResponseDone means the server
+      // stopped generating — the audio it produced is still queued in
+      // _pcmQueue and playing out of the device speaker for several
+      // more seconds. The orb stays on her face until _pcmQueue
+      // actually drains in _onPcmFeed.
     } else if (e is RealtimeErrorEvent) {
       // Log EVERY error (so we can see benign ones too), but only a
       // genuinely fatal one drops the line. response.cancel with nothing
@@ -508,6 +526,10 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     setState(() {
       _phase = _Phase.lucien;
       _herCaption = '';
+      // Mark active speaker = Lucien. The orb picks his portrait off
+      // this flag instead of _vibe so his face is in the circle the
+      // moment he opens his mouth, not the woman's.
+      _herSpeaking = true;
     });
 
     // Lucien speaks through the SAME expressive realtime engine the
@@ -848,11 +870,14 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
                         speaking: _herSpeaking,
                         holding: _holding,
                         thinking: _phase == _Phase.connecting ||
-                            _phase == _Phase.lucien ||
                             _phase == _Phase.scoring,
-                        // Render HER face as the orb itself so the user
-                        // is talking to a real person, not a glow.
-                        imagePath: _vibe?.assetPath,
+                        // Active-speaker portrait. Lucien's face takes
+                        // the circle the moment he steps in (phase ==
+                        // lucien); otherwise the woman's portrait
+                        // renders during her speaking turns.
+                        imagePath: _phase == _Phase.lucien
+                            ? MirrorlyAssets.lucien
+                            : _vibe?.assetPath,
                       ),
                     ],
                   ),
