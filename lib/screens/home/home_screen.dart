@@ -9,6 +9,7 @@ import '../../models/protocol.dart';
 import '../../models/scan_record.dart';
 import '../../services/local_store_service.dart';
 import '../../services/protocol_service.dart';
+import '../../services/review_prompt_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/mirrorly_components.dart';
@@ -76,6 +77,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final t = widget.initialTab ?? 0;
     _tab = (t >= 0 && t < 4) ? t : 0;
     _reload();
+    // Fire the App Store review prompt if the user has now used
+    // all three pillars (scan + Free Flow + eye-contact lesson).
+    // No-op on every other launch — the service tracks state.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ReviewPromptService.maybePrompt(context);
+    });
   }
 
   Future<void> _reload() async {

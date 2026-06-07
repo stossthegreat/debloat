@@ -15,6 +15,7 @@ import '../../../services/audio_session.dart';
 import '../../../services/creator_mode_store.dart';
 import '../../../services/local_store_service.dart';
 import '../../../services/realtime_session.dart';
+import '../../../services/review_prompt_service.dart';
 import '../../../services/share_service.dart';
 import '../../../services/user_memory.dart';
 import '../../../services/villain/villain_api.dart';
@@ -663,6 +664,11 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     // (mic, session, pcm engine), so we never double-close anything.
     _clock?.cancel();
     _createTimer?.cancel();
+    // Mark Game milestone for the App Store review prompt. The
+    // dialog itself fires on the next home-screen mount once all
+    // three pillars (scan + Free Flow + eye lesson) are ticked.
+    // ignore: discarded_futures
+    ReviewPromptService.markFreeFlowDone();
     safePop(context);
   }
 

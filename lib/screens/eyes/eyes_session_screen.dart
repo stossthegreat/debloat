@@ -18,6 +18,7 @@ import '../../services/auralay_api.dart';
 import '../../services/face_detector_service.dart';
 import '../../services/gaze/gaze_progress_store.dart';
 import '../../services/gaze/gaze_scorer.dart';
+import '../../services/review_prompt_service.dart';
 import '../../theme/auralay_app_colors.dart';
 import '../../theme/auralay_app_typography.dart';
 import '../../widgets/debug_panel.dart';
@@ -598,6 +599,11 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
     _weeklyDelta  = await GazeProgressStore.weeklyImprovement();
     if (_disposed || !mounted) return;
     setState(() => _result = result);
+    // Mark Aura milestone for the App Store review prompt. Fired only
+    // once the result actually lands so users who bail before scoring
+    // don't tick the box. Dialog fires on next home mount.
+    // ignore: discarded_futures
+    ReviewPromptService.markEyesDone();
     _log('ok', 'SCORE',
         'magnetic=${result.gazeScore} '
         'eye=${result.dimPct(GazeDimension.eyeStability)} '

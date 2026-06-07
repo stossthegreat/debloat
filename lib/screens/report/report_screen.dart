@@ -21,6 +21,7 @@ import '../../services/scoring_service.dart';
 import '../../services/trait_builder_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import '../../services/review_prompt_service.dart';
 import '../../services/share_service.dart';
 import '../../widgets/common/fullscreen_image.dart';
 import '../../widgets/report/aspect_protocol_cards.dart';
@@ -141,6 +142,10 @@ class _ReportScreenState extends State<ReportScreen> {
       }
       // Persist the scan so it lights up Progress + Advisor tabs.
       await _persistScan(result);
+      // Mark the looksmax milestone for the App Store review prompt.
+      // The dialog itself fires on the next home-screen mount once all
+      // three pillars (scan + Free Flow + eye lesson) are ticked.
+      await ReviewPromptService.markScanDone();
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     }

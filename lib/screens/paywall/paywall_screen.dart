@@ -340,29 +340,11 @@ class _PaywallScreenState extends State<PaywallScreen> {
                   _hero(),
                   const SizedBox(height: 26),
 
-                  // 2. Three numbered selling points
-                  const _Point(n: '1',
-                    headline: 'EVERY BONE, MEASURED',
-                    body: '16 surgical measurements — jawline, canthal '
-                          'tilt, symmetry, thirds. Not a guess.'),
-                  const SizedBox(height: 18),
-                  const _Point(n: '2',
-                    headline: 'YOU, MAXIMIZED — RENDERED',
-                    body: 'AI renders YOUR actual face at its best. '
-                          'Haircut, beard, skin. Same person, undeniable '
-                          'lift.'),
-                  const SizedBox(height: 18),
-                  // Point 3 — what used to be "THE MIRROR · ON CALL" got
-                  // folded into the bullet list under the CTA (the Mirror
-                  // advisor stays — see "Unlimited Mirror chat advice"
-                  // below) so this slot now markets the Eyes + Game
-                  // training surfaces. Same shape as 1 and 2, no extra
-                  // vertical real estate above the price cards.
-                  const _Point(n: '3',
-                    headline: 'TRAIN THE GAZE · OWN THE GAME',
-                    body: 'Eye-contact drills. Lucien\'s arena, council, '
-                          'free-flow voice AI. The face you measured, '
-                          'in motion.'),
+                  // 2. The pitch — three outcome lines, no feature spec.
+                  // We sell what the user becomes, not the surgical
+                  // measurements that get them there. Looksmax → notice;
+                  // gaze → hold; game → close. Read in 3 seconds.
+                  const _Pitch(),
 
                   const SizedBox(height: 26),
 
@@ -561,12 +543,12 @@ class _PaywallScreenState extends State<PaywallScreen> {
           ),
         ).animate().fadeIn(delay: 180.ms, duration: 360.ms),
         const SizedBox(height: 4),
-        Text('MEASURED · NOT GUESSED',
+        Text('BECOME UNAVOIDABLE',
           textAlign: TextAlign.center,
           style: AppTypography.label.copyWith(
             color: AppColors.red,
-            fontSize: 10, letterSpacing: 3.0,
-            fontWeight: FontWeight.w800,
+            fontSize: 12, letterSpacing: 4.0,
+            fontWeight: FontWeight.w900,
           ),
         ).animate().fadeIn(delay: 240.ms, duration: 360.ms),
       ],
@@ -750,6 +732,55 @@ class _CloseX extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// The paywall pitch. Three big outcome lines under the wordmark.
+/// No body copy, no feature spec, no surgical measurements — those
+/// are HOW we deliver. The user pays for the WHAT: notice, hold,
+/// close. Three lines they can read on a bus in three seconds.
+class _Pitch extends StatelessWidget {
+  const _Pitch();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _line('LOOKS',    'GET YOU NOTICED.',    delayMs: 320),
+        const SizedBox(height: 18),
+        _line('PRESENCE', 'HOLDS ATTENTION.',    delayMs: 460),
+        const SizedBox(height: 18),
+        _line('GAME',     'ALWAYS DECIDES.',     delayMs: 600),
+      ],
+    );
+  }
+
+  Widget _line(String lead, String tail, {required int delayMs}) {
+    return RichText(
+      text: TextSpan(
+        children: [
+          TextSpan(
+            text: '$lead ',
+            style: AppTypography.h1.copyWith(
+              color: AppColors.red,
+              fontSize: 26, letterSpacing: 0.6,
+              fontWeight: FontWeight.w900, height: 1.15,
+            ),
+          ),
+          TextSpan(
+            text: tail,
+            style: AppTypography.h1.copyWith(
+              color: Colors.white,
+              fontSize: 26, letterSpacing: 0.4,
+              fontWeight: FontWeight.w800, height: 1.15,
+            ),
+          ),
+        ],
+      ),
+    ).animate(delay: Duration(milliseconds: delayMs))
+      .fadeIn(duration: 420.ms)
+      .slideX(begin: -0.04, end: 0, curve: Curves.easeOut);
   }
 }
 
