@@ -1,7 +1,7 @@
 name: mirror
 description: "Real facial geometry analysis. Not a rating. Measurements."
 publish_to: 'none'
-version: 1.2.0+110
+version: 1.2.0+111
 
 environment:
   sdk: ^3.8.0
@@ -21,6 +21,17 @@ dependencies:
   # in scan_screen.dart, populating canonical MediaPipe indices from ML
   # Kit contour data. No third-party iOS face-mesh dependency.
   google_mlkit_face_mesh_detection: ^0.4.2
+  # Google ML Kit text recognition — free, on-device OCR. Powers the
+  # RIZZ tab's screenshot → 3 replies flow: user drops a Hinge / Tinder
+  # screenshot, ML Kit extracts the text, the backend rewrites it as
+  # three options. Zero network cost for the OCR step, no GPT vision
+  # tokens burned on UI chrome.
+  google_mlkit_text_recognition: ^0.13.0
+  # image_picker — opens the system gallery or camera to grab a
+  # screenshot for the RIZZ tab. Photo bytes are handed straight to
+  # ML Kit on-device OCR; nothing leaves the device until the user
+  # taps GENERATE.
+  image_picker: ^1.1.2
   provider: ^6.1.2
   http: ^1.2.0
   image: ^4.2.0
