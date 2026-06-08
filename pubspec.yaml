@@ -1,7 +1,7 @@
 name: mirror
 description: "Real facial geometry analysis. Not a rating. Measurements."
 publish_to: 'none'
-version: 1.2.0+112
+version: 1.2.0+113
 
 environment:
   sdk: ^3.8.0
@@ -27,12 +27,13 @@ dependencies:
   # three options. Zero network cost for the OCR step, no GPT vision
   # tokens burned on UI chrome.
   #
-  # Pinned to 0.11.0 (not the latest 0.13.x) because the newer text-
-  # recognition releases require google_mlkit_commons ^0.10.x while
-  # google_mlkit_face_mesh_detection 0.4.2 still pulls commons ^0.7.x.
-  # 0.11.0 sits on the same commons range as the face packages, so
-  # `pub get` resolves cleanly on iOS + Android.
-  google_mlkit_text_recognition: ^0.11.0
+  # Pinned to 0.15.1 because that's the version sitting on
+  # google_mlkit_commons ^0.11.x — the same commons family
+  # google_mlkit_face_mesh_detection 0.4.2 requires. Older 0.11/0.13
+  # text-recognition releases pulled commons ^0.6.x / ^0.10.x and the
+  # solver couldn't pick a single commons that satisfied both. 0.15.1
+  # is what `flutter pub get` itself recommended.
+  google_mlkit_text_recognition: ^0.15.1
   # image_picker — opens the system gallery or camera to grab a
   # screenshot for the RIZZ tab. Photo bytes are handed straight to
   # ML Kit on-device OCR; nothing leaves the device until the user
