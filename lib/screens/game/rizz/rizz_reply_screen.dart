@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../services/rizz_reply_service.dart';
 import '../../../theme/app_colors.dart';
+import '../../rizz/rizz_tab_screen.dart' show RizzLaunchArgs;
 
 /// RIZZ — clean one-page generator. ONE input area, two entry modes
 /// (paste her text or upload a screenshot — picked from a single tile
@@ -16,7 +17,12 @@ import '../../../theme/app_colors.dart';
 /// itself is sent to the backend so GPT-4o reads the chat natively —
 /// no scattered OCR preview, no extra steps for the user.
 class RizzReplyScreen extends StatefulWidget {
-  const RizzReplyScreen({super.key});
+  /// Optional launch args from the Rizz tab landing — scenario preset,
+  /// pre-filled situation text, or "open straight into the photo
+  /// picker" flag. Lets the user tap a preset on the tab and land on
+  /// the generator with the prompt already biased + the UI ready.
+  final RizzLaunchArgs? args;
+  const RizzReplyScreen({super.key, this.args});
 
   @override
   State<RizzReplyScreen> createState() => _RizzReplyScreenState();
@@ -28,6 +34,27 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
   bool _generating = false;
   Uint8List? _screenshotBytes;
   List<RizzReply>? _replies;
+  /// Locked-in scenario from a Rizz-tab preset (e.g. "Playful comeback"
+  /// → "She just teased you and you need to volley with…"). Threaded
+  /// into the RIZZ GOD prompt so the AI biases its three replies
+  /// toward the user's actual intent.
+  String _scenario = '';
+
+  @override
+  void initState() {
+    super.initState();
+    final args = widget.args;
+    if (args == null) return;
+    _scenario = args.scenario;
+    if (args.situation.isNotEmpty) _herCtrl.text = args.situation;
+    if (args.launchUpload) {
+      // Open the gallery picker on first frame so the user lands on
+      // the iOS photo sheet without an extra tap.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _pick(ImageSource.gallery);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -79,6 +106,7 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
       herMessage:       _herCtrl.text.trim(),
       screenshotBytes:  _screenshotBytes,
       vibe:             _vibe,
+      scenario:         _scenario,
     );
     if (!mounted) return;
     setState(() {
@@ -153,6 +181,15 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
                   fontStyle: FontStyle.italic,
                   fontWeight: FontWeight.w800,
                 )),
+
+              if (_scenario.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                _ScenarioPill(
+                  scenario: _scenario,
+                  onClear: () => setState(() => _scenario = ''),
+                ),
+              ],
+
               const SizedBox(height: 24),
 
               // Input area — single unified card. When no image is
@@ -522,6 +559,57 @@ class _GenerateButton extends StatelessWidget {
                   ],
                 ),
         ),
+      ),
+    );
+  }
+}
+
+/// The locked-in scenario pill shown under the headline when the user
+/// arrived from a preset on the Rizz tab landing. Lets them see the
+/// active scenario at a glance and clear it without leaving.
+class _ScenarioPill extends StatelessWidget {
+  final String scenario;
+  final VoidCallback onClear;
+  const _ScenarioPill({required this.scenario, required this.onClear});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+      decoration: BoxDecoration(
+        color: AppColors.red.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(
+          color: AppColors.red.withValues(alpha: 0.45), width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.bolt_rounded,
+              color: AppColors.red, size: 14),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(scenario,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                color: AppColors.red,
+                fontSize: 12, height: 1.25,
+                letterSpacing: 0.2,
+                fontWeight: FontWeight.w700,
+              )),
+          ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: onClear,
+            behavior: HitTestBehavior.opaque,
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.close_rounded,
+                  color: AppColors.red, size: 14),
+            ),
+          ),
+        ],
       ),
     );
   }
