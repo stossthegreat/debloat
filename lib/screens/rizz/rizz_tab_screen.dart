@@ -6,10 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/common/mirrorly_components.dart';
 
-/// RIZZ tab — two cards. The generator (paste her text or screenshot,
-/// get 3 replies) and The arsenal (curated 125-line library).
-/// Editorial composition: italic Playfair masthead, two clean cards,
-/// no portrait noise. Nothing else competes for attention.
+/// RIZZ tab — two clean cards. No portraits. No subtext stack.
+/// Each card has a short title + one-line subtitle and that's it.
+/// Reads in two seconds.
 class RizzTabScreen extends StatelessWidget {
   const RizzTabScreen({super.key});
 
@@ -31,38 +30,36 @@ class RizzTabScreen extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 32),
 
+            // SCREENSHOT / REPLY — the AI generator. Vision-direct:
+            // upload a chat screenshot OR type her last message.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: Text(
-                'Type what she said or drop a screenshot. '
-                'Get three replies that hit — safest to boldest.',
-                style: GoogleFonts.inter(
-                  color: AppColors.textPrimary,
-                  fontSize: 15, height: 1.45,
-                  fontWeight: FontWeight.w500,
-                ),
+              child: _RizzCard(
+                eyebrow:  'THE GENERATOR',
+                title:    'Upload a screenshot.',
+                subtitle: 'AI reads it. Writes 3 replies that hit.',
+                solid:    true,
+                onTap:    () => context.push('/rizz'),
               ),
-            ),
-
-            const SizedBox(height: 22),
-
-            // RIZZ GENERATOR — the AI hero action. Solid red, prominent.
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: _RizzGeneratorCard(onTap: () => context.push('/rizz')),
             ).animate().fadeIn(duration: 380.ms)
               .slideY(begin: 0.02, end: 0, duration: 380.ms,
                   curve: Curves.easeOut),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 22),
 
-            // THE ARSENAL — curated library, outline card.
+            // ARSENAL — the curated library.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: _ArsenalCard(onTap: () => context.push('/lines')),
-            ).animate().fadeIn(delay: 120.ms, duration: 380.ms)
+              child: _RizzCard(
+                eyebrow:  'THE ARSENAL',
+                title:    'Pickup lines.',
+                subtitle: '125 hand-picked. Tap any line to copy.',
+                solid:    false,
+                onTap:    () => context.push('/lines'),
+              ),
+            ).animate().fadeIn(delay: 140.ms, duration: 380.ms)
               .slideY(begin: 0.02, end: 0, duration: 380.ms,
                   curve: Curves.easeOut),
           ],
@@ -72,29 +69,60 @@ class RizzTabScreen extends StatelessWidget {
   }
 }
 
-class _RizzGeneratorCard extends StatelessWidget {
+/// One Rizz card. Solid red (the generator) or outline red (the
+/// library). Editorial composition — small-caps eyebrow, italic
+/// Playfair headline, one-line subtitle, chevron CTA.
+class _RizzCard extends StatelessWidget {
+  final String eyebrow;
+  final String title;
+  final String subtitle;
+  final bool   solid;
   final VoidCallback onTap;
-  const _RizzGeneratorCard({required this.onTap});
+  const _RizzCard({
+    required this.eyebrow,
+    required this.title,
+    required this.subtitle,
+    required this.solid,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final bg          = solid ? AppColors.red : AppColors.surface1;
+    final titleColor  = solid ? Colors.white  : AppColors.textPrimary;
+    final eyebrowColor = solid
+        ? Colors.white.withValues(alpha: 0.85)
+        : AppColors.red;
+    final subColor    = solid
+        ? Colors.white.withValues(alpha: 0.82)
+        : AppColors.textSecondary;
+    final chevColor   = solid ? Colors.white : AppColors.red;
+
     return Material(
-      color: AppColors.red,
+      color: bg,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
-        splashColor: Colors.white.withValues(alpha: 0.08),
+        splashColor: (solid ? Colors.white : AppColors.red)
+            .withValues(alpha: 0.08),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
+          padding: const EdgeInsets.fromLTRB(24, 28, 22, 28),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.red.withValues(alpha: 0.4),
-                blurRadius: 32, spreadRadius: 1,
-              ),
-            ],
+            border: solid
+                ? null
+                : Border.all(
+                    color: AppColors.red.withValues(alpha: 0.32),
+                    width: 0.9),
+            boxShadow: solid
+                ? [
+                    BoxShadow(
+                      color: AppColors.red.withValues(alpha: 0.4),
+                      blurRadius: 32, spreadRadius: 1,
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             children: [
@@ -102,25 +130,25 @@ class _RizzGeneratorCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('THE GENERATOR',
+                    Text(eyebrow,
                       style: GoogleFonts.inter(
-                        color: Colors.white.withValues(alpha: 0.85),
+                        color: eyebrowColor,
                         fontSize: 11, letterSpacing: 3.0,
                         fontWeight: FontWeight.w800,
                       )),
-                    const SizedBox(height: 8),
-                    Text('Drop her text.\nGet 3 hits.',
+                    const SizedBox(height: 12),
+                    Text(title,
                       style: GoogleFonts.playfairDisplay(
-                        color: Colors.white,
-                        fontSize: 26, height: 1.1,
+                        color: titleColor,
+                        fontSize: 28, height: 1.1,
                         letterSpacing: -0.5,
                         fontStyle: FontStyle.italic,
                         fontWeight: FontWeight.w800,
                       )),
-                    const SizedBox(height: 8),
-                    Text('Type it. Or drop a screenshot.',
+                    const SizedBox(height: 10),
+                    Text(subtitle,
                       style: GoogleFonts.inter(
-                        color: Colors.white.withValues(alpha: 0.82),
+                        color: subColor,
                         fontSize: 13.5, height: 1.4,
                         fontWeight: FontWeight.w500,
                       )),
@@ -128,70 +156,8 @@ class _RizzGeneratorCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 14),
-              const Icon(Icons.bolt_rounded,
-                color: Colors.white, size: 32),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ArsenalCard extends StatelessWidget {
-  final VoidCallback onTap;
-  const _ArsenalCard({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface1,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        splashColor: AppColors.red.withValues(alpha: 0.06),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: AppColors.red.withValues(alpha: 0.32), width: 0.9),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('THE ARSENAL',
-                      style: GoogleFonts.inter(
-                        color: AppColors.red,
-                        fontSize: 11, letterSpacing: 3.0,
-                        fontWeight: FontWeight.w800,
-                      )),
-                    const SizedBox(height: 8),
-                    Text('125 lines.\nThe ones that pull.',
-                      style: GoogleFonts.playfairDisplay(
-                        color: AppColors.textPrimary,
-                        fontSize: 26, height: 1.1,
-                        letterSpacing: -0.5,
-                        fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w800,
-                      )),
-                    const SizedBox(height: 8),
-                    Text('Openers · tease · heat · cold · close.',
-                      style: GoogleFonts.inter(
-                        color: AppColors.textSecondary,
-                        fontSize: 13.5, height: 1.4,
-                        fontWeight: FontWeight.w500,
-                      )),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-              const Icon(Icons.arrow_forward_ios_rounded,
-                color: AppColors.red, size: 16),
+              Icon(Icons.arrow_forward_ios_rounded,
+                color: chevColor, size: 16),
             ],
           ),
         ),

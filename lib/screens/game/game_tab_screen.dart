@@ -116,8 +116,7 @@ class _GameTabScreenState extends State<GameTabScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
               child: Text(
-                'Talk to women. Read the room. Become the man she '
-                'can\'t ignore.',
+                'Practice real-time game until you\'re unstoppable.',
                 style: AppTypography.body.copyWith(
                   color: AppColors.textPrimary,
                   height: 1.45,
@@ -125,7 +124,9 @@ class _GameTabScreenState extends State<GameTabScreen> {
               ),
             ),
 
-            const SizedBox(height: Sp.lg),
+            // Larger spacer above FREE FLOW so the card sits lower on
+            // the screen, breathing room around the main action.
+            const SizedBox(height: Sp.xl),
 
             // FREE FLOW — main event. Always tappable; paywall gating
             // happens inside the handler. Pulses softly so the eye

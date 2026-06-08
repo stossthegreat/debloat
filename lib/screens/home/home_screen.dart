@@ -18,7 +18,9 @@ import '../../widgets/report/aspect_protocol_cards.dart';
 import '../eyes/eyes_tab_screen.dart';
 import '../game/game_tab_screen.dart';
 import '../rizz/rizz_tab_screen.dart';
-import 'ascend_screen.dart';
+// ASCEND tab folded — streak moved to Looks masthead. Re-import +
+// re-add the IndexedStack child below to restore.
+// import 'ascend_screen.dart';
 
 /// The hub. Four surfaces, one promise per tab:
 ///   0. HOME (Ascend) — streak, daily missions, gap to potential
@@ -73,11 +75,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Tabs collapsed 5 → 4 (Progress folded into Home). Any legacy
-    // deep link asking for tab 4 falls back to Home so the app
-    // doesn't crash with an index out of bounds.
+    // Three tabs now: LOOKS / GAME / RIZZ. ASCEND folded in (the
+    // streak badge moved onto the Looks masthead). Any legacy deep
+    // link with a higher index falls back to LOOKS so older app-
+    // shortcuts don't crash the app.
     final t = widget.initialTab ?? 0;
-    _tab = (t >= 0 && t < 4) ? t : 0;
+    _tab = (t >= 0 && t < 3) ? t : 0;
     _reload();
     // Fire the App Store review prompt if the user has now used
     // all three pillars (scan + Free Flow + eye-contact lesson).
@@ -193,31 +196,22 @@ class _HomeScreenState extends State<HomeScreen> {
           : IndexedStack(
               index: _tab,
               children: [
-                AscendScreen(
-                  onJumpToTab:    _switchTab,
-                  latest:         _latest,
-                  dayStreak:      _dayStreak,
-                  looksScore:     _looksScore,
-                  auraScore:      _auraScore,
-                  gameScore:      _gameScore,
-                  looksDoneToday: _looksDoneToday,
-                  auraDoneToday:  _auraDoneToday,
-                  gameDoneToday:  _gameDoneToday,
-                ),
+                // LOOKS — first tab now (Ascend folded). Streak badge
+                // moved onto the masthead so users still see the loop.
                 _ScanHubTab(
                   latest:           _latest,
                   protocol:         _protocol,
                   activeProtocols:  _activeProtocols,
+                  dayStreak:        _dayStreak,
                   onRefresh:        _reload,
                 ),
-                // EYES / AURA tab — temporarily commented out per the
-                // looks + game + rizz refocus. The screen + all its
-                // services stay in tree so re-enabling is a one-line
-                // restore. Re-add `const EyesTabScreen(),` here and
-                // un-comment the Aura entry in _NavBar.items.
-                // const EyesTabScreen(),
                 const GameTabScreen(),
                 const RizzTabScreen(),
+                // EYES / AURA + ASCEND temporarily commented out.
+                // Both screens stay in tree; restoring is a one-line
+                // re-add here + uncommenting the nav item below.
+                // const EyesTabScreen(),
+                // AscendScreen(...),
               ],
             ),
       bottomNavigationBar: _NavBar(
@@ -241,11 +235,16 @@ class _ScanHubTab extends StatelessWidget {
   /// canonical axis. Each surfaces as its own compact tile under
   /// the scan button.
   final Map<String, Protocol>    activeProtocols;
+  /// Day-streak count (consecutive days the user logged anything).
+  /// Surfaces as a small flame-prefixed badge in the masthead so the
+  /// streak loop survives the Ascend-tab removal.
+  final int                      dayStreak;
   final Future<void> Function()  onRefresh;
   const _ScanHubTab({
     required this.latest,
     required this.protocol,
     required this.activeProtocols,
+    required this.dayStreak,
     required this.onRefresh,
   });
 
@@ -266,6 +265,7 @@ class _ScanHubTab extends StatelessWidget {
             MirrorlyMasthead(
               title: 'Looks',
               actions: [
+                if (dayStreak > 0) _StreakBadge(days: dayStreak),
                 MastheadAction(
                   icon: Icons.tune,
                   onTap: () => context.push('/settings'),
@@ -424,10 +424,47 @@ class _ScanHubTab extends StatelessWidget {
 // ── 1-2-3 path used on the Scan tab — numbered circles, current
 // step painted red, subsequent steps muted. Vertical column, sits
 // beside _OptimisedSplitCard.
-// ── Mirror hero card — promoted from a thin grey row to a solid red
-// card so the chat advisor is the obvious second action on Looks.
-// Same visual weight as the Rizz generator card (the other AI hero
-// surface) so the two read as one family across tabs.
+// ── Streak badge — a tiny flame-prefixed pill in the Looks masthead
+// action row. Survives the Ascend-tab removal so the user still sees
+// the daily-streak loop without scrolling to find it.
+class _StreakBadge extends StatelessWidget {
+  final int days;
+  const _StreakBadge({required this.days});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.red.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(
+          color: AppColors.red.withValues(alpha: 0.45), width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.local_fire_department_rounded,
+              color: AppColors.red, size: 16),
+          const SizedBox(width: 5),
+          Text('$days',
+            style: GoogleFonts.inter(
+              color: AppColors.red,
+              fontSize: 13.5, height: 1,
+              letterSpacing: 0.2,
+              fontWeight: FontWeight.w900,
+            )),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Mirror hero card — compact, with the before/after image inline
+// so the card SHOWS the AI advisor's value at a glance. The right
+// half is a tight split image (current ↔ optimised); the left half
+// carries the headline copy. Smaller than the previous full-bleed
+// red card — just enough to read and tap.
 class _MirrorHeroCard extends StatelessWidget {
   final VoidCallback onTap;
   const _MirrorHeroCard({required this.onTap});
@@ -435,60 +472,139 @@ class _MirrorHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.red,
+      color: AppColors.surface1,
       borderRadius: BorderRadius.circular(Rd.lg),
       child: InkWell(
         onTap: () { HapticFeedback.selectionClick(); onTap(); },
         borderRadius: BorderRadius.circular(Rd.lg),
-        splashColor: Colors.white.withValues(alpha: 0.08),
+        splashColor: AppColors.red.withValues(alpha: 0.06),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Rd.lg),
+            border: Border.all(
+              color: AppColors.red.withValues(alpha: 0.42), width: 0.9),
             boxShadow: [
               BoxShadow(
-                color: AppColors.red.withValues(alpha: 0.4),
-                blurRadius: 32, spreadRadius: 1,
+                color: AppColors.red.withValues(alpha: 0.18),
+                blurRadius: 22, spreadRadius: 0,
               ),
             ],
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('THE MIRROR',
-                      style: AppTypography.label.copyWith(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontSize: 11, letterSpacing: 3.0,
-                        fontWeight: FontWeight.w800,
-                      )),
-                    const SizedBox(height: 8),
-                    Text('Talk to your\nadvisor.',
-                      style: GoogleFonts.playfairDisplay(
-                        color: Colors.white,
-                        fontSize: 26, height: 1.1,
-                        letterSpacing: -0.5,
-                        fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w800,
-                      )),
-                    const SizedBox(height: 8),
-                    Text('Ask anything about your scan.',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: Colors.white.withValues(alpha: 0.82),
-                        fontSize: 13.5, height: 1.4,
-                      )),
-                  ],
-                ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(Rd.lg),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Left — copy block.
+                  Expanded(
+                    flex: 5,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 18, 8, 18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('THE MIRROR',
+                            style: AppTypography.label.copyWith(
+                              color: AppColors.red,
+                              fontSize: 10.5, letterSpacing: 2.8,
+                              fontWeight: FontWeight.w800,
+                            )),
+                          const SizedBox(height: 8),
+                          Text('See what could\nchange.',
+                            style: GoogleFonts.playfairDisplay(
+                              color: AppColors.textPrimary,
+                              fontSize: 20, height: 1.1,
+                              letterSpacing: -0.4,
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.w800,
+                            )),
+                          const SizedBox(height: 6),
+                          Text(
+                            'AI that knows your face.',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                              fontSize: 12.5, height: 1.35,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Right — before / after split image.
+                  Expanded(
+                    flex: 4,
+                    child: SizedBox(
+                      height: 130,
+                      child: Row(
+                        children: [
+                          Expanded(child: _half(
+                            asset: 'assets/marketing/before.jpg',
+                            label: 'NOW',
+                          )),
+                          Container(width: 1, color: Colors.white),
+                          Expanded(child: _half(
+                            asset: 'assets/marketing/after.jpg',
+                            label: 'FIXED',
+                          )),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 14),
-              const Icon(Icons.auto_awesome_rounded,
-                color: Colors.white, size: 32),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _half({required String asset, required String label}) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(asset,
+          fit: BoxFit.cover,
+          alignment: const Alignment(0, -0.25),
+          errorBuilder: (_, __, ___) => Container(
+            color: AppColors.surface2,
+            alignment: Alignment.center,
+            child: const Icon(Icons.face_retouching_natural,
+                size: 32, color: AppColors.surface3),
+          ),
+        ),
+        // Bottom scrim for the corner label.
+        Positioned(
+          left: 0, right: 0, bottom: 0, height: 36,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.58),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+          child: Align(
+            alignment: Alignment.bottomLeft,
+            child: Text(label,
+              style: GoogleFonts.inter(
+                color: Colors.white.withValues(alpha: 0.92),
+                fontSize: 9, letterSpacing: 2.4,
+                fontWeight: FontWeight.w800,
+              )),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -898,18 +1014,14 @@ class _NavBar extends StatelessWidget {
     // LOOKS is the renamed Scan tab (Mirror chat folded inside it).
     // PRESENCE is the renamed Eyes tab. GAME is unchanged. Each tab does
     // ONE thing — no five-tab sprawl, no shouting for attention.
-    // Four tabs: ASCEND / LOOKS / GAME / RIZZ.
-    //   · AURA (eye contact) hidden for now — code lives in
-    //     EyesTabScreen, add back here + as IndexedStack child to
-    //     re-enable.
-    //   · RIZZ is the new pillar — paste her text or screenshot a
-    //     chat, get three replies + the curated 125-line arsenal.
+    // Three tabs: LOOKS / GAME / RIZZ. ASCEND folded (streak badge
+    // moved to the Looks masthead). AURA stays commented — easy
+    // restore later by adding the entry back here + un-commenting
+    // the EyesTabScreen line in the IndexedStack.
     final items = const <({String label, IconData icon, bool italic})>[
-      (label: 'Ascend',   icon: Icons.keyboard_double_arrow_up_rounded, italic: false),
-      (label: 'Looks',    icon: Icons.face_retouching_natural_outlined, italic: true),
-      // (label: 'Aura',  icon: Icons.visibility_outlined,               italic: false),
-      (label: 'Game',     icon: Icons.chat_bubble_outline_rounded,       italic: true),
-      (label: 'Rizz',     icon: Icons.bolt_rounded,                      italic: true),
+      (label: 'Looks', icon: Icons.face_retouching_natural_outlined, italic: true),
+      (label: 'Game',  icon: Icons.chat_bubble_outline_rounded,       italic: true),
+      (label: 'Rizz',  icon: Icons.bolt_rounded,                      italic: true),
     ];
     return Container(
       decoration: BoxDecoration(

@@ -1,16 +1,20 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../services/rizz_reply_service.dart';
-import '../../../services/screenshot_ocr_service.dart';
 import '../../../theme/app_colors.dart';
 
-/// RIZZ — paste her text or drop a screenshot, get three replies ranked
-/// safest → boldest. Editorial card composition: red eyebrow, italic
-/// Playfair headline, segmented type/screenshot toggle, vibe chips,
-/// big red generate, 3 result cards with tag + tap-to-copy.
+/// RIZZ — clean one-page generator. ONE input area, two entry modes
+/// (paste her text or upload a screenshot — picked from a single tile
+/// row not a tab toggle), vibe chips, generate, iMessage-style result
+/// bubbles. Vision-direct: when a screenshot is supplied, the image
+/// itself is sent to the backend so GPT-4o reads the chat natively —
+/// no scattered OCR preview, no extra steps for the user.
 class RizzReplyScreen extends StatefulWidget {
   const RizzReplyScreen({super.key});
 
@@ -18,58 +22,50 @@ class RizzReplyScreen extends StatefulWidget {
   State<RizzReplyScreen> createState() => _RizzReplyScreenState();
 }
 
-enum _InputMode { type, screenshot }
-
 class _RizzReplyScreenState extends State<RizzReplyScreen> {
   final _herCtrl = TextEditingController();
-  final _ctxCtrl = TextEditingController();
-  _InputMode _mode = _InputMode.type;
   RizzVibe _vibe = RizzVibe.auto;
-  bool _ctxOpen = false;
   bool _generating = false;
-  bool _ocrRunning = false;
-  String? _screenshotPath;
-  String _ocrText = '';
+  Uint8List? _screenshotBytes;
   List<RizzReply>? _replies;
 
   @override
   void dispose() {
     _herCtrl.dispose();
-    _ctxCtrl.dispose();
     super.dispose();
   }
 
-  String get _herInput =>
-      _mode == _InputMode.type ? _herCtrl.text.trim() : _ocrText.trim();
+  bool get _canGenerate {
+    if (_generating) return false;
+    if (_screenshotBytes != null) return true;
+    return _herCtrl.text.trim().isNotEmpty;
+  }
 
-  bool get _canGenerate => _herInput.isNotEmpty && !_generating && !_ocrRunning;
-
-  Future<void> _pickScreenshot(ImageSource source) async {
+  Future<void> _pick(ImageSource source) async {
     HapticFeedback.selectionClick();
     try {
       final picker = ImagePicker();
       final picked = await picker.pickImage(
         source: source,
-        maxWidth: 1600,
+        maxWidth: 1800,
       );
       if (picked == null || !mounted) return;
+      final bytes = await File(picked.path).readAsBytes();
+      if (!mounted) return;
       setState(() {
-        _screenshotPath = picked.path;
-        _ocrText = '';
-        _ocrRunning = true;
+        _screenshotBytes = bytes;
         _replies = null;
+        _herCtrl.clear();
       });
-      final text = await ScreenshotOcrService.extractRecent(picked.path);
+    } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _ocrText = text;
-        _ocrRunning = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _ocrRunning = false);
-      _snack('Couldn\'t read that screenshot — try a cleaner crop.');
+      _snack('Couldn\'t load that image. Try another.');
     }
+  }
+
+  void _clearImage() {
+    HapticFeedback.selectionClick();
+    setState(() => _screenshotBytes = null);
   }
 
   Future<void> _generate() async {
@@ -80,9 +76,9 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
       _replies = null;
     });
     final result = await RizzReplyService.generate(
-      herMessage: _herInput,
-      vibe:       _vibe,
-      context:    _ctxCtrl.text.trim(),
+      herMessage:       _herCtrl.text.trim(),
+      screenshotBytes:  _screenshotBytes,
+      vibe:             _vibe,
     );
     if (!mounted) return;
     setState(() {
@@ -119,6 +115,7 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasImage = _screenshotBytes != null;
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -127,7 +124,7 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Header ──────────────────────────────────────────────
+              // Header.
               Row(
                 children: [
                   IconButton(
@@ -148,9 +145,7 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
                 ],
               ),
               const SizedBox(height: 10),
-              Text(_mode == _InputMode.type
-                      ? 'Drop her text.\nGet 3 hits.'
-                      : 'Drop a screenshot.\nGet 3 hits.',
+              Text('Drop her text.\nGet 3 hits.',
                 style: GoogleFonts.playfairDisplay(
                   color: Colors.white,
                   fontSize: 38, height: 1.05,
@@ -158,61 +153,58 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
                   fontStyle: FontStyle.italic,
                   fontWeight: FontWeight.w800,
                 )),
-              const SizedBox(height: 10),
-              Text(_mode == _InputMode.type
-                      ? 'Paste what she said. Pick a vibe. Get three replies '
-                        'ranked safest → boldest. 2026 Gen-Z. No 2014 cringe.'
-                      : 'Hinge. Tinder. WhatsApp. Anything. We read the last '
-                        'few messages and hand you three replies that hit — '
-                        'safest to boldest.',
-                style: GoogleFonts.inter(
-                  color: AppColors.textSecondary,
-                  fontSize: 14, height: 1.45,
-                  fontWeight: FontWeight.w500,
-                )),
+              const SizedBox(height: 24),
 
-              const SizedBox(height: 22),
-
-              // ── Type / Screenshot segmented toggle ──────────────────
-              _ModeToggle(
-                mode: _mode,
-                onChange: (m) {
-                  HapticFeedback.selectionClick();
-                  setState(() => _mode = m);
-                },
-              ),
-
-              const SizedBox(height: 18),
-
-              // ── Input area ──────────────────────────────────────────
-              if (_mode == _InputMode.type)
-                _TypeInput(controller: _herCtrl, onChanged: (_) => setState(() {}))
+              // Input area — single unified card. When no image is
+              // attached: a multiline text field on top + an "upload
+              // screenshot" tile row beneath. When an image is
+              // attached: the image preview replaces the text area
+              // and the row collapses to a single "change image" tile.
+              if (hasImage)
+                _ScreenshotPreview(
+                  bytes: _screenshotBytes!,
+                  onClear: _clearImage,
+                  onChange: () => _pick(ImageSource.gallery),
+                )
               else
-                _ScreenshotInput(
-                  imagePath:   _screenshotPath,
-                  ocrText:     _ocrText,
-                  ocrRunning:  _ocrRunning,
-                  onChoose:    () => _pickScreenshot(ImageSource.gallery),
-                  onTake:      () => _pickScreenshot(ImageSource.camera),
+                _TextInput(controller: _herCtrl, onChanged: (_) => setState(() {})),
+
+              const SizedBox(height: 12),
+
+              // OR + screenshot tiles. The OR divider only renders
+              // when no image is attached; once the user has uploaded
+              // a screenshot the text field is hidden so the OR is
+              // redundant.
+              if (!hasImage) ...[
+                _OrDivider(),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: _UploadTile(
+                      icon: Icons.photo_library_outlined,
+                      label: 'UPLOAD',
+                      onTap: () => _pick(ImageSource.gallery),
+                    )),
+                    const SizedBox(width: 10),
+                    Expanded(child: _UploadTile(
+                      icon: Icons.camera_alt_outlined,
+                      label: 'TAKE PHOTO',
+                      onTap: () => _pick(ImageSource.camera),
+                    )),
+                  ],
                 ),
+              ],
 
-              const SizedBox(height: 22),
+              const SizedBox(height: 24),
 
-              // ── Vibe chips ──────────────────────────────────────────
-              Text('PICK A VIBE',
-                style: GoogleFonts.inter(
-                  color: AppColors.textTertiary,
-                  fontSize: 11, letterSpacing: 2.8,
-                  fontWeight: FontWeight.w800,
-                )),
-              const SizedBox(height: 10),
+              // Vibe chips.
               SizedBox(
                 height: 38,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: RizzVibe.values
                       .map((v) => _VibeChip(
-                            label:    v.label,
+                            label: v.label,
                             selected: _vibe == v,
                             onTap: () {
                               HapticFeedback.selectionClick();
@@ -223,66 +215,34 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
                 ),
               ),
 
-              const SizedBox(height: 16),
-
-              // ── Optional context ────────────────────────────────────
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() => _ctxOpen = !_ctxOpen);
-                },
-                child: Row(
-                  children: [
-                    Icon(_ctxOpen
-                            ? Icons.keyboard_arrow_up_rounded
-                            : Icons.keyboard_arrow_down_rounded,
-                        color: AppColors.red, size: 20),
-                    const SizedBox(width: 4),
-                    Text('ADD CONTEXT (OPTIONAL)',
-                      style: GoogleFonts.inter(
-                        color: AppColors.red,
-                        fontSize: 11, letterSpacing: 2.4,
-                        fontWeight: FontWeight.w800,
-                      )),
-                  ],
-                ),
-              ),
-              if (_ctxOpen) ...[
-                const SizedBox(height: 10),
-                _ContextInput(controller: _ctxCtrl),
-              ],
-
               const SizedBox(height: 22),
 
-              // ── GENERATE button ─────────────────────────────────────
               _GenerateButton(
                 enabled:    _canGenerate,
                 generating: _generating,
                 onTap:      _generate,
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
-              // ── Results ─────────────────────────────────────────────
+              // Results — iMessage-style bubble cards.
               if (_replies != null) ...[
-                const SizedBox(height: 8),
-                Text('TAP A REPLY TO COPY',
+                Text('TAP A BUBBLE TO COPY',
+                  textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     color: AppColors.textTertiary,
                     fontSize: 11, letterSpacing: 2.8,
                     fontWeight: FontWeight.w800,
                   )),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 for (var i = 0; i < _replies!.length; i++) ...[
-                  _ReplyCard(
+                  _ReplyBubble(
                     reply:    _replies![i],
                     safeness: i,
                     onTap:    () => _copy(_replies![i]),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
                 ],
-              ] else if (!_generating) ...[
-                _ThePlayCard(mode: _mode),
               ],
             ],
           ),
@@ -292,68 +252,20 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
   }
 }
 
-// ─── Mode toggle (TYPE / SCREENSHOT) ─────────────────────────────────
-class _ModeToggle extends StatelessWidget {
-  final _InputMode mode;
-  final ValueChanged<_InputMode> onChange;
-  const _ModeToggle({required this.mode, required this.onChange});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.surface3, width: 0.6),
-      ),
-      padding: const EdgeInsets.all(4),
-      child: Row(
-        children: [
-          Expanded(child: _seg('TYPE TEXT',     _InputMode.type)),
-          Expanded(child: _seg('SCREENSHOT',    _InputMode.screenshot)),
-        ],
-      ),
-    );
-  }
-
-  Widget _seg(String label, _InputMode val) {
-    final selected = mode == val;
-    return GestureDetector(
-      onTap: () => onChange(val),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.red : Colors.transparent,
-          borderRadius: BorderRadius.circular(9),
-        ),
-        alignment: Alignment.center,
-        child: Text(label,
-          style: GoogleFonts.inter(
-            color: selected ? Colors.white : AppColors.textSecondary,
-            fontSize: 12, letterSpacing: 2.4,
-            fontWeight: FontWeight.w800,
-          )),
-      ),
-    );
-  }
-}
-
-class _TypeInput extends StatelessWidget {
+class _TextInput extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
-  const _TypeInput({required this.controller, required this.onChanged});
+  const _TextInput({required this.controller, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.surface3, width: 0.6),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: TextField(
         controller: controller,
         onChanged: onChanged,
@@ -363,15 +275,15 @@ class _TypeInput extends StatelessWidget {
         cursorColor: AppColors.red,
         style: GoogleFonts.inter(
           color: AppColors.textPrimary,
-          fontSize: 15, height: 1.4,
+          fontSize: 16, height: 1.45,
           fontWeight: FontWeight.w500,
           fontStyle: FontStyle.italic,
         ),
         decoration: InputDecoration(
-          hintText: '"so what brings u to hinge"  ·  "u\'re weirdly forward lol"  ·  "lol ok"',
+          hintText: 'Type what she said …',
           hintStyle: GoogleFonts.inter(
             color: AppColors.textTertiary,
-            fontSize: 14, height: 1.4,
+            fontSize: 16, height: 1.45,
             fontWeight: FontWeight.w400,
             fontStyle: FontStyle.italic,
           ),
@@ -387,176 +299,137 @@ class _TypeInput extends StatelessWidget {
   }
 }
 
-class _ScreenshotInput extends StatelessWidget {
-  final String? imagePath;
-  final String  ocrText;
-  final bool    ocrRunning;
-  final VoidCallback onChoose;
-  final VoidCallback onTake;
-  const _ScreenshotInput({
-    required this.imagePath,
-    required this.ocrText,
-    required this.ocrRunning,
-    required this.onChoose,
-    required this.onTake,
+class _ScreenshotPreview extends StatelessWidget {
+  final Uint8List   bytes;
+  final VoidCallback onClear;
+  final VoidCallback onChange;
+  const _ScreenshotPreview({
+    required this.bytes,
+    required this.onClear,
+    required this.onChange,
   });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Primary action — choose screenshot
-        Material(
-          color: AppColors.red,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            onTap: ocrRunning ? null : onChoose,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.photo_library_outlined,
-                      color: Colors.white, size: 18),
-                  const SizedBox(width: 10),
-                  Text('CHOOSE SCREENSHOT',
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 13, letterSpacing: 2.6,
-                      fontWeight: FontWeight.w900,
-                    )),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        // Secondary action — take a new photo (outline)
-        Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            onTap: ocrRunning ? null : onTake,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.red.withValues(alpha: 0.6), width: 1.4),
-              ),
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.camera_alt_outlined,
-                      color: AppColors.red, size: 18),
-                  const SizedBox(width: 10),
-                  Text('TAKE A NEW PHOTO',
-                    style: GoogleFonts.inter(
-                      color: AppColors.red,
-                      fontSize: 13, letterSpacing: 2.6,
-                      fontWeight: FontWeight.w800,
-                    )),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        if (ocrRunning) ...[
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              const SizedBox(
-                width: 14, height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.6, color: AppColors.red),
-              ),
-              const SizedBox(width: 10),
-              Text('READING THE BUBBLES…',
-                style: GoogleFonts.inter(
-                  color: AppColors.textSecondary,
-                  fontSize: 11, letterSpacing: 2.4,
-                  fontWeight: FontWeight.w700,
-                )),
-            ],
-          ),
-        ] else if (imagePath != null && ocrText.isNotEmpty) ...[
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.surface1,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.surface3, width: 0.6),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('READ',
-                  style: GoogleFonts.inter(
-                    color: AppColors.red,
-                    fontSize: 10, letterSpacing: 2.4,
-                    fontWeight: FontWeight.w800,
-                  )),
-                const SizedBox(height: 6),
-                Text(ocrText,
-                  style: GoogleFonts.inter(
-                    color: AppColors.textPrimary,
-                    fontSize: 14, height: 1.4,
-                    fontWeight: FontWeight.w500,
-                    fontStyle: FontStyle.italic,
-                  )),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _ContextInput extends StatelessWidget {
-  final TextEditingController controller;
-  const _ContextInput({required this.controller});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.surface3, width: 0.6),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.red.withValues(alpha: 0.4), width: 0.9),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: TextField(
-        controller: controller,
-        maxLines: 3,
-        minLines: 2,
-        maxLength: 200,
-        cursorColor: AppColors.red,
-        style: GoogleFonts.inter(
-          color: AppColors.textPrimary,
-          fontSize: 14, height: 1.4,
-          fontWeight: FontWeight.w500,
-        ),
-        decoration: InputDecoration(
-          hintText: 'One line: "she went cold yesterday", "first reply", etc.',
-          hintStyle: GoogleFonts.inter(
-            color: AppColors.textTertiary,
-            fontSize: 13, fontWeight: FontWeight.w400,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.image_rounded,
+                  color: AppColors.red, size: 16),
+              const SizedBox(width: 8),
+              Text('SCREENSHOT READY',
+                style: GoogleFonts.inter(
+                  color: AppColors.red,
+                  fontSize: 11, letterSpacing: 2.6,
+                  fontWeight: FontWeight.w800,
+                )),
+              const Spacer(),
+              GestureDetector(
+                onTap: onChange,
+                child: Text('CHANGE',
+                  style: GoogleFonts.inter(
+                    color: AppColors.textSecondary,
+                    fontSize: 11, letterSpacing: 2.4,
+                    fontWeight: FontWeight.w800,
+                  )),
+              ),
+              const SizedBox(width: 14),
+              GestureDetector(
+                onTap: onClear,
+                child: const Icon(Icons.close_rounded,
+                    color: AppColors.textSecondary, size: 18),
+              ),
+            ],
           ),
-          counterText: '',
-          border:           InputBorder.none,
-          enabledBorder:    InputBorder.none,
-          focusedBorder:    InputBorder.none,
-          contentPadding:   EdgeInsets.zero,
-          isDense:          true,
+          const SizedBox(height: 12),
+          Center(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 220),
+                child: Image.memory(bytes,
+                  fit: BoxFit.contain),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OrDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Container(
+          height: 0.6, color: AppColors.surface3)),
+        const SizedBox(width: 10),
+        Text('OR',
+          style: GoogleFonts.inter(
+            color: AppColors.textTertiary,
+            fontSize: 10.5, letterSpacing: 2.4,
+            fontWeight: FontWeight.w800,
+          )),
+        const SizedBox(width: 10),
+        Expanded(child: Container(
+          height: 0.6, color: AppColors.surface3)),
+      ],
+    );
+  }
+}
+
+class _UploadTile extends StatelessWidget {
+  final IconData icon;
+  final String   label;
+  final VoidCallback onTap;
+  const _UploadTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface1,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        splashColor: AppColors.red.withValues(alpha: 0.08),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.red.withValues(alpha: 0.4), width: 0.9),
+          ),
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: AppColors.red, size: 22),
+              const SizedBox(height: 8),
+              Text(label,
+                style: GoogleFonts.inter(
+                  color: AppColors.red,
+                  fontSize: 11, letterSpacing: 2.4,
+                  fontWeight: FontWeight.w800,
+                )),
+            ],
+          ),
         ),
       ),
     );
@@ -565,7 +438,7 @@ class _ContextInput extends StatelessWidget {
 
 class _VibeChip extends StatelessWidget {
   final String label;
-  final bool selected;
+  final bool   selected;
   final VoidCallback onTap;
   const _VibeChip({
     required this.label,
@@ -587,9 +460,7 @@ class _VibeChip extends StatelessWidget {
             color: selected ? AppColors.red : AppColors.surface1,
             borderRadius: BorderRadius.circular(99),
             border: Border.all(
-              color: selected
-                  ? AppColors.red
-                  : AppColors.surface3,
+              color: selected ? AppColors.red : AppColors.surface3,
               width: 0.8,
             ),
           ),
@@ -640,7 +511,7 @@ class _GenerateButton extends StatelessWidget {
                           : AppColors.textTertiary,
                       size: 22),
                     const SizedBox(width: 8),
-                    Text('GENERATE 3 LINES',
+                    Text('GENERATE',
                       style: GoogleFonts.inter(
                         color: enabled
                             ? Colors.white
@@ -656,17 +527,21 @@ class _GenerateButton extends StatelessWidget {
   }
 }
 
-class _ReplyCard extends StatelessWidget {
+/// iMessage-style result bubble. Each reply renders as a chat bubble
+/// pointed right (i.e. "from you"), in Mirrorly red. The MOVE LABEL
+/// + SAFENESS tier sits as a small footer beneath each bubble so the
+/// teaching layer stays visible without competing with the line.
+class _ReplyBubble extends StatelessWidget {
   final RizzReply reply;
   final int safeness; // 0 = safest, 1 = mid, 2 = boldest
   final VoidCallback onTap;
-  const _ReplyCard({
+  const _ReplyBubble({
     required this.reply,
     required this.safeness,
     required this.onTap,
   });
 
-  String get _label => switch (safeness) {
+  String get _safenessLabel => switch (safeness) {
         0 => 'SAFEST',
         1 => 'MIDDLE',
         _ => 'BOLDEST',
@@ -674,101 +549,69 @@ class _ReplyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isBold = safeness == 2;
-    return Material(
-      color: isBold ? AppColors.surface1 : AppColors.surface1,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        splashColor: AppColors.red.withValues(alpha: 0.08),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(18, 16, 16, 16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isBold
-                  ? AppColors.red.withValues(alpha: 0.4)
-                  : AppColors.surface3,
-              width: isBold ? 1.0 : 0.6,
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Right-aligned bubble.
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.78,
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(_label,
-                    style: GoogleFonts.inter(
-                      color: AppColors.textTertiary,
-                      fontSize: 10, letterSpacing: 2.6,
-                      fontWeight: FontWeight.w800,
-                    )),
-                  const Spacer(),
-                  Icon(Icons.copy_rounded,
-                      size: 16,
-                      color: AppColors.textTertiary.withValues(alpha: 0.7)),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              decoration: BoxDecoration(
+                color: AppColors.red,
+                borderRadius: const BorderRadius.only(
+                  topLeft:     Radius.circular(20),
+                  topRight:    Radius.circular(20),
+                  bottomLeft:  Radius.circular(20),
+                  bottomRight: Radius.circular(4),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.red.withValues(alpha: 0.28),
+                    blurRadius: 18, spreadRadius: 0,
+                  ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Text('"${reply.text}"',
+              child: Text(reply.text,
                 style: GoogleFonts.inter(
-                  color: AppColors.textPrimary,
-                  fontSize: 17, height: 1.32,
+                  color: Colors.white,
+                  fontSize: 15.5, height: 1.35,
                   fontWeight: FontWeight.w600,
-                  fontStyle: FontStyle.italic,
                 )),
-              const SizedBox(height: 12),
-              Text(reply.tag,
-                style: GoogleFonts.inter(
-                  color: AppColors.red,
-                  fontSize: 10.5, letterSpacing: 2.2,
-                  fontWeight: FontWeight.w800,
-                )),
-            ],
+            ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ThePlayCard extends StatelessWidget {
-  final _InputMode mode;
-  const _ThePlayCard({required this.mode});
-
-  @override
-  Widget build(BuildContext context) {
-    final body = mode == _InputMode.type
-        ? 'Paste her exact words. Don\'t summarise. The model writes '
-          'sharper when it sees the real cadence.\n\nAUTO usually wins. '
-          'Pick BOLD only when you\'re fine getting left on read.'
-        : 'Crop tight on the LAST 4-5 messages. We don\'t need the '
-          'whole convo — just the last beat. Less context = sharper '
-          'lines.';
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.surface3, width: 0.6),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('THE PLAY',
-            style: GoogleFonts.inter(
-              color: AppColors.red,
-              fontSize: 11, letterSpacing: 2.6,
-              fontWeight: FontWeight.w800,
-            )),
-          const SizedBox(height: 10),
-          Text(body,
-            style: GoogleFonts.inter(
-              color: AppColors.textSecondary,
-              fontSize: 14, height: 1.5,
-              fontWeight: FontWeight.w500,
-            )),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_safenessLabel,
+                  style: GoogleFonts.inter(
+                    color: AppColors.textTertiary,
+                    fontSize: 10, letterSpacing: 2.4,
+                    fontWeight: FontWeight.w800,
+                  )),
+                Text(' · ',
+                  style: TextStyle(color: AppColors.textTertiary)),
+                Text(reply.tag,
+                  style: GoogleFonts.inter(
+                    color: AppColors.red,
+                    fontSize: 10, letterSpacing: 2.0,
+                    fontWeight: FontWeight.w800,
+                  )),
+                const SizedBox(width: 6),
+                Icon(Icons.copy_rounded,
+                  size: 12,
+                  color: AppColors.textTertiary.withValues(alpha: 0.6)),
+              ],
+            ),
+          ),
         ],
       ),
     );

@@ -214,9 +214,58 @@ class _AspectTile extends StatelessWidget {
                   : aspect.oneLiner,
                 style: AppTypography.bodySmall.copyWith(
                   color: AppColors.textSecondary, fontSize: 12.5)),
+
+              // Visual progress bar — only when committed. Makes
+              // momentum legible at a glance without opening the
+              // protocol detail. Tinted in the axis colour so each
+              // tile reads as its own track.
+              if (isCommitted) ...[
+                const SizedBox(height: 10),
+                _ProgressBar(
+                  fraction: committed!.lengthDays == 0
+                      ? 0
+                      : (committed!.currentDay / committed!.lengthDays)
+                          .clamp(0.0, 1.0),
+                  color: aspect.color,
+                ),
+              ],
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Thin axis-colored progress bar shown under committed protocol
+/// tiles. Background is a faint version of the axis color; fill is
+/// solid. No animation on first paint — just the static state, so
+/// the bar reads as data, not chrome.
+class _ProgressBar extends StatelessWidget {
+  final double fraction;
+  final Color  color;
+  const _ProgressBar({required this.fraction, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(99),
+      child: Stack(
+        children: [
+          Container(
+            height: 5,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.18),
+            ),
+          ),
+          FractionallySizedBox(
+            widthFactor: fraction,
+            child: Container(
+              height: 5,
+              decoration: BoxDecoration(color: color),
+            ),
+          ),
+        ],
       ),
     );
   }

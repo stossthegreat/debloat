@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -50,15 +51,20 @@ extension RizzVibeLabel on RizzVibe {
 ///      "no trash" rule even on a dead backend.
 class RizzReplyService {
   static Future<List<RizzReply>> generate({
-    required String herMessage,
+    String herMessage = '',
+    Uint8List? screenshotBytes,
     required RizzVibe vibe,
     String context = '',
   }) async {
     final her = herMessage.trim();
     final ctx = context.trim();
-    if (her.isEmpty) return _fallbackFromArsenal(vibe);
+    final hasImage = screenshotBytes != null && screenshotBytes.isNotEmpty;
+    if (her.isEmpty && !hasImage) return _fallbackFromArsenal(vibe);
 
-    // 1) Try the clean rizz endpoint first.
+    final imageB64 = hasImage ? base64Encode(screenshotBytes) : null;
+
+    // 1) Try the dedicated rizz endpoint first. Future-route; the
+    // payload here is the clean shape that backend ought to expose.
     try {
       final res = await http
           .post(
@@ -68,30 +74,35 @@ class RizzReplyService {
               'her':   her,
               'vibe':  vibe.name,
               'ctx':   ctx,
+              if (imageB64 != null) 'imageBase64': imageB64,
             }),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 40));
       if (res.statusCode == 200) {
         final parsed = _parseReplies(res.body);
         if (parsed.length >= 3) return parsed.take(3).toList();
       }
     } catch (_) {/* fall through */}
 
-    // 2) Fall back to /chat with the Rizz God system preamble.
+    // 2) Fall back to /chat. GPT-4o vision reads the screenshot
+    // directly when imageBase64 is included — no OCR step needed.
     try {
+      final messageText = _buildPrompt(her, vibe, ctx,
+          hasScreenshot: hasImage);
       final res = await http
           .post(
             Uri.parse('${ApiConfig.backendBaseUrl}/chat'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'messages': [
-                {'role': 'user', 'text': _buildPrompt(her, vibe, ctx)},
+                {'role': 'user', 'text': messageText},
               ],
               'face': const <String, dynamic>{},
               'mode': 'rizz_reply',
+              if (imageB64 != null) 'imageBase64': imageB64,
             }),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 40));
       if (res.statusCode == 200) {
         final body = jsonDecode(res.body) as Map<String, dynamic>;
         final reply = (body['reply'] as String?) ?? '';
@@ -100,12 +111,10 @@ class RizzReplyService {
       }
     } catch (_) {/* fall through */}
 
-    // 3) Final fallback — curated lines that match the vibe.
+    // 3) Final fallback — curated lines that match the vibe so the
+    // user is never stranded on a dead backend.
     return _fallbackFromArsenal(vibe);
   }
-
-  /// Pull text out of a screenshot via the ML Kit recognizer is the
-  /// caller's job. This service just turns text into rizz.
 
   // ── Internals ─────────────────────────────────────────────────────────
 
@@ -141,7 +150,19 @@ class RizzReplyService {
   /// message because /chat is a chat-style endpoint, not a system role
   /// endpoint. The trick: front-load the persona and constraints, then
   /// state the task, then demand a tight JSON-only response.
-  static String _buildPrompt(String her, RizzVibe vibe, String ctx) {
+  ///
+  /// When [hasScreenshot] is true, the prompt instructs the model to
+  /// READ the attached image (Hinge/Tinder/iMessage chat screenshot),
+  /// identify HER most recent message, then write three replies. No
+  /// OCR step required — GPT-4o vision parses the chat UI natively.
+  static String _buildPrompt(String her, RizzVibe vibe, String ctx,
+      {bool hasScreenshot = false}) {
+    final taskHeader = hasScreenshot
+        ? 'The attached image is a chat screenshot. Identify HER most '
+          'recent message in it (the LAST bubble that is not from the '
+          'user). Treat that as HER MESSAGE.'
+        : 'HER MESSAGE: """$her"""';
+
     return '''
 You are RIZZ GOD — the 2026 Gen-Z reply coach for men aged 18-26.
 
@@ -163,8 +184,8 @@ HARD RULES — the no-trash rule:
 
 VIBE: ${vibe.directive}
 
-HER MESSAGE: """$her"""
-${ctx.isEmpty ? '' : 'CONTEXT (one line of what came before): """$ctx"""'}
+$taskHeader
+${ctx.isEmpty ? '' : 'CONTEXT (one line): """$ctx"""'}
 
 TASK: write THREE reply options ranked safest → boldest.
 Each reply must include a small-caps MOVE LABEL: one of
