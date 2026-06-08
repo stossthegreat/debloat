@@ -200,6 +200,10 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   // Session length.
   static const int _sessionSeconds = 180;
   int _remaining = _sessionSeconds;
+  /// True once the user has held the orb for the first time. The
+  /// session clock only starts ticking on that first press — sitting
+  /// on the screen reading the scenario shouldn't burn seconds.
+  bool _clockStarted = false;
 
   @override
   void initState() {
@@ -329,8 +333,11 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
 
       if (_disposed || !mounted) return;
       _log('ok', 'WS', 'connected · ${vibe.label} · creator=$_creator');
+      // Don't start the session clock here — the user hasn't pressed
+      // to talk yet. The clock kicks off the first time they hold
+      // the orb so sitting on the screen reading the scenario
+      // doesn't burn their three minutes.
       setState(() => _phase = _Phase.live);
-      _startClock();
       HapticFeedback.mediumImpact();
     } catch (e) {
       _fail(e.toString());
@@ -494,6 +501,13 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       _herSpeaking = false;
       _youCaption = '';
     });
+    // First press kicks off the session clock. Subsequent holds
+    // don't restart it — the 3-minute window keeps draining as
+    // expected once the user has chosen to engage.
+    if (!_clockStarted) {
+      _clockStarted = true;
+      _startClock();
+    }
   }
 
   void _endHold() {
@@ -770,6 +784,9 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       _holding = false;
       _result = null;
       _remaining = 180;
+      // Reset the clock-started flag so the next press-to-talk
+      // restarts the 3-minute window from zero.
+      _clockStarted = false;
     });
     await _goLive(vibe);
   }
@@ -984,17 +1001,19 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
               // brand-new user knows immediately HOW to talk to her.
               // Visible only while the live phase is idle (not while
               // she's mid-reply, not while Lucien is reading / scoring).
+              // Sized up and brightened — it's the single most
+              // important affordance on the screen.
               if (_phase == _Phase.live && !_holding && !_herSpeaking)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(top: 4, bottom: 12),
                   child: Text(
                     'HOLD TO SPEAK',
                     textAlign: TextAlign.center,
                     style: AppTypography.label.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                      letterSpacing: 3.0,
-                      fontWeight: FontWeight.w800,
+                      color: AppColors.red,
+                      fontSize: 18,
+                      letterSpacing: 4.6,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
@@ -1708,6 +1727,10 @@ class _ChangeCharacterChip extends StatelessWidget {
 /// The ARENA pill — a clean one-tap route into the scripted-scene
 /// picker without leaving the tab. Sits next to the timer in tab
 /// mode where the close button used to live.
+/// ARENA — a proper button (solid red pill with a sword-emoji icon
+/// in front of the label). Replaces the previous tiny outlined pill
+/// so the route into the scripted-scene picker reads as an action,
+/// not an afterthought.
 class _ArenaPill extends StatelessWidget {
   final VoidCallback onTap;
   const _ArenaPill({required this.onTap});
@@ -1715,24 +1738,37 @@ class _ArenaPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.transparent,
+      color: AppColors.red,
       borderRadius: BorderRadius.circular(100),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(100),
+        splashColor: Colors.white.withValues(alpha: 0.1),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.surface1,
             borderRadius: BorderRadius.circular(100),
-            border: Border.all(color: AppColors.divider, width: 0.6),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.red.withValues(alpha: 0.35),
+                blurRadius: 14, spreadRadius: 0,
+              ),
+            ],
           ),
-          child: Text('ARENA',
-            style: AppTypography.label.copyWith(
-              color: AppColors.textPrimary,
-              fontSize: 11, letterSpacing: 2.4,
-              fontWeight: FontWeight.w900,
-            )),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.local_fire_department_rounded,
+                  color: Colors.white, size: 14),
+              const SizedBox(width: 6),
+              Text('ARENA',
+                style: AppTypography.label.copyWith(
+                  color: Colors.white,
+                  fontSize: 12, letterSpacing: 2.6,
+                  fontWeight: FontWeight.w900,
+                )),
+            ],
+          ),
         ),
       ),
     );
