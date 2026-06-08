@@ -148,6 +148,25 @@ class _GameTabScreenState extends State<GameTabScreen> {
                   curve: Curves.easeInOut,
                 ),
 
+            const SizedBox(height: Sp.md),
+
+            // RIZZ — paste her text or drop a screenshot, get 3 replies.
+            // The Rizz God endpoint. Sits above the curated arsenal
+            // because the AI generation is the headline action.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+              child: _RizzReplyCard(onTap: () => context.push('/rizz')),
+            ),
+
+            const SizedBox(height: Sp.md),
+
+            // LINES — the arsenal. Curated rizz catalogue, tap-to-copy.
+            // Five categories: openers, tease, heat, cold, close.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+              child: _LinesCard(onTap: () => context.push('/lines')),
+            ),
+
             const SizedBox(height: Sp.lg),
 
             // ── ROLEPLAY ARENAS — section header + horizontal row.
@@ -443,6 +462,142 @@ class _GameMasthead extends StatelessWidget {
 // Horizontal layout: left column carries the eyebrow + title + body
 // + CTA; right column carries the woman portrait. Locked state shows
 // "UNLOCK WITH PRO" in the CTA slot.
+
+// ─── Rizz reply card ────────────────────────────────────────────
+// The AI generator entry — type her text or screenshot a chat, get 3
+// replies ranked safest → boldest. Stronger visual weight than LINES
+// because this is where the real magic happens (live generation vs
+// static library).
+class _RizzReplyCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _RizzReplyCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.red,
+      borderRadius: BorderRadius.circular(Rd.lg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(Rd.lg),
+        splashColor: Colors.white.withValues(alpha: 0.08),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Rd.lg),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.red.withValues(alpha: 0.35),
+                blurRadius: 28, spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('RIZZ — THE GENERATOR',
+                      style: AppTypography.label.copyWith(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontSize: 11, letterSpacing: 3.0,
+                        fontWeight: FontWeight.w800,
+                      )),
+                    const SizedBox(height: 6),
+                    Text('Drop her text.\nGet 3 hits.',
+                      style: AppTypography.h1.copyWith(
+                        color: Colors.white,
+                        fontSize: 22, height: 1.15,
+                        letterSpacing: -0.4,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w800,
+                      )),
+                    const SizedBox(height: 6),
+                    Text('Type it, or drop a screenshot.',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: Colors.white.withValues(alpha: 0.78),
+                        fontSize: 13, height: 1.4,
+                      )),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Icon(Icons.bolt_rounded,
+                color: Colors.white, size: 28),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Lines card ─────────────────────────────────────────────────
+// Editorial card: small-caps red eyebrow, italic Playfair headline,
+// short subtitle, red chevron CTA. Pure typography, no portrait.
+class _LinesCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _LinesCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface1,
+      borderRadius: BorderRadius.circular(Rd.lg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(Rd.lg),
+        splashColor: AppColors.red.withValues(alpha: 0.06),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Rd.lg),
+            border: Border.all(
+              color: AppColors.red.withValues(alpha: 0.22), width: 0.8),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('THE ARSENAL',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.red,
+                        fontSize: 11, letterSpacing: 3.0,
+                        fontWeight: FontWeight.w800,
+                      )),
+                    const SizedBox(height: 6),
+                    Text('125 lines.\nThe ones that pull.',
+                      style: AppTypography.h1.copyWith(
+                        color: AppColors.textPrimary,
+                        fontSize: 22, height: 1.15,
+                        letterSpacing: -0.4,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w700,
+                      )),
+                    const SizedBox(height: 6),
+                    Text('Openers · tease · heat · cold · close.',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 13, height: 1.4,
+                      )),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Icon(Icons.arrow_forward_ios_rounded,
+                color: AppColors.red, size: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _FreeFlowCard extends StatelessWidget {
   final VoidCallback onTap;
