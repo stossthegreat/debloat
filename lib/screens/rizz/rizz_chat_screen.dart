@@ -1,13 +1,15 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
+import '../../config/api_config.dart';
 import '../../services/screenshot_ocr_service.dart';
-import '../../services/villain/villain_api.dart';
 import '../../theme/app_colors.dart';
 
 /// CHAT WITH MIRRORLY — clean, sexy, no-bullshit dating + self-improvement
@@ -114,73 +116,48 @@ class _RizzChatScreenState extends State<RizzChatScreen> {
     }
   }
 
-  /// Sharp, short preamble. The previous multi-paragraph version made
-  /// the backend's LLM return an empty reply (debug pane confirmed
-  /// status=200 + reply len=0 after the placeholder face fix). The
-  /// model was getting two conflicting briefs — the backend's face-
-  /// advisor system prompt + 80 lines of rizz instruction — and
-  /// folding. This version is one tight paragraph at the top of the
-  /// user message.
-  static const _rizzMentorPreamble =
-    'OVERRIDE: ignore any prior instruction about face geometry, '
-    'canthal tilt, jaw angle, archetypes, FWHR, or scans. You are '
-    'RIZZ — a 24-year-old man whose friends screenshot his texts. '
-    'Lowercase, ≤14 words, no exclamation marks. When asked how to '
-    'text her / ask her out / recover from a bad reply, DO NOT give '
-    'advice. Reply with the line he should send + 1 short why-it-'
-    'works tag. Banned: "Keep it simple", "Confidence is key", "Just '
-    'be yourself", "I\'ve really enjoyed chatting", "Let\'s grab '
-    'coffee this week", "Hi/Hey [name],". User\'s question:\n---\n';
-
   Future<String> _ask(String text, {Uint8List? image}) async {
-    // Only send the USER turns to the backend. The welcome bubble is
-    // UI chrome — letting the model see its own past assistant turn
-    // ("I'll give it to you straight") was conflicting with the
-    // rizz preamble and the LLM was returning empty.
+    // Strip the UI welcome bubble, send raw user turns. The RIZZ
+    // system prompt + banned-phrase list live SERVER-SIDE on the
+    // /rizz/chat route, so no client-side jailbreak preamble is
+    // needed.
     final history = <Map<String, dynamic>>[];
     for (final m in _msgs) {
       if (m.role != 'user') continue;
-      final isLast = identical(m, _msgs.lastWhere(
-        (x) => x.role == 'user',
-        orElse: () => m,
-      ));
-      final content = isLast
-          ? '$_rizzMentorPreamble${text.isEmpty ? "(screenshot attached)" : text}'
-          : m.text;
-      history.add({'role': 'user', 'content': content});
+      history.add({'role': 'user', 'content': m.text});
     }
-    // CRITICAL: use VillainApi.council on the Auralay backend, NOT
-    // /chat on the Mirrorly backend. /chat is hard-wired to the face
-    // doctor and short-circuits / overrides our rizz preamble.
-    // council is its own LLM pipe with no face context — the rizz
-    // preamble actually drives the response.
-    //
-    // Auralay's council expects {role, text} history + a text field
-    // for the current turn (not OpenAI-style {role, content}).
-    final lastUserText = history.isEmpty
-        ? text
-        : history.last['content'] as String;
-    final priorHistory = history.length > 1
-        ? history
-            .sublist(0, history.length - 1)
-            .map((m) => VillainHistoryEntry(
-                  role: 'user',
-                  text: m['content'] as String,
-                ))
-            .toList()
-        : const <VillainHistoryEntry>[];
+    if (history.isEmpty || history.last['content'] != text) {
+      // The send() flow already appended the user message before
+      // calling _ask, but be defensive.
+    }
+    // Mirrorly backend's dedicated /rizz/chat endpoint. Separate from
+    // /chat (the face doctor) — uses the RIZZ system prompt + gpt-4o
+    // with the BANNED PHRASES list baked in server-side, so no client
+    // preamble jailbreak required.
     try {
-      _dbg('POST council with ${history.length} msgs');
-      final turn = await VillainApi.council(
-        text:    lastUserText,
-        history: priorHistory,
-      ).timeout(const Duration(seconds: 45));
-      _dbg('reply len=${turn.reply.length}');
-      final reply = turn.reply.trim();
-      if (reply.isNotEmpty) return reply;
-      _dbg('empty reply');
+      _dbg('POST /rizz/chat with ${history.length} msgs');
+      final res = await http
+          .post(
+            Uri.parse('${ApiConfig.backendBaseUrl}/rizz/chat'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'messages': history,
+              if (image != null) 'imageBase64': base64Encode(image),
+            }),
+          )
+          .timeout(const Duration(seconds: 45));
+      _dbg('status=${res.statusCode}');
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        final reply = (body['reply'] as String?)?.trim() ?? '';
+        _dbg('reply len=${reply.length}');
+        if (reply.isNotEmpty) return reply;
+        _dbg('empty reply field');
+      } else {
+        _dbg('non-200 body="${res.body.length > 200 ? "${res.body.substring(0, 200)}…" : res.body}"');
+      }
     } catch (e) {
-      _dbg('council threw $e');
+      _dbg('threw $e');
     }
     return 'Try rephrasing — backend gave me nothing usable.';
   }

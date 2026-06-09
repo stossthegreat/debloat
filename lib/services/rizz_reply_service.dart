@@ -151,7 +151,10 @@ class RizzReplyService {
     // just extracted is far more useful than the raw image.
     final imageB64 = (hasImage && !ocrUsed) ? base64Encode(screenshotBytes) : null;
 
-    // 1) Try the dedicated rizz endpoint first.
+    // 1) Mirrorly backend /rizz/reply — the dedicated dating-text
+    // coach endpoint. Separate from /chat (the face doctor). Returns
+    // { replies: [{text, tag}, …] } directly so no JSON-from-prose
+    // parsing required.
     try {
       RizzDebug.lastEndpoint = '/rizz/reply';
       final res = await http
@@ -163,7 +166,6 @@ class RizzReplyService {
               'vibe':     vibe.name,
               'ctx':      ctx,
               'scenario': scn,
-              if (imageB64 != null) 'imageBase64': imageB64,
             }),
           )
           .timeout(const Duration(seconds: 40));
@@ -171,10 +173,32 @@ class RizzReplyService {
       RizzDebug.add('/rizz/reply status=${res.statusCode}');
       if (res.statusCode == 200) {
         RizzDebug.lastResponse = res.body;
-        final parsed = _parseReplies(res.body);
-        RizzDebug.parsedCount = parsed.length;
-        RizzDebug.add('/rizz/reply parsed ${parsed.length} replies');
-        if (parsed.length >= 3) return parsed.take(3).toList();
+        try {
+          final body = jsonDecode(res.body) as Map<String, dynamic>;
+          final raw  = body['replies'] as List<dynamic>? ?? const [];
+          final parsed = raw
+              .whereType<Map>()
+              .map((e) => RizzReply(
+                    text: ((e['text'] ?? e['line'] ?? '') as String).trim(),
+                    tag:  ((e['tag']  ?? 'RIZZ') as String).toString().toUpperCase(),
+                  ))
+              .where((r) => r.text.isNotEmpty)
+              .toList();
+          RizzDebug.parsedCount = parsed.length;
+          RizzDebug.add('/rizz/reply parsed ${parsed.length} replies');
+          if (parsed.length >= 3) return parsed.take(3).toList();
+          if (parsed.isNotEmpty) {
+            final arsenal = _fallbackFromArsenal(vibe);
+            while (parsed.length < 3 && arsenal.isNotEmpty) {
+              parsed.add(arsenal.removeAt(0));
+            }
+            return parsed;
+          }
+        } catch (e) {
+          RizzDebug.add('/rizz/reply parse threw $e');
+        }
+      } else {
+        RizzDebug.add('/rizz/reply non-200 body="${res.body.length > 200 ? "${res.body.substring(0, 200)}…" : res.body}"');
       }
     } catch (e) {
       RizzDebug.add('/rizz/reply threw $e');
