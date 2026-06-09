@@ -792,10 +792,12 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     _createTimer?.cancel();
     _eventSub?.cancel();
     _micSub?.cancel();
+    // Fire-and-forget teardown — see _switchCharacter for why.
     // ignore: discarded_futures
     _recorder.stop();
     // ignore: discarded_futures
     _session.close();
+    _pcmQueue.clear();
     if (!mounted) return;
     setState(() {
       _phase = _Phase.connecting;
@@ -851,10 +853,16 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     _createTimer?.cancel();
     _eventSub?.cancel();
     _micSub?.cancel();
+    // Fire-and-forget the teardown. Awaiting close() on a RealtimeSession
+    // that's still mid-connect can hang forever (the WS handshake never
+    // completes because we just told it to die) — that's what broke even
+    // INTO YOU in build 126. Just clear the playback queue so the new
+    // persona doesn't inherit tail bytes.
     // ignore: discarded_futures
     _recorder.stop();
     // ignore: discarded_futures
     _session.close();
+    _pcmQueue.clear();
     if (!mounted) return;
     setState(() {
       _vibe = vibe;
@@ -866,8 +874,6 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       _holding = false;
       _result = null;
       _remaining = 180;
-      // Reset the clock-started flag so the next press-to-talk
-      // restarts the 3-minute window from zero.
       _clockStarted = false;
     });
     await _goLive(vibe);

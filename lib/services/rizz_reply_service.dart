@@ -9,15 +9,39 @@ import '../config/api_config.dart';
 import '../data/rizz_lines.dart';
 import 'screenshot_ocr_service.dart';
 
-/// One rewritten reply suggestion. [tag] is the small-caps move
-/// label that explains WHY the line works — SELF-AWARE OPEN,
-/// FRAME CHECK, PUSH-PULL, MISINTERPRETATION, etc. Mirrors the
-/// labels on the curated arsenal cards so the user learns the
-/// move, not just the words.
+/// One rewritten reply suggestion.
 class RizzReply {
   final String text;
   final String tag;
   const RizzReply({required this.text, required this.tag});
+}
+
+/// Live debug trail captured during the LAST call to [generate].
+/// Surfaces in the rizz reply screen's debug panel so the user can
+/// SEE exactly what OCR extracted, what was POSTed, and what the
+/// backend returned — without scrolling Xcode console.
+class RizzDebug {
+  static final List<String> log = [];
+  static String ocrText = '';
+  static String lastEndpoint = '';
+  static int lastStatus = 0;
+  static String lastResponse = '';
+  static int parsedCount = 0;
+
+  static void reset() {
+    log.clear();
+    ocrText = '';
+    lastEndpoint = '';
+    lastStatus = 0;
+    lastResponse = '';
+    parsedCount = 0;
+  }
+
+  static void add(String line) {
+    final stamp = DateTime.now().toIso8601String().substring(11, 23);
+    log.add('[$stamp] $line');
+    print('[RIZZ-DBG] $line');
+  }
 }
 
 /// Five tonal vibes the user can request. AUTO lets the model pick
@@ -60,35 +84,44 @@ class RizzReplyService {
     String context = '',
     String scenario = '',
   }) async {
+    RizzDebug.reset();
     var her = herMessage.trim();
     final ctx = context.trim();
     final scn = scenario.trim();
     final hasImage = screenshotBytes != null && screenshotBytes.isNotEmpty;
-    print('[RIZZ-GEN] start her="${her.length > 60 ? "${her.substring(0, 60)}…" : her}" '
-        'hasImage=$hasImage scn="$scn"');
+    RizzDebug.add('start her_len=${her.length} hasImage=$hasImage scn="$scn"');
     if (her.isEmpty && !hasImage && scn.isEmpty) {
-      print('[RIZZ-GEN] nothing to send, falling back to arsenal');
+      RizzDebug.add('nothing to send → arsenal fallback');
       return _fallbackFromArsenal(vibe);
     }
 
-    // ── SILENT OCR ────────────────────────────────────────────────────
-    // When a screenshot is supplied, extract the chat text on-device
-    // via ML Kit BEFORE hitting the backend. The user never sees this
-    // step (no "running OCR…" pill) — they just see results. Sending
-    // the extracted text instead of the raw image bytes means the
-    // backend doesn't need GPT vision; the existing /chat endpoint
-    // (text in, JSON out) handles it natively.
+    // ── SILENT OCR — text path, not vision path ───────────────────────
+    // Backend /chat is text-in, JSON-out — no vision support. We OCR
+    // the screenshot ON-DEVICE via ML Kit, then send the extracted
+    // text as the user message. When OCR succeeds we DROP the image
+    // from the payload entirely + tell _buildPrompt this is a text
+    // case (hasScreenshot: false). That's the difference between the
+    // model answering "I can't read images" and actually writing
+    // three replies to what she said.
+    bool ocrUsed = false;
     if (hasImage && her.isEmpty) {
       final ocrText = await _ocrSilently(screenshotBytes);
-      print('[RIZZ-GEN] ocr extracted ${ocrText.length} chars');
-      if (ocrText.isNotEmpty) her = ocrText;
+      RizzDebug.ocrText = ocrText;
+      RizzDebug.add('ocr extracted ${ocrText.length} chars');
+      if (ocrText.isNotEmpty) {
+        her = ocrText;
+        ocrUsed = true;
+      }
     }
 
-    final imageB64 = hasImage ? base64Encode(screenshotBytes) : null;
+    // Only send the image bytes when OCR failed AND we still have an
+    // image — that's our only shot at a reply. Otherwise the text we
+    // just extracted is far more useful than the raw image.
+    final imageB64 = (hasImage && !ocrUsed) ? base64Encode(screenshotBytes) : null;
 
-    // 1) Try the dedicated rizz endpoint first. Future-route; the
-    // payload here is the clean shape that backend ought to expose.
+    // 1) Try the dedicated rizz endpoint first.
     try {
+      RizzDebug.lastEndpoint = '/rizz/reply';
       final res = await http
           .post(
             Uri.parse('${ApiConfig.backendBaseUrl}/rizz/reply'),
@@ -102,22 +135,25 @@ class RizzReplyService {
             }),
           )
           .timeout(const Duration(seconds: 40));
-      print('[RIZZ-GEN] /rizz/reply status=${res.statusCode}');
+      RizzDebug.lastStatus = res.statusCode;
+      RizzDebug.add('/rizz/reply status=${res.statusCode}');
       if (res.statusCode == 200) {
+        RizzDebug.lastResponse = res.body;
         final parsed = _parseReplies(res.body);
-        print('[RIZZ-GEN] /rizz/reply parsed ${parsed.length} replies');
+        RizzDebug.parsedCount = parsed.length;
+        RizzDebug.add('/rizz/reply parsed ${parsed.length} replies');
         if (parsed.length >= 3) return parsed.take(3).toList();
       }
     } catch (e) {
-      print('[RIZZ-GEN] /rizz/reply throw $e');
+      RizzDebug.add('/rizz/reply threw $e');
     }
 
-    // 2) Fall back to /chat — same payload shape as ChatService.send
-    // (the Mirror advisor that works). Backend expects {role, content},
-    // not {role, text}, and a face object containing imageBase64.
+    // 2) Fall back to /chat — same payload shape as ChatService.send.
     try {
+      RizzDebug.lastEndpoint = '/chat';
       final messageText = _buildPrompt(her, vibe, ctx,
-          scenario: scn, hasScreenshot: hasImage);
+          scenario: scn, hasScreenshot: imageB64 != null);
+      RizzDebug.add('built prompt ${messageText.length} chars');
       final res = await http
           .post(
             Uri.parse('${ApiConfig.backendBaseUrl}/chat'),
@@ -137,24 +173,39 @@ class RizzReplyService {
             }),
           )
           .timeout(const Duration(seconds: 40));
-      print('[RIZZ-GEN] /chat status=${res.statusCode}');
+      RizzDebug.lastStatus = res.statusCode;
+      RizzDebug.add('/chat status=${res.statusCode}');
       if (res.statusCode == 200) {
         final body = jsonDecode(res.body) as Map<String, dynamic>;
         final reply = (body['reply'] as String?) ?? '';
-        print('[RIZZ-GEN] /chat reply len=${reply.length}');
+        RizzDebug.lastResponse = reply;
+        RizzDebug.add('/chat reply len=${reply.length} '
+            'sample="${reply.length > 80 ? "${reply.substring(0, 80)}…" : reply}"');
         final parsed = _parseReplies(reply);
-        print('[RIZZ-GEN] /chat parsed ${parsed.length} replies');
+        RizzDebug.parsedCount = parsed.length;
+        RizzDebug.add('/chat parsed ${parsed.length} replies');
         if (parsed.length >= 3) return parsed.take(3).toList();
+        // Even with < 3, return whatever we have padded with arsenal
+        // so the user gets AI content + curated fillers instead of
+        // ALL curated when the model spat one paragraph.
+        if (parsed.isNotEmpty) {
+          RizzDebug.add('padding ${parsed.length} AI replies with arsenal');
+          final arsenal = _fallbackFromArsenal(vibe);
+          while (parsed.length < 3 && arsenal.isNotEmpty) {
+            parsed.add(arsenal.removeAt(0));
+          }
+          return parsed;
+        }
       } else {
-        print('[RIZZ-GEN] /chat non-200 body=${res.body}');
+        RizzDebug.lastResponse = res.body;
+        RizzDebug.add('/chat NON-200 body="${res.body.length > 200 ? "${res.body.substring(0, 200)}…" : res.body}"');
       }
     } catch (e) {
-      print('[RIZZ-GEN] /chat throw $e');
+      RizzDebug.add('/chat threw $e');
     }
 
-    // 3) Final fallback — curated lines that match the vibe so the
-    // user is never stranded on a dead backend.
-    print('[RIZZ-GEN] all paths failed, returning arsenal fallback');
+    // 3) Final fallback — curated lines that match the vibe.
+    RizzDebug.add('all paths failed → arsenal fallback');
     return _fallbackFromArsenal(vibe);
   }
 
@@ -171,27 +222,28 @@ class RizzReplyService {
   /// can't lock the whole generator UI in a spinner. The user sees
   /// the AI step kick in after at most 12s either way.
   static Future<String> _ocrSilently(Uint8List bytes) async {
-    print('[RIZZ-OCR] start bytes=${bytes.length}');
+    RizzDebug.add('ocr start bytes=${bytes.length}');
     try {
       final dir = await getTemporaryDirectory();
       final path = '${dir.path}/rizz_ocr_'
           '${DateTime.now().millisecondsSinceEpoch}.png';
       final file = File(path);
       await file.writeAsBytes(bytes, flush: true);
-      print('[RIZZ-OCR] wrote tmp file ${file.path}');
+      RizzDebug.add('ocr wrote tmp file');
       try {
         final text = await ScreenshotOcrService.extractRecent(path)
             .timeout(const Duration(seconds: 12), onTimeout: () {
-              print('[RIZZ-OCR] ML Kit timed out');
+              RizzDebug.add('ML Kit TIMED OUT after 12s');
               return '';
             });
-        print('[RIZZ-OCR] ok extracted=${text.length} chars');
+        RizzDebug.add('ocr ok extracted=${text.length} chars '
+            'sample="${text.length > 60 ? "${text.substring(0, 60)}…" : text}"');
         return text;
       } finally {
         try { await file.delete(); } catch (_) {}
       }
     } catch (e) {
-      print('[RIZZ-OCR] throw $e');
+      RizzDebug.add('ocr THREW $e');
       return '';
     }
   }
@@ -244,46 +296,96 @@ class RizzReplyService {
     }
   }
 
-  /// Last-ditch parser — pull up to 3 reply lines out of:
-  ///   1. "ngl your aura is unforgivable"
-  ///   2. "we'd date six months..."
-  ///   3. ...
-  /// or
-  ///   • line one
-  ///   • line two
-  /// or just plain newline-separated quoted strings.
+  /// Last-ditch parser — pull up to 3 reply lines out of WHATEVER the
+  /// model returned. Layered:
+  ///   1. Numbered / bulleted list, one per line
+  ///   2. Quoted strings on their own lines
+  ///   3. PARAGRAPH FALLBACK — if the response is one long paragraph
+  ///      (which is what the face-doctor backend keeps doing), split
+  ///      on sentence boundaries and grab anything that LOOKS like a
+  ///      message rather than advice
   static List<RizzReply> _tryParseLines(String raw) {
     final out = <RizzReply>[];
     final stripped = raw
         .replaceAll('```json', '')
         .replaceAll('```', '')
         .trim();
-    // Strip leading list-marker characters and any trailing tag/punc.
     final numbered = RegExp(r'^(?:\s*(?:\d+[\.\)]|[-*•])\s*)?');
-    for (final rawLine in stripped.split('\n')) {
-      var line = rawLine.trim();
-      if (line.isEmpty) continue;
-      line = line.replaceFirst(numbered, '');
-      // Drop wrapping quotes.
-      if ((line.startsWith('"') && line.endsWith('"')) ||
-          (line.startsWith('"') && line.endsWith('"'))) {
-        line = line.substring(1, line.length - 1).trim();
-      }
-      // Skip lines that look like chat preamble or labels.
-      final lower = line.toLowerCase();
-      if (lower.length > 140) continue;
+
+    bool isJunk(String l) {
+      final lower = l.toLowerCase();
+      if (l.isEmpty || l.length > 140) return true;
       if (lower.startsWith('here') ||
           lower.startsWith('sure') ||
           lower.startsWith('option') ||
           lower.startsWith('safest') ||
+          lower.startsWith('middle') ||
           lower.startsWith('boldest') ||
-          lower.startsWith('reply')) {
-        continue;
+          lower.startsWith('reply') ||
+          lower.startsWith('let me') ||
+          lower.startsWith('i\'ll')) {
+        return true;
       }
-      if (line.isEmpty) continue;
-      out.add(RizzReply(text: line, tag: 'RIZZ'));
-      if (out.length == 3) break;
+      return false;
     }
+
+    String clean(String l) {
+      var line = l.trim().replaceFirst(numbered, '');
+      // Drop wrapping quotes — both straight and curly.
+      while (line.length >= 2 &&
+          (line.startsWith('"') || line.startsWith('"') ||
+           line.startsWith('\'') || line.startsWith('"')) &&
+          (line.endsWith('"') || line.endsWith('"') ||
+           line.endsWith('\'') || line.endsWith('"'))) {
+        line = line.substring(1, line.length - 1).trim();
+      }
+      // Drop "Send:" / "Try:" prefixes some models add.
+      final prefixMatch = RegExp(
+        r'^(?:send|try|reply with|message her|say|text her)\s*[:\-—]\s*',
+        caseSensitive: false,
+      ).firstMatch(line);
+      if (prefixMatch != null) line = line.substring(prefixMatch.end);
+      return line.trim();
+    }
+
+    // PASS 1 — newline-separated lines.
+    for (final rawLine in stripped.split('\n')) {
+      final line = clean(rawLine);
+      if (isJunk(line)) continue;
+      out.add(RizzReply(text: line, tag: 'RIZZ'));
+      if (out.length == 3) return out;
+    }
+
+    // PASS 2 — paragraph fallback. If we got <3 lines from Pass 1,
+    // split on sentence boundaries and pick anything that reads as
+    // a message. Catches the case where the model returned one long
+    // paragraph instead of three line-separated replies (which is
+    // exactly what the face-doctor backend keeps doing).
+    if (out.length < 3) {
+      // Walk the whole response, grab quoted strings first (they're
+      // the model's own examples of what to send).
+      final quoted = RegExp(r'"([^"\n]{4,140})"').allMatches(stripped);
+      for (final m in quoted) {
+        final line = clean(m.group(1) ?? '');
+        if (isJunk(line)) continue;
+        if (out.any((r) => r.text == line)) continue;
+        out.add(RizzReply(text: line, tag: 'RIZZ'));
+        if (out.length == 3) return out;
+      }
+    }
+
+    if (out.length < 3) {
+      // Last resort — split paragraph on sentence boundaries.
+      final sentences = stripped.split(RegExp(r'(?<=[.!?])\s+'));
+      for (final s in sentences) {
+        final line = clean(s);
+        if (isJunk(line)) continue;
+        if (out.any((r) => r.text == line)) continue;
+        out.add(RizzReply(text: line, tag: 'RIZZ'));
+        if (out.length == 3) return out;
+      }
+    }
+
     return out;
   }
 
@@ -386,6 +488,14 @@ HARD RULES — the no-trash rule (your reputation is at stake):
 - BOLDEST line should pass this test: "if she screenshotted this to
   her group chat, would they say 'answer him RIGHT NOW' or 'block'?"
   It must be the first.
+
+BANNED OPENINGS — never start a line with these. They scream
+"corporate dating coach", not friend who pulls:
+- "Hey, I've really enjoyed"     - "It's important to"
+- "Let's grab coffee this week"  - "Just be yourself"
+- "Confidence is key"             - "Keep it simple and direct"
+- "Show her you're"               - "Let her know"
+- "Hi/Hey [name]," (greetings)    - "I was wondering if you'd"
 
 VIBE the user chose: ${vibe.directive}
 
