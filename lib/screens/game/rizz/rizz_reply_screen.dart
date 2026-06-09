@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -104,20 +105,26 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
     });
     print('[RIZZ-SCREEN] _generate start hasImage=${_screenshotBytes != null} '
         'textLen=${_herCtrl.text.trim().length}');
-    // Try-finally guarantees the spinner is reset even if generate
-    // throws — the screen never gets stuck in "loading" forever.
+    // Hard 45s ceiling — even if the backend hangs, the spinner
+    // clears + the user sees a clear "try again" snack instead of
+    // forever-stuck "READING THE CHAT…".
     try {
       final result = await RizzReplyService.generate(
         herMessage:       _herCtrl.text.trim(),
         screenshotBytes:  _screenshotBytes,
         vibe:             RizzVibe.auto,
-      ).timeout(const Duration(seconds: 60));
+      ).timeout(const Duration(seconds: 45));
       print('[RIZZ-SCREEN] _generate got ${result.length} replies');
       if (!mounted) return;
       setState(() {
         _replies = result;
         _generating = false;
       });
+    } on TimeoutException {
+      print('[RIZZ-SCREEN] _generate timed out');
+      if (!mounted) return;
+      setState(() => _generating = false);
+      _snack('Took too long — try a clearer screenshot.');
     } catch (e) {
       print('[RIZZ-SCREEN] _generate throw $e');
       if (!mounted) return;

@@ -790,12 +790,13 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     );
     _clock?.cancel();
     _createTimer?.cancel();
-    _eventSub?.cancel();
-    _micSub?.cancel();
-    // ignore: discarded_futures
-    _recorder.stop();
-    // ignore: discarded_futures
-    _session.close();
+    await _eventSub?.cancel();
+    await _micSub?.cancel();
+    // Same await-the-teardown rule as _switchCharacter — otherwise
+    // the new _goLive races the old session for the audio engine.
+    try { await _recorder.stop(); } catch (_) {}
+    try { await _session.close(); } catch (_) {}
+    _pcmQueue.clear();
     if (!mounted) return;
     setState(() {
       _phase = _Phase.connecting;
@@ -849,12 +850,19 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   Future<void> _switchCharacter(_Vibe vibe) async {
     _clock?.cancel();
     _createTimer?.cancel();
-    _eventSub?.cancel();
-    _micSub?.cancel();
-    // ignore: discarded_futures
-    _recorder.stop();
-    // ignore: discarded_futures
-    _session.close();
+    await _eventSub?.cancel();
+    await _micSub?.cancel();
+    // AWAIT the recorder + session teardown. Firing-and-forgetting
+    // these meant the new _goLive could start before the OLD WS
+    // connection had finished closing — the new session would then
+    // race the old one for the audio engine and one of them would
+    // come up silent. Awaiting is the difference between "voice
+    // works on the new character" and "nothing comes out".
+    try { await _recorder.stop(); } catch (_) {}
+    try { await _session.close(); } catch (_) {}
+    // Drain the playback queue so the new persona doesn't inherit
+    // tail audio bytes from the previous one.
+    _pcmQueue.clear();
     if (!mounted) return;
     setState(() {
       _vibe = vibe;
@@ -866,8 +874,6 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       _holding = false;
       _result = null;
       _remaining = 180;
-      // Reset the clock-started flag so the next press-to-talk
-      // restarts the 3-minute window from zero.
       _clockStarted = false;
     });
     await _goLive(vibe);
