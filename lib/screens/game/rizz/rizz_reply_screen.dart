@@ -10,6 +10,9 @@ import 'package:image_picker/image_picker.dart';
 import '../../../services/rizz_reply_service.dart';
 import '../../../theme/app_colors.dart';
 
+/// Debug pane visibility — flip false before final shipping.
+const _kRizzDebug = true;
+
 /// RIZZ — clean, two-state generator.
 ///
 /// INPUT STATE — no results yet:
@@ -301,7 +304,130 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
             generating: _generating,
             onTap:      _generate,
           ),
+
+          if (_kRizzDebug) ...[
+            const SizedBox(height: 18),
+            const _RizzDebugPane(),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// In-screen debug pane that surfaces the live RizzDebug trail. Sits
+/// at the bottom of the results layout so we can SEE every stage of
+/// the OCR → API → parse pipeline without scrolling Xcode console.
+/// Tap to expand the raw response.
+class _RizzDebugPane extends StatefulWidget {
+  const _RizzDebugPane();
+  @override
+  State<_RizzDebugPane> createState() => _RizzDebugPaneState();
+}
+
+class _RizzDebugPaneState extends State<_RizzDebugPane> {
+  bool _open = false;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.red.withValues(alpha: 0.4), width: 0.6),
+      ),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => setState(() => _open = !_open),
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                Icon(_open
+                        ? Icons.keyboard_arrow_down_rounded
+                        : Icons.keyboard_arrow_right_rounded,
+                    color: AppColors.red, size: 16),
+                const SizedBox(width: 4),
+                Text('DEBUG TRAIL',
+                  style: GoogleFonts.inter(
+                    color: AppColors.red,
+                    fontSize: 10.5, letterSpacing: 2.4,
+                    fontWeight: FontWeight.w800,
+                  )),
+                const Spacer(),
+                Text('${RizzDebug.log.length} entries',
+                  style: GoogleFonts.inter(
+                    color: AppColors.textSecondary,
+                    fontSize: 10.5, fontWeight: FontWeight.w600,
+                  )),
+              ],
+            ),
+          ),
+          if (_open) ...[
+            const SizedBox(height: 10),
+            if (RizzDebug.ocrText.isNotEmpty) ...[
+              _row('OCR (${RizzDebug.ocrText.length}c):',
+                  RizzDebug.ocrText),
+              const SizedBox(height: 6),
+            ],
+            _row('Endpoint:', RizzDebug.lastEndpoint),
+            _row('Status:',   RizzDebug.lastStatus.toString()),
+            _row('Parsed:',   '${RizzDebug.parsedCount} replies'),
+            if (RizzDebug.lastResponse.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text('Raw response:',
+                style: GoogleFonts.inter(
+                  color: AppColors.red,
+                  fontSize: 9.5, letterSpacing: 1.4,
+                  fontWeight: FontWeight.w800,
+                )),
+              const SizedBox(height: 4),
+              SelectableText(RizzDebug.lastResponse,
+                style: GoogleFonts.firaCode(
+                  color: AppColors.textPrimary,
+                  fontSize: 10, height: 1.4,
+                )),
+            ],
+            const SizedBox(height: 8),
+            Text('Trail:',
+              style: GoogleFonts.inter(
+                color: AppColors.red,
+                fontSize: 9.5, letterSpacing: 1.4,
+                fontWeight: FontWeight.w800,
+              )),
+            const SizedBox(height: 4),
+            for (final l in RizzDebug.log)
+              Text(l,
+                style: GoogleFonts.firaCode(
+                  color: AppColors.textSecondary,
+                  fontSize: 9.5, height: 1.35,
+                )),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _row(String k, String v) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: RichText(
+        text: TextSpan(
+          children: [
+            TextSpan(text: '$k ',
+              style: GoogleFonts.inter(
+                color: AppColors.red,
+                fontSize: 10, fontWeight: FontWeight.w800,
+              )),
+            TextSpan(text: v,
+              style: GoogleFonts.firaCode(
+                color: AppColors.textPrimary,
+                fontSize: 10,
+              )),
+          ],
+        ),
       ),
     );
   }

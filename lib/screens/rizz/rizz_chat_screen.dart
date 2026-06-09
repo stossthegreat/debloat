@@ -210,16 +210,13 @@ User's actual question follows:
     print('[RIZZ-CHAT] sending ${history.length} msgs, '
         'image=${image != null}');
     try {
+      _dbg('POST /chat with ${history.length} msgs');
       final res = await http
           .post(
             Uri.parse('${ApiConfig.backendBaseUrl}/chat'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'messages': history,
-              // Face block — same keys ChatService sends so the backend
-              // routes us through the working code path. Placeholder
-              // values keep the schema valid; the preamble overrides
-              // the face-doctor framing.
               'face': {
                 'geometry':  const <String, dynamic>{},
                 'score':     0,
@@ -231,19 +228,31 @@ User's actual question follows:
             }),
           )
           .timeout(const Duration(seconds: 45));
-      print('[RIZZ-CHAT] status=${res.statusCode}');
+      _dbg('status=${res.statusCode}');
       if (res.statusCode == 200) {
         final body = jsonDecode(res.body) as Map<String, dynamic>;
         final reply = (body['reply'] as String?)?.trim() ?? '';
+        _dbg('reply len=${reply.length}');
         if (reply.isNotEmpty) return reply;
-        print('[RIZZ-CHAT] empty reply field');
+        _dbg('empty reply field');
       } else {
-        print('[RIZZ-CHAT] non-200 body=${res.body}');
+        _dbg('non-200 body="${res.body.length > 200 ? "${res.body.substring(0, 200)}…" : res.body}"');
       }
     } catch (e) {
-      print('[RIZZ-CHAT] throw $e');
+      _dbg('threw $e');
     }
     return 'Couldn\'t reach the coach. Check your connection and try again.';
+  }
+
+  /// Per-instance debug log. Same idea as RizzDebug but scoped to
+  /// this chat screen so multi-turn convos accumulate context.
+  final List<String> _debugLog = [];
+  void _dbg(String line) {
+    final stamp = DateTime.now().toIso8601String().substring(11, 23);
+    final entry = '[$stamp] $line';
+    _debugLog.add(entry);
+    print('[RIZZ-CHAT] $entry');
+    if (mounted) setState(() {});
   }
 
   Future<void> _attach(ImageSource source) async {
@@ -329,6 +338,8 @@ User's actual question follows:
                 ),
                 const SizedBox(height: 10),
               ],
+              if (_debugLog.isNotEmpty)
+                _ChatDebugPane(entries: _debugLog),
               _InputBar(
                 controller: _ctrl,
                 sending:    _sending,
@@ -338,6 +349,88 @@ User's actual question follows:
               const SizedBox(height: 6),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// In-screen debug strip — collapsed by default, tap to expand the
+/// full trail of POST status codes and parsed reply lengths so we
+/// can SEE what's coming back from the backend without scrolling
+/// Xcode console.
+class _ChatDebugPane extends StatefulWidget {
+  final List<String> entries;
+  const _ChatDebugPane({required this.entries});
+  @override
+  State<_ChatDebugPane> createState() => _ChatDebugPaneState();
+}
+
+class _ChatDebugPaneState extends State<_ChatDebugPane> {
+  bool _open = false;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        decoration: BoxDecoration(
+          color: AppColors.surface1,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: AppColors.red.withValues(alpha: 0.35), width: 0.6),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GestureDetector(
+              onTap: () => setState(() => _open = !_open),
+              behavior: HitTestBehavior.opaque,
+              child: Row(
+                children: [
+                  Icon(_open
+                          ? Icons.keyboard_arrow_down_rounded
+                          : Icons.keyboard_arrow_right_rounded,
+                      color: AppColors.red, size: 14),
+                  const SizedBox(width: 2),
+                  Text('DEBUG · ${widget.entries.length}',
+                    style: GoogleFonts.inter(
+                      color: AppColors.red,
+                      fontSize: 9.5, letterSpacing: 2.0,
+                      fontWeight: FontWeight.w800,
+                    )),
+                  const Spacer(),
+                  if (widget.entries.isNotEmpty)
+                    Text(widget.entries.last.length > 60
+                            ? '${widget.entries.last.substring(0, 60)}…'
+                            : widget.entries.last,
+                      style: GoogleFonts.firaCode(
+                        color: AppColors.textTertiary,
+                        fontSize: 9,
+                      )),
+                ],
+              ),
+            ),
+            if (_open) ...[
+              const SizedBox(height: 6),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 180),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final e in widget.entries.reversed)
+                        Text(e,
+                          style: GoogleFonts.firaCode(
+                            color: AppColors.textSecondary,
+                            fontSize: 9.5, height: 1.35,
+                          )),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
