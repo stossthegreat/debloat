@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import '../config/api_config.dart';
 import '../data/rizz_lines.dart';
 import 'screenshot_ocr_service.dart';
+import 'villain/villain_api.dart';
 
 /// One rewritten reply suggestion.
 class RizzReply {
@@ -150,7 +151,10 @@ class RizzReplyService {
     // just extracted is far more useful than the raw image.
     final imageB64 = (hasImage && !ocrUsed) ? base64Encode(screenshotBytes) : null;
 
-    // 1) Try the dedicated rizz endpoint first.
+    // 1) Mirrorly backend /rizz/reply — the dedicated dating-text
+    // coach endpoint. Separate from /chat (the face doctor). Returns
+    // { replies: [{text, tag}, …] } directly so no JSON-from-prose
+    // parsing required.
     try {
       RizzDebug.lastEndpoint = '/rizz/reply';
       final res = await http
@@ -162,7 +166,6 @@ class RizzReplyService {
               'vibe':     vibe.name,
               'ctx':      ctx,
               'scenario': scn,
-              if (imageB64 != null) 'imageBase64': imageB64,
             }),
           )
           .timeout(const Duration(seconds: 40));
@@ -170,63 +173,72 @@ class RizzReplyService {
       RizzDebug.add('/rizz/reply status=${res.statusCode}');
       if (res.statusCode == 200) {
         RizzDebug.lastResponse = res.body;
-        final parsed = _parseReplies(res.body);
-        RizzDebug.parsedCount = parsed.length;
-        RizzDebug.add('/rizz/reply parsed ${parsed.length} replies');
-        if (parsed.length >= 3) return parsed.take(3).toList();
+        try {
+          final body = jsonDecode(res.body) as Map<String, dynamic>;
+          final raw  = body['replies'] as List<dynamic>? ?? const [];
+          final parsed = raw
+              .whereType<Map>()
+              .map((e) => RizzReply(
+                    text: ((e['text'] ?? e['line'] ?? '') as String).trim(),
+                    tag:  ((e['tag']  ?? 'RIZZ') as String).toString().toUpperCase(),
+                  ))
+              .where((r) => r.text.isNotEmpty)
+              .toList();
+          RizzDebug.parsedCount = parsed.length;
+          RizzDebug.add('/rizz/reply parsed ${parsed.length} replies');
+          if (parsed.length >= 3) return parsed.take(3).toList();
+          if (parsed.isNotEmpty) {
+            final arsenal = _fallbackFromArsenal(vibe);
+            while (parsed.length < 3 && arsenal.isNotEmpty) {
+              parsed.add(arsenal.removeAt(0));
+            }
+            return parsed;
+          }
+        } catch (e) {
+          RizzDebug.add('/rizz/reply parse threw $e');
+        }
+      } else {
+        RizzDebug.add('/rizz/reply non-200 body="${res.body.length > 200 ? "${res.body.substring(0, 200)}…" : res.body}"');
       }
     } catch (e) {
       RizzDebug.add('/rizz/reply threw $e');
     }
 
-    // 2) Fall back to /chat — same payload shape as ChatService.send.
+    // 2) Fall back to VillainApi.council — Auralay's text-in/text-out
+    // chat endpoint. CRITICAL: this is the SEPARATE Auralay backend
+    // (auralayai-production-65c2.up.railway.app), not the Mirrorly
+    // /chat which is hardwired for face advice. council has its own
+    // system prompt + LLM and accepts arbitrary text, so the rizz
+    // preamble actually runs the model instead of being short-
+    // circuited by the face-doctor handler.
     try {
-      RizzDebug.lastEndpoint = '/chat';
+      RizzDebug.lastEndpoint = '/v1/villain/council';
       final messageText = _buildPrompt(her, vibe, ctx,
           scenario: scn, hasScreenshot: imageB64 != null);
       RizzDebug.add('built prompt ${messageText.length} chars');
-      final res = await http
-          .post(
-            Uri.parse('${ApiConfig.backendBaseUrl}/chat'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'messages': [
-                {'role': 'user', 'content': messageText},
-              ],
-              'face': _placeholderFace(imageBase64: imageB64),
-              'mode': 'rizz_reply',
-            }),
-          )
-          .timeout(const Duration(seconds: 40));
-      RizzDebug.lastStatus = res.statusCode;
-      RizzDebug.add('/chat status=${res.statusCode}');
-      if (res.statusCode == 200) {
-        final body = jsonDecode(res.body) as Map<String, dynamic>;
-        final reply = (body['reply'] as String?) ?? '';
-        RizzDebug.lastResponse = reply;
-        RizzDebug.add('/chat reply len=${reply.length} '
-            'sample="${reply.length > 80 ? "${reply.substring(0, 80)}…" : reply}"');
-        final parsed = _parseReplies(reply);
-        RizzDebug.parsedCount = parsed.length;
-        RizzDebug.add('/chat parsed ${parsed.length} replies');
-        if (parsed.length >= 3) return parsed.take(3).toList();
-        // Even with < 3, return whatever we have padded with arsenal
-        // so the user gets AI content + curated fillers instead of
-        // ALL curated when the model spat one paragraph.
-        if (parsed.isNotEmpty) {
-          RizzDebug.add('padding ${parsed.length} AI replies with arsenal');
-          final arsenal = _fallbackFromArsenal(vibe);
-          while (parsed.length < 3 && arsenal.isNotEmpty) {
-            parsed.add(arsenal.removeAt(0));
-          }
-          return parsed;
+      final turn = await VillainApi.council(
+        text:    messageText,
+        history: const [],
+      ).timeout(const Duration(seconds: 40));
+      RizzDebug.lastStatus = 200;
+      final reply = turn.reply.trim();
+      RizzDebug.lastResponse = reply;
+      RizzDebug.add('council reply len=${reply.length} '
+          'sample="${reply.length > 80 ? "${reply.substring(0, 80)}…" : reply}"');
+      final parsed = _parseReplies(reply);
+      RizzDebug.parsedCount = parsed.length;
+      RizzDebug.add('council parsed ${parsed.length} replies');
+      if (parsed.length >= 3) return parsed.take(3).toList();
+      if (parsed.isNotEmpty) {
+        RizzDebug.add('padding ${parsed.length} AI replies with arsenal');
+        final arsenal = _fallbackFromArsenal(vibe);
+        while (parsed.length < 3 && arsenal.isNotEmpty) {
+          parsed.add(arsenal.removeAt(0));
         }
-      } else {
-        RizzDebug.lastResponse = res.body;
-        RizzDebug.add('/chat NON-200 body="${res.body.length > 200 ? "${res.body.substring(0, 200)}…" : res.body}"');
+        return parsed;
       }
     } catch (e) {
-      RizzDebug.add('/chat threw $e');
+      RizzDebug.add('council threw $e');
     }
 
     // 3) Final fallback — curated lines that match the vibe.

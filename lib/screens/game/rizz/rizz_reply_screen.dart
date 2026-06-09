@@ -10,8 +10,9 @@ import 'package:image_picker/image_picker.dart';
 import '../../../services/rizz_reply_service.dart';
 import '../../../theme/app_colors.dart';
 
-/// Debug pane visibility — flip false before final shipping.
-const _kRizzDebug = true;
+/// Debug pane visibility — flip true to surface the OCR / endpoint /
+/// raw-response trail under the GIMME MORE button. Off for ship.
+const _kRizzDebug = false;
 
 /// RIZZ — clean, two-state generator.
 ///

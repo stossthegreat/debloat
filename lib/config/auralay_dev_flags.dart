@@ -39,5 +39,5 @@ abstract final class AuralayDevFlags {
   /// + log strip) on every screen. OFF for production. Flip true to bring
   /// it back on every screen at once for diagnosing live sessions.
   /// `final` (not `const`) so toggling it doesn't dead-code the panel.
-  static final bool showDebugOverlay = true;
+  static final bool showDebugOverlay = false;
 }

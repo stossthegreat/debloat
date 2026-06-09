@@ -8,6 +8,7 @@ import { maximize } from './maximize.js';
 import { tryOn } from './tryon.js';
 import { chat } from './chat.js';
 import { rate } from './rate.js';
+import { rizzReply, rizzChat } from './rizz.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -136,6 +137,41 @@ app.post('/chat', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('[/chat] error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Rizz: dating-text coach. Totally separate from /chat (the face
+// doctor). The client posts what she said + vibe + scenario, this
+// runs the RIZZ system prompt on gpt-4o, returns 3 ranked reply
+// options as { replies: [{ text, tag }, ... ] }. No face geometry,
+// no archetypes, no tryon — just text in, text out.
+app.post('/rizz/reply', async (req, res) => {
+  try {
+    const { her, vibe, ctx, scenario } = req.body || {};
+    const result = await rizzReply({
+      her:      typeof her      === 'string' ? her      : '',
+      vibe:     typeof vibe     === 'string' ? vibe     : 'auto',
+      ctx:      typeof ctx      === 'string' ? ctx      : '',
+      scenario: typeof scenario === 'string' ? scenario : '',
+    });
+    res.json(result);
+  } catch (err) {
+    console.error('[/rizz/reply] error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Rizz chat: free-form conversational mentor. Same RIZZ persona as
+// /rizz/reply but for "ask me anything" questions on the Chat with
+// Mirrorly surface. Returns { reply: string }.
+app.post('/rizz/chat', async (req, res) => {
+  try {
+    const { messages } = req.body || {};
+    const result = await rizzChat({ messages });
+    res.json(result);
+  } catch (err) {
+    console.error('[/rizz/chat] error:', err);
     res.status(500).json({ error: err.message });
   }
 });

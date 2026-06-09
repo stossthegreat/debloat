@@ -273,6 +273,25 @@ class _ScanHubTab extends StatelessWidget {
               ],
             ),
 
+            // Subtitle paired with the Rizz tab's "Hit her phone.
+            // Every time." — same italic Inter, same horizontal
+            // inset, same red colour. The two taglines together
+            // ladder: "Looks + game = unavoidable."
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: Text(
+                'Looks + game = unavoidable.',
+                style: GoogleFonts.inter(
+                  color: AppColors.textSecondary,
+                  fontSize: 15, height: 1.4,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 4),
+
             // ─────────────────────────────────────────────────────────────
             //  PRE-SCAN — the full conversion column: display headline +
             //  1-2-3 path + Current vs Optimised split + BEGIN SCAN CTA
