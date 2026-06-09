@@ -44,9 +44,29 @@
 ///   · REFRAME                  — flips her energy to your advantage
 ///   · TEASE                    — playful jab, light needle
 class RizzLine {
+  /// Single-line form. For multi-line sequences this is the full
+  /// joined text (parts joined with " — "), so clipboard copy still
+  /// gives the user a sendable paste. The card UI prefers `parts`
+  /// when set so the setup → payoff reads as separate sentences.
   final String text;
   final String tag;
-  const RizzLine(this.text, this.tag);
+
+  /// Multi-line sequences — the question-then-killshot format. Each
+  /// element renders as its own line inside the card. First entry is
+  /// usually the setup ("Be honest with me…"), second is the payoff
+  /// ("…do you actually try or does it just come naturally?"). On tap
+  /// the clipboard gets the joined text so the user pastes it whole.
+  final List<String>? parts;
+
+  const RizzLine(this.text, this.tag, {this.parts});
+
+  /// Multi-part constructor. Joins the parts with " — " for the
+  /// flat [text] form so copy-paste still works.
+  factory RizzLine.seq(List<String> parts, String tag) {
+    return RizzLine(parts.join(' — '), tag, parts: parts);
+  }
+
+  bool get isSequence => parts != null && parts!.length > 1;
 }
 
 class RizzCategory {
@@ -363,6 +383,275 @@ abstract final class RizzArsenal {
                  'DATE PROPOSAL'),
         RizzLine('let\'s do this in person. my texts can only carry so much',
                  'HIGH-AGENCY'),
+      ],
+    ),
+
+    // ── CHEESY ──────────────────────────────────────────────────────────
+    // The classic chat-up lines that work BECAUSE they're cheesy. Land
+    // with a smile and zero apology — she'll groan, then she'll laugh,
+    // then she'll be the one keeping the convo going.
+    RizzCategory(
+      label:    'CHEESY',
+      slug:     'cheesy',
+      headline: 'The chat-ups.',
+      hint:     'Classic pickup lines. Land them with a smile.',
+      lines: [
+        RizzLine('do you have a map? i keep getting lost in your eyes',
+                 'CLASSIC PUN'),
+        RizzLine('are you a magician? whenever i look at you everyone else disappears',
+                 'CLASSIC PUN'),
+        RizzLine('do you believe in love at first sight or should i walk past again',
+                 'TIMELESS LEGEND'),
+        RizzLine('are you a parking ticket? you\'ve got fine written all over you',
+                 'CLASSIC PUN'),
+        RizzLine('do you have a name or can i call you mine',
+                 'CLASSIC PUN'),
+        RizzLine('are you a bank loan? you\'ve got my interest',
+                 'CLASSIC PUN'),
+        RizzLine('is your name google? you\'ve got everything i\'ve been searching for',
+                 'CLASSIC PUN'),
+        RizzLine('i\'m not a photographer but i can picture us together',
+                 'CLASSIC PUN'),
+        RizzLine('do you have wifi? i\'m feeling a serious connection',
+                 'CLASSIC PUN'),
+        RizzLine('are you french? eiffel for you',
+                 'CLASSIC PUN'),
+        RizzLine('i was going to play it cool. then you smiled. cool is cancelled',
+                 'SELF-AWARE'),
+        RizzLine('excuse me. i think you dropped something. my jaw',
+                 'CLASSIC PUN'),
+        RizzLine('i had a whole speech. you completely ruined it by being this attractive',
+                 'SELF-AWARE'),
+        RizzLine('are you a campfire? you\'re hot and i want s\'more',
+                 'CLASSIC PUN'),
+        RizzLine('do you like science? we\'ve got chemistry',
+                 'CLASSIC PUN'),
+        RizzLine('are you a keyboard? you\'re just my type',
+                 'CLASSIC PUN'),
+        RizzLine('is your dad a boxer? because you\'re a knockout',
+                 'CLASSIC PUN'),
+        RizzLine('do you like raisins? how do you feel about a date',
+                 'CLASSIC PUN'),
+        RizzLine('are you a dictionary? you add meaning to my life',
+                 'CLASSIC PUN'),
+        RizzLine('i\'d say god bless you but it looks like he already did',
+                 'CLASSIC PUN'),
+        RizzLine('are you a sunset? i\'d stop everything just to watch you',
+                 'SEDUCTIVE PUN'),
+        RizzLine('are you a storm? you walked in and changed the whole atmosphere',
+                 'SEDUCTIVE PUN'),
+        RizzLine('are you gravity? everything in me just moves towards you',
+                 'SEDUCTIVE PUN'),
+        RizzLine('are you a compass? every version of me points towards you',
+                 'SEDUCTIVE PUN'),
+        RizzLine('hi. you looked interesting. i had to',
+                 'UNDEFEATED'),
+      ],
+    ),
+
+    // ── CHARM ───────────────────────────────────────────────────────────
+    // Heart-melters. Genuine soulful warmth in a sea of performers.
+    // The ones that aren't trying to be clever — they\'re just trying
+    // to make her feel seen. These hit different at 2am.
+    RizzCategory(
+      label:    'CHARM',
+      slug:     'charm',
+      headline: 'The heart-melters.',
+      hint:     'Drop the act. Genuine. The ones that make her feel seen.',
+      lines: [
+        RizzLine('you laugh like you mean it. that\'s rarer than you think',
+                 'NOTICED'),
+        RizzLine('you\'ve got kind eyes. not soft. kind. there\'s a difference',
+                 'NOTICED'),
+        RizzLine('something about you makes me want to be a better conversationalist',
+                 'VULNERABLE FLEX'),
+        RizzLine('you make being nervous feel worth it',
+                 'VULNERABLE FLEX'),
+        RizzLine('i don\'t do this often. you should feel special. because you are',
+                 'HIGH-AGENCY'),
+        RizzLine('i just want to know everything about you. not quickly. properly',
+                 'GENUINE'),
+        RizzLine('you\'re the kind of person i\'d want in my corner. just generally. in life',
+                 'NOTICED'),
+        RizzLine('you make being genuine feel like the only option worth taking',
+                 'GENUINE'),
+        RizzLine('i don\'t want a moment with you. i want the whole story',
+                 'KILLSHOT'),
+        RizzLine('you deserve someone who notices everything. every single thing',
+                 'GENUINE'),
+        RizzLine('i just want to make you laugh. properly. repeatedly. forever',
+                 'KILLSHOT'),
+        RizzLine('i feel like you\'re someone worth being patient for',
+                 'GENUINE'),
+        RizzLine('you make being honest feel easier than being impressive',
+                 'GENUINE'),
+        RizzLine('you\'re the kind of thought that keeps me up. and i haven\'t even spoken to you',
+                 'MIDNIGHT'),
+        RizzLine('there\'s something about you that makes me want to be the most interesting version of myself',
+                 'MIDNIGHT'),
+        RizzLine('i don\'t have a type anymore. i have you as a reference point now',
+                 'KILLSHOT'),
+        RizzLine('i\'d let you distract me from everything i\'ve carefully prioritised',
+                 'MIDNIGHT'),
+        RizzLine('you\'re not my first thought in the morning yet. but you\'re about to be',
+                 'KILLSHOT'),
+        RizzLine('i\'d cancel plans for this conversation. good plans too',
+                 'NOTICED'),
+        RizzLine('you walked in and my whole plan for the evening restructured itself around you',
+                 'HOOK'),
+      ],
+    ),
+
+    // ── SEQUENCES ───────────────────────────────────────────────────────
+    // Multi-line setups. The question-then-killshot format — the most
+    // powerful structure in the game. The question pulls her in; the
+    // answer hits before she can defend. Tap to copy the whole thing.
+    RizzCategory(
+      label:    'SEQUENCES',
+      slug:     'sequences',
+      headline: 'The setups.',
+      hint:     'Setup → killshot. Multi-line. The most powerful structure in the game.',
+      lines: [
+        RizzLine.seq(const [
+          'be honest with me for a second…',
+          'do you actually try or does it just come naturally? that\'s unfair either way',
+        ], 'QUESTION → KILLSHOT'),
+        RizzLine.seq(const [
+          'can i tell you something honest?',
+          'you make it really hard to be a person who plays it cool. like genuinely',
+        ], 'INTIMATE PRESUMPTION'),
+        RizzLine.seq(const [
+          'you know what i think?',
+          'you\'d be completely disarmed by someone who actually listened to every word',
+        ], 'GENUINE'),
+        RizzLine.seq(const [
+          'can i make a confession?',
+          'i had a whole approach planned. forgot it the second you looked at me',
+        ], 'VULNERABLE FLEX'),
+        RizzLine.seq(const [
+          'what are you like at 2am?',
+          'because right now you\'re already the most interesting person here',
+        ], 'INTIMATE PROBE'),
+        RizzLine.seq(const [
+          'can i tell you something you probably never hear?',
+          'the unguarded version of you — that\'s the one i\'m already more interested in',
+        ], 'GENUINE'),
+        RizzLine.seq(const [
+          'be honest…',
+          'when\'s the last time someone made you feel completely understood?',
+        ], 'INTIMATE PROBE'),
+        RizzLine.seq(const [
+          'can i make you a promise?',
+          'i will never make you feel like you\'re too much. you\'re not too much',
+        ], 'KILLSHOT'),
+        RizzLine.seq(const [
+          'you know what\'s crazy?',
+          'if we\'d met at the wrong time we\'d have still found each other eventually',
+        ], 'COMPRESSED CINEMA'),
+        RizzLine.seq(const [
+          'i\'m not saying i\'m the best option…',
+          'but i\'m absolutely the most interesting one and you already know that',
+        ], 'HIGH-AGENCY'),
+        RizzLine.seq(const [
+          'i\'m a terrible idea.',
+          'you look like someone who\'s made terrible ideas work before',
+        ], 'PUSH-PULL'),
+        RizzLine.seq(const [
+          'do you know what your problem is?',
+          'you\'re exactly my type and i had carefully decided to stop having a type',
+        ], 'MISINTERPRETATION'),
+        RizzLine.seq(const [
+          'i\'m a simple man.',
+          'i saw you. i panicked internally. i approached anyway. love story',
+        ], 'VULNERABLE FLEX'),
+        RizzLine.seq(const [
+          'quick question…',
+          'are you always this captivating or did you decide to destroy me today?',
+        ], 'INAPPROPRIATE COMPLIMENT'),
+        RizzLine.seq(const [
+          'excuse me. i think you dropped something.',
+          'your standards. don\'t worry — i\'ll keep them high for you',
+        ], 'FRAME CHECK'),
+        RizzLine.seq(const [
+          'you\'re a nightmare.',
+          'my favourite kind',
+        ], 'PUSH-PULL'),
+        RizzLine.seq(const [
+          'i don\'t even like you that much.',
+          'yet',
+        ], 'PUSH-PULL'),
+        RizzLine.seq(const [
+          'you\'re difficult, funny, and completely magnetic.',
+          'worst combination possible. i\'m obsessed',
+        ], 'KILLSHOT'),
+        RizzLine.seq(const [
+          'do you believe in first impressions?',
+          'because mine of you was that you\'re the kind of person i\'d regret not talking to',
+        ], 'GENUINE'),
+        RizzLine.seq(const [
+          'i don\'t have a line.',
+          'i just know that walking away without saying something would\'ve bothered me forever',
+        ], 'KILLSHOT'),
+      ],
+    ),
+
+    // ── COMEBACKS ───────────────────────────────────────────────────────
+    // For when she claps back. Calm, warm, slightly amused. The whole
+    // game is showing her you\'re not rattled.
+    RizzCategory(
+      label:    'COMEBACKS',
+      slug:     'comebacks',
+      headline: 'The volleys.',
+      hint:     'When she claps back. Don\'t fold. Smile and stay.',
+      lines: [
+        RizzLine.seq(const [
+          'her: "you\'re weird"',
+          'you: "yeah. still here though"',
+        ], 'UNBOTHERED'),
+        RizzLine.seq(const [
+          'her: "i have a boyfriend"',
+          'you: "cool. i have a dog. we\'re both taken. wanna talk anyway?"',
+        ], 'REFRAME'),
+        RizzLine.seq(const [
+          'her: "why are you like this"',
+          'you: "genuinely working on it. you\'re not helping"',
+        ], 'SELF-AWARE'),
+        RizzLine.seq(const [
+          'her: laughs and says nothing',
+          'you: "see. you get it"',
+        ], 'INTIMATE PRESUMPTION'),
+        RizzLine('you\'re lucky you\'re cute — that was the worst comeback i\'ve heard',
+                 'PLAYFUL DISS'),
+        RizzLine('you\'re a handful aren\'t you. i can tell already',
+                 'PLAYFUL DISS'),
+        RizzLine('did you just roll your eyes at me? adorable. try again',
+                 'PLAYFUL DISS'),
+        RizzLine('you\'re testing me right now and i want you to know i\'m winning',
+                 'FRAME CHECK'),
+        RizzLine('you\'re giving me attitude like that\'s going to stop me. it won\'t',
+                 'FRAME CHECK'),
+        RizzLine('you\'re trouble. i decided i don\'t care',
+                 'HIGH-AGENCY'),
+        RizzLine('i\'ve met walls with better comebacks honestly',
+                 'PLAYFUL DISS'),
+        RizzLine('you\'re so competitive. i love it. you\'re still losing though',
+                 'PUSH-PULL'),
+        RizzLine('you\'re really not going to make this easy are you. good',
+                 'FRAME CHECK'),
+        RizzLine('you\'ve got a comeback for everything. attractive and slightly exhausting',
+                 'NOTICED'),
+        RizzLine('you clearly have excellent taste — you\'re still talking to me',
+                 'HIGH-AGENCY'),
+        RizzLine('i\'m not for everyone. i\'m just for people with good instincts',
+                 'HIGH-AGENCY'),
+        RizzLine('you\'re pretending not to be interested. it\'s cute. take your time',
+                 'PUSH-PULL'),
+        RizzLine('you argued back immediately. most attractive thing you\'ve done',
+                 'TEASE'),
+        RizzLine('i can\'t tell if you like me or you\'re just competitive. entertained either way',
+                 'TEASE'),
+        RizzLine('you\'re difficult.',
+                 'PUSH-PULL'),
       ],
     ),
   ];

@@ -24,6 +24,7 @@ import '../../theme/app_typography.dart';
 import '../../services/review_prompt_service.dart';
 import '../../services/share_service.dart';
 import '../../widgets/common/fullscreen_image.dart';
+import '../../widgets/report/ai_verdict_panel.dart';
 import '../../widgets/report/aspect_protocol_cards.dart';
 import '../../widgets/report/hero_card.dart';
 import '../../widgets/report/hidden_depth_panel.dart';
@@ -624,9 +625,22 @@ class _ReportScreenState extends State<ReportScreen> {
             onGenerate:       () => _generateHero(a),
           ),
 
-          const SizedBox(height: Sp.md),
+          const SizedBox(height: Sp.lg),
 
-          // ── 2 · PER-TRAIT SCORES ─ the clean stack competitors lead with
+          // ── 2 · AI VERDICT ─ four cards under the HeroCard answering
+          //                    the only four questions users actually
+          //                    care about: what's working, what's
+          //                    holding me back, what do I fix first,
+          //                    and how high can I realistically get?
+          //                    Only renders when /rate returned the
+          //                    verdict block (backend post-upgrade).
+          if (_honest?.verdict != null) ...[
+            AiVerdictPanel(verdict: _honest!.verdict!)
+              .animate().fadeIn(delay: 1450.ms, duration: 500.ms),
+            const SizedBox(height: Sp.lg),
+          ],
+
+          // ── 3 · PER-TRAIT SCORES ─ the clean stack competitors lead with
           // Six rows (Skin, Hair, Jawline, Masculinity, Eyes, Face) each
           // scored /10 with a tier word. Uses HonestRating.subScores when
           // the /rate backend has been extended to return them, geometry-

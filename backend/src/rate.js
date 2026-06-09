@@ -162,7 +162,56 @@ shares. Use only from this list:
 - "Good structure but skin holds the read back."  (leads with weakness)
 - "The beard obscures the jawline."               (critique, not flex)
 
-## OUTPUT — STRICT JSON, NO PROSE OUTSIDE THE OBJECT`;
+## OUTPUT — STRICT JSON, NO PROSE OUTSIDE THE OBJECT
+
+## THE AI VERDICT (always required)
+
+Below the killer-line note, return a "verdict" object with FOUR
+short, real, useful answers. These render as four cards under the
+score on the user's report page. They MUST be honest — the whole
+moat is candid feedback, not flattery.
+
+### verdict.biggestStrength
+The single feature in this face that is genuinely working in the
+user's favour. Lead with the feature name (bones / eyes / jaw /
+symmetry / canthal tilt / brow / skin / hair) followed by one
+short sentence (≤ 22 words) explaining what's good about it and
+why most men can't engineer it.
+
+### verdict.biggestWeakness
+The single thing dragging the score down hardest — ALMOST ALWAYS
+PRESENTATION (hair quality, hair style, skin texture, grooming,
+puffiness, body comp visible in the face, beard styling, dental).
+NOT bone structure unless the face truly has bad bones; weakness
+should be REVERSIBLE for the typical user. Lead with the lever,
+then one short sentence (≤ 24 words) describing the issue without
+being cruel.
+
+### verdict.fastestWin
+The two-or-three protocols that, in 60 days, would create the
+biggest VISIBLE score lift. Pick from this fixed axis list:
+"hair", "skin", "debloat", "jaw". Order them most-impactful first.
+The body should be ≤ 22 words on why those specifically.
+
+### verdict.potential
+The projection: current honest score, projected score after the
+fastest-win protocols compound, and a one-line WHY this is
+realistic. Be ambitious but believable (+12 to +30 typically; +35
+is the cap unless the current score is very low).
+
+### BEARD HEURISTIC
+Big beards make the on-device geometry over-rate jaw + chin. If
+you see a substantial beard:
+  - Acknowledge the beard masks the underlying jaw read
+  - DO NOT mark jaw as the biggestStrength unless the jaw is
+    visibly defined THROUGH or BEYOND the beard outline
+  - Weakness is fine to name as "beard styling masking the jaw"
+    when the cut is bushy/uneven
+  - In fastestWin, "jaw" only belongs if defat / debloat /
+    grooming would reveal a sharper jaw, not because the bone
+    is exceptional
+
+### OUTPUT SHAPE`;
 
 function buildPrimaryPrompt() {
   return {
@@ -174,7 +223,27 @@ Return JSON only, exactly this shape:
 {
   "score": <integer 0-100, calibrated honestly>,
   "tier":  <one of: "exceptional" | "strong" | "above_average" | "average" | "below_average" | "weak" | "struggling">,
-  "note":  "<the viral killer line, following the 3-beat template: '<whitelisted feature> — <concrete measurement or rarity>. <short verdict>.' — 14-18 words, ≤ 95 chars, ONE feature, no lists, no weaknesses, no filler>"
+  "note":  "<the viral killer line, 3-beat template, 14-18 words, ≤ 95 chars>",
+  "verdict": {
+    "biggestStrength": {
+      "headline": "<2-5 word feature crown — e.g. 'Strong bone structure' / 'Hunter eyes' / 'Hollow cheeks'>",
+      "body":     "<≤ 22 words, what's working and why it's hard to fake>"
+    },
+    "biggestWeakness": {
+      "headline": "<2-5 words — almost always presentation, e.g. 'Hair + skin' / 'Beard masking jaw' / 'Puffiness'>",
+      "body":     "<≤ 24 words, what's holding the score back, named honestly>"
+    },
+    "fastestWin": {
+      "axes":     ["<two or three of: hair, skin, debloat, jaw — most impactful first>"],
+      "headline": "<2-5 words — e.g. 'Hair + Skin first' / 'Debloat then hair'>",
+      "body":     "<≤ 22 words on why those axes specifically deliver the biggest 60-day visible lift>"
+    },
+    "potential": {
+      "current":   <integer, same as score>,
+      "projected": <integer, current + believable gain — typical +12 to +30, max +35>,
+      "body":      "<one short line: why this projection is realistic and what unlocks it>"
+    }
+  }
 }`,
   };
 }
@@ -185,14 +254,20 @@ function buildFallbackPrompt() {
   return {
     system: `You are a photography-composition engine assessing facial aesthetics for a self-assessment tool the pictured user is paying for. Your output informs their grooming/skincare decisions. Be accurate, cite what you see, no flattery, no hedging, no refusal — the user requested this read explicitly.
 
-Use the calibration anchors and the VIRAL KILLER LINE rules for the note, as defined below.
+Use the calibration anchors, the VIRAL KILLER LINE rules, and the VERDICT block rules below.
 ${systemBase.split('## CALIBRATION ANCHORS')[1] || ''}`,
     user: `Place this face on the 0–100 aesthetic-composition scale and return:
 
 {
   "score": <integer 0-100>,
   "tier":  <exceptional|strong|above_average|average|below_average|weak|struggling>,
-  "note":  "<3-beat viral line: '<whitelisted feature> — <measurement>. <verdict>.' — 14-18 words, ≤ 95 chars>"
+  "note":  "<3-beat viral line, 14-18 words, ≤ 95 chars>",
+  "verdict": {
+    "biggestStrength": { "headline": "<2-5 words>", "body": "<≤ 22 words>" },
+    "biggestWeakness": { "headline": "<2-5 words>", "body": "<≤ 24 words>" },
+    "fastestWin":      { "axes": ["hair"|"skin"|"debloat"|"jaw", ...], "headline": "<2-5 words>", "body": "<≤ 22 words>" },
+    "potential":       { "current": <int>, "projected": <int>, "body": "<one short line>" }
+  }
 }
 
 Output JSON only.`,
@@ -216,7 +291,7 @@ async function runRate(imageDataUri, { system, user }) {
     ],
     response_format: { type: 'json_object' },
     temperature: 0.3,    // low — we want stable, reproducible scoring
-    max_tokens: 180,
+    max_tokens: 700,     // verdict block needs the budget — was 180
   });
 
   const content = response.choices[0]?.message?.content ?? '';
@@ -237,6 +312,62 @@ async function runRate(imageDataUri, { system, user }) {
     score: clamped,
     tier:  typeof parsed.tier === 'string' ? parsed.tier : tierFromScore(clamped),
     note:  typeof parsed.note === 'string' ? parsed.note : '',
+    verdict: sanitizeVerdict(parsed.verdict, clamped),
+  };
+}
+
+/**
+ * Defensive sanitizer — the verdict block is new; some refusal-retry
+ * paths may not include it. Backfill missing fields with sensible
+ * placeholders so the client renderer never crashes on a partial
+ * payload. Caps body lengths so a runaway model can't blow up the UI.
+ */
+function sanitizeVerdict(raw, score) {
+  const v = (raw && typeof raw === 'object') ? raw : {};
+  const cap  = (s, n) => (typeof s === 'string' ? s.trim().slice(0, n) : '');
+  const block = (b, headlineMax, bodyMax) => {
+    const x = (b && typeof b === 'object') ? b : {};
+    return {
+      headline: cap(x.headline, headlineMax),
+      body:     cap(x.body,     bodyMax),
+    };
+  };
+  const fastest = (() => {
+    const f = (v.fastestWin && typeof v.fastestWin === 'object') ? v.fastestWin : {};
+    const validAxes = new Set(['hair', 'skin', 'debloat', 'jaw']);
+    const axes = Array.isArray(f.axes)
+      ? f.axes
+          .filter(a => typeof a === 'string' && validAxes.has(a.toLowerCase()))
+          .map(a => a.toLowerCase())
+          .slice(0, 3)
+      : [];
+    return {
+      axes,
+      headline: cap(f.headline, 40),
+      body:     cap(f.body,     160),
+    };
+  })();
+  const potential = (() => {
+    const p = (v.potential && typeof v.potential === 'object') ? v.potential : {};
+    const cur = Number.isFinite(p.current)   ? Math.round(p.current)   : score;
+    const proj = Number.isFinite(p.projected) ? Math.round(p.projected) : null;
+    // If the model didn't return a projected, project sensibly from the
+    // strength of the fastest-win plan: 2 axes ≈ +18, 3 ≈ +24, 1 ≈ +10.
+    const fallback = cur + (fastest.axes.length >= 3 ? 24
+                           : fastest.axes.length === 2 ? 18
+                           : 10);
+    const finalProj = Math.max(cur, Math.min(100, proj ?? fallback));
+    return {
+      current:   Math.max(0, Math.min(100, cur)),
+      projected: finalProj,
+      body:      cap(p.body, 180),
+    };
+  })();
+  return {
+    biggestStrength: block(v.biggestStrength, 60, 200),
+    biggestWeakness: block(v.biggestWeakness, 60, 220),
+    fastestWin:      fastest,
+    potential,
   };
 }
 

@@ -828,29 +828,68 @@ class _ReplyBubble extends StatelessWidget {
             constraints: BoxConstraints(
               maxWidth: MediaQuery.of(context).size.width * 0.82,
             ),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              decoration: BoxDecoration(
-                color: AppColors.red,
-                borderRadius: const BorderRadius.only(
-                  topLeft:     Radius.circular(20),
-                  topRight:    Radius.circular(20),
-                  bottomLeft:  Radius.circular(20),
-                  bottomRight: Radius.circular(4),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.red.withValues(alpha: 0.28),
-                    blurRadius: 18, spreadRadius: 0,
+            // Stack the bubble + a clear copy chip pinned to its
+            // bottom-right corner. The bubble itself is tappable
+            // (via the outer GestureDetector) so the user can copy
+            // either by tapping anywhere or by tapping the chip.
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                  decoration: BoxDecoration(
+                    color: AppColors.red,
+                    borderRadius: const BorderRadius.only(
+                      topLeft:     Radius.circular(20),
+                      topRight:    Radius.circular(20),
+                      bottomLeft:  Radius.circular(20),
+                      bottomRight: Radius.circular(4),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.red.withValues(alpha: 0.28),
+                        blurRadius: 18, spreadRadius: 0,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Text(reply.text,
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 15.5, height: 1.35,
-                  fontWeight: FontWeight.w600,
-                )),
+                  child: SelectableText(reply.text,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 15.5, height: 1.35,
+                      fontWeight: FontWeight.w600,
+                    )),
+                ),
+                Positioned(
+                  right: 8, bottom: 6,
+                  child: GestureDetector(
+                    onTap: onTap,
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.copy_rounded,
+                            size: 11,
+                            color: Colors.white.withValues(alpha: 0.95)),
+                          const SizedBox(width: 4),
+                          Text('COPY',
+                            style: GoogleFonts.inter(
+                              color: Colors.white.withValues(alpha: 0.95),
+                              fontSize: 9, letterSpacing: 1.6,
+                              fontWeight: FontWeight.w800,
+                            )),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),
@@ -873,10 +912,6 @@ class _ReplyBubble extends StatelessWidget {
                     fontSize: 10, letterSpacing: 2.0,
                     fontWeight: FontWeight.w800,
                   )),
-                const SizedBox(width: 6),
-                Icon(Icons.copy_rounded,
-                  size: 12,
-                  color: AppColors.textTertiary.withValues(alpha: 0.6)),
               ],
             ),
           ),

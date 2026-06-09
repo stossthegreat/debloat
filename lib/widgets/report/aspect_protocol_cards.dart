@@ -206,14 +206,33 @@ class _AspectTile extends StatelessWidget {
               Text(aspect.title,
                 style: AppTypography.h1.copyWith(
                   fontSize: 20, letterSpacing: -0.4)),
-              const SizedBox(height: 2),
-              Text(
-                isCommitted
-                  ? '${committed!.completedDays.length} days logged · '
-                    '${committed!.effectiveStreak}-day streak'
-                  : aspect.oneLiner,
-                style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textSecondary, fontSize: 12.5)),
+              const SizedBox(height: 4),
+              // Sub-line. Available tile shows the hook. Committed
+              // tile shows a flame icon + streak count + days-logged
+              // so momentum reads at a glance.
+              if (isCommitted)
+                Row(
+                  children: [
+                    Icon(Icons.local_fire_department_rounded,
+                        color: aspect.color, size: 14),
+                    const SizedBox(width: 3),
+                    Text('${committed!.effectiveStreak}',
+                      style: AppTypography.label.copyWith(
+                        color: aspect.color,
+                        fontSize: 12.5, letterSpacing: 0.2,
+                        fontWeight: FontWeight.w900,
+                      )),
+                    const SizedBox(width: 8),
+                    Text('${committed!.completedDays.length} days logged',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5)),
+                  ],
+                )
+              else
+                Text(aspect.oneLiner,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary, fontSize: 12.5)),
 
               // Visual progress bar — only when committed. Makes
               // momentum legible at a glance without opening the

@@ -207,13 +207,19 @@ class _LineCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('"${line.text}"',
-                      style: GoogleFonts.inter(
-                        color: AppColors.textPrimary,
-                        fontSize: 16, height: 1.32,
-                        fontWeight: FontWeight.w600,
-                        fontStyle: FontStyle.italic,
-                      )),
+                    if (line.isSequence)
+                      // Multi-line sequence — each part renders as its
+                      // own paragraph with a small left-rule, so the
+                      // setup → payoff reads as separate beats.
+                      ..._buildSequenceParts(line.parts!)
+                    else
+                      Text('"${line.text}"',
+                        style: GoogleFonts.inter(
+                          color: AppColors.textPrimary,
+                          fontSize: 16, height: 1.32,
+                          fontWeight: FontWeight.w600,
+                          fontStyle: FontStyle.italic,
+                        )),
                     const SizedBox(height: 10),
                     Text(line.tag,
                       style: GoogleFonts.inter(
@@ -236,5 +242,38 @@ class _LineCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Render multi-part sequences. Each beat sits in its own italic
+  /// quoted line with a tiny red dash gutter on the left so the
+  /// setup → payoff structure is visually unambiguous.
+  List<Widget> _buildSequenceParts(List<String> parts) {
+    final widgets = <Widget>[];
+    for (var i = 0; i < parts.length; i++) {
+      if (i > 0) widgets.add(const SizedBox(height: 8));
+      widgets.add(Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 7, right: 8),
+            width: 8, height: 2,
+            decoration: BoxDecoration(
+              color: AppColors.red.withValues(alpha: i == 0 ? 0.55 : 0.85),
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+          Expanded(
+            child: Text('"${parts[i]}"',
+              style: GoogleFonts.inter(
+                color: AppColors.textPrimary,
+                fontSize: 15.5, height: 1.32,
+                fontWeight: FontWeight.w600,
+                fontStyle: FontStyle.italic,
+              )),
+          ),
+        ],
+      ));
+    }
+    return widgets;
   }
 }

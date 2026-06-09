@@ -375,12 +375,26 @@ class _ScanHubTab extends StatelessWidget {
                 child: _LatestSnapshot(scan: latest!),
               ).animate().fadeIn(duration: 400.ms),
 
+              // HOPE — current → projected score in green. The hard
+              // proof that there's somewhere to get to. Renders only
+              // when the scan came back with a projected lift (every
+              // scan returns one — defensive nullcheck just in case).
+              if (latest!.projectedDelta > 0) ...[
+                const SizedBox(height: Sp.md),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+                  child: _HopeCard(
+                    current:   latest!.score,
+                    projected: (latest!.score + latest!.projectedDelta)
+                                  .clamp(0, 100),
+                  ),
+                ).animate().fadeIn(delay: 60.ms, duration: 400.ms),
+              ],
+
               const SizedBox(height: Sp.lg),
 
-              // RESCAN FACE moved UP so it is the obvious primary
-              // action a returning user sees — not buried under
-              // protocol cards. Bro: "you've hidden the scan button
-              // under these cards."
+              // RESCAN FACE — the obvious primary action a returning
+              // user sees.
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
                 child: PrimaryCta(
@@ -392,34 +406,14 @@ class _ScanHubTab extends StatelessWidget {
                     context.push('/scan');
                   },
                 ),
-              ).animate().fadeIn(delay: 80.ms, duration: 400.ms),
+              ).animate().fadeIn(delay: 120.ms, duration: 400.ms),
 
-              const SizedBox(height: Sp.lg),
+              const SizedBox(height: Sp.md),
 
-              // SKIN / JAW / DEBLOAT / HAIR — single section. Each
-              // tile renders COMMITTED (day count, streak) or
-              // AVAILABLE (one-liner hook) depending on whether the
-              // user has started that axis. Bro: "if they commit
-              // only one fucking shows" — no separate active-tile-
-              // on-top + available-tile-below sections anymore;
-              // each axis renders exactly once in whichever state
-              // it is in.
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-                child: AspectProtocolCards(
-                  geometry:         latest!.geometry,
-                  savedImagePath:   latest!.capturedImagePath,
-                  activeProtocols:  activeProtocols,
-                ),
-              ).animate().fadeIn(delay: 140.ms, duration: 400.ms),
-
-              const SizedBox(height: Sp.lg),
-
-              // THE MIRROR — promoted from the old tiny grey row to a
-              // prominent solid-red hero card so the chat advisor is
-              // the obvious second action after RESCAN. Same visual
-              // weight as the Rizz generator card so the two AI
-              // surfaces feel like one family.
+              // THE MIRROR — moved up from below the protocol grid to
+              // sit directly under RESCAN, above the protocol streak
+              // cards. It's the most-used post-scan secondary action,
+              // so it earns the slot.
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
                 child: _MirrorHeroCard(
@@ -427,6 +421,18 @@ class _ScanHubTab extends StatelessWidget {
                     'geometry':  latest!.geometry,
                     'imagePath': latest!.capturedImagePath,
                   }),
+                ),
+              ).animate().fadeIn(delay: 180.ms, duration: 400.ms),
+
+              const SizedBox(height: Sp.lg),
+
+              // SKIN / JAW / DEBLOAT / HAIR — protocol streak tiles.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+                child: AspectProtocolCards(
+                  geometry:         latest!.geometry,
+                  savedImagePath:   latest!.capturedImagePath,
+                  activeProtocols:  activeProtocols,
                 ),
               ).animate().fadeIn(delay: 240.ms, duration: 400.ms),
             ],
@@ -437,12 +443,119 @@ class _ScanHubTab extends StatelessWidget {
   }
 }
 
-// ── Before / After preview for the Scan tab. Two face renders
-// (assets/marketing/before.jpg + after.jpg) shown side by side under
-// the CURRENT / OPTIMISED labels. Sits below the CTA for pre-scan
-// ── 1-2-3 path used on the Scan tab — numbered circles, current
-// step painted red, subsequent steps muted. Vertical column, sits
-// beside _OptimisedSplitCard.
+// ── Hope card — the green "you can get to this" tile that sits
+// between the latest snapshot and the RESCAN button. Shows the
+// current score on the left and the projected (current +
+// projectedDelta) on the right with the gain in green so the
+// returning user immediately sees there's somewhere to go.
+class _HopeCard extends StatelessWidget {
+  final int current;
+  final int projected;
+  const _HopeCard({required this.current, required this.projected});
+
+  @override
+  Widget build(BuildContext context) {
+    final gain = (projected - current).clamp(0, 100);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(Rd.lg),
+        border: Border.all(
+          color: AppColors.signalGreen.withValues(alpha: 0.45),
+          width: 0.9),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.signalGreen.withValues(alpha: 0.16),
+            blurRadius: 22, offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.trending_up_rounded,
+                  color: AppColors.signalGreen, size: 14),
+              const SizedBox(width: 6),
+              Text('YOU CAN GET TO',
+                style: AppTypography.label.copyWith(
+                  color: AppColors.signalGreen,
+                  fontSize: 11, letterSpacing: 2.6,
+                  fontWeight: FontWeight.w800,
+                )),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _stat('Now',       current,   AppColors.textSecondary),
+              const SizedBox(width: 16),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Icon(Icons.arrow_forward_rounded,
+                    color: AppColors.textTertiary, size: 20),
+              ),
+              const SizedBox(width: 16),
+              _stat('Potential', projected, AppColors.signalGreen),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.signalGreen.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(
+                    color: AppColors.signalGreen.withValues(alpha: 0.5),
+                    width: 0.8),
+                ),
+                child: Text('+$gain',
+                  style: AppTypography.label.copyWith(
+                    color: AppColors.signalGreen,
+                    fontSize: 13, letterSpacing: 0.6,
+                    fontWeight: FontWeight.w900,
+                  )),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text('Run the protocols. You\'re not limited by bones — '
+              'you\'re limited by execution.',
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 12.5, height: 1.4,
+              fontWeight: FontWeight.w500,
+            )),
+        ],
+      ),
+    );
+  }
+
+  Widget _stat(String label, int value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label.toUpperCase(),
+          style: AppTypography.label.copyWith(
+            color: AppColors.textTertiary,
+            fontSize: 9.5, letterSpacing: 1.8,
+            fontWeight: FontWeight.w800,
+          )),
+        const SizedBox(height: 2),
+        Text('$value',
+          style: GoogleFonts.playfairDisplay(
+            color: color,
+            fontSize: 36, height: 1.0,
+            letterSpacing: -1.4,
+            fontStyle: FontStyle.italic,
+            fontWeight: FontWeight.w800,
+          )),
+      ],
+    );
+  }
+}
+
 // ── Streak badge — a tiny flame-prefixed pill in the Looks masthead
 // action row. Survives the Ascend-tab removal so the user still sees
 // the daily-streak loop without scrolling to find it.

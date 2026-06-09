@@ -34,9 +34,9 @@ class _RizzChatScreenState extends State<RizzChatScreen> {
   final _scrollCtrl = ScrollController();
   final List<_RizzMsg> _msgs = [
     const _RizzMsg('assistant',
-        'What\'s up — I\'m Mirrorly. Your dating + self-improvement '
-        'coach. Drop a screenshot, paste her text, or just ask me '
-        'anything. I\'ll give it to you straight.'),
+        'what\'s good. drop a screenshot of her chat, paste her last '
+        'text, or just ask. i write the line you should send. tap any '
+        'line in quotes to copy it.'),
   ];
   bool _sending = false;
 
@@ -121,14 +121,28 @@ class _RizzChatScreenState extends State<RizzChatScreen> {
     // system prompt + banned-phrase list live SERVER-SIDE on the
     // /rizz/chat route, so no client-side jailbreak preamble is
     // needed.
+    //
+    // BUGFIX — image upload was sending "(screenshot)" as the user
+    // content instead of the OCR-enriched [text] from the caller.
+    // The history loop now overrides the LAST user turn with the
+    // effective text we just built (which contains the OCR if there
+    // was an image). That's why the chat went silent on screenshot
+    // uploads: the AI never saw the chat text we extracted.
     final history = <Map<String, dynamic>>[];
-    for (final m in _msgs) {
+    var sawLast = false;
+    for (var i = _msgs.length - 1; i >= 0; i--) {
+      final m = _msgs[i];
       if (m.role != 'user') continue;
-      history.add({'role': 'user', 'content': m.text});
+      if (!sawLast) {
+        history.insert(0, {'role': 'user', 'content': text});
+        sawLast = true;
+      } else {
+        history.insert(0, {'role': 'user', 'content': m.text});
+      }
     }
-    if (history.isEmpty || history.last['content'] != text) {
-      // The send() flow already appended the user message before
-      // calling _ask, but be defensive.
+    // No user messages yet → seed with the effective text.
+    if (history.isEmpty) {
+      history.add({'role': 'user', 'content': text});
     }
     // Mirrorly backend's dedicated /rizz/chat endpoint. Separate from
     // /chat (the face doctor) — uses the RIZZ system prompt + gpt-4o
@@ -470,40 +484,151 @@ class _ChatBubble extends StatelessWidget {
                   if (msg.text != '(screenshot)') const SizedBox(height: 6),
                 ],
                 if (msg.text != '(screenshot)' || msg.image == null)
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                    decoration: BoxDecoration(
-                      color: isUser ? AppColors.red : AppColors.surface1,
-                      borderRadius: BorderRadius.only(
-                        topLeft:     const Radius.circular(20),
-                        topRight:    const Radius.circular(20),
-                        bottomLeft:  Radius.circular(isUser ? 20 : 4),
-                        bottomRight: Radius.circular(isUser ? 4 : 20),
-                      ),
-                      border: isUser
-                          ? null
-                          : Border.all(color: AppColors.surface3, width: 0.6),
-                      boxShadow: isUser
-                          ? [
-                              BoxShadow(
-                                color: AppColors.red.withValues(alpha: 0.3),
-                                blurRadius: 16, spreadRadius: 0,
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Text(msg.text,
-                      style: GoogleFonts.inter(
-                        color: isUser ? Colors.white : AppColors.textPrimary,
-                        fontSize: 15, height: 1.42,
-                        fontWeight: FontWeight.w500,
-                      )),
-                  ),
+                  _bubble(context, isUser),
+                // Extract any quoted lines from the assistant's reply
+                // and render them as their own tap-to-copy cards so
+                // the user doesn't have to long-press-select inside
+                // the bubble.
+                if (!isUser) ..._extractCopyableLines(context),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _bubble(BuildContext context, bool isUser) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: isUser ? AppColors.red : AppColors.surface1,
+        borderRadius: BorderRadius.only(
+          topLeft:     const Radius.circular(20),
+          topRight:    const Radius.circular(20),
+          bottomLeft:  Radius.circular(isUser ? 20 : 4),
+          bottomRight: Radius.circular(isUser ? 4 : 20),
+        ),
+        border: isUser
+            ? null
+            : Border.all(color: AppColors.surface3, width: 0.6),
+        boxShadow: isUser
+            ? [
+                BoxShadow(
+                  color: AppColors.red.withValues(alpha: 0.3),
+                  blurRadius: 16, spreadRadius: 0,
+                ),
+              ]
+            : null,
+      ),
+      child: SelectableText(msg.text,
+        style: GoogleFonts.inter(
+          color: isUser ? Colors.white : AppColors.textPrimary,
+          fontSize: 15, height: 1.42,
+          fontWeight: FontWeight.w500,
+        )),
+    );
+  }
+
+  /// Pull quoted strings out of the assistant's reply ("...") and
+  /// render each as its own SEND THIS card under the bubble. Lets
+  /// the user tap-to-copy the line the AI told them to send instead
+  /// of having to long-press-select inside the chat bubble.
+  List<Widget> _extractCopyableLines(BuildContext context) {
+    final out = <Widget>[];
+    final matches = RegExp(r'"([^"\n]{6,160})"').allMatches(msg.text);
+    final seen = <String>{};
+    for (final m in matches) {
+      final line = (m.group(1) ?? '').trim();
+      if (line.length < 6 || seen.contains(line)) continue;
+      seen.add(line);
+      out.add(const SizedBox(height: 6));
+      out.add(_SendThisCard(line: line));
+      if (out.length > 8) break; // cap at 4 lines (each adds 2 widgets)
+    }
+    return out;
+  }
+}
+
+class _SendThisCard extends StatelessWidget {
+  final String line;
+  const _SendThisCard({required this.line});
+
+  Future<void> _copy(BuildContext context) async {
+    HapticFeedback.mediumImpact();
+    await Clipboard.setData(ClipboardData(text: line));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Copied. Send it.',
+        style: GoogleFonts.inter(
+          color: Colors.white, fontSize: 14,
+          fontWeight: FontWeight.w600, letterSpacing: 0.3,
+        )),
+      backgroundColor: AppColors.red,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 2),
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12)),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _copy(context),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+          decoration: BoxDecoration(
+            color: AppColors.red.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.red.withValues(alpha: 0.55),
+              width: 0.8),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text('"$line"',
+                  style: GoogleFonts.inter(
+                    color: AppColors.textPrimary,
+                    fontSize: 14, height: 1.35,
+                    fontWeight: FontWeight.w600,
+                    fontStyle: FontStyle.italic,
+                  )),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.red,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.copy_rounded,
+                        color: Colors.white, size: 11),
+                    const SizedBox(width: 4),
+                    Text('SEND THIS',
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 9, letterSpacing: 1.6,
+                        fontWeight: FontWeight.w900,
+                      )),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
