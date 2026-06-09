@@ -145,7 +145,15 @@ const _vibes = <_Vibe>[
 enum _Phase { pick, connecting, live, lucien, scoring, scored, error }
 
 class _FreeFlowScreenState extends State<FreeFlowScreen> {
-  final RealtimeSession _session  = RealtimeSession();
+  /// The realtime WS session. NOT final — we recreate the instance
+  /// every time _goLive runs so each persona switch gets a clean
+  /// session lifecycle (server fires session.created → we send
+  /// session.update with the new persona → server fires
+  /// session.updated → THEN we accept audio). Reusing the original
+  /// instance leaked old internal state into the new connection so
+  /// the second persona never received responses (the 03:22 COLD
+  /// trace showed connect+commit but no response.created).
+  RealtimeSession _session = RealtimeSession();
   final AudioRecorder   _recorder = AudioRecorder();
   final AudioPlayer     _lucienPlayer = AudioPlayer();
 
@@ -311,7 +319,13 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         if (_pcmQueue.isNotEmpty) _kickPcmIfStalled();
       });
 
-      // 2) Mint + open the realtime session as the chosen woman.
+      // 2) Mint a FRESH RealtimeSession for this persona — never reuse
+      //    the previous one. Reusing leaked state across personas (the
+      //    second persona connected but server never responded — see
+      //    debug trace). Tell the old one to die in the background.
+      // ignore: discarded_futures
+      _session.close();
+      _session = RealtimeSession();
       _creator = await CreatorModeStore.isActive();
       final memoryBlock = await UserMemory.buildSystemPromptBlock(
         filterTopic: 'rizz',
