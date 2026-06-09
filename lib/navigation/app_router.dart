@@ -5,6 +5,7 @@ import '../screens/chat/chat_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/legal/legal_screen.dart';
 import '../screens/onboarding/gender_pick_screen.dart';
+import '../screens/onboarding/intro_reel_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/paywall/paywall_screen.dart';
 import '../screens/protocol/protocol_screen.dart';
@@ -34,6 +35,7 @@ final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
     GoRoute(path: '/',           builder: (_, __) => const SplashScreen()),
+    GoRoute(path: '/intro',      builder: (_, __) => const IntroReelScreen()),
     GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
     // Pre-scan gender pick. First-launch users get routed here from
     // splash; existing users can re-open it from Settings → Glow-up
