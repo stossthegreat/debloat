@@ -116,14 +116,20 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
 
             const SizedBox(height: 72),
 
+            // Bro v3: "change the name on the outer card — make it
+            // clear it's UNLIMITED RIZZ presses." This card opens
+            // the screenshot generator where every Generate More /
+            // tone-switch / quick-action chip tap returns fresh
+            // killer replies. The PRO unlock = unlimited; the new
+            // copy needs to telegraph that.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
               child: _RizzCard(
-                icon:     Icons.center_focus_strong_rounded,
-                title:    'Upload a screenshot',
+                icon:     Icons.local_fire_department_rounded,
+                title:    'Unlimited Rizz',
                 subtitle: showScreenshotLock
                     ? 'Free preview used — unlock with Pro'
-                    : 'Get rizz on how to respond',
+                    : 'Drop her chat. Fire replies, every press.',
                 onTap:    _tapScreenshot,
                 locked:   showScreenshotLock,
               ),

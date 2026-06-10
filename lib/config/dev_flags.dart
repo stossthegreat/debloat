@@ -14,4 +14,9 @@
 ///   · PaywallScreen, if opened manually, auto-routes back to /home.
 ///
 /// **FLIP THIS TO FALSE BEFORE SHIPPING.**
-const kBypassPaywall = false;
+///
+/// TEMPORARILY TRUE (build 150) — bro asked for the lock off so he can
+/// test the new rizz tone presets + quick-action chips without burning
+/// his free screenshot pass on every retry. Flip back to false the
+/// build before App Store / Play Store submission.
+const kBypassPaywall = true;

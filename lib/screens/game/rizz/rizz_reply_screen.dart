@@ -47,6 +47,17 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
   Uint8List? _screenshotBytes;
   List<RizzReply>? _replies;
   bool _showTextEntry = false;
+  /// Active tone preset. Default FLIRTY mirrors the WingAI default
+  /// the user benchmarked us against. The bottom-of-results pill
+  /// opens a picker that lets the user swap to SENSUAL / PLAYFUL /
+  /// CONFIDENT / SINCERE; tapping a new tone or a situation chip
+  /// re-fires _generate so the existing replies refresh in-place.
+  RizzVibe _tone = RizzVibe.flirty;
+  /// Scenario bias for the NEXT generate — set by situation chips
+  /// ("Turn up heat", "Tease a bit", "Plan a date"). Cleared the
+  /// moment the request fires so subsequent re-rolls don't keep
+  /// the bias unless the user re-selects.
+  String _scenario = '';
 
   @override
   void initState() {
@@ -122,8 +133,20 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
       _generating = true;
       _replies = null;
     });
+    // Snapshot + clear scenario BEFORE the await so a timeout/error
+    // doesn't leave the chip-bias sticky for the next re-roll.
+    final scenarioForCall = _scenario;
+    _scenario = '';
+    // When a quick-action chip fires, we pass the existing on-screen
+    // replies as `previous` so the backend TRANSFORMS them (preserves
+    // each idea, shifts tone/heat) rather than starting cold. A blank
+    // scenario means fresh generation — no `previous` sent.
+    final previousForCall = (scenarioForCall.isNotEmpty && _replies != null)
+        ? List<RizzReply>.from(_replies!)
+        : const <RizzReply>[];
     print('[RIZZ-SCREEN] _generate start hasImage=${_screenshotBytes != null} '
-        'textLen=${_herCtrl.text.trim().length}');
+        'textLen=${_herCtrl.text.trim().length} scn="$scenarioForCall" '
+        'transform=${previousForCall.isNotEmpty}');
     // Hard 45s ceiling — even if the backend hangs, the spinner
     // clears + the user sees a clear "try again" snack instead of
     // forever-stuck "READING THE CHAT…".
@@ -131,7 +154,9 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
       final result = await RizzReplyService.generate(
         herMessage:       _herCtrl.text.trim(),
         screenshotBytes:  _screenshotBytes,
-        vibe:             RizzVibe.auto,
+        vibe:             _tone,
+        scenario:         scenarioForCall,
+        previous:         previousForCall,
       ).timeout(const Duration(seconds: 45));
       print('[RIZZ-SCREEN] _generate got ${result.length} replies');
       if (!mounted) return;
@@ -319,11 +344,38 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
             const SizedBox(height: 14),
           ],
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
 
+          // ── SITUATION CHIPS ─ one-tap "more rizz" / "tease a bit"
+          // / "turn up heat" / "plan a date". Each chip rewrites the
+          // SAME three replies through that bias. The picked
+          // scenario is one-shot — it lifts on the next request
+          // unless the user picks again. Bro: "fire rizz that can
+          // get extra rizz added to it."
+          _ScenarioStrip(
+            onTap: _useScenario,
+            disabled: _generating,
+          ),
+
+          const SizedBox(height: 14),
+
+          // ── GENERATE MORE pill — re-roll with current tone + last
+          // scenario bias (cleared after one use).
           _GimmeMoreButton(
             generating: _generating,
             onTap:      _generate,
+          ),
+
+          const SizedBox(height: 14),
+
+          // ── TONE PILL ─ bottom-row chip. Tap → bottom-sheet
+          // picker. Picking a new tone re-fires generate so the
+          // existing replies refresh into the new register.
+          Center(
+            child: _TonePill(
+              tone: _tone,
+              onTap: _generating ? null : _openTonePicker,
+            ),
           ),
 
           if (_kRizzDebug) ...[
@@ -333,6 +385,29 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
         ],
       ),
     );
+  }
+
+  // ── Tone picker bottom sheet ────────────────────────────────────────
+  Future<void> _openTonePicker() async {
+    HapticFeedback.selectionClick();
+    final picked = await showModalBottomSheet<RizzVibe>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: false,
+      builder: (_) => _TonePickerSheet(current: _tone),
+    );
+    if (picked == null || picked == _tone || !mounted) return;
+    setState(() => _tone = picked);
+    // Refresh replies in the new tone the moment they pick.
+    await _generate();
+  }
+
+  // ── Scenario chip handler ───────────────────────────────────────────
+  Future<void> _useScenario(String scenario) async {
+    if (_generating) return;
+    HapticFeedback.selectionClick();
+    _scenario = scenario;
+    await _generate();
   }
 }
 
@@ -936,6 +1011,278 @@ class _ReplyBubble extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  TONE PILL + PICKER + SCENARIO STRIP
+//
+//  Matches the WingAI-style 2026 rizz UX bro flagged. The pill sits
+//  at the bottom of the results scroll showing the active tone (e.g.
+//  "😏 Flirty"); tapping it opens the bottom-sheet picker. The
+//  scenario strip is the row of "Tease a bit / Turn up heat / Plan
+//  a date / Win her back" chips that bias the next generation —
+//  one-shot, cleared the moment the request fires.
+// ═══════════════════════════════════════════════════════════════════════
+
+class _TonePill extends StatelessWidget {
+  final RizzVibe tone;
+  final VoidCallback? onTap;
+  const _TonePill({required this.tone, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(100),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(
+              color: AppColors.red.withValues(alpha: 0.55), width: 0.9),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(tone.emoji,
+                style: const TextStyle(fontSize: 15, height: 1)),
+              const SizedBox(width: 8),
+              Text(tone.label,
+                style: GoogleFonts.inter(
+                  color: Colors.white,
+                  fontSize: 13.5, height: 1,
+                  letterSpacing: 0.4,
+                  fontWeight: FontWeight.w800,
+                )),
+              const SizedBox(width: 6),
+              const Icon(Icons.keyboard_arrow_down_rounded,
+                color: AppColors.textSecondary, size: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom-sheet picker — one row per canonical tone. The active tone
+/// is highlighted with a red border + filled radio. Tap any row to
+/// pop with that vibe; the caller fires a fresh _generate so the
+/// replies refresh into the new tone.
+class _TonePickerSheet extends StatelessWidget {
+  final RizzVibe current;
+  const _TonePickerSheet({required this.current});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF111111),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 38, height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.surface3,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Text('SELECT TONE',
+                style: GoogleFonts.inter(
+                  color: AppColors.red,
+                  fontSize: 12, letterSpacing: 3.0,
+                  fontWeight: FontWeight.w800,
+                )),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close_rounded,
+                  color: AppColors.textSecondary, size: 22),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          for (final v in RizzVibeLabel.canonical) ...[
+            _TonePickerRow(
+              tone:     v,
+              selected: v == current,
+              onTap:    () => Navigator.of(context).pop(v),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TonePickerRow extends StatelessWidget {
+  final RizzVibe     tone;
+  final bool         selected;
+  final VoidCallback onTap;
+  const _TonePickerRow({
+    required this.tone,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final border = selected
+        ? AppColors.red
+        : AppColors.surface3;
+    return Material(
+      color: selected
+          ? AppColors.red.withValues(alpha: 0.10)
+          : AppColors.surface1,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: border, width: selected ? 1.2 : 0.6),
+          ),
+          child: Row(
+            children: [
+              Text(tone.emoji,
+                style: const TextStyle(fontSize: 22, height: 1)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(tone.label,
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 16, height: 1.2,
+                        letterSpacing: -0.2,
+                        fontWeight: FontWeight.w900,
+                      )),
+                    const SizedBox(height: 3),
+                    Text(tone.blurb,
+                      style: GoogleFonts.inter(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5, height: 1.35,
+                        fontWeight: FontWeight.w500,
+                      )),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Filled circle for selected, ring for unselected.
+              Container(
+                width: 22, height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected ? AppColors.red : AppColors.textTertiary,
+                    width: 1.6),
+                ),
+                alignment: Alignment.center,
+                child: selected
+                    ? Container(
+                        width: 11, height: 11,
+                        decoration: const BoxDecoration(
+                          color: AppColors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      )
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Horizontal-scroll quick-action chips. Each chip rewrites the
+/// three replies currently on screen in that flavor — the backend
+/// switches into TRANSFORM MODE (keeps each idea, shifts the
+/// register). Bro: "they take the already good rizz and add
+/// something to make it like sexual flirty or very bold" — exactly
+/// this surface.
+class _ScenarioStrip extends StatelessWidget {
+  final Future<void> Function(String scenario) onTap;
+  final bool disabled;
+  const _ScenarioStrip({required this.onTap, required this.disabled});
+
+  static const _chips = <({String label, String emoji, String scenario})>[
+    (label: 'More heat',     emoji: '🔥', scenario: 'turn up the heat — push every line one notch hotter, more cinematic, more suggestive. Keep the structure, raise the temperature.'),
+    (label: 'Flirty tease',  emoji: '😏', scenario: 'flirty tease — push-pull, light needle, make her chase. Cheeky but warm.'),
+    (label: 'Make a move',   emoji: '🎯', scenario: 'make a move — pivot each line toward a specific, confident date proposal without sounding pushy.'),
+    (label: 'Funnier',       emoji: '😂', scenario: 'funnier — keep the situation, add comedy. Screenshot-to-group-chat funny. Self-aware over earnest.'),
+    (label: 'Be playful',    emoji: '😜', scenario: 'be playful — light, cheeky, low-stakes. Drop the heavy moves.'),
+    (label: 'Be bolder',     emoji: '⚡️', scenario: 'be bolder — high-agency, declarative, scarce. Frame the outcome as already decided.'),
+    (label: 'Sexier',        emoji: '💋', scenario: 'sexier — slow-burn sensual, suggestive without spilling. Eye-contact energy. Use a 😏 or 😮‍💨 at the end of a clause.'),
+    (label: 'Keep it light', emoji: '🟡', scenario: 'keep it light and easy — no heavy moves, low-stakes charm. Friendly with a hint of flirt.'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 42,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        itemCount: _chips.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          final c = _chips[i];
+          return Material(
+            color: AppColors.surface1,
+            borderRadius: BorderRadius.circular(100),
+            child: InkWell(
+              onTap: disabled ? null : () => onTap(c.scenario),
+              borderRadius: BorderRadius.circular(100),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(
+                    color: AppColors.surface3, width: 0.8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(c.emoji,
+                      style: const TextStyle(fontSize: 14, height: 1)),
+                    const SizedBox(width: 7),
+                    Text(c.label,
+                      style: GoogleFonts.inter(
+                        color: disabled
+                            ? AppColors.textTertiary
+                            : Colors.white,
+                        fontSize: 13, height: 1,
+                        letterSpacing: 0.1,
+                        fontWeight: FontWeight.w700,
+                      )),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

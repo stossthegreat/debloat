@@ -148,12 +148,23 @@ app.post('/chat', async (req, res) => {
 // no archetypes, no tryon — just text in, text out.
 app.post('/rizz/reply', async (req, res) => {
   try {
-    const { her, vibe, ctx, scenario } = req.body || {};
+    const { her, vibe, ctx, scenario, previous } = req.body || {};
+    // `previous` is an optional array of {text, tag} objects sent by
+    // the quick-action chips ("More heat", "Funnier", "Make a move").
+    // When present, rizzReply switches into TRANSFORM MODE and
+    // rewrites those three replies instead of generating cold.
+    const prev = Array.isArray(previous)
+      ? previous
+          .filter(p => p && typeof p.text === 'string')
+          .slice(0, 3)
+          .map(p => ({ text: p.text, tag: typeof p.tag === 'string' ? p.tag : '' }))
+      : [];
     const result = await rizzReply({
       her:      typeof her      === 'string' ? her      : '',
       vibe:     typeof vibe     === 'string' ? vibe     : 'auto',
       ctx:      typeof ctx      === 'string' ? ctx      : '',
       scenario: typeof scenario === 'string' ? scenario : '',
+      previous: prev,
     });
     res.json(result);
   } catch (err) {
