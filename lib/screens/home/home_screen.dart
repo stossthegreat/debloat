@@ -437,16 +437,21 @@ class _ScanHubTab extends StatelessWidget {
   }
 }
 
-// ── Hope card — THE score card on the post-scan Looks tab. Bro: "10x
-// it brutal clean energy. Potential in GREEN, NOW in WHITE."
+// ── Hope card — THE score card on the post-scan Looks tab.
 //
-// Composition (top → bottom):
-//   · Small red eyebrow + archetype line  (THE READ · {ARCHETYPE})
-//   · Massive NOW score (white) ─ arrow ─ POTENTIAL (green) gain pill
-//   · "+15 POINTS WAITING" callout in italic Playfair
-//   · One-line manifesto in red — "Bones are not the ceiling. Execution is."
+// v3 — bro: "put the title full length across the top, number at each
+// END, +18 pill in the middle, card SHORTER side-to-side stays."
 //
-// No filler. The whole card reads in two seconds.
+// Composition is now THREE balanced bands:
+//   1. Header strip — THE READ · {ARCHETYPE} runs the full width with
+//      a tiny live dot on the left.
+//   2. Score row — NOW (white) on the LEFT edge, +XX pts pill in the
+//      MIDDLE, POTENTIAL (green) on the RIGHT edge. spaceBetween, so
+//      whatever screen width we're on the two numbers anchor to the
+//      ends and the gain badge centres on its own.
+//   3. Manifesto — italic Playfair red, one line, no divider needed.
+//
+// Card height shrunk ~35% vs the previous version.
 class _HopeCard extends StatelessWidget {
   final int current;
   final int projected;
@@ -461,7 +466,7 @@ class _HopeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final gain = (projected - current).clamp(0, 100);
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
       decoration: BoxDecoration(
         color: AppColors.surface1,
         borderRadius: BorderRadius.circular(Rd.xl),
@@ -471,15 +476,15 @@ class _HopeCard extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: AppColors.signalGreen.withValues(alpha: 0.22),
-            blurRadius: 32, spreadRadius: -2,
-            offset: const Offset(0, 8),
+            blurRadius: 26, spreadRadius: -4,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Eyebrow — RED, tracked, archetype context.
+          // 1. Header — full-width, red, tracked. Live dot left-anchored.
           Row(
             children: [
               Container(
@@ -503,27 +508,21 @@ class _HopeCard extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 10),
 
-          // ── NOW → POTENTIAL row. The headline.
+          // 2. Score row — NOW edge · +XX pill centre · POTENTIAL edge.
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _bigStat(
+              _edgeStat(
                 label: 'NOW',
                 value: current,
                 color: AppColors.textPrimary,
                 isNow: true,
               ),
-              const SizedBox(width: 18),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 22),
-                child: Icon(Icons.arrow_forward_rounded,
-                    color: AppColors.textTertiary.withValues(alpha: 0.8),
-                    size: 26),
-              ),
-              const SizedBox(width: 18),
-              _bigStat(
+              _gainPill(gain),
+              _edgeStat(
                 label: 'POTENTIAL',
                 value: projected,
                 color: AppColors.signalGreen,
@@ -532,49 +531,16 @@ class _HopeCard extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
-          // ── Gain badge — italic Playfair, green pill.
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 7),
-                decoration: BoxDecoration(
-                  color: AppColors.signalGreen.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(
-                    color: AppColors.signalGreen.withValues(alpha: 0.55),
-                    width: 0.9),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.trending_up_rounded,
-                        color: AppColors.signalGreen, size: 14),
-                    const SizedBox(width: 5),
-                    Text('+$gain POINTS WAITING',
-                      style: AppTypography.label.copyWith(
-                        color: AppColors.signalGreen,
-                        fontSize: 11, letterSpacing: 2.4,
-                        fontWeight: FontWeight.w900,
-                      )),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Manifesto — red, italic Playfair. The mission.
-          Container(width: double.infinity, height: 1,
-              color: AppColors.divider.withValues(alpha: 0.5)),
-          const SizedBox(height: 14),
-          Text('Bones are not the ceiling.\nExecution is.',
+          // 3. Manifesto — single line, red italic Playfair, the mission.
+          Text('Bones are not the ceiling. Execution is.',
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.playfairDisplay(
               color: AppColors.red,
-              fontSize: 15.5, height: 1.25,
+              fontSize: 14, height: 1.15,
               letterSpacing: -0.2,
               fontStyle: FontStyle.italic,
               fontWeight: FontWeight.w800,
@@ -584,42 +550,73 @@ class _HopeCard extends StatelessWidget {
     );
   }
 
-  /// Big number column — label on top (tracked, tertiary), giant italic
-  /// Playfair score below. NOW is white, POTENTIAL is signal green.
-  Widget _bigStat({
+  /// Edge-anchored score column. Label sits ON TOP of the number, with
+  /// the side it anchors to (NOW left-aligns, POTENTIAL right-aligns)
+  /// so the gain pill in the middle reads symmetric.
+  Widget _edgeStat({
     required String label,
     required int value,
     required Color color,
     required bool isNow,
   }) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          isNow ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(label,
           style: AppTypography.label.copyWith(
             color: isNow
                 ? AppColors.textTertiary
                 : AppColors.signalGreen.withValues(alpha: 0.85),
-            fontSize: 10, letterSpacing: 2.4,
+            fontSize: 9.5, letterSpacing: 2.4,
             fontWeight: FontWeight.w900,
           )),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text('$value',
           style: GoogleFonts.playfairDisplay(
             color: color,
-            fontSize: 64, height: 0.95,
-            letterSpacing: -2.6,
+            fontSize: 48, height: 0.95,
+            letterSpacing: -2.0,
             fontStyle: FontStyle.italic,
             fontWeight: FontWeight.w900,
             shadows: isNow
                 ? null
                 : [
                     Shadow(
-                      color: AppColors.signalGreen.withValues(alpha: 0.45),
-                      blurRadius: 24),
+                      color: AppColors.signalGreen.withValues(alpha: 0.4),
+                      blurRadius: 18),
                   ],
           )),
       ],
+    );
+  }
+
+  /// +XX pill that sits centred between NOW and POTENTIAL.
+  Widget _gainPill(int gain) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.signalGreen.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(
+          color: AppColors.signalGreen.withValues(alpha: 0.55),
+          width: 0.9),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.trending_up_rounded,
+              color: AppColors.signalGreen, size: 13),
+          const SizedBox(width: 4),
+          Text('+$gain',
+            style: AppTypography.label.copyWith(
+              color: AppColors.signalGreen,
+              fontSize: 13, letterSpacing: 0.4,
+              fontWeight: FontWeight.w900,
+            )),
+        ],
+      ),
     );
   }
 }

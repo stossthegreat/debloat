@@ -36,11 +36,17 @@ class AiVerdictPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Bro: "the new ones make them wider." Each tile bleeds to the
+    // outer SizedBox edges — the parent ReportScreen Transform.translate
+    // is what carries the panel out past the page's normal Sp.lg inset.
+    // Internally we use a tight Sp.sm margin so the four tiles sit
+    // shoulder-to-shoulder with the screen edge.
+    const sideInset = Sp.sm;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+          padding: const EdgeInsets.symmetric(horizontal: sideInset),
           child: Row(
             children: [
               const Icon(Icons.auto_awesome_rounded,
@@ -67,7 +73,7 @@ class AiVerdictPanel extends StatelessWidget {
 
         if (verdict.biggestStrength.body.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+            padding: const EdgeInsets.symmetric(horizontal: sideInset),
             child: _VerdictTile(
               eyebrow:   'YOUR BIGGEST STRENGTH',
               headline:  verdict.biggestStrength.headline,
@@ -84,7 +90,7 @@ class AiVerdictPanel extends StatelessWidget {
         // and third highest sub-scores too, not just the headline one.
         for (final extra in extraStrengths) ...[
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+            padding: const EdgeInsets.symmetric(horizontal: sideInset),
             child: _VerdictTile(
               eyebrow:   extra.eyebrow,
               headline:  extra.headline,
@@ -98,7 +104,7 @@ class AiVerdictPanel extends StatelessWidget {
 
         if (verdict.biggestWeakness.body.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+            padding: const EdgeInsets.symmetric(horizontal: sideInset),
             child: _VerdictTile(
               eyebrow:   'WHAT\'S HOLDING YOU BACK',
               headline:  verdict.biggestWeakness.headline,
@@ -113,7 +119,7 @@ class AiVerdictPanel extends StatelessWidget {
         if (verdict.fastestWin.axes.isNotEmpty ||
             verdict.fastestWin.body.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+            padding: const EdgeInsets.symmetric(horizontal: sideInset),
             child: _FastestWinTile(win: verdict.fastestWin),
           ),
           const SizedBox(height: Sp.sm),
@@ -121,7 +127,7 @@ class AiVerdictPanel extends StatelessWidget {
 
         if (verdict.potential.projected > verdict.potential.current) ...[
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+            padding: const EdgeInsets.symmetric(horizontal: sideInset),
             child: _PotentialTile(p: verdict.potential),
           ),
         ],

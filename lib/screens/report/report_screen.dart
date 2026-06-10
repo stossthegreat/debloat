@@ -565,18 +565,19 @@ class _ReportScreenState extends State<ReportScreen> {
     // PerTraitScores, TraitGrid and AspectProtocolCards respectively,
     // none of which need those locals.
 
-    // Bro: "left to right edge, full width." Outer scroll uses zero
-    // horizontal padding so cards can bleed to the screen edges. Only
-    // the header + bottom CTAs keep an inset for readability.
+    // Bro v2: "you made the wrong card bigger — revert the top one, the
+    // NEW ones (AI Verdict) make them wider." So the outer ScrollView
+    // gets its Sp.lg side padding back; every section reads at normal
+    // inset EXCEPT the AI Verdict panel which breaks out wider by using
+    // a negative-margin Transform so its four tiles bleed closer to the
+    // screen edge than everything else.
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: Sp.md, bottom: Sp.lg),
+      padding: const EdgeInsets.fromLTRB(Sp.lg, Sp.md, Sp.lg, Sp.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header with Share action
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-            child: Row(
+          Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
@@ -629,14 +630,11 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
               ),
             ],
-            ),
           ),
 
           const SizedBox(height: Sp.lg),
 
-          // ── 0 · DUAL-SCORE HERO — full bleed, edge-to-edge.
-          // Bro: "left to right edge so full width" — every card
-          // below now stretches the full viewport.
+          // ── 0 · DUAL-SCORE HERO — normal inset.
           _DualScoreHero(
             honest:    _honest,
             geometry:  score.value,
@@ -644,7 +642,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.md),
 
-          // ── 1 · HERO CARD — full bleed.
+          // ── 1 · HERO CARD — normal inset.
           HeroCard(
             currentScore:     _honest?.score ?? score.value,
             projectedScore:   projected,
@@ -661,19 +659,27 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.lg),
 
-          // ── 2 · AI VERDICT — full bleed.
+          // ── 2 · AI VERDICT — WIDER than the rest. Bro: "the new ones
+          //   make them wider." Break out of the parent SingleChildScroll-
+          //   View's Sp.lg horizontal padding via a negative-margin
+          //   Transform so the four verdict tiles touch (or near-touch)
+          //   the screen edges while everything above and below stays
+          //   at the normal Sp.lg inset.
           if (_honest?.verdict != null) ...[
-            AiVerdictPanel(
-              verdict: _honest!.verdict!,
-              // Bro: "only gives one example of what's good — give them
-              // a little more." extraStrengths surfaces the next 2-3
-              // highest sub-axis scores as additional strength tiles.
-              extraStrengths: _buildExtraStrengths(),
+            Transform.translate(
+              offset: const Offset(-Sp.lg, 0),
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width,
+                child: AiVerdictPanel(
+                  verdict: _honest!.verdict!,
+                  extraStrengths: _buildExtraStrengths(),
+                ),
+              ),
             ).animate().fadeIn(delay: 1450.ms, duration: 500.ms),
             const SizedBox(height: Sp.lg),
           ],
 
-          // ── 3 · PER-TRAIT SCORES — full bleed.
+          // ── 3 · PER-TRAIT SCORES — normal inset.
           PerTraitScores(
             honest:   _honest,
             geometry: widget.geometry,
@@ -681,7 +687,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.md),
 
-          // ── 4 · GEOMETRY BREAKDOWN — full bleed.
+          // ── 4 · GEOMETRY BREAKDOWN — normal inset.
           TraitGrid(traits: traits)
             .animate().fadeIn(delay: 1700.ms, duration: 500.ms),
 
@@ -692,7 +698,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.xl),
 
-          // ── 5 · 60-DAY ASPECT PROTOCOLS — full bleed.
+          // ── 5 · 60-DAY ASPECT PROTOCOLS — normal inset.
           AspectProtocolCards(
             geometry:       widget.geometry,
             savedImagePath: _savedImagePath,
@@ -700,10 +706,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.xl),
 
-          // ── Bottom CTAs keep their inset for tap target balance.
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-            child: Row(
+          Row(
             children: [
               Expanded(
                 child: SizedBox(
@@ -744,7 +747,6 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
               ),
             ],
-            ),
           ),
           const SizedBox(height: Sp.md),
         ],
