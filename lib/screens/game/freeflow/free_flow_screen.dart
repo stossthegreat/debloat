@@ -284,32 +284,13 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     // regression). Tab-mode auto-start double-fire is handled by
     // _tabAutoStartFired in initState.
     //
-    // ── PAYWALL GATE (bro v2: "show paywall when they press the
-    //     speak icon in roleplay"). Every speak action — auto-fire
-    //     on tab open, CHANGE CHARACTER chip, manual vibe pick,
-    //     retry — flows through this method, so this is the single
-    //     chokepoint. Pro users skip entirely. Free users burn ONE
-    //     free session the first time; every subsequent call to
-    //     _goLive lands on the paywall instead of connecting.
-    final pro = await PaywallGate.isPro();
-    if (!pro) {
-      final used = await LocalStoreService.gameFreeUsed();
-      if (used) {
-        if (!mounted) return;
-        // Reset the phase so the screen doesn't sit in connecting
-        // forever after the user dismisses the paywall.
-        setState(() {
-          _phase = _Phase.pick;
-          _error = '';
-        });
-        HapticFeedback.mediumImpact();
-        await context.push('/paywall',
-            extra: {'source': 'game_speak_capped'});
-        return;
-      }
-      // Burn the free pass. The session itself still runs below.
-      await LocalStoreService.markGameFreeUsed();
-    }
+    // Bro v4: "this page should never look like this — it needs to
+    // be the main page and after they've used their free go, when
+    // they press RECORD the paywall comes." So _goLive ALWAYS
+    // connects (no entry gate here); the gate lives on the
+    // push-to-talk hold in _startHold(). A returning free user
+    // sees the live UI shell, and the paywall only fires when they
+    // actually try to speak.
     setState(() {
       _vibe = vibe;
       _phase = _Phase.connecting;
@@ -544,6 +525,39 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   // ─── Push-to-talk ────────────────────────────────────────────────────
 
   void _startHold() {
+    if (_phase != _Phase.live || _holding) return;
+    // Bro v4: "after they've used their free go, when they press
+    // RECORD the paywall comes." THIS is that gate. Pro users go
+    // through every time. Free users get ONE successful hold; the
+    // second hold attempt routes to the paywall and never starts
+    // the mic. The free use is marked here (first hold) — not on
+    // _goLive — so a returning user who hasn't actually recorded
+    // still has their pass.
+    // ignore: discarded_futures
+    PaywallGate.isPro().then((pro) async {
+      if (!mounted) return;
+      if (pro) {
+        _beginHold();
+        return;
+      }
+      final used = await LocalStoreService.gameFreeUsed();
+      if (!mounted) return;
+      if (used) {
+        HapticFeedback.mediumImpact();
+        await context.push('/paywall',
+            extra: {'source': 'game_speak_capped'});
+        return;
+      }
+      await LocalStoreService.markGameFreeUsed();
+      if (!mounted) return;
+      _beginHold();
+    });
+  }
+
+  /// Actual push-to-talk start (gate-cleared). Kept as a separate
+  /// method so _startHold's gate check stays synchronous-ish — the
+  /// audio path itself is fire-and-forget once the gate passes.
+  void _beginHold() {
     if (_phase != _Phase.live || _holding) return;
     // Cancel any pending create from a previous release so rapid taps
     // can't fire two response.create calls (which OpenAI rejects as
