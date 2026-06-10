@@ -324,6 +324,21 @@ function parseReplies(raw) {
   return [];
 }
 
+// Post-filter banned-word list. The system prompt already tells the
+// model to avoid these, but gpt-4o sometimes paraphrases past the
+// rule ("Deciphering your code is like unlocking a secret world"
+// fits the ban list literally — secret + code + decipher all show
+// up). We scan every output reply against this list and force a
+// REGENERATE pass if any are found. One retry only — beyond that we
+// return whatever the second attempt produced.
+const RIZZ_BANNED_RX = /\b(crypt(ic|o)|puzzle|code(s)?|decod(e|ing)|deciph(er|ering)|mysteri(ous|es|y)|mystic|secret(s|ly)?|encrypt(ed|ion)?|riddle(s)?|parallel\s+universe|in\s+code|in\s+a\s+code|in\s+tongues|hidden\s+message)\b/i;
+
+function repliesContainBannedWord(replies) {
+  if (!Array.isArray(replies)) return false;
+  return replies.some(r => r && typeof r.text === 'string'
+    && RIZZ_BANNED_RX.test(r.text));
+}
+
 export async function rizzReply({ her, vibe, ctx, scenario, previous } = {}) {
   const userMessage = buildUserMessage({
     her:      her      || '',
@@ -333,19 +348,36 @@ export async function rizzReply({ her, vibe, ctx, scenario, previous } = {}) {
     previous: Array.isArray(previous) ? previous : [],
   });
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [
-      { role: 'system', content: SYSTEM },
-      { role: 'user',   content: userMessage },
-    ],
-    response_format: { type: 'json_object' },
-    temperature: 0.9,
-    max_tokens: 600,
-  });
+  async function runOnce(extraSystem = '') {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: SYSTEM + (extraSystem ? '\n\n' + extraSystem : '') },
+        { role: 'user',   content: userMessage },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.9,
+      max_tokens: 600,
+    });
+    const raw = response?.choices?.[0]?.message?.content || '';
+    return parseReplies(raw);
+  }
 
-  const raw = response?.choices?.[0]?.message?.content || '';
-  const replies = parseReplies(raw);
+  let replies = await runOnce();
+
+  // Post-filter — if any reply contains a banned word, retry ONCE
+  // with a harder reminder pinned to the end of the system prompt.
+  if (repliesContainBannedWord(replies)) {
+    console.warn('[rizz] banned word detected in first pass — regenerating');
+    const harder = 'REMINDER: Your previous attempt used one of the '
+      + 'BANNED words (cryptic, puzzle, code, decode, decipher, '
+      + 'mysterious, mystery, secret, encrypted, riddle, parallel '
+      + 'universe, in code, in tongues, hidden message). Write '
+      + 'fresh replies WITHOUT any of those words. The chat is a '
+      + 'normal chat. wbu = "what about you", wyd = "what you '
+      + 'doing" — they are PLAIN ENGLISH abbreviations, not codes.';
+    replies = await runOnce(harder);
+  }
 
   return { replies };
 }
@@ -515,16 +547,34 @@ export async function rizzChat({ messages } = {}) {
     return { reply: 'drop the question.' };
   }
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [
-      { role: 'system', content: CHAT_SYSTEM },
-      ...safe,
-    ],
-    temperature: 0.9,
-    max_tokens: 500,
-  });
+  async function runOnce(extraSystem = '') {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: CHAT_SYSTEM + (extraSystem ? '\n\n' + extraSystem : '') },
+        ...safe,
+      ],
+      temperature: 0.9,
+      max_tokens: 500,
+    });
+    return (response?.choices?.[0]?.message?.content || '').trim();
+  }
 
-  const reply = (response?.choices?.[0]?.message?.content || '').trim();
+  let reply = await runOnce();
+
+  // Same post-filter as rizzReply — regenerate once if any banned
+  // word slipped through the prompt rule.
+  if (RIZZ_BANNED_RX.test(reply)) {
+    console.warn('[rizz/chat] banned word detected in first pass — regenerating');
+    const harder = 'REMINDER: Your previous attempt used one of the '
+      + 'BANNED words (cryptic, puzzle, code, decode, decipher, '
+      + 'mysterious, mystery, secret, encrypted, riddle, parallel '
+      + 'universe, in code, in tongues, hidden message). Write a '
+      + 'fresh reply WITHOUT any of those words. The chat is a '
+      + 'normal chat. wbu = "what about you", wyd = "what you '
+      + 'doing" — they are PLAIN ENGLISH abbreviations, not codes.';
+    reply = await runOnce(harder);
+  }
+
   return { reply };
 }

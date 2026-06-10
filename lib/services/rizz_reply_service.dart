@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 
 import '../config/api_config.dart';
 import '../data/rizz_lines.dart';
@@ -355,41 +353,17 @@ class RizzReplyService {
     return labeled.join('\n');
   }
 
-  /// Write the in-memory screenshot bytes to a tmp file (ML Kit needs
-  /// a path, not bytes), run text recognition on the tmp file, then
-  /// delete it. Returns the joined text from the last few chat
-  /// bubbles, ready to feed straight into the RIZZ GOD prompt. Any
-  /// failure (no text, ML Kit error, file write fails) returns ''
-  /// so the caller can fall through to the image-bytes path.
-  ///
-  /// Wrapped with a 12s timeout so ML Kit hanging on a bad image
-  /// can't lock the whole generator UI in a spinner. The user sees
-  /// the AI step kick in after at most 12s either way.
+  /// OCR delegate — calls the SHARED ScreenshotOcrService helper so
+  /// the screenshot screen and the chat screen are guaranteed to use
+  /// the same code path (path_provider.getTemporaryDirectory + 12s
+  /// ML Kit timeout). Bro: "use same logic as fucking screenshot
+  /// ad tab" — they now literally share the same function.
   static Future<String> _ocrSilently(Uint8List bytes) async {
     RizzDebug.add('ocr start bytes=${bytes.length}');
-    try {
-      final dir = await getTemporaryDirectory();
-      final path = '${dir.path}/rizz_ocr_'
-          '${DateTime.now().millisecondsSinceEpoch}.png';
-      final file = File(path);
-      await file.writeAsBytes(bytes, flush: true);
-      RizzDebug.add('ocr wrote tmp file');
-      try {
-        final text = await ScreenshotOcrService.extractRecent(path)
-            .timeout(const Duration(seconds: 12), onTimeout: () {
-              RizzDebug.add('ML Kit TIMED OUT after 12s');
-              return '';
-            });
-        RizzDebug.add('ocr ok extracted=${text.length} chars '
-            'sample="${text.length > 60 ? "${text.substring(0, 60)}…" : text}"');
-        return text;
-      } finally {
-        try { await file.delete(); } catch (_) {}
-      }
-    } catch (e) {
-      RizzDebug.add('ocr THREW $e');
-      return '';
-    }
+    final text = await ScreenshotOcrService.extractFromBytes(bytes);
+    RizzDebug.add('ocr returned ${text.length} chars '
+        'sample="${text.length > 60 ? "${text.substring(0, 60)}…" : text}"');
+    return text;
   }
 
   /// Parse the model's reply into [RizzReply]s. The /chat endpoint is

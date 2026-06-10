@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../../config/api_config.dart';
 import '../../services/paywall_gate.dart';
@@ -179,37 +178,17 @@ class _RizzChatScreenState extends State<RizzChatScreen> {
     return labeled.join('\n');
   }
 
-  /// On-device OCR — mirrors the working _ocrSilently in
-  /// RizzReplyService. The previous implementation used
-  /// Directory.systemTemp which fails inside the iOS sandbox; the
-  /// screenshot screen works because it goes through
-  /// path_provider.getTemporaryDirectory(). Bro: "use same logic as
-  /// fucking screenshot ad tab" — verbatim copy of that path.
+  /// On-device OCR — same path the screenshot screen uses.
+  /// ScreenshotOcrService.extractFromBytes is the ONE shared
+  /// implementation, so a fix in one place can't drift from the
+  /// other. Bro: "use same logic as fucking screenshot ad tab" —
+  /// now literally the same function call.
   Future<String> _ocr(Uint8List bytes) async {
     _dbg('ocr start bytes=${bytes.length}');
-    try {
-      final dir = await getTemporaryDirectory();
-      final path = '${dir.path}/rizz_chat_'
-          '${DateTime.now().millisecondsSinceEpoch}.png';
-      final file = File(path);
-      await file.writeAsBytes(bytes, flush: true);
-      _dbg('ocr wrote tmp file');
-      try {
-        final text = await ScreenshotOcrService.extractRecent(path)
-            .timeout(const Duration(seconds: 12), onTimeout: () {
-              _dbg('ML Kit TIMED OUT after 12s');
-              return '';
-            });
-        _dbg('ocr ok extracted=${text.length} chars '
-            'sample="${text.length > 60 ? "${text.substring(0, 60)}…" : text}"');
-        return text;
-      } finally {
-        try { await file.delete(); } catch (_) {}
-      }
-    } catch (e) {
-      _dbg('ocr THREW $e');
-      return '';
-    }
+    final text = await ScreenshotOcrService.extractFromBytes(bytes);
+    _dbg('ocr returned ${text.length} chars '
+        'sample="${text.length > 60 ? "${text.substring(0, 60)}…" : text}"');
+    return text;
   }
 
   Future<String> _ask(String text, {Uint8List? image}) async {
@@ -414,20 +393,28 @@ class _RizzChatScreenState extends State<RizzChatScreen> {
               //   Make a move, etc). Same chip set as the screenshot
               //   screen's _ScenarioStrip.
               if (showTransform) ...[
+                // ── Transform chip strip — horizontal scroll of the
+                //   "More heat / Flirty tease / Make a move / ..."
+                //   actions that reshape the last AI suggestion.
                 _ChatTransformStrip(
                   onTap: _useChatScenario,
                   disabled: _sending,
                 ),
-                const SizedBox(height: 8),
-                // Tone pill — tap → picker → re-fires a transform
-                // turn in the new register.
-                Center(
-                  child: _ChatTonePill(
-                    tone: _tone,
-                    onTap: _sending ? null : _openTonePicker,
+                // Tone pill — sits cleanly UNDER the chip strip, on
+                // its own row with its own padding, so the dropdown
+                // affordance reads as a separate control (not a chip).
+                // Bro: "put the preset dropdown under the chat strip
+                // cleanly open scrollable."
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 10, 0, 4),
+                  child: Center(
+                    child: _ChatTonePill(
+                      tone: _tone,
+                      onTap: _sending ? null : _openTonePicker,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
               ],
               // Debug pane commented out — flip back on by uncommenting
               // when something next stops working.

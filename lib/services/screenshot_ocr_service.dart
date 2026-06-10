@@ -1,4 +1,8 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// Free, on-device OCR over Google ML Kit. Used by the RIZZ tab to
 /// extract her message from a Hinge / Tinder / iMessage screenshot
@@ -34,6 +38,38 @@ class ScreenshotOcrService {
         .where((t) => t.isNotEmpty)
         .join('\n')
         .trim();
+  }
+
+  /// Single OCR entry point that both the screenshot rizz screen AND
+  /// the chat-with-Mirrorly screen call. Eliminates code drift between
+  /// the two helpers — if OCR works on one it works on the other.
+  ///
+  /// Writes the bytes to an app-sandbox temp file via path_provider
+  /// (NOT Directory.systemTemp — that resolves outside the iOS app
+  /// sandbox and silently fails). Runs ML Kit with a 12s timeout so
+  /// the UI never hangs forever. Returns '' on any failure path so
+  /// callers can fall back to "ask me to paste what she said".
+  static Future<String> extractFromBytes(Uint8List bytes,
+      {int keepBlocks = 5}) async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final path = '${dir.path}/ocr_'
+          '${DateTime.now().millisecondsSinceEpoch}.png';
+      final file = File(path);
+      await file.writeAsBytes(bytes, flush: true);
+      try {
+        final text = await extractRecent(path, keepBlocks: keepBlocks)
+            .timeout(
+              const Duration(seconds: 12),
+              onTimeout: () => '',
+            );
+        return text;
+      } finally {
+        try { await file.delete(); } catch (_) {}
+      }
+    } catch (_) {
+      return '';
+    }
   }
 
   /// Release the native recognizer. Safe to skip — ML Kit reuses
