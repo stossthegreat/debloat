@@ -15,8 +15,13 @@
 ///
 /// **FLIP THIS TO FALSE BEFORE SHIPPING.**
 ///
-/// TEMPORARILY TRUE (build 150) — bro asked for the lock off so he can
-/// test the new rizz tone presets + quick-action chips without burning
-/// his free screenshot pass on every retry. Flip back to false the
-/// build before App Store / Play Store submission.
-const kBypassPaywall = true;
+/// v155 — flipped back to FALSE per bro: "add the lock for
+/// subscription on it again the whole app as we previously planned."
+/// Testing window for the new rizz tone presets + vision wiring is
+/// closed; gates are live again:
+///   · 2 scans / week (free tier)
+///   · 10 Mirror renders / month (free tier)
+///   · 1 free rizz screenshot, then paywall
+///   · LINES + Chat with Mirrorly fully paywalled
+///   · Game tab: 1 free Free-Flow speak, then paywall on SPEAK.
+const kBypassPaywall = false;

@@ -383,29 +383,22 @@ class _RizzChatScreenState extends State<RizzChatScreen> {
                   onTap: _useChatScenario,
                   disabled: _sending,
                 ),
-                // Tone pill — sits cleanly UNDER the chip strip, on
-                // its own row with its own padding, so the dropdown
-                // affordance reads as a separate control (not a chip).
-                // Bro: "put the preset dropdown under the chat strip
-                // cleanly open scrollable."
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 10, 0, 4),
-                  child: Center(
-                    child: _ChatTonePill(
-                      tone: _tone,
-                      onTap: _sending ? null : _openTonePicker,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
               ],
               // Debug pane commented out — flip back on by uncommenting
               // when something next stops working.
               // if (_debugLog.isNotEmpty)
               //   _ChatDebugPane(entries: _debugLog),
+              // ── Input bar with the tone pill BUILT IN on the left.
+              //   Bro v3: "this is a professional app not a clown show."
+              //   Mirrors WingAI's pattern — one clean row carries
+              //   attach + tone selector + text input + send. No more
+              //   centered floating pill above the input.
               _InputBar(
                 controller: _ctrl,
                 sending:    _sending,
+                tone:       _tone,
+                onTone:     _sending ? null : _openTonePicker,
                 onSend:     () => _send(_ctrl.text),
                 onAttach:   _showAttachSheet,
               ),
@@ -916,11 +909,18 @@ class _AttachRow extends StatelessWidget {
 class _InputBar extends StatelessWidget {
   final TextEditingController controller;
   final bool sending;
+  final RizzVibe tone;
+  /// Null when the tone selector should be disabled (mid-send) — we
+  /// still render it so the user can SEE the current tone, but the
+  /// tap is a no-op.
+  final VoidCallback? onTone;
   final VoidCallback onSend;
   final VoidCallback onAttach;
   const _InputBar({
     required this.controller,
     required this.sending,
+    required this.tone,
+    required this.onTone,
     required this.onSend,
     required this.onAttach,
   });
@@ -928,7 +928,7 @@ class _InputBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
       child: Container(
         padding: const EdgeInsets.fromLTRB(6, 4, 4, 4),
         decoration: BoxDecoration(
@@ -938,6 +938,9 @@ class _InputBar extends StatelessWidget {
         ),
         child: Row(
           children: [
+            // ── Attach (screenshot upload). Compact circle, same as
+            //    before — but slightly tighter so the tone pill +
+            //    text field both fit on the one row.
             Material(
               color: Colors.transparent,
               shape: const CircleBorder(),
@@ -945,7 +948,7 @@ class _InputBar extends StatelessWidget {
                 onTap: onAttach,
                 customBorder: const CircleBorder(),
                 child: Container(
-                  width: 38, height: 38,
+                  width: 36, height: 36,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: AppColors.red.withValues(alpha: 0.14),
@@ -955,11 +958,51 @@ class _InputBar extends StatelessWidget {
                       width: 0.8),
                   ),
                   child: const Icon(Icons.center_focus_strong_rounded,
-                      color: AppColors.red, size: 18),
+                      color: AppColors.red, size: 17),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
+            // ── Tone pill — INLINE here, not on a separate row above.
+            //    Bro: "this is a professional app not a clown show."
+            //    Tap opens the same five-tone picker sheet.
+            Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(99),
+              child: InkWell(
+                onTap: onTone,
+                borderRadius: BorderRadius.circular(99),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(
+                      color: AppColors.red.withValues(alpha: 0.55),
+                      width: 0.9),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(tone.emoji,
+                        style: const TextStyle(fontSize: 13, height: 1)),
+                      const SizedBox(width: 5),
+                      Text(tone.label,
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 12, height: 1,
+                          letterSpacing: 0.2,
+                          fontWeight: FontWeight.w800,
+                        )),
+                      const SizedBox(width: 2),
+                      const Icon(Icons.keyboard_arrow_down_rounded,
+                        color: AppColors.textSecondary, size: 14),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
             Expanded(
               child: TextField(
                 controller: controller,
@@ -1021,49 +1064,9 @@ class _InputBar extends StatelessWidget {
 //  carry the tone + transform UX after a reply lands.
 // ═══════════════════════════════════════════════════════════════════════
 
-class _ChatTonePill extends StatelessWidget {
-  final RizzVibe tone;
-  final VoidCallback? onTap;
-  const _ChatTonePill({required this.tone, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(100),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          decoration: BoxDecoration(
-            color: AppColors.surface1,
-            borderRadius: BorderRadius.circular(100),
-            border: Border.all(
-              color: AppColors.red.withValues(alpha: 0.55), width: 0.9),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(tone.emoji,
-                style: const TextStyle(fontSize: 15, height: 1)),
-              const SizedBox(width: 8),
-              Text(tone.label,
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 13.5, height: 1,
-                  letterSpacing: 0.4,
-                  fontWeight: FontWeight.w800,
-                )),
-              const SizedBox(width: 6),
-              const Icon(Icons.keyboard_arrow_down_rounded,
-                color: AppColors.textSecondary, size: 16),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+// _ChatTonePill removed in v157 — the tone pill is now rendered
+// INLINE inside _InputBar, between the attach button and the text
+// field, matching WingAI's clean single-row pattern.
 
 class _ChatTonePickerSheet extends StatelessWidget {
   final RizzVibe current;
