@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/face_geometry.dart';
 import '../../models/protocol.dart';
+import '../../services/paywall_gate.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 
@@ -60,8 +61,19 @@ class AspectProtocolCards extends StatelessWidget {
           _AspectTile(
             aspect:    aspects[i],
             committed: activeProtocols[aspects[i].pulldownString],
-            onTap: () {
+            onTap: () async {
               HapticFeedback.mediumImpact();
+              // Bro v4: "they can't use the streaks for looks unless
+              // they pay." The 60-day protocol IS the streak system —
+              // gate it here so non-pro users land on the paywall
+              // instead of starting / continuing a protocol.
+              if (await PaywallGate.streaksLocked()) {
+                if (!context.mounted) return;
+                context.push('/paywall',
+                    extra: {'source': 'streaks_locked'});
+                return;
+              }
+              if (!context.mounted) return;
               context.push(
                 '/protocol',
                 extra: {

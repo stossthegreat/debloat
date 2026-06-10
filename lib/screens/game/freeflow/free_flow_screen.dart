@@ -230,21 +230,14 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     // circle so the user lands on the recording orb the moment they
     // open the tab. They can switch character via the top-left chip.
     if (widget.tabMode) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _tabAutoStartFired) return;
-        // Bro: "I used roleplay then it seems to stop working — but
-        // I've got sub so it should still work, and otherwise paywall
-        // should show when they press the speak icon." A returning
-        // free user who's burnt their pass would have the auto-fire
-        // dump them straight onto the paywall — instead, only auto-
-        // start when there's still a pass to burn. Pro users always
-        // auto-start. Once landed in pick mode, ANY chip tap routes
-        // through _goLive which carries the real gate.
-        final pro     = await PaywallGate.isPro();
-        final used    = await LocalStoreService.gameFreeUsed();
-        if (!mounted) return;
-        if (!pro && used) return; // stay on the picker.
         _tabAutoStartFired = true;
+        // Bro v4: "when they FIRST go on it it starts with the OPEN
+        // screen — the FULL screen before they use their one credit."
+        // ALWAYS auto-fire on tab open. The gate inside _goLive
+        // handles the paywall when the free pass is burnt — the
+        // picker is NEVER the initial screen on the game tab.
         final defaultVibe = _vibes.firstWhere(
           (v) => v.key == 'into_you',
           orElse: () => _vibes.first,

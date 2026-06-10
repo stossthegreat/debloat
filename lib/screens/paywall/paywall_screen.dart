@@ -579,13 +579,13 @@ class _PaywallScreenState extends State<PaywallScreen> {
       case _Tier.monthly:
         text = '$price billed monthly. Auto-renews until cancelled. '
                'Mirrorly Pro subscription required for scans, AI '
-               'renders, AI roleplay, and all rizz features.';
+               'renders, streaks, AI roleplay, and all rizz features.';
         break;
       case _Tier.annual:
         text = '$price billed once per year (${_perMonthForAnnual()}/'
                'mo equivalent). Auto-renews yearly until cancelled. '
                'Mirrorly Pro subscription required for scans, AI '
-               'renders, AI roleplay, and all rizz features.';
+               'renders, streaks, AI roleplay, and all rizz features.';
         break;
       case _Tier.rescue:
         text = '$price one-time charge. NOT a subscription. '
@@ -677,19 +677,17 @@ class _PaywallScreenState extends State<PaywallScreen> {
     switch (t) {
       case _Tier.monthly:
       case _Tier.annual:
-        // Bro v3: "we need eye contact out but we need to put AI
-        // roleplay and all rizz features." Eyes-tab line dropped
-        // (Eyes tab isn't surfaced in the IndexedStack anyway), and
-        // split into two: AI roleplay (Lucien + free-flow) on its
-        // own line, all rizz features (screenshot reply, Lines
-        // arsenal, chat coach) on its own line. The list reads as
-        // the product map for what Pro actually unlocks.
+        // Bro v4 corrected — Pro tier benefits, full matrix. Streaks
+        // line added because the 60-day protocol system is now Pro-
+        // only too. Bro: "they can't use the streaks for looks unless
+        // they pay."
         return [
           '2 scans per week',
           '10 AI-rendered images per month',
           'The Mirror — unlimited chat advice',
           'Two-score rating — geometry (on-device, 16 metrics) + '
               'honest-looks (GPT-4o Vision)',
+          'Streaks + 60-day protocols — Skin, Jaw, Debloat, Hair',
           'AI roleplay — Lucien arena & council, free-flow voice AI',
           'All rizz features — screenshot replies, Lines arsenal, '
               'chat coach',

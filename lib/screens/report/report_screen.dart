@@ -465,18 +465,22 @@ class _ReportScreenState extends State<ReportScreen> {
         ? _localMaximizedUrl
         : a.maximizedImageUrl;
     if (existing.isNotEmpty) return; // image already on screen
-    // Mirror-tab render cap — 10 / month for free users. The hero
-    // render IS a Mirror render (calls /maximize on Replicate).
-    // Pro users bypass.
+    // Bro v4: Mirror renders are PRO-ONLY. Free users have no render
+    // allowance — every attempt hits the paywall. Pro users get the
+    // 10/month quota.
     final pro = await PaywallGate.isPro();
     if (!pro) {
-      final used = await LocalStoreService.mirrorRendersThisMonth();
-      if (used >= LocalStoreService.kRendersPerMonth) {
-        if (!mounted) return;
-        HapticFeedback.mediumImpact();
-        context.push('/paywall', extra: {'source': 'render_capped'});
-        return;
-      }
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      context.push('/paywall', extra: {'source': 'render_locked'});
+      return;
+    }
+    final used = await LocalStoreService.mirrorRendersThisMonth();
+    if (used >= LocalStoreService.kRendersPerMonth) {
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      context.push('/paywall', extra: {'source': 'render_quota_capped'});
+      return;
     }
     HapticFeedback.heavyImpact();
     setState(() => _generatingHero = true);
@@ -493,9 +497,8 @@ class _ReportScreenState extends State<ReportScreen> {
         _localMaximizedUrl = url;
         _generatingHero    = false;
       });
-      // Burn a monthly slot for free users — every other Mirror
-      // surface (hero retry, chat tryon) reads from the same bucket.
-      if (!pro) await LocalStoreService.markMirrorRenderUsed();
+      // Pro user just used one of their 10 monthly renders.
+      await LocalStoreService.markMirrorRenderUsed();
     } catch (_) {
       if (!mounted) return;
       setState(() => _generatingHero = false);

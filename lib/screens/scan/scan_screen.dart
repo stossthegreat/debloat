@@ -22,7 +22,6 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/ai_consent_dialog.dart';
 import '../../widgets/scan/geometry_overlay_painter.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
@@ -64,9 +63,13 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
   // Resolved once on mount — if a non-pro user has already burned their
   // 2 scans this week, we skip every expensive init (camera, mesh,
   // wakelock) and render a paywall card instead.
-  bool _capLoaded   = false;
-  bool _capReached  = false;
-  int  _capUsed     = 0;
+  // Entry-gate fields removed in v158 — the onboarding flow is:
+  //   gender pick → /scan (camera ALWAYS runs) → AI consent →
+  //   if !pro → /paywall (returns to /report on purchase)
+  //   if  pro → quota check (2/week) → /report
+  // The scan screen no longer paints a "capped" card on entry; the
+  // paywall is only ever a destination AFTER the user has captured
+  // their scan and consented. That preserves the onboarding funnel.
 
   Timer? _measureTimer;
   Timer? _countdownTimer;
@@ -120,25 +123,10 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _gateAndInit();
-  }
-
-  /// Resolve the weekly cap FIRST. If a non-pro user has already burned
-  /// their 2 free scans this week we never spin up the camera, the
-  /// animation ticker, or wakelock — we just paint a paywall card and
-  /// idle. Pro users skip the check entirely (kPro short-circuits).
-  Future<void> _gateAndInit() async {
-    final pro     = await PaywallGate.isPro();
-    final used    = await LocalStoreService.scansThisWeek();
-    final capped  = !pro && used >= LocalStoreService.kScansPerWeek;
-    if (!mounted) return;
-    setState(() {
-      _capLoaded  = true;
-      _capUsed    = used;
-      _capReached = capped;
-    });
-    if (capped) return;
-
+    // Camera ALWAYS starts. The paywall is a post-consent destination
+    // (see _postScan) — never an entry block. Bro v4: "users go
+    // through onboarding straight scan with mediapipe then the terms
+    // they press continue then boom paywall exactly what it was."
     WakelockPlus.enable();
     _animTicker = createTicker((elapsed) {
       if (!mounted) return;
@@ -966,15 +954,42 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       return;
     }
 
-    // Paywall gate — 2 scans/week for free users. The entry gate in
-    // _gateAndInit() blocks anyone who's already over the cap from
-    // even reaching the camera, so by the time we're here the user
-    // has burned a slot. Mark it now and route to /report. Pro users
-    // bypass the marker (unlimited).
+    // Paywall gate — runs AFTER scan capture + consent. Bro v4:
+    //   "users go through onboarding straight scan with mediapipe
+    //    then the terms they press continue then BOOM paywall."
+    //
+    // Free users (not subscribed): paywall pushed with the scan
+    // payload stashed; on purchase the paywall forwards to /report
+    // so they don't lose their MediaPipe capture.
+    //
+    // Pro users: enforce the 2/week quota. Under quota → mark slot,
+    // proceed. Over quota → paywall with the same payload so the
+    // resubscribe path still preserves the scan.
     final pro = await PaywallGate.isPro();
     if (!pro) {
-      await LocalStoreService.markScanUsed();
+      if (!mounted) return;
+      context.go('/paywall', extra: {
+        'afterPurchase': '/report',
+        'imageBytes':    imageBytes,
+        'geometry':      primaryGeom,
+        'extraImages':   extraImages,
+        'source':        'scan_locked',
+      });
+      return;
     }
+    final usedThisWeek = await LocalStoreService.scansThisWeek();
+    if (usedThisWeek >= LocalStoreService.kScansPerWeek) {
+      if (!mounted) return;
+      context.go('/paywall', extra: {
+        'afterPurchase': '/report',
+        'imageBytes':    imageBytes,
+        'geometry':      primaryGeom,
+        'extraImages':   extraImages,
+        'source':        'scan_quota_capped',
+      });
+      return;
+    }
+    await LocalStoreService.markScanUsed();
     if (!mounted) return;
 
     context.go('/report', extra: {
@@ -1132,10 +1147,6 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    // Cap-reached state — paywall card, never spins up camera.
-    if (_capLoaded && _capReached) {
-      return _buildCappedScreen(context);
-    }
     final preview = _camera;
     final initialized = preview != null && preview.value.isInitialized;
 
@@ -1339,91 +1350,6 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Rendered when the free user has burned their 2 weekly scans.
-  /// No camera. No mesh. Just a clean paywall card with the same
-  /// language as the game-tab gate (single source of voice).
-  Widget _buildCappedScreen(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.base,
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: IconButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                      color: Colors.white, size: 18),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 28, minHeight: 28),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text('THE SCAN',
-                  textAlign: TextAlign.center,
-                  style: AppTypography.label.copyWith(
-                    color: AppColors.red,
-                    fontSize: 12, letterSpacing: 3.6,
-                    fontWeight: FontWeight.w800,
-                  )),
-                const SizedBox(height: 12),
-                Text('You\'ve used your\nfree scans this week.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.playfairDisplay(
-                    color: AppColors.textPrimary,
-                    fontSize: 28, height: 1.15,
-                    letterSpacing: -0.6,
-                    fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w800,
-                  )),
-                const SizedBox(height: 10),
-                Text(
-                  '$_capUsed of ${LocalStoreService.kScansPerWeek} '
-                  'free scans used. Mirrorly Pro unlocks unlimited '
-                  'scans, Mirror renders, Lines and Chat.',
-                  textAlign: TextAlign.center,
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.textSecondary,
-                    height: 1.45,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                Material(
-                  color: AppColors.red,
-                  borderRadius: BorderRadius.circular(14),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () async {
-                      HapticFeedback.selectionClick();
-                      await context.push('/paywall',
-                          extra: {'source': 'scan_capped'});
-                      if (mounted) _gateAndInit();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      alignment: Alignment.center,
-                      child: Text('UNLOCK WITH PRO',
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 13.5, letterSpacing: 2.8,
-                          fontWeight: FontWeight.w900,
-                        )),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// Isolate entrypoint — decode the JPEG, apply EXIF rotation/mirror into

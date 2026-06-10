@@ -174,17 +174,22 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!mounted) return;
     if (!consented) return;
 
-    // Mirror-tab render cap — /tryon counts toward the 10/month
-    // bucket alongside the report's hero generate. Pro users bypass.
+    // Bro v4: Mirror renders are PRO-ONLY. /tryon counts toward the
+    // Pro user's 10/month quota; free users hit the paywall on any
+    // attempt.
     final pro = await PaywallGate.isPro();
     if (!pro) {
-      final used = await LocalStoreService.mirrorRendersThisMonth();
-      if (used >= LocalStoreService.kRendersPerMonth) {
-        if (!mounted) return;
-        HapticFeedback.mediumImpact();
-        context.push('/paywall', extra: {'source': 'render_capped'});
-        return;
-      }
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      context.push('/paywall', extra: {'source': 'render_locked'});
+      return;
+    }
+    final used = await LocalStoreService.mirrorRendersThisMonth();
+    if (used >= LocalStoreService.kRendersPerMonth) {
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      context.push('/paywall', extra: {'source': 'render_quota_capped'});
+      return;
     }
 
     setState(() => msg.rendering = true);
@@ -202,7 +207,8 @@ class _ChatScreenState extends State<ChatScreen> {
       msg.rendering = false;
       if (url != null) msg.imageUrl = url;
     });
-    if (!pro && url != null) {
+    // Pro user just burned one render slot.
+    if (url != null) {
       await LocalStoreService.markMirrorRenderUsed();
     }
 
