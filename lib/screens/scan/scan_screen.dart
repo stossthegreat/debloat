@@ -21,6 +21,7 @@ import '../../services/paywall_gate.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/ai_consent_dialog.dart';
+import '../../widgets/common/imhim_wordmark.dart';
 import '../../widgets/scan/geometry_overlay_painter.dart';
 
 class ScanScreen extends StatefulWidget {
@@ -1261,13 +1262,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                   Row(
                     children: [
                       // Wordmark — serif, editorial
-                      Text('Mirrorly',
-                        style: AppTypography.h1.copyWith(
-                          fontSize: 22,
-                          letterSpacing: -0.6,
-                          color: AppColors.textPrimary,
-                          height: 1,
-                        )),
+                      const ImHimWordmark(fontSize: 22, letterSpacing: -0.6),
                       const SizedBox(width: 10),
                       Container(
                         width: 4, height: 4,

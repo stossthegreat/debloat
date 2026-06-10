@@ -114,7 +114,7 @@ class AiConsentDialog extends StatelessWidget {
               _Bullet(
                 head: 'EQUAL PROTECTION',
                 body: 'Both providers contractually guarantee the '
-                      'same or equal privacy protection Mirrorly '
+                      'same or equal privacy protection ImHim '
                       'gives you here: encrypted in transit, no '
                       'long-term retention, no training, no '
                       'advertising or resale.'),

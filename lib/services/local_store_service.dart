@@ -47,8 +47,15 @@ class LocalStoreService {
   // limit resets on the 1st. Subscribers / kBypassPaywall bypass both.
   static const int  kScansPerWeek      = 2;
   static const int  kRendersPerMonth   = 10;
+  /// Bro v5: "40 mins roleplay time for monthly every month regardless
+  /// of weather yearly or monthly just every month." Pro voice ceiling
+  /// — tracked as elapsed milliseconds so a 30-second hold counts at
+  /// real granularity, not as a full minute.
+  static const int  kVoiceMinutesPerMonth = 40;
   static const _kScanWeekBucket    = 'caps.scan.week_bucket.v1';
   static const _kScanWeekCount     = 'caps.scan.week_count.v1';
+  static const _kVoiceMonthBucket  = 'caps.voice.month_bucket.v1';
+  static const _kVoiceMonthMs      = 'caps.voice.month_ms.v1';
   static const _kRenderMonthBucket = 'caps.render.month_bucket.v1';
   static const _kRenderMonthCount  = 'caps.render.month_count.v1';
 
@@ -321,6 +328,37 @@ class LocalStoreService {
         : 1;
     await prefs.setInt(_kRenderMonthBucket, bucket);
     await prefs.setInt(_kRenderMonthCount,  count);
+  }
+
+  // ── Monthly voice-time cap (Pro AI roleplay) ───────────────────────────
+  /// Total voice elapsed THIS month, in milliseconds. Resets on the 1st.
+  static Future<int> voiceMsThisMonth() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bucket = _monthBucket(DateTime.now());
+    final stored = prefs.getInt(_kVoiceMonthBucket) ?? 0;
+    if (stored != bucket) return 0;
+    return prefs.getInt(_kVoiceMonthMs) ?? 0;
+  }
+
+  /// Add to the voice elapsed-ms bucket for THIS month. Caller passes
+  /// the duration of the just-completed session segment; the bucket
+  /// auto-resets if we've crossed into a new month.
+  static Future<void> addVoiceMs(int deltaMs) async {
+    if (deltaMs <= 0) return;
+    final prefs = await SharedPreferences.getInstance();
+    final bucket = _monthBucket(DateTime.now());
+    final stored = prefs.getInt(_kVoiceMonthBucket) ?? 0;
+    final base = stored == bucket
+        ? (prefs.getInt(_kVoiceMonthMs) ?? 0)
+        : 0;
+    await prefs.setInt(_kVoiceMonthBucket, bucket);
+    await prefs.setInt(_kVoiceMonthMs,     base + deltaMs);
+  }
+
+  /// True when the Pro user has used up their monthly voice allowance.
+  static Future<bool> voiceCapReached() async {
+    final ms = await voiceMsThisMonth();
+    return ms >= kVoiceMinutesPerMonth * 60 * 1000;
   }
 
   // ── Onboarding (has the user completed first-run?) ──────────────────────

@@ -99,22 +99,20 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 32),
           children: [
-            const MirrorlyMasthead(title: 'Rizz'),
-
+            // Bro v5: "take rizz title and subtitle off — add settings
+            // top right of screen like looks tab." Settings cog sits
+            // in a thin top row; the cards begin immediately under.
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: Text(
-                'Hit her phone. Every time.',
-                style: GoogleFonts.inter(
-                  color: AppColors.textSecondary,
-                  fontSize: 15, height: 1.4,
-                  fontStyle: FontStyle.italic,
-                  fontWeight: FontWeight.w500,
-                ),
+              padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
+              child: Row(
+                children: [
+                  const Spacer(),
+                  _RizzSettingsCog(
+                      onTap: () => context.push('/settings')),
+                ],
               ),
             ),
-
-            const SizedBox(height: 72),
+            const SizedBox(height: 18),
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -179,6 +177,37 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
 class RizzCardAction {
   final bool launchUpload;
   const RizzCardAction.upload() : launchUpload = true;
+}
+
+/// Local settings-cog widget — circular, surface1 background, matches
+/// the Looks tab _MastheadCog so both tabs read as the same chrome
+/// language.
+class _RizzSettingsCog extends StatelessWidget {
+  final VoidCallback onTap;
+  const _RizzSettingsCog({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: () { HapticFeedback.selectionClick(); onTap(); },
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: 38, height: 38,
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.surface3, width: 0.6),
+          ),
+          alignment: Alignment.center,
+          child: const Icon(Icons.tune,
+              size: 18, color: AppColors.textSecondary),
+        ),
+      ),
+    );
+  }
 }
 
 /// One of the three red cards. Big icon-on-the-left layout — the

@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../config/dev_flags.dart';
 import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/common/imhim_wordmark.dart';
 
 /// Three-page onboarding. No animations, no custom painters. Every screen
 /// answers one question in under six seconds:
@@ -81,12 +82,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 children: [
                   Row(
                     children: [
-                      Text('Mirrorly',
-                        style: GoogleFonts.playfairDisplay(
-                          color: Colors.white,
-                          fontSize: 22, letterSpacing: -0.5, height: 1,
-                          fontWeight: FontWeight.w700,
-                        )),
+                      const ImHimWordmark(fontSize: 22, letterSpacing: -0.5),
                       const SizedBox(width: 6),
                       Container(
                         width: 4, height: 4,

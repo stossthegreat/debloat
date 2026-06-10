@@ -12,6 +12,7 @@ import '../../services/local_store_service.dart';
 import '../../services/purchase_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import '../../widgets/common/imhim_wordmark.dart';
 
 /// Settings — every tile wired to a real action. Apple App Review
 /// requires working Terms, Privacy Policy, Restore Purchases, and a
@@ -63,14 +64,14 @@ class SettingsScreen extends StatelessWidget {
                           width: 1.5),
                       ),
                       child: Center(
-                        child: Text('M',
+                        child: Text('IH',
                           style: TextStyle(
-                            fontSize: 28, fontWeight: FontWeight.w700,
-                            color: AppColors.accent, letterSpacing: -1)),
+                            fontSize: 22, fontWeight: FontWeight.w800,
+                            color: AppColors.accent, letterSpacing: -0.5)),
                       ),
                     ),
                     const SizedBox(height: Sp.sm),
-                    Text('Mirrorly', style: AppTypography.h2),
+                    const ImHimWordmark(fontSize: 30, letterSpacing: -0.8),
                     const SizedBox(height: 4),
                     Text('Version 1.0.0', style: AppTypography.bodySmall.copyWith(
                       color: AppColors.textTertiary, fontSize: 11)),
@@ -89,7 +90,7 @@ class SettingsScreen extends StatelessWidget {
               if (!kBypassPaywall)
                 _SettingTile(
                   icon: Icons.workspace_premium_rounded,
-                  title: 'Mirrorly Pro',
+                  title: 'ImHim Pro',
                   subtitle: '2 scans / week · 10 renders / month',
                   onTap: () {
                     HapticFeedback.selectionClick();
@@ -137,7 +138,7 @@ class SettingsScreen extends StatelessWidget {
               _SettingTile(
                 icon: Icons.gavel_outlined,
                 title: 'Terms of Use',
-                subtitle: 'How Mirrorly works, what you agree to',
+                subtitle: 'How ImHim works, what you agree to',
                 onTap: () {
                   HapticFeedback.selectionClick();
                   context.push('/terms');
@@ -207,7 +208,7 @@ class SettingsScreen extends StatelessWidget {
               _SectionHeader('ABOUT'),
               _SettingTile(
                 icon: Icons.description_outlined,
-                title: 'How Mirrorly works',
+                title: 'How ImHim works',
                 subtitle: 'The science behind the scan',
                 onTap: () => _showHow(context),
               ),
@@ -222,7 +223,7 @@ class SettingsScreen extends StatelessWidget {
 
               Center(
                 child: Text(
-                  '© 2026 Mirrorly',
+                  '© 2026 ImHim',
                   style: AppTypography.bodySmall.copyWith(
                     color: AppColors.textTertiary, fontSize: 11),
                 ),
@@ -270,11 +271,11 @@ class SettingsScreen extends StatelessWidget {
     if (!ctx.mounted) return;
     final body = Platform.isIOS
         ? 'Open Settings → Apple ID (your name) → Subscriptions → '
-          'Mirrorly Pro → Cancel subscription.\n\n'
+          'ImHim Pro → Cancel subscription.\n\n'
           'Cancel at least 24 hours before renewal to avoid the next '
           'charge.'
         : 'Open Google Play → Profile → Payments & subscriptions → '
-          'Subscriptions → Mirrorly Pro → Cancel subscription.\n\n'
+          'Subscriptions → ImHim Pro → Cancel subscription.\n\n'
           'Cancel at least 24 hours before renewal to avoid the next '
           'charge.';
     showModalBottomSheet(
@@ -334,7 +335,7 @@ class SettingsScreen extends StatelessWidget {
   );
 
   void _showHow(BuildContext ctx) => _showInfoSheet(ctx,
-    'How Mirrorly works',
+    'How ImHim works',
     'The two-score moat, end to end:\n\n'
     '1. MediaPipe maps 468 landmarks on your face at 30fps, on-device. '
     'From those landmarks we compute 16 geometric measurements — canthal '

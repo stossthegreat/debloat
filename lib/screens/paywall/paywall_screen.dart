@@ -10,6 +10,7 @@ import '../../config/dev_flags.dart';
 import '../../config/purchase_config.dart';
 import '../../services/analytics_service.dart';
 import '../../services/local_store_service.dart';
+import '../../widgets/common/imhim_wordmark.dart';
 import '../../services/purchase_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
@@ -534,13 +535,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
           .scale(begin: const Offset(0.85, 0.85),
             curve: Curves.easeOutBack, duration: 540.ms),
         const SizedBox(height: 10),
-        Text('MIRRORLY',
-          textAlign: TextAlign.center,
-          style: AppTypography.h1.copyWith(
-            color: Colors.white,
-            fontSize: 22, letterSpacing: 5.0,
-            fontWeight: FontWeight.w900,
-          ),
+        const Center(
+          child: ImHimWordmark(fontSize: 38, letterSpacing: -1.2),
         ).animate().fadeIn(delay: 180.ms, duration: 360.ms),
         const SizedBox(height: 4),
         Text('Become the guy she can\'t ignore',
@@ -569,7 +565,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
   ///   - the exact price
   ///   - how often the user will be charged (monthly vs yearly)
   ///   - that the subscription auto-renews
-  ///   - that a Mirrorly Pro subscription is required to use the
+  ///   - that a ImHim Pro subscription is required to use the
   ///     scan / advisor features
   /// Sits directly under the CTA so it's impossible to miss.
   Widget _summaryLine() {
@@ -578,18 +574,18 @@ class _PaywallScreenState extends State<PaywallScreen> {
     switch (_selected) {
       case _Tier.monthly:
         text = '$price billed monthly. Auto-renews until cancelled. '
-               'Mirrorly Pro subscription required for scans, AI '
+               'ImHim Pro subscription required for scans, AI '
                'renders, streaks, AI roleplay, and all rizz features.';
         break;
       case _Tier.annual:
         text = '$price billed once per year (${_perMonthForAnnual()}/'
                'mo equivalent). Auto-renews yearly until cancelled. '
-               'Mirrorly Pro subscription required for scans, AI '
+               'ImHim Pro subscription required for scans, AI '
                'renders, streaks, AI roleplay, and all rizz features.';
         break;
       case _Tier.rescue:
         text = '$price one-time charge. NOT a subscription. '
-               'Grants 20 AI render credits. An active Mirrorly Pro '
+               'Grants 20 AI render credits. An active ImHim Pro '
                'subscription is required to perform the underlying '
                'scans.';
         break;
@@ -620,7 +616,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
     String text;
     switch (_selected) {
       case _Tier.monthly:
-        text = 'Mirrorly Pro — monthly subscription. Your payment of '
+        text = 'ImHim Pro — monthly subscription. Your payment of '
                '$price will be charged to your $storeAccount at '
                'confirmation of purchase. The subscription '
                'automatically renews each month for $price unless you '
@@ -632,7 +628,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                'subscription.';
         break;
       case _Tier.annual:
-        text = 'Mirrorly Pro — annual subscription. Your payment of '
+        text = 'ImHim Pro — annual subscription. Your payment of '
                '$price (equivalent to $perMo per month) will be '
                'charged to your $storeAccount at confirmation of '
                'purchase. The subscription automatically renews each '
@@ -648,7 +644,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
         // but route store wording through the same Platform.isIOS
         // helper as the subs above — defence-in-depth so if the
         // iOS rescue SKU ever lights up the copy stays clean.
-        text = 'Mirrorly Rescue Pack — one-time purchase of $price. '
+        text = 'ImHim Rescue Pack — one-time purchase of $price. '
                'NOT a subscription. Your $storeAccount will be '
                'charged $price at confirmation of purchase, once. No '
                'auto-renewal. Each credit entitles you to one '
@@ -677,20 +673,18 @@ class _PaywallScreenState extends State<PaywallScreen> {
     switch (t) {
       case _Tier.monthly:
       case _Tier.annual:
-        // Bro v4 corrected — Pro tier benefits, full matrix. Streaks
-        // line added because the 60-day protocol system is now Pro-
-        // only too. Bro: "they can't use the streaks for looks unless
-        // they pay."
+        // Bro v5: monthly/annual share the same monthly entitlement
+        // ceiling. 40 min of voice every month regardless of tier.
+        // Rizz Chat unlimited. Rizz screenshots vision-powered.
         return [
           '2 scans per week',
           '10 AI-rendered images per month',
-          'The Mirror — unlimited chat advice',
-          'Two-score rating — geometry (on-device, 16 metrics) + '
-              'honest-looks (GPT-4o Vision)',
+          '40 minutes of Live AI roleplay every month',
+          'Unlimited Rizz Chat — ask anything, every day',
+          'Unlimited rizz screenshot replies',
           'Streaks + 60-day protocols — Skin, Jaw, Debloat, Hair',
-          'AI roleplay — Lucien arena & council, free-flow voice AI',
-          'All rizz features — screenshot replies, Lines arsenal, '
-              'chat coach',
+          'The Mirror — unlimited chat advice',
+          'Two-score rating — geometry + honest-looks (Vision)',
           cancelLine,
         ];
       case _Tier.rescue:
@@ -699,7 +693,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
           'No subscription, no recurring charge',
           'Credits never expire',
           'Non-refundable, non-transferable',
-          'Requires an active Mirrorly Pro subscription for scans',
+          'Requires an active ImHim Pro subscription for scans',
         ];
     }
   }

@@ -53,7 +53,7 @@ class AscendScreen extends StatelessWidget {
             // ── Masthead — streak chip is now an ACTION, top right,
             //    next to settings. Tappable → opens the streaks sheet.
             MirrorlyMasthead(
-              title: 'Mirrorly',
+              title: 'ImHim',
               subtitle: 'Ascend',
               actions: [
                 _StreakAction(

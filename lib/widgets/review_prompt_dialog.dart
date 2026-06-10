@@ -131,7 +131,7 @@ class _ReviewPromptDialogState extends State<ReviewPromptDialog> {
             ),
             const SizedBox(height: 18),
 
-            Text('Enjoying Mirrorly?',
+            Text('Enjoying ImHim?',
               textAlign: TextAlign.center,
               style: GoogleFonts.playfairDisplay(
                 color: AppColors.textPrimary,

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import '../../widgets/common/imhim_wordmark.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -160,18 +161,16 @@ class _SplashScreenState extends State<SplashScreen> {
 
                 const SizedBox(height: Sp.xl),
 
-                // Brand — editorial serif
-                Text('Mirrorly',
-                  style: AppTypography.display.copyWith(
-                    color: AppColors.textPrimary, fontSize: 56, letterSpacing: -2))
+                // Brand — editorial serif "Im" white + "Him" red.
+                const ImHimWordmark(fontSize: 56, letterSpacing: -2)
                   .animate().fadeIn(delay: 900.ms, duration: 800.ms)
                   .slideY(begin: 0.15, end: 0,
                       delay: 900.ms, duration: 800.ms, curve: Curves.easeOut),
 
                 const SizedBox(height: Sp.sm),
 
-                // Italic undertagline — luxury fragrance energy
-                Text('the face, measured.',
+                // Italic undertagline — the new brand promise.
+                Text('the guy she can\'t ignore.',
                   style: AppTypography.h1Italic.copyWith(
                     fontSize: 18,
                     color: AppColors.textSecondary,

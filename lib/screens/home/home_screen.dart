@@ -13,6 +13,7 @@ import '../../services/protocol_service.dart';
 import '../../services/review_prompt_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import '../../widgets/common/imhim_wordmark.dart';
 import '../../widgets/common/mirrorly_components.dart';
 import '../../widgets/report/aspect_protocol_cards.dart';
 import '../eyes/eyes_tab_screen.dart';
@@ -259,31 +260,34 @@ class _ScanHubTab extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.only(bottom: Sp.xl),
           children: [
-            // ── Masthead — always visible. The brand chrome.
-            //    Only the Ascend tab carries the "Mirrorly" wordmark;
-            //    every other tab uses just its own name as the title.
-            MirrorlyMasthead(
-              title: 'Looks',
-              actions: [
-                if (dayStreak > 0) _StreakBadge(days: dayStreak),
-                MastheadAction(
-                  icon: Icons.tune,
-                  onTap: () => context.push('/settings'),
-                ),
-              ],
+            // ── Masthead — replaced the old "Looks" title with the
+            //    ImHim wordmark and the brand subhead "The guy she
+            //    can't ignore." Subhead sits tight against the
+            //    wordmark so it reads as one editorial header.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const ImHimWordmark(fontSize: 34),
+                  const Spacer(),
+                  if (dayStreak > 0) ...[
+                    _StreakBadge(days: dayStreak),
+                    const SizedBox(width: 8),
+                  ],
+                  _MastheadCog(
+                      onTap: () => context.push('/settings')),
+                ],
+              ),
             ),
-
-            // Subtitle paired with the Rizz tab's "Hit her phone.
-            // Every time." — same italic Inter, same horizontal
-            // inset, same red colour. The two taglines together
-            // ladder: "Looks + game = unavoidable."
+            const SizedBox(height: 4),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
               child: Text(
-                'Looks + game = unavoidable.',
+                'The guy she can\'t ignore.',
                 style: GoogleFonts.inter(
                   color: AppColors.textSecondary,
-                  fontSize: 15, height: 1.4,
+                  fontSize: 15, height: 1.35,
                   fontStyle: FontStyle.italic,
                   fontWeight: FontWeight.w500,
                 ),
@@ -661,6 +665,38 @@ class _StreakBadge extends StatelessWidget {
               fontWeight: FontWeight.w900,
             )),
         ],
+      ),
+    );
+  }
+}
+
+// ── Masthead cog — small circular settings icon in the top-right of
+// the Looks tab + Rizz tab mastheads. Replaces the old
+// MastheadAction so we get a clean compact icon next to the brand
+// wordmark without dragging the whole legacy MirrorlyMasthead row.
+class _MastheadCog extends StatelessWidget {
+  final VoidCallback onTap;
+  const _MastheadCog({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: () { HapticFeedback.selectionClick(); onTap(); },
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: 38, height: 38,
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.surface3, width: 0.6),
+          ),
+          alignment: Alignment.center,
+          child: const Icon(Icons.tune,
+              size: 18, color: AppColors.textSecondary),
+        ),
       ),
     );
   }

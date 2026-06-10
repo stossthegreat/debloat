@@ -526,20 +526,29 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
 
   void _startHold() {
     if (_phase != _Phase.live || _holding) return;
-    // Bro v4: "after they've used their free go, when they press
-    // RECORD the paywall comes." THIS is that gate. Pro users go
-    // through every time. Free users get ONE successful hold; the
-    // second hold attempt routes to the paywall and never starts
-    // the mic. The free use is marked here (first hold) — not on
-    // _goLive — so a returning user who hasn't actually recorded
-    // still has their pass.
+    // Bro v4 + v5:
+    //   · Free user: ONE free hold per account. Second hold → paywall.
+    //   · Pro user: 40 minutes of voice per calendar month. Hold while
+    //     under the cap; once exhausted → paywall on next hold.
+    // The free pass is marked on FIRST hold (not on _goLive) so a user
+    // who opens the tab and leaves still has their use intact.
     // ignore: discarded_futures
     PaywallGate.isPro().then((pro) async {
       if (!mounted) return;
       if (pro) {
+        // Pro path — monthly minute cap.
+        if (await LocalStoreService.voiceCapReached()) {
+          if (!mounted) return;
+          HapticFeedback.mediumImpact();
+          await context.push('/paywall',
+              extra: {'source': 'game_voice_monthly_capped'});
+          return;
+        }
+        if (!mounted) return;
         _beginHold();
         return;
       }
+      // Free path — one free session ever.
       final used = await LocalStoreService.gameFreeUsed();
       if (!mounted) return;
       if (used) {
@@ -710,11 +719,27 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         t.cancel();
         return;
       }
+      // Per-tick voice-time accrual for the monthly Pro cap. Fire and
+      // forget — addVoiceMs is internally idempotent against month
+      // rollover. Tracked even for free users in case they later
+      // upgrade mid-month (their early minutes don't carry over —
+      // bucket auto-resets — so it's still fair).
+      // ignore: discarded_futures
+      LocalStoreService.addVoiceMs(1000);
       setState(() => _remaining--);
       if (_remaining <= 0) {
         t.cancel();
         _endAndScore();
       }
+      // Hard stop the moment the user hits their monthly minutes —
+      // route to paywall instead of letting the clock burn through.
+      // ignore: discarded_futures
+      LocalStoreService.voiceCapReached().then((capped) {
+        if (capped && mounted && _phase == _Phase.live) {
+          t.cancel();
+          _endAndScore();
+        }
+      });
     });
   }
 

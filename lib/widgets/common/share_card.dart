@@ -80,7 +80,7 @@ class ShareCard extends StatelessWidget {
                   ],
                 ),
               ] else
-                Text('Mirrorly',
+                Text('ImHim',
                   style: GoogleFonts.playfairDisplay(
                     color: ShareCard.accentRed,
                     fontSize: 72, letterSpacing: -1.6,
@@ -247,7 +247,7 @@ class ShareCard extends StatelessWidget {
         if (showBrandWordmark)
           Positioned(
             left: 20, top: 18,
-            child: Text('Mirrorly',
+            child: Text('ImHim',
               style: GoogleFonts.playfairDisplay(
                 color: ShareCard.accentRed,
                 fontSize: 34, letterSpacing: -0.8,

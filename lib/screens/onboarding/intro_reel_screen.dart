@@ -445,7 +445,7 @@ const _lines = <_Line>[
 
   // 9. The promise + icons + CTA.
   _Line(
-    ['Mirrorly', 'gives', 'you', 'both.'],
+    ['ImHim', 'gives', 'you', 'both.'],
     eyebrow: 'BOTH AT ONCE',
     size: 44,
     boldIndices: [0],
