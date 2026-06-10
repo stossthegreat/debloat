@@ -24,6 +24,7 @@ import '../../../services/user_memory.dart';
 import '../../../services/villain/villain_api.dart';
 import '../../../theme/auralay_app_colors.dart';
 import '../../../theme/auralay_app_typography.dart';
+import '../../../widgets/common/imhim_wordmark.dart';
 import '../../../widgets/common/mirrorly_components.dart';
 import '../../../widgets/debug_panel.dart';
 import '../../../widgets/safe_close_button.dart';
@@ -1127,6 +1128,32 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
                   ),
                 ),
             ],
+          ),
+        ),
+
+        // ── ImHim wordmark overlay (the "viral back-and-forth" CTA).
+        // Bro v5: "add ImHim header on the live roleplay but only when
+        // you start recording so it's there on viral back and forth."
+        // Logic: visible when there's actual conversation in flight —
+        // user is holding to talk OR the AI is speaking back OR a
+        // response is mid-stream. Hidden in idle so it doesn't crowd
+        // the picker / connecting / scored states.
+        //
+        // AnimatedOpacity gives a clean fade so screen recordings show
+        // it land + lift rather than blink.
+        Positioned(
+          top: 46, left: 0, right: 0,
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: (_phase == _Phase.live &&
+                       (_holding || _herSpeaking || _responseActive))
+                  ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOut,
+              child: const Center(
+                child: ImHimWordmark(fontSize: 22, letterSpacing: -0.5),
+              ),
+            ),
           ),
         ),
 
