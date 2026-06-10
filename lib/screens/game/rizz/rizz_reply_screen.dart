@@ -4,9 +4,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../services/local_store_service.dart';
+import '../../../services/paywall_gate.dart';
 import '../../../services/rizz_reply_service.dart';
 import '../../../theme/app_colors.dart';
 
@@ -102,6 +105,18 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
 
   Future<void> _generate() async {
     if (!_canGenerate) return;
+    // Paywall gate — non-pro users get ONE free rizz generation.
+    // The second tap (after the bool flips) lands on the paywall.
+    // Pro users always pass.
+    final pro      = await PaywallGate.isPro();
+    final ssUsed   = await LocalStoreService.rizzScreenshotFreeUsed();
+    if (!pro && ssUsed) {
+      if (!mounted) return;
+      setState(() => _generating = false);
+      await context.push('/paywall',
+          extra: {'source': 'rizz_screenshot_capped'});
+      return;
+    }
     HapticFeedback.mediumImpact();
     setState(() {
       _generating = true;
@@ -124,6 +139,11 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
         _replies = result;
         _generating = false;
       });
+      // Burn the free pass — every subsequent tap routes to paywall.
+      // Pro users keep generating without ever flipping this bit.
+      if (!pro) {
+        await LocalStoreService.markRizzScreenshotFreeUsed();
+      }
     } on TimeoutException {
       print('[RIZZ-SCREEN] _generate timed out');
       if (!mounted) return;

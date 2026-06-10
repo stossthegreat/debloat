@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../data/rizz_lines.dart';
+import '../../../services/paywall_gate.dart';
 import '../../../theme/app_colors.dart';
 
 /// LINES — the arsenal. Five categories of curated 2026 rizz, tap-to-copy.
@@ -26,6 +28,15 @@ class _LinesScreenState extends State<LinesScreen>
     _tab.addListener(() {
       if (_tab.indexIsChanging) HapticFeedback.selectionClick();
     });
+    // Pro-only route — bounce non-pro deep links to paywall on mount.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _gate());
+  }
+
+  Future<void> _gate() async {
+    final pro = await PaywallGate.isPro();
+    if (!mounted || pro) return;
+    context.pushReplacement('/paywall',
+        extra: {'source': 'rizz_lines_locked'});
   }
 
   @override

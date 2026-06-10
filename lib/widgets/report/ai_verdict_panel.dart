@@ -22,7 +22,17 @@ import '../../theme/app_typography.dart';
 /// an action funnel, not just commentary.
 class AiVerdictPanel extends StatelessWidget {
   final HonestVerdict verdict;
-  const AiVerdictPanel({super.key, required this.verdict});
+  /// Additional strength tiles rendered directly under
+  /// `biggestStrength` so users see MORE than one example of
+  /// what's working. Each is a small one-card flex of a second /
+  /// third-highest sub-axis. Empty list = no extras (legacy /rate
+  /// payload without subScores).
+  final List<({String eyebrow, String headline, String body})> extraStrengths;
+  const AiVerdictPanel({
+    super.key,
+    required this.verdict,
+    this.extraStrengths = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +74,23 @@ class AiVerdictPanel extends StatelessWidget {
               body:      verdict.biggestStrength.body,
               tint:      AppColors.signalGreen,
               icon:      Icons.bolt_rounded,
+            ),
+          ),
+          const SizedBox(height: Sp.sm),
+        ],
+
+        // Bro: "give them a little more." Up to two compact extra
+        // strength tiles surface here so the user sees their second
+        // and third highest sub-scores too, not just the headline one.
+        for (final extra in extraStrengths) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+            child: _VerdictTile(
+              eyebrow:   extra.eyebrow,
+              headline:  extra.headline,
+              body:      extra.body,
+              tint:      AppColors.signalGreen,
+              icon:      Icons.check_circle_outline_rounded,
             ),
           ),
           const SizedBox(height: Sp.sm),

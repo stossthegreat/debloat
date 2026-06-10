@@ -7,6 +7,8 @@ import '../../models/face_geometry.dart';
 import '../../services/archetype_service.dart';
 import '../../services/chat_service.dart';
 import '../../services/face_asset_service.dart';
+import '../../services/local_store_service.dart';
+import '../../services/paywall_gate.dart';
 import '../../services/scoring_service.dart';
 import '../../services/share_service.dart';
 import '../../services/trait_builder_service.dart';
@@ -172,6 +174,19 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!mounted) return;
     if (!consented) return;
 
+    // Mirror-tab render cap — /tryon counts toward the 10/month
+    // bucket alongside the report's hero generate. Pro users bypass.
+    final pro = await PaywallGate.isPro();
+    if (!pro) {
+      final used = await LocalStoreService.mirrorRendersThisMonth();
+      if (used >= LocalStoreService.kRendersPerMonth) {
+        if (!mounted) return;
+        HapticFeedback.mediumImpact();
+        context.push('/paywall', extra: {'source': 'render_capped'});
+        return;
+      }
+    }
+
     setState(() => msg.rendering = true);
     HapticFeedback.mediumImpact();
 
@@ -187,6 +202,9 @@ class _ChatScreenState extends State<ChatScreen> {
       msg.rendering = false;
       if (url != null) msg.imageUrl = url;
     });
+    if (!pro && url != null) {
+      await LocalStoreService.markMirrorRenderUsed();
+    }
 
     if (url == null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

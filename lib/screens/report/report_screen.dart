@@ -17,6 +17,7 @@ import '../../services/feature_analysis_service.dart';
 import '../../services/honest_rating_service.dart';
 import '../../services/local_store_service.dart';
 import '../../services/mirror_api_service.dart';
+import '../../services/paywall_gate.dart';
 import '../../services/protocol_service.dart';
 import '../../services/scoring_service.dart';
 import '../../services/trait_builder_service.dart';
@@ -72,20 +73,24 @@ class _ReportScreenState extends State<ReportScreen> {
   bool   _generatingHero = false;
   String _localMaximizedUrl = '';
 
+  // Loading copy honest to what's actually running. Bro: "the nano
+  // banana after image is still getting in the way — why you making
+  // us wait twice." We DO NOT call /maximize on this screen anymore
+  // (the hero render is on-demand via the GENERATE button), so the
+  // copy no longer mentions "maximized composite" — that string was
+  // tricking users into thinking they were waiting for the Replicate
+  // job that never fires here.
   static const _loadingCopy = [
-    'Resolving skin micro-texture',
+    'Reading skin micro-texture',
     'Comparing structural archetypes',
     'Locking identity anchors',
-    'Rendering maximized composite',
-    'Finalizing preserve list',
+    'Compiling the honest read',
   ];
   int  _copyIdx       = 0;
-  bool _slowResponse  = false; // flips true after 60s — shows
+  bool _slowResponse  = false; // flips true after 30s — shows
                                // the "taking longer than usual"
-                               // band + a Try Again CTA so the
-                               // user knows the screen isn\'t
-                               // frozen, just waiting on a slow
-                               // backend.
+                               // band so the user knows the screen
+                               // isn\'t frozen.
 
   @override
   void initState() {
@@ -103,43 +108,54 @@ class _ReportScreenState extends State<ReportScreen> {
     });
   }
 
-  /// After 60s of waiting, surface a "slow response" CTA so the
-  /// user can decide to either keep waiting or retry. Without this
-  /// the screen looked frozen on a slow backend — bro: "people
-  /// don\'t actually know if it\'s really loading."
+  /// After 30s of waiting, surface a "slow response" band so the user
+  /// knows the screen isn't frozen. Bro: "no reason why it should ever
+  /// take more than 20-30 seconds" — 30s here matches that ceiling.
   void _watchForSlowResponse() {
-    Future.delayed(const Duration(seconds: 60), () {
+    Future.delayed(const Duration(seconds: 30), () {
       if (!mounted || _analysis != null || _error != null) return;
       setState(() => _slowResponse = true);
     });
   }
 
   Future<void> _run() async {
+    // Bro: "the ai is still taking ages sometimes — no reason it
+    // should ever take more than 20-30 seconds, never hiccup. The
+    // nano banana after image is getting in the way — why you making
+    // us wait TWICE."
+    //
+    // Old flow blocked on Future.wait([analyseOnly, rate]) — meaning
+    // a slow /rate call could pin the report at the loading screen
+    // for up to 60s, twice over a slow connection. New flow:
+    //   · analyseOnly  → AWAITED. The moment it lands the report
+    //                    paints. Typical 6-12s.
+    //   · honest /rate → BACKGROUND. Fired in parallel, lands a few
+    //                    seconds later via setState; the dual-score
+    //                    hero degrades to bones-only until it does.
+    //   · /maximize    → never called on this screen. The hero
+    //                    render is on-demand via the GENERATE button.
+    //
+    // Result: user sees the report ~6-12s after the camera capture,
+    // never blocked behind the Replicate render they didn't ask for.
     try {
-      // Fire /analyse (GPT only, ~6–12s) and /rate (~3s) in parallel.
-      // /scan would chain Replicate maximize behind it (~60–90s, can
-      // hang on slow Replicate) — far too long for the loading screen.
-      // The hero photo generates on demand when the user taps the
-      // HeroCard's GENERATE button, which fires /maximize via
-      // _generateHero. Until then a.maximizedImageUrl is empty and
-      // HeroCard renders its built-in GENERATE prompt on the after side.
       final imageB64 = base64Encode(widget.imageBytes);
 
-      final scanFuture   = MirrorApiService.analyseOnly(
+      // Fire honest rating as background — never awaited here.
+      // ignore: discarded_futures
+      HonestRatingService.rate(imageBase64: imageB64).then((honest) {
+        if (!mounted || honest == null) return;
+        setState(() => _honest = honest);
+      });
+
+      final result = await MirrorApiService.analyseOnly(
         imageBytes:  widget.imageBytes,
         geometry:    widget.geometry,
         extraImages: widget.extraImages,
       );
-      final honestFuture = HonestRatingService.rate(imageBase64: imageB64);
-
-      final results = await Future.wait<dynamic>([scanFuture, honestFuture]);
-      final result = results[0] as MirrorAnalysis;
-      final honest = results[1] as HonestRating?;
 
       if (mounted) {
         setState(() {
           _analysis = result;
-          _honest   = honest;
         });
       }
       // Persist the scan so it lights up Progress + Advisor tabs.
@@ -331,10 +347,8 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Analysing your face across 5 layers — face mesh, '
-            'geometry, archetype, skin texture, and the final hero '
-            'render. This usually lands in 20-40 seconds, sometimes '
-            'up to a minute on a busy backend.',
+            'Reading your face — mesh, geometry, archetype, skin '
+            'texture. The honest read usually lands in 10-20 seconds.',
             textAlign: TextAlign.center,
             style: AppTypography.body.copyWith(
               fontSize: 12,
@@ -451,6 +465,19 @@ class _ReportScreenState extends State<ReportScreen> {
         ? _localMaximizedUrl
         : a.maximizedImageUrl;
     if (existing.isNotEmpty) return; // image already on screen
+    // Mirror-tab render cap — 10 / month for free users. The hero
+    // render IS a Mirror render (calls /maximize on Replicate).
+    // Pro users bypass.
+    final pro = await PaywallGate.isPro();
+    if (!pro) {
+      final used = await LocalStoreService.mirrorRendersThisMonth();
+      if (used >= LocalStoreService.kRendersPerMonth) {
+        if (!mounted) return;
+        HapticFeedback.mediumImpact();
+        context.push('/paywall', extra: {'source': 'render_capped'});
+        return;
+      }
+    }
     HapticFeedback.heavyImpact();
     setState(() => _generatingHero = true);
     try {
@@ -466,6 +493,9 @@ class _ReportScreenState extends State<ReportScreen> {
         _localMaximizedUrl = url;
         _generatingHero    = false;
       });
+      // Burn a monthly slot for free users — every other Mirror
+      // surface (hero retry, chat tryon) reads from the same bucket.
+      if (!pro) await LocalStoreService.markMirrorRenderUsed();
     } catch (_) {
       if (!mounted) return;
       setState(() => _generatingHero = false);
@@ -535,13 +565,18 @@ class _ReportScreenState extends State<ReportScreen> {
     // PerTraitScores, TraitGrid and AspectProtocolCards respectively,
     // none of which need those locals.
 
+    // Bro: "left to right edge, full width." Outer scroll uses zero
+    // horizontal padding so cards can bleed to the screen edges. Only
+    // the header + bottom CTAs keep an inset for readability.
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(Sp.lg, Sp.md, Sp.lg, Sp.lg),
+      padding: const EdgeInsets.only(top: Sp.md, bottom: Sp.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header with Share action
-          Row(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+            child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
@@ -594,16 +629,14 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
               ),
             ],
+            ),
           ),
 
           const SizedBox(height: Sp.lg),
 
-          // ── 0 · DUAL-SCORE HERO ─ honest (big) + bone structure (under) ─
-          // Two scores is the moat. Honest is GPT-4o Vision's real-photo
-          // read — skin, eye area, proportions — with no geometry context
-          // so bones can't bail out a bad face. Bone structure is our
-          // on-device measurement math, shown smaller as the companion
-          // number. Degrades to geometry-only if the vision model refused.
+          // ── 0 · DUAL-SCORE HERO — full bleed, edge-to-edge.
+          // Bro: "left to right edge so full width" — every card
+          // below now stretches the full viewport.
           _DualScoreHero(
             honest:    _honest,
             geometry:  score.value,
@@ -611,12 +644,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.md),
 
-          // ── 1 · HERO CARD ─ score → projected, tagline, B/A, proofs ────
-          // GENERATE button on the after-side fires onGenerate (parent
-          // calls /maximize). I broke this by not wiring the callback in
-          // the previous redesign — bro specifically called it out
-          // ("you broke the generate button which I asked you not to
-          // touch"). Now wired: tap → spinner → maxed image arrives.
+          // ── 1 · HERO CARD — full bleed.
           HeroCard(
             currentScore:     _honest?.score ?? score.value,
             projectedScore:   projected,
@@ -633,24 +661,19 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.lg),
 
-          // ── 2 · AI VERDICT ─ four cards under the HeroCard answering
-          //                    the only four questions users actually
-          //                    care about: what's working, what's
-          //                    holding me back, what do I fix first,
-          //                    and how high can I realistically get?
-          //                    Only renders when /rate returned the
-          //                    verdict block (backend post-upgrade).
+          // ── 2 · AI VERDICT — full bleed.
           if (_honest?.verdict != null) ...[
-            AiVerdictPanel(verdict: _honest!.verdict!)
-              .animate().fadeIn(delay: 1450.ms, duration: 500.ms),
+            AiVerdictPanel(
+              verdict: _honest!.verdict!,
+              // Bro: "only gives one example of what's good — give them
+              // a little more." extraStrengths surfaces the next 2-3
+              // highest sub-axis scores as additional strength tiles.
+              extraStrengths: _buildExtraStrengths(),
+            ).animate().fadeIn(delay: 1450.ms, duration: 500.ms),
             const SizedBox(height: Sp.lg),
           ],
 
-          // ── 3 · PER-TRAIT SCORES ─ the clean stack competitors lead with
-          // Six rows (Skin, Hair, Jawline, Masculinity, Eyes, Face) each
-          // scored /10 with a tier word. Uses HonestRating.subScores when
-          // the /rate backend has been extended to return them, geometry-
-          // derived fallback when it hasn\'t — never goes empty.
+          // ── 3 · PER-TRAIT SCORES — full bleed.
           PerTraitScores(
             honest:   _honest,
             geometry: widget.geometry,
@@ -658,14 +681,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.md),
 
-          // ── 3 · GEOMETRY BREAKDOWN ─ trait grid + 16-metric panel ─────
-          // The trait grid is the heat-mapped per-feature read; the
-          // hidden-depth panel beneath it surfaces the raw measurements
-          // (eye tilt, FWHR, jaw angle, eye spacing, etc.) with each
-          // row\'s ideal range and a status dot. Bro called this out
-          // explicitly — "bring back the geometry chart, that was right"
-          // — so it\'s restored under the trait grid as ONE clean
-          // geometry section.
+          // ── 4 · GEOMETRY BREAKDOWN — full bleed.
           TraitGrid(traits: traits)
             .animate().fadeIn(delay: 1700.ms, duration: 500.ms),
 
@@ -676,12 +692,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.xl),
 
-          // ── 4 · 60-DAY ASPECT PROTOCOLS ────────────────────────────────
-          // The standalone "Apply All Fixes" CTA below the geometry
-          // section is gone — bro called it out as redundant ("the big
-          // cta that says apply all fixes doesn\'t need to be there").
-          // The HeroCard\'s GENERATE button carries the maximize action
-          // now, and the protocol cards carry the prescriptive surface.
+          // ── 5 · 60-DAY ASPECT PROTOCOLS — full bleed.
           AspectProtocolCards(
             geometry:       widget.geometry,
             savedImagePath: _savedImagePath,
@@ -689,7 +700,10 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.xl),
 
-          Row(
+          // ── Bottom CTAs keep their inset for tap target balance.
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+            child: Row(
             children: [
               Expanded(
                 child: SizedBox(
@@ -730,11 +744,56 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
               ),
             ],
+            ),
           ),
           const SizedBox(height: Sp.md),
         ],
       ),
     );
+  }
+
+  /// Build a list of additional strength tiles to render under the
+  /// "Biggest Strength" card. Bro: "only gives one example of what's
+  /// good — give them a little more." Pulls the top-scoring sub-axes
+  /// from the GPT vision rating (skin, hair, jawline, eyes, etc.) and
+  /// surfaces the 2 highest above the biggest-strength axis, each with
+  /// the qualifier word from subTiers as the headline.
+  List<({String eyebrow, String headline, String body})> _buildExtraStrengths() {
+    final subScores = _honest?.subScores;
+    final subTiers  = _honest?.subTiers;
+    if (subScores == null || subScores.isEmpty) return const [];
+
+    final ranked = subScores.entries
+        .where((e) => e.value >= 60) // only flex genuine strengths
+        .toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    // Skip the top one — it's already in biggestStrength. Take next 2.
+    final extras = ranked.skip(1).take(2);
+
+    String labelFor(String key) => switch (key.toLowerCase()) {
+      'skin'        => 'YOUR SKIN HOLDS UP',
+      'hair'        => 'YOUR HAIR LANDS',
+      'jawline'     => 'YOUR JAW READS',
+      'masculinity' => 'YOUR DIMORPHISM HITS',
+      'eyes'        => 'YOUR EYES CARRY',
+      'face'        => 'YOUR FACE STRUCTURE WORKS',
+      _             => 'STRENGTH · ${key.toUpperCase()}',
+    };
+
+    String bodyFor(String key, int score) {
+      final tier = (subTiers?[key] ?? '').trim();
+      if (tier.isNotEmpty) return '$tier — scoring $score/100 on vision.';
+      return 'Scoring $score/100 on the vision pass — above average.';
+    }
+
+    return extras.map((e) => (
+      eyebrow:  labelFor(e.key),
+      headline: (subTiers?[e.key] ?? '').trim().isNotEmpty
+          ? (subTiers![e.key] ?? '')
+          : '${e.value}/100',
+      body:     bodyFor(e.key, e.value),
+    )).toList();
   }
 }
 

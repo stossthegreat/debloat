@@ -370,26 +370,20 @@ class _ScanHubTab extends StatelessWidget {
             if (hasScan) ...[
               const SizedBox(height: Sp.lg),
 
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-                child: _LatestSnapshot(scan: latest!),
-              ).animate().fadeIn(duration: 400.ms),
-
-              // HOPE — current → projected score in green. The hard
-              // proof that there's somewhere to get to. Renders only
-              // when the scan came back with a projected lift (every
-              // scan returns one — defensive nullcheck just in case).
-              if (latest!.projectedDelta > 0) ...[
-                const SizedBox(height: Sp.md),
+              // HOPE — the only score card on this tab. Bro: "the score
+              // card ABOVE the hope card is redundant — potential now
+              // shows before/after; remove it." So _LatestSnapshot is
+              // gone; _HopeCard carries the read entirely.
+              if (latest!.projectedDelta > 0)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
                   child: _HopeCard(
                     current:   latest!.score,
                     projected: (latest!.score + latest!.projectedDelta)
                                   .clamp(0, 100),
+                    archetype: latest!.archetypeName,
                   ),
-                ).animate().fadeIn(delay: 60.ms, duration: 400.ms),
-              ],
+                ).animate().fadeIn(duration: 400.ms),
 
               const SizedBox(height: Sp.lg),
 
@@ -443,113 +437,187 @@ class _ScanHubTab extends StatelessWidget {
   }
 }
 
-// ── Hope card — the green "you can get to this" tile that sits
-// between the latest snapshot and the RESCAN button. Shows the
-// current score on the left and the projected (current +
-// projectedDelta) on the right with the gain in green so the
-// returning user immediately sees there's somewhere to go.
+// ── Hope card — THE score card on the post-scan Looks tab. Bro: "10x
+// it brutal clean energy. Potential in GREEN, NOW in WHITE."
+//
+// Composition (top → bottom):
+//   · Small red eyebrow + archetype line  (THE READ · {ARCHETYPE})
+//   · Massive NOW score (white) ─ arrow ─ POTENTIAL (green) gain pill
+//   · "+15 POINTS WAITING" callout in italic Playfair
+//   · One-line manifesto in red — "Bones are not the ceiling. Execution is."
+//
+// No filler. The whole card reads in two seconds.
 class _HopeCard extends StatelessWidget {
   final int current;
   final int projected;
-  const _HopeCard({required this.current, required this.projected});
+  final String archetype;
+  const _HopeCard({
+    required this.current,
+    required this.projected,
+    required this.archetype,
+  });
 
   @override
   Widget build(BuildContext context) {
     final gain = (projected - current).clamp(0, 100);
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
       decoration: BoxDecoration(
         color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(Rd.lg),
+        borderRadius: BorderRadius.circular(Rd.xl),
         border: Border.all(
-          color: AppColors.signalGreen.withValues(alpha: 0.45),
-          width: 0.9),
+          color: AppColors.signalGreen.withValues(alpha: 0.55),
+          width: 1.0),
         boxShadow: [
           BoxShadow(
-            color: AppColors.signalGreen.withValues(alpha: 0.16),
-            blurRadius: 22, offset: const Offset(0, 6),
+            color: AppColors.signalGreen.withValues(alpha: 0.22),
+            blurRadius: 32, spreadRadius: -2,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Eyebrow — RED, tracked, archetype context.
           Row(
             children: [
-              const Icon(Icons.trending_up_rounded,
-                  color: AppColors.signalGreen, size: 14),
-              const SizedBox(width: 6),
-              Text('YOU CAN GET TO',
-                style: AppTypography.label.copyWith(
-                  color: AppColors.signalGreen,
-                  fontSize: 11, letterSpacing: 2.6,
-                  fontWeight: FontWeight.w800,
-                )),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _stat('Now',       current,   AppColors.textSecondary),
-              const SizedBox(width: 16),
-              const Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: Icon(Icons.arrow_forward_rounded,
-                    color: AppColors.textTertiary, size: 20),
-              ),
-              const SizedBox(width: 16),
-              _stat('Potential', projected, AppColors.signalGreen),
-              const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.signalGreen.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(
-                    color: AppColors.signalGreen.withValues(alpha: 0.5),
-                    width: 0.8),
+                width: 5, height: 5,
+                decoration: const BoxDecoration(
+                  color: AppColors.red,
+                  shape: BoxShape.circle,
                 ),
-                child: Text('+$gain',
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('THE READ · ${archetype.toUpperCase()}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTypography.label.copyWith(
-                    color: AppColors.signalGreen,
-                    fontSize: 13, letterSpacing: 0.6,
+                    color: AppColors.red,
+                    fontSize: 10.5, letterSpacing: 3.2,
                     fontWeight: FontWeight.w900,
                   )),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text('Run the protocols. You\'re not limited by bones — '
-              'you\'re limited by execution.',
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-              fontSize: 12.5, height: 1.4,
-              fontWeight: FontWeight.w500,
+
+          const SizedBox(height: 18),
+
+          // ── NOW → POTENTIAL row. The headline.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _bigStat(
+                label: 'NOW',
+                value: current,
+                color: AppColors.textPrimary,
+                isNow: true,
+              ),
+              const SizedBox(width: 18),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 22),
+                child: Icon(Icons.arrow_forward_rounded,
+                    color: AppColors.textTertiary.withValues(alpha: 0.8),
+                    size: 26),
+              ),
+              const SizedBox(width: 18),
+              _bigStat(
+                label: 'POTENTIAL',
+                value: projected,
+                color: AppColors.signalGreen,
+                isNow: false,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Gain badge — italic Playfair, green pill.
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppColors.signalGreen.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(
+                    color: AppColors.signalGreen.withValues(alpha: 0.55),
+                    width: 0.9),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.trending_up_rounded,
+                        color: AppColors.signalGreen, size: 14),
+                    const SizedBox(width: 5),
+                    Text('+$gain POINTS WAITING',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.signalGreen,
+                        fontSize: 11, letterSpacing: 2.4,
+                        fontWeight: FontWeight.w900,
+                      )),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Manifesto — red, italic Playfair. The mission.
+          Container(width: double.infinity, height: 1,
+              color: AppColors.divider.withValues(alpha: 0.5)),
+          const SizedBox(height: 14),
+          Text('Bones are not the ceiling.\nExecution is.',
+            style: GoogleFonts.playfairDisplay(
+              color: AppColors.red,
+              fontSize: 15.5, height: 1.25,
+              letterSpacing: -0.2,
+              fontStyle: FontStyle.italic,
+              fontWeight: FontWeight.w800,
             )),
         ],
       ),
     );
   }
 
-  Widget _stat(String label, int value, Color color) {
+  /// Big number column — label on top (tracked, tertiary), giant italic
+  /// Playfair score below. NOW is white, POTENTIAL is signal green.
+  Widget _bigStat({
+    required String label,
+    required int value,
+    required Color color,
+    required bool isNow,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.toUpperCase(),
+        Text(label,
           style: AppTypography.label.copyWith(
-            color: AppColors.textTertiary,
-            fontSize: 9.5, letterSpacing: 1.8,
-            fontWeight: FontWeight.w800,
+            color: isNow
+                ? AppColors.textTertiary
+                : AppColors.signalGreen.withValues(alpha: 0.85),
+            fontSize: 10, letterSpacing: 2.4,
+            fontWeight: FontWeight.w900,
           )),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Text('$value',
           style: GoogleFonts.playfairDisplay(
             color: color,
-            fontSize: 36, height: 1.0,
-            letterSpacing: -1.4,
+            fontSize: 64, height: 0.95,
+            letterSpacing: -2.6,
             fontStyle: FontStyle.italic,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w900,
+            shadows: isNow
+                ? null
+                : [
+                    Shadow(
+                      color: AppColors.signalGreen.withValues(alpha: 0.45),
+                      blurRadius: 24),
+                  ],
           )),
       ],
     );
@@ -1035,70 +1103,6 @@ class _ActiveProtocolCard extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-// ── Latest snapshot preview ─────────────────────────────────────────────────
-class _LatestSnapshot extends StatelessWidget {
-  final ScanRecord scan;
-  const _LatestSnapshot({required this.scan});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(Sp.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(Rd.xl),
-        border: Border.all(color: AppColors.accent.withValues(alpha: 0.22)),
-      ),
-      child: Row(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text('${scan.score}',
-                style: AppTypography.display.copyWith(
-                  fontSize: 44, color: AppColors.red,
-                  letterSpacing: -2.2, height: 1)),
-              Text('/ 100',
-                style: AppTypography.label.copyWith(
-                  color: AppColors.textTertiary, fontSize: 9, letterSpacing: 1.8)),
-            ],
-          ),
-          const SizedBox(width: Sp.md),
-          Container(width: 1, height: 56, color: AppColors.divider),
-          const SizedBox(width: Sp.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(scan.tierLabel.toUpperCase(),
-                  style: AppTypography.label.copyWith(
-                    color: AppColors.textTertiary, letterSpacing: 2.4, fontSize: 10)),
-                const SizedBox(height: 3),
-                Text(scan.archetypeName,
-                  style: AppTypography.h1.copyWith(
-                    fontSize: 18, letterSpacing: -0.3, height: 1.2)),
-                const SizedBox(height: 2),
-                Text('${scan.archetypeMatchPct}% match · '
-                     '${_relative(scan.takenAt)}',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textTertiary, fontSize: 11.5)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _relative(DateTime d) {
-    final diff = DateTime.now().difference(d);
-    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-    if (diff.inHours < 24)   return '${diff.inHours} h ago';
-    if (diff.inDays < 7)     return '${diff.inDays} d ago';
-    return '${(diff.inDays / 7).floor()} wk ago';
   }
 }
 

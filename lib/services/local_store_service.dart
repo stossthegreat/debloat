@@ -32,6 +32,25 @@ class LocalStoreService {
   /// ignore these entirely.
   static const _kEyesFreeUsed = 'eyes.free.used.v1';
   static const _kGameFreeUsed = 'game.free.used.v1';
+  /// Free-tier RIZZ allowance — ONE screenshot rizz upload before paywall.
+  /// LINES + CHAT cards are LOCKED for free users entirely; only the
+  /// screenshot generator gets a single free preview.
+  static const _kRizzScreenshotFreeUsed = 'rizz.screenshot.free.used.v1';
+
+  // ── Usage caps (paywall flood gates) ──────────────────────────────────
+  // Bro: "two scans a week and 10 mirror tab image renders a month.
+  // That's what we had working before — now it's like the flood gates
+  // are open. Nothing for free."
+  //
+  // Scans are bucketed by ISO week (Mon-Sun) so the limit resets cleanly
+  // every Monday. Mirror renders are bucketed by calendar month so the
+  // limit resets on the 1st. Subscribers / kBypassPaywall bypass both.
+  static const int  kScansPerWeek      = 2;
+  static const int  kRendersPerMonth   = 10;
+  static const _kScanWeekBucket    = 'caps.scan.week_bucket.v1';
+  static const _kScanWeekCount     = 'caps.scan.week_count.v1';
+  static const _kRenderMonthBucket = 'caps.render.month_bucket.v1';
+  static const _kRenderMonthCount  = 'caps.render.month_count.v1';
 
   // ── Scans ────────────────────────────────────────────────────────────────
   static Future<List<ScanRecord>> loadScans() async {
@@ -228,6 +247,80 @@ class LocalStoreService {
   static Future<void> markGameFreeUsed() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kGameFreeUsed, true);
+  }
+
+  /// True once the free Rizz screenshot generation has been consumed.
+  /// One free screenshot rizz per non-pro user; LINES and CHAT cards
+  /// are paywalled outright with no free preview.
+  static Future<bool> rizzScreenshotFreeUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kRizzScreenshotFreeUsed) ?? false;
+  }
+
+  static Future<void> markRizzScreenshotFreeUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kRizzScreenshotFreeUsed, true);
+  }
+
+  // ── Weekly scan cap ─────────────────────────────────────────────────────
+  /// ISO-style week bucket key: year * 100 + ISO week number. Stable
+  /// across timezones, rolls over Monday → Monday automatically.
+  static int _weekBucket(DateTime now) {
+    // Dart's `DateTime.weekday` is Mon=1..Sun=7. ISO week 1 is the week
+    // containing the first Thursday. Use a simple approximation that's
+    // close enough for paywall bucketing (off by 1 in edge weeks is fine
+    // — the cap still resets weekly, just possibly on a different day).
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final jan1 = DateTime(monday.year, 1, 1);
+    final weekNum = ((monday.difference(jan1).inDays) / 7).floor() + 1;
+    return monday.year * 100 + weekNum;
+  }
+
+  /// How many scans the free user has consumed THIS week. Auto-resets
+  /// to zero on bucket rollover (next Monday).
+  static Future<int> scansThisWeek() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bucket = _weekBucket(DateTime.now());
+    final stored = prefs.getInt(_kScanWeekBucket) ?? 0;
+    if (stored != bucket) return 0;
+    return prefs.getInt(_kScanWeekCount) ?? 0;
+  }
+
+  /// Increment the weekly scan count. Resets bucket + count if the week
+  /// rolled over since the last write.
+  static Future<void> markScanUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bucket = _weekBucket(DateTime.now());
+    final stored = prefs.getInt(_kScanWeekBucket) ?? 0;
+    final count  = stored == bucket
+        ? (prefs.getInt(_kScanWeekCount) ?? 0) + 1
+        : 1;
+    await prefs.setInt(_kScanWeekBucket, bucket);
+    await prefs.setInt(_kScanWeekCount,  count);
+  }
+
+  // ── Monthly Mirror-render cap ──────────────────────────────────────────
+  static int _monthBucket(DateTime now) => now.year * 100 + now.month;
+
+  /// How many Mirror-tab image renders (`/maximize` + `/tryon`) the free
+  /// user has consumed THIS calendar month. Auto-resets on the 1st.
+  static Future<int> mirrorRendersThisMonth() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bucket = _monthBucket(DateTime.now());
+    final stored = prefs.getInt(_kRenderMonthBucket) ?? 0;
+    if (stored != bucket) return 0;
+    return prefs.getInt(_kRenderMonthCount) ?? 0;
+  }
+
+  static Future<void> markMirrorRenderUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bucket = _monthBucket(DateTime.now());
+    final stored = prefs.getInt(_kRenderMonthBucket) ?? 0;
+    final count  = stored == bucket
+        ? (prefs.getInt(_kRenderMonthCount) ?? 0) + 1
+        : 1;
+    await prefs.setInt(_kRenderMonthBucket, bucket);
+    await prefs.setInt(_kRenderMonthCount,  count);
   }
 
   // ── Onboarding (has the user completed first-run?) ──────────────────────

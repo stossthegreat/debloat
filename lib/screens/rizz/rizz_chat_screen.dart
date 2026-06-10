@@ -4,11 +4,13 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 import '../../config/api_config.dart';
+import '../../services/paywall_gate.dart';
 import '../../services/screenshot_ocr_service.dart';
 import '../../theme/app_colors.dart';
 
@@ -49,6 +51,24 @@ class _RizzChatScreenState extends State<RizzChatScreen> {
     'Win back a ghost',
     'Flirty first message',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Pro-only route — re-check on mount so a deep link or stale
+    // navigation push from before subscription expired bounces to
+    // the paywall instead of leaking the coach.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _gate());
+  }
+
+  Future<void> _gate() async {
+    final pro = await PaywallGate.isPro();
+    if (!mounted || pro) return;
+    // Replace this screen with the paywall — back from paywall
+    // returns to the Rizz tab, never to a locked chat surface.
+    context.pushReplacement('/paywall',
+        extra: {'source': 'rizz_chat_locked'});
+  }
 
   @override
   void dispose() {
