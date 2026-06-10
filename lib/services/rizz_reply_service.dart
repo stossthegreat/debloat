@@ -77,25 +77,87 @@ Map<String, dynamic> _placeholderFace({String? imageBase64}) => {
   'archetype': 'The Modern Man',
   if (imageBase64 != null) 'imageBase64': imageBase64,
 };
-/// based on her cadence. The other four are hard pulls.
-enum RizzVibe { auto, funny, flirty, smooth, bold }
+/// Tone presets — match the WingAI-style 2026 rizz UX. The user
+/// picks one and every reply rewrites to that register. `flirty` is
+/// the default + free; the others stay accessible since the entire
+/// screenshot rizz surface is already gated to 1 free use.
+///
+/// Legacy values (`auto`, `funny`, `smooth`, `bold`) remain in the
+/// enum so older clients deserialize cleanly — the backend maps them
+/// to the nearest new tone.
+enum RizzVibe {
+  flirty,
+  sensual,
+  playful,
+  confident,
+  sincere,
+  // legacy — present for backward compat. Backend maps these.
+  auto,
+  funny,
+  smooth,
+  bold,
+}
 
 extension RizzVibeLabel on RizzVibe {
+  /// User-facing pill label.
   String get label => switch (this) {
-        RizzVibe.auto   => 'AUTO',
-        RizzVibe.funny  => 'FUNNY',
-        RizzVibe.flirty => 'FLIRTY',
-        RizzVibe.smooth => 'SMOOTH',
-        RizzVibe.bold   => 'BOLD',
+        RizzVibe.flirty    => 'Flirty',
+        RizzVibe.sensual   => 'Sensual',
+        RizzVibe.playful   => 'Playful',
+        RizzVibe.confident => 'Confident',
+        RizzVibe.sincere   => 'Sincere',
+        RizzVibe.auto      => 'Flirty',
+        RizzVibe.funny     => 'Playful',
+        RizzVibe.smooth    => 'Confident',
+        RizzVibe.bold      => 'Sensual',
+      };
+
+  /// One emoji icon used on the pill + bottom sheet rows.
+  String get emoji => switch (this) {
+        RizzVibe.flirty    => '😏',
+        RizzVibe.sensual   => '🔥',
+        RizzVibe.playful   => '😜',
+        RizzVibe.confident => '🥃',
+        RizzVibe.sincere   => '🥹',
+        RizzVibe.auto      => '😏',
+        RizzVibe.funny     => '😜',
+        RizzVibe.smooth    => '🥃',
+        RizzVibe.bold      => '🔥',
+      };
+
+  /// One-line description shown in the tone-picker sheet.
+  String get blurb => switch (this) {
+        RizzVibe.flirty    => 'Tease and flirt with playful charm.',
+        RizzVibe.sensual   => 'Slow burn. Hints at heat without spilling.',
+        RizzVibe.playful   => 'Cheeky, funny, screenshot-to-group-chat.',
+        RizzVibe.confident => 'High-agency, scarce, decisive.',
+        RizzVibe.sincere   => 'Specific observation, not flattery.',
+        RizzVibe.auto      => 'Tease and flirt with playful charm.',
+        RizzVibe.funny     => 'Cheeky, funny, screenshot-to-group-chat.',
+        RizzVibe.smooth    => 'High-agency, scarce, decisive.',
+        RizzVibe.bold      => 'Slow burn. Hints at heat without spilling.',
       };
 
   String get directive => switch (this) {
-        RizzVibe.auto   => 'auto — pick whichever move actually pulls best',
-        RizzVibe.funny  => 'funny — short, witty, makes her screenshot it',
-        RizzVibe.flirty => 'flirty — push-pull / heat, never thirsty',
-        RizzVibe.smooth => 'smooth — high-agency, confident, scarce',
-        RizzVibe.bold   => 'bold — frame-check / disqualifier, calls her out',
+        RizzVibe.flirty    => 'flirty — tease, push-pull, charm',
+        RizzVibe.sensual   => 'sensual — slow burn, eye-contact energy',
+        RizzVibe.playful   => 'playful — cheeky, funny, group-chat-worthy',
+        RizzVibe.confident => 'confident — high-agency, decisive, scarce',
+        RizzVibe.sincere   => 'sincere — heart-melt, specific observation',
+        RizzVibe.auto      => 'auto — default to flirty',
+        RizzVibe.funny     => 'playful — cheeky, funny',
+        RizzVibe.smooth    => 'confident — high-agency, decisive',
+        RizzVibe.bold      => 'sensual — slow burn, suggestive',
       };
+
+  /// Canonical tone presets surfaced in the picker (UI order).
+  static const List<RizzVibe> canonical = [
+    RizzVibe.flirty,
+    RizzVibe.sensual,
+    RizzVibe.playful,
+    RizzVibe.confident,
+    RizzVibe.sincere,
+  ];
 }
 
 /// Rizz God — generates 3 ranked reply options for a message she sent.
@@ -562,13 +624,18 @@ bubble UI — every character that is not the line itself is noise:
   /// curated arsenal that match the vibe. Guarantees the "no trash" rule
   /// because everything here was hand-picked.
   static List<RizzReply> _fallbackFromArsenal(RizzVibe vibe) {
-    // Map vibe → which two categories to draw from.
+    // Map tone → which two arsenal categories to draw from.
     final slugs = switch (vibe) {
+      RizzVibe.flirty    => ['heat', 'tease'],
+      RizzVibe.sensual   => ['heat', 'charm'],
+      RizzVibe.playful   => ['tease', 'cheesy'],
+      RizzVibe.confident => ['close', 'cold'],
+      RizzVibe.sincere   => ['charm', 'openers'],
+      // legacy
       RizzVibe.funny  => ['tease', 'openers'],
-      RizzVibe.flirty => ['heat', 'tease'],
       RizzVibe.smooth => ['heat', 'close'],
       RizzVibe.bold   => ['cold', 'close'],
-      RizzVibe.auto   => ['openers', 'tease'],
+      RizzVibe.auto   => ['heat', 'tease'],
     };
     final pool = <RizzLine>[];
     for (final cat in RizzArsenal.categories) {
