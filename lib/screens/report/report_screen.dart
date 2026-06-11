@@ -845,6 +845,20 @@ class _ReportScreenState extends State<ReportScreen> {
     final current    = _honest?.score ?? score.value;
     final potential  = _potentialDelta(current);
     final projected  = (current + potential).clamp(0, 100);
+    // Same tagline + proof recipe the unlocked report uses, so the
+    // locked variant of HeroCard reads identically except for the
+    // after half.
+    final traits     = TraitBuilderService.build(widget.geometry);
+    final microProofs = _buildMicroProofs(traits);
+    final honestNote = (_honest?.note ?? '').trim();
+    final tagline = honestNote.isNotEmpty
+        ? honestNote
+        : (a.report.oneLineVerdict.trim().isNotEmpty
+            ? a.report.oneLineVerdict
+            : '${score.strongestAxis.$1} carries the frame.');
+    final correctionsCount = a.report.fixes.isNotEmpty
+        ? a.report.fixes.length
+        : 3;
 
     Future<void> openPaywall(String src) async {
       HapticFeedback.mediumImpact();
@@ -852,86 +866,84 @@ class _ReportScreenState extends State<ReportScreen> {
     }
 
     return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(Sp.lg, Sp.md, Sp.lg, Sp.lg),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: Sp.md),
-
-          // ── Score reveal — Current → Potential, with the green
-          //    "+XX AVAILABLE" pill and a clear paywall CTA right
-          //    underneath. This is the first thing the user sees.
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-            child: _LockedScoreReveal(
-              current:    current,
-              projected:  projected,
-              gain:       potential,
-              onUnlock:   () => openPaywall('glowup_locked'),
-            ),
-          ),
+          // Same header as the unlocked report — title block only, no
+          // share button (nothing to share until they unlock).
+          Text('YOUR ANALYSIS',
+            style: AppTypography.label.copyWith(
+              color: AppColors.textTertiary, letterSpacing: 2.5))
+            .animate().fadeIn(duration: 400.ms),
+          const SizedBox(height: Sp.xs),
+          Text('Down to the millimetre.',
+            style: AppTypography.h1.copyWith(fontSize: 28))
+            .animate().fadeIn(delay: 100.ms, duration: 400.ms),
           const SizedBox(height: Sp.lg),
 
-          // ── Photo split — user's actual scan on the left,
-          //    blurred glow-up on the right with a centered
-          //    LOCK + "UNLOCK PRO TO SEE YOU MAXED" overlay.
-          //    Tapping the after side fires the paywall.
-          _LockedBeforeAfter(
-            beforeBytes: widget.imageBytes,
-            onTapAfter:  () => openPaywall('glowup_after_tap'),
+          // Same dual-score hero the unlocked report ships.
+          _DualScoreHero(honest: _honest, geometry: score.value),
+          const SizedBox(height: Sp.md),
+
+          // Same HeroCard — only difference is locked=true on the
+          // after half (blurred copy of user's own NOW + LOCK pill +
+          // tap routes to paywall). Projected number renders green
+          // here too because that change went in at the HeroCard
+          // level — both locked and unlocked benefit.
+          HeroCard(
+            currentScore:     current,
+            projectedScore:   projected,
+            tagline:          tagline,
+            beforeBytes:      widget.imageBytes,
+            afterUrl:         '', // empty so the locked overlay paints
+            correctionsCount: correctionsCount,
+            microProofs:      microProofs,
+            locked:           true,
+            onLockedTap:      () => openPaywall('glowup_after_tap'),
           ),
           const SizedBox(height: Sp.md),
 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-            child: _UnlockCta(
-              label:   'UNLOCK PRO · SEE YOU MAXED',
-              onTap:   () => openPaywall('glowup_unlock_under_photo'),
-            ),
+          // ONE big CTA under the before/after. Bro v6: "just have one
+          // under the before after and one on the after" — that's the
+          // tap-on-after-image + this single button. Nothing else.
+          _UnlockCta(
+            label: 'UNLOCK TO SEE HOW YOU GLOW UP  ·  +$potential POINTS',
+            onTap: () => openPaywall('glowup_unlock_main'),
           ),
           const SizedBox(height: Sp.xl),
 
-          // ── Locked panels — Top Strength / Biggest Weakness /
-          //    Fastest Improvement / Full Glow-Up Plan. Each is a
-          //    full-width card with a blurred bar where the answer
-          //    would render. Tapping any → paywall.
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-            child: Column(
-              children: [
-                _LockedPanel(
-                  eyebrow: 'TOP STRENGTH',
-                  onTap:   () => openPaywall('glowup_strength_locked'),
-                ),
-                const SizedBox(height: 10),
-                _LockedPanel(
-                  eyebrow: 'BIGGEST WEAKNESS',
-                  onTap:   () => openPaywall('glowup_weakness_locked'),
-                ),
-                const SizedBox(height: 10),
-                _LockedPanel(
-                  eyebrow: 'FASTEST IMPROVEMENT',
-                  onTap:   () => openPaywall('glowup_fastest_locked'),
-                ),
-                const SizedBox(height: 10),
-                _LockedPanel(
-                  eyebrow: 'FULL GLOW-UP PLAN',
-                  onTap:   () => openPaywall('glowup_plan_locked'),
-                  tall:    true,
-                ),
-              ],
-            ),
+          // Blanked-out section cards — same vertical hierarchy as the
+          // unlocked report (AI Verdict → Per-Trait → Geometry →
+          // 60-day Protocols), titles only, content area is a flat
+          // black box. Each tile is tappable to paywall but is NOT a
+          // button — only the one above is.
+          _LockedSection(
+            eyebrow: 'AI VERDICT',
+            line:    'honest read · on photo',
+            height:  150,
+            onTap:   () => openPaywall('glowup_verdict_locked'),
           ),
-          const SizedBox(height: Sp.lg),
-
-          // ── Bottom paywall CTA — third place we give them the
-          //    button. After scrolling through the score + photo +
-          //    locked panels the user is primed.
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-            child: _UnlockCta(
-              label:   'UNLOCK PRO · SEE EVERYTHING',
-              onTap:   () => openPaywall('glowup_unlock_bottom'),
-            ),
+          const SizedBox(height: Sp.md),
+          _LockedSection(
+            eyebrow: 'PER-TRAIT SCORES',
+            line:    'skin · hair · jaw · eyes · face',
+            height:  140,
+            onTap:   () => openPaywall('glowup_pertrait_locked'),
+          ),
+          const SizedBox(height: Sp.md),
+          _LockedSection(
+            eyebrow: 'GEOMETRY',
+            line:    '16 measurements · on-device math',
+            height:  140,
+            onTap:   () => openPaywall('glowup_geometry_locked'),
+          ),
+          const SizedBox(height: Sp.md),
+          _LockedSection(
+            eyebrow: '60-DAY PROTOCOLS',
+            line:    'skin · jaw · debloat · hair',
+            height:  140,
+            onTap:   () => openPaywall('glowup_protocols_locked'),
           ),
           const SizedBox(height: Sp.xl),
         ],
@@ -1751,373 +1763,6 @@ class _DualScoreHero extends StatelessWidget {
       begin: 0.04, end: 0, curve: Curves.easeOutCubic, duration: 520.ms);
   }
 }
-
-// ═══════════════════════════════════════════════════════════════════════
-//  LOCKED TEASER WIDGETS — built specifically for the v6 conversion flow.
-//  Same brand voice as the rest of the report (italic Playfair scores,
-//  red eyebrows, signal-green for the projected gain) so the lock state
-//  doesn't feel like a separate screen — it feels like the unlocked
-//  report with one purchase between the user and the rest of it.
-// ═══════════════════════════════════════════════════════════════════════
-
-class _LockedScoreReveal extends StatelessWidget {
-  final int current;
-  final int projected;
-  final int gain;
-  final VoidCallback onUnlock;
-  const _LockedScoreReveal({
-    required this.current,
-    required this.projected,
-    required this.gain,
-    required this.onUnlock,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(Rd.xl),
-        border: Border.all(
-          color: AppColors.signalGreen.withValues(alpha: 0.55), width: 1.0),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.signalGreen.withValues(alpha: 0.22),
-            blurRadius: 28, spreadRadius: -4,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('YOUR SCAN',
-            style: AppTypography.label.copyWith(
-              color: AppColors.red,
-              fontSize: 10.5, letterSpacing: 3.2,
-              fontWeight: FontWeight.w900,
-            )),
-          const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _scoreColumn('CURRENT', current, AppColors.textPrimary, false),
-              const Padding(
-                padding: EdgeInsets.only(bottom: 22),
-                child: Icon(Icons.arrow_forward_rounded,
-                    color: AppColors.textTertiary, size: 26),
-              ),
-              _scoreColumn('POTENTIAL', projected, AppColors.signalGreen, true),
-            ],
-          ),
-          const SizedBox(height: 14),
-          // +XX AVAILABLE pill — green badge.
-          Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.signalGreen.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(100),
-                border: Border.all(
-                  color: AppColors.signalGreen.withValues(alpha: 0.55),
-                  width: 0.9),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.trending_up_rounded,
-                      color: AppColors.signalGreen, size: 14),
-                  const SizedBox(width: 5),
-                  Text('+$gain AVAILABLE',
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.signalGreen,
-                      fontSize: 11.5, letterSpacing: 2.4,
-                      fontWeight: FontWeight.w900,
-                    )),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          // Inline CTA — clear paywall hand-off.
-          Material(
-            color: AppColors.red,
-            borderRadius: BorderRadius.circular(12),
-            child: InkWell(
-              onTap: onUnlock,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                alignment: Alignment.center,
-                child: Text('UNLOCK PRO TO MAX NOW',
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontSize: 12.5, letterSpacing: 2.8,
-                    fontWeight: FontWeight.w900,
-                  )),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _scoreColumn(String label, int value, Color color, bool right) {
-    return Column(
-      crossAxisAlignment:
-          right ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label,
-          style: AppTypography.label.copyWith(
-            color: right
-                ? AppColors.signalGreen.withValues(alpha: 0.85)
-                : AppColors.textTertiary,
-            fontSize: 10, letterSpacing: 2.4,
-            fontWeight: FontWeight.w900,
-          )),
-        const SizedBox(height: 4),
-        Text('$value',
-          style: GoogleFonts.playfairDisplay(
-            color: color,
-            fontSize: 54, height: 0.95,
-            letterSpacing: -2.2,
-            fontStyle: FontStyle.italic,
-            fontWeight: FontWeight.w900,
-            shadows: right
-                ? [
-                    Shadow(
-                      color: AppColors.signalGreen.withValues(alpha: 0.4),
-                      blurRadius: 20),
-                  ]
-                : null,
-          )),
-      ],
-    );
-  }
-}
-
-/// Two-image split — left half is the user's actual scan, right half
-/// is a heavily blurred copy of the same image with a centered LOCK
-/// pill + caption. We deliberately use the user's own face (not a
-/// stock Replicate render) so they immediately feel the FOMO of
-/// "that's ME, but better, and I can't see it yet."
-class _LockedBeforeAfter extends StatelessWidget {
-  final Uint8List beforeBytes;
-  final VoidCallback onTapAfter;
-  const _LockedBeforeAfter({
-    required this.beforeBytes,
-    required this.onTapAfter,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 4 / 5,
-      child: Row(
-        children: [
-          // BEFORE — user's actual scan, clean.
-          Expanded(child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.memory(beforeBytes, fit: BoxFit.cover),
-              Positioned(
-                left: 10, bottom: 10,
-                child: _CornerBadge(label: 'NOW', tint: AppColors.textTertiary),
-              ),
-            ],
-          )),
-          // Hairline divider so the two halves don't blur together.
-          Container(width: 1, color: Colors.black),
-          // AFTER — same image, blurred + dimmed + LOCK overlay.
-          Expanded(
-            child: GestureDetector(
-              onTap: onTapAfter,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ImageFiltered(
-                    imageFilter: ImageFilter.blur(
-                        sigmaX: 18, sigmaY: 18),
-                    child: Image.memory(beforeBytes, fit: BoxFit.cover),
-                  ),
-                  // Red wash so it reads as "locked" not "broken".
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end:   Alignment.bottomCenter,
-                        colors: [
-                          AppColors.red.withValues(alpha: 0.32),
-                          AppColors.red.withValues(alpha: 0.55),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 48, height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.55),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.6),
-                              width: 1.2),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Icon(Icons.lock_rounded,
-                              color: Colors.white, size: 22),
-                        ),
-                        const SizedBox(height: 10),
-                        Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text('UNLOCK PRO\nTO SEE YOU MAXED',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
-                              color: Colors.white,
-                              fontSize: 11.5, letterSpacing: 2.4,
-                              fontWeight: FontWeight.w900,
-                              height: 1.3,
-                            )),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    right: 10, bottom: 10,
-                    child: _CornerBadge(label: 'MAXED', tint: AppColors.red),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CornerBadge extends StatelessWidget {
-  final String label;
-  final Color tint;
-  const _CornerBadge({required this.label, required this.tint});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: tint.withValues(alpha: 0.6), width: 0.8),
-      ),
-      child: Text(label,
-        style: GoogleFonts.inter(
-          color: Colors.white.withValues(alpha: 0.92),
-          fontSize: 9.5, letterSpacing: 2.2,
-          fontWeight: FontWeight.w900,
-        )),
-    );
-  }
-}
-
-/// One locked panel — eyebrow at the top + a blurred bar where the
-/// answer would render. `tall: true` for the full-plan card so the
-/// last row carries more visual weight.
-class _LockedPanel extends StatelessWidget {
-  final String eyebrow;
-  final VoidCallback onTap;
-  final bool tall;
-  const _LockedPanel({
-    required this.eyebrow,
-    required this.onTap,
-    this.tall = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(Rd.lg),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(Rd.lg),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-          decoration: BoxDecoration(
-            color: AppColors.surface1,
-            borderRadius: BorderRadius.circular(Rd.lg),
-            border: Border.all(
-              color: AppColors.red.withValues(alpha: 0.4), width: 0.8),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(eyebrow,
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.red,
-                      fontSize: 10.5, letterSpacing: 2.6,
-                      fontWeight: FontWeight.w900,
-                    )),
-                  const Spacer(),
-                  Icon(Icons.lock_rounded,
-                      color: AppColors.red.withValues(alpha: 0.85),
-                      size: 14),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Blurred answer bars — three rows for tall variant,
-              // one row for compact. Same shape as the unlocked
-              // tile so the user reads the locked state as "the
-              // answer is right there, I just need to unlock it."
-              for (int i = 0; i < (tall ? 3 : 1); i++) ...[
-                if (i > 0) const SizedBox(height: 8),
-                _BlurBar(widthFactor: tall ? (0.92 - i * 0.18) : 0.86),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BlurBar extends StatelessWidget {
-  final double widthFactor;
-  const _BlurBar({required this.widthFactor});
-
-  @override
-  Widget build(BuildContext context) {
-    return FractionallySizedBox(
-      widthFactor: widthFactor,
-      child: Container(
-        height: 14,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.textPrimary.withValues(alpha: 0.18),
-              AppColors.textPrimary.withValues(alpha: 0.08),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(99),
-        ),
-      ),
-    );
-  }
-}
-
-/// Big red CTA used in two places on the locked teaser (under the
-/// before/after photo split, and at the bottom of the scroll).
 class _UnlockCta extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
@@ -2141,6 +1786,94 @@ class _UnlockCta extends StatelessWidget {
               fontSize: 13.5, letterSpacing: 2.8,
               fontWeight: FontWeight.w900,
             )),
+        ),
+      ),
+    );
+  }
+}
+
+/// One locked section — replaces an AI/geometry output card on the
+/// teaser. Shows only its eyebrow + the small italic line we use
+/// elsewhere ("honest read · on photo" etc), with a flat black
+/// content box where the real answer would render. Tapping anywhere
+/// fires the paywall. NOT a styled button — the only button-styled
+/// CTA on the locked teaser is the one under the HeroCard.
+class _LockedSection extends StatelessWidget {
+  final String eyebrow;
+  final String line;
+  final double height;
+  final VoidCallback onTap;
+  const _LockedSection({
+    required this.eyebrow,
+    required this.line,
+    required this.height,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(Rd.lg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(Rd.lg),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            borderRadius: BorderRadius.circular(Rd.lg),
+            border: Border.all(
+              color: AppColors.divider, width: 0.6),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.auto_awesome_rounded,
+                      color: AppColors.red, size: 14),
+                  const SizedBox(width: 6),
+                  Text(eyebrow,
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.red,
+                      fontSize: 11, letterSpacing: 3.0,
+                      fontWeight: FontWeight.w800,
+                    )),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(line,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.textTertiary,
+                        fontSize: 10, letterSpacing: 1.6,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w600,
+                      )),
+                  ),
+                  Icon(Icons.lock_rounded,
+                      color: AppColors.red.withValues(alpha: 0.85),
+                      size: 14),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Solid black content area — same rounded corners as
+              // the unlocked content cards so the lock state reads
+              // as "same card, content withheld."
+              Container(
+                width: double.infinity,
+                height: height,
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(Rd.md),
+                  border: Border.all(
+                    color: AppColors.surface3, width: 0.6),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

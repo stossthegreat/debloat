@@ -24,7 +24,8 @@ import '../../theme/app_typography.dart';
 /// the placeholder dissolves into the maxed render. Same psychological
 /// beat as the Mirror tab's inline tryon.
 class HeroCard extends StatefulWidget {
-  static const Color accentRed = Color(0xFFE8222A);
+  static const Color accentRed   = Color(0xFFE8222A);
+  static const Color projectedGreen = Color(0xFF00FF85);
 
   final int currentScore;
   final int projectedScore;
@@ -43,6 +44,16 @@ class HeroCard extends StatefulWidget {
   /// instead of the GENERATE button.
   final bool isGenerating;
 
+  /// LOCKED MODE — bro v6 conversion teaser. When true, the after
+  /// half renders a blurred copy of [beforeBytes] with a centered
+  /// LOCK pill + "TAP TO UNLOCK" caption. Tapping anywhere on the
+  /// after half fires [onLockedTap]. Everything else stays the
+  /// same — score row, tagline, proof lines — so the unlocked +
+  /// locked variants of this card look identical except for the
+  /// blurred half.
+  final bool locked;
+  final VoidCallback? onLockedTap;
+
   const HeroCard({
     super.key,
     required this.currentScore,
@@ -54,6 +65,8 @@ class HeroCard extends StatefulWidget {
     required this.microProofs,
     this.onGenerate,
     this.isGenerating = false,
+    this.locked = false,
+    this.onLockedTap,
   });
 
   @override
@@ -204,6 +217,90 @@ class _HeroCardState extends State<HeroCard>
   Widget _afterHalf() {
     final url = widget.afterUrl;
     final hasUrl = url != null && url.isNotEmpty;
+
+    // ── LOCKED MODE — bro v6 teaser. Blurred copy of the user's
+    //   own NOW image on the right half + centered LOCK pill +
+    //   "TAP TO UNLOCK" caption. Tappable everywhere; tap fires
+    //   onLockedTap (which the report screen wires to the
+    //   glow-up paywall).
+    if (widget.locked) {
+      return GestureDetector(
+        onTap: widget.onLockedTap,
+        behavior: HitTestBehavior.opaque,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Image.memory(widget.beforeBytes, fit: BoxFit.cover),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end:   Alignment.bottomCenter,
+                  colors: [
+                    HeroCard.accentRed.withValues(alpha: 0.30),
+                    HeroCard.accentRed.withValues(alpha: 0.58),
+                  ],
+                ),
+              ),
+            ),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 52, height: 52,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        width: 1.2),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.lock_rounded,
+                        color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Text('TAP TO UNLOCK',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 12, letterSpacing: 2.6,
+                        fontWeight: FontWeight.w900,
+                      )),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              right: 10, bottom: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(
+                    color: HeroCard.accentRed.withValues(alpha: 0.6),
+                    width: 0.8),
+                ),
+                child: Text('MAXED',
+                  style: GoogleFonts.inter(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    fontSize: 9.5, letterSpacing: 2.2,
+                    fontWeight: FontWeight.w900,
+                  )),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     if (hasUrl) {
       return _half(
@@ -421,7 +518,11 @@ class _ScoreTransition extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: GoogleFonts.playfairDisplay(
                       fontSize: 82, height: 1.0, letterSpacing: -2.4,
-                      color: Colors.white,
+                      // Bro v6: "make the potential number green
+                      // nothing else added." This is the only score
+                      // colour change — current stays white-dim,
+                      // arrow stays red.
+                      color: HeroCard.projectedGreen,
                       fontStyle: FontStyle.italic,
                       fontWeight: FontWeight.w700,
                     )),
