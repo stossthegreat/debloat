@@ -230,10 +230,18 @@ class _HeroCardState extends State<HeroCard>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-              child: Image.memory(widget.beforeBytes, fit: BoxFit.cover),
-            ),
+            // beforeBytes is nullable on HeroCard — null-safety guard
+            // so the locked half degrades to a flat dark surface
+            // instead of crashing when the scan payload is missing
+            // (only ever happens on a deep link without the bytes).
+            if (widget.beforeBytes != null)
+              ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: Image.memory(widget.beforeBytes!,
+                    fit: BoxFit.cover),
+              )
+            else
+              const ColoredBox(color: Color(0xFF0C0C0C)),
             DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
