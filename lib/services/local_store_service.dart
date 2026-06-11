@@ -281,38 +281,52 @@ class LocalStoreService {
     await prefs.setBool(_kEyesFreeUsed, true);
   }
 
-  /// True once the free Free Flow live conversation has been opened.
+  /// True once the user has consumed their ONE free Free Flow live
+  /// conversation. Flips when _endAndScore runs the post-session
+  /// upsell modal (60-second timer expiry OR user-pressed end button
+  /// OR voice-cap), which is the only legitimate "session ended" beat.
+  /// Mid-session bails (back-tap, tab switch, brief press) do NOT
+  /// flip this flag — see free_flow_screen.dart's dispose() which
+  /// intentionally no longer writes it.
   ///
-  /// v179 fix — the source of truth is now the SCORED-SESSION list,
-  /// not a bool flag. Background: v171 moved the "mark used" off the
-  /// first hold (multi-hold bug) and onto session-end + dispose. But
-  /// the dispose() path fires the marker as soon as the user has
-  /// held the orb for even a millisecond and then leaves the screen
-  /// — back tap, tab switch on iOS where IndexedStack disposes, mid-
-  /// session bail. That burnt the free pass for users who never
-  /// actually completed a scored session, which is the "I press and
-  /// it goes to paywall" regression.
-  ///
-  /// The truthful test: "did the user complete a scored session?"
-  /// That writes to game.scores.v1 (via saveGameScore at the end of
-  /// _endAndScore). An empty score list means no session ever ran
-  /// to completion → the free pass is still alive.
-  ///
-  /// Legacy bool flag is intentionally ignored — TestFlight builds
-  /// pre-v179 set it on dispose, so honouring it would leave existing
-  /// testers stuck. The score list is the canonical record going
-  /// forward; the bool flag is dead.
+  /// v179 misadventure: I changed this to read the scored-session
+  /// list and made markGameFreeUsed a no-op. That worked for pro
+  /// users (whose _persistGame path writes a real scorecard), but
+  /// free users skip _persistGame entirely — their session-end
+  /// branch (line ~845 of free_flow_screen.dart) returns BEFORE
+  /// the scoring call so it can show the Lucien upsell modal
+  /// instead. Net result: free users could replay forever, no
+  /// paywall ever fired, the 60-second timer never started ticking
+  /// on the second character pick. v181 reverts to the bool flag
+  /// and explicitly stops marking it on dispose().
   static Future<bool> gameFreeUsed() async {
-    final scores = await loadGameScores();
-    return scores.isNotEmpty;
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kGameFreeUsed) ?? false;
   }
 
-  /// No-op since v179 — gameFreeUsed() now reads from the score list,
-  /// not this bool. Kept on the API surface so existing call sites in
-  /// free_flow_screen.dart still compile without surgery; the actual
-  /// "consume the free session" effect happens when saveGameScore
-  /// writes the scorecard at the end of _endAndScore.
-  static Future<void> markGameFreeUsed() async {}
+  static Future<void> markGameFreeUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kGameFreeUsed, true);
+  }
+
+  /// One-shot v181 migration — clears the gameFreeUsed bool ONCE
+  /// for users coming off v171..v178 builds, where the dispose()
+  /// path inside FreeFlowScreen over-eagerly marked the flag on any
+  /// brief orb-press + tab switch. Those users were never able to
+  /// kick off a free session again until v179 (which broke the
+  /// other direction). v181 reverts the gate to the bool while
+  /// flushing the stale value once so honest first-time users on
+  /// the new build still get their 60-second pass.
+  ///
+  /// Safe to call on every launch — it persists its own
+  /// "already migrated" marker and is a no-op on subsequent boots.
+  static const _kGameFreeUsedV181Migrated = 'caps.game.flag_migrated_v181.v1';
+  static Future<void> migrateGameFreeUsedFlagOnce() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_kGameFreeUsedV181Migrated) ?? false) return;
+    await prefs.remove(_kGameFreeUsed);
+    await prefs.setBool(_kGameFreeUsedV181Migrated, true);
+  }
 
   /// True once the free Rizz screenshot generation has been consumed.
   /// One free screenshot rizz per non-pro user; LINES and CHAT cards

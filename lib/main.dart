@@ -66,6 +66,13 @@ void main() async {
     await LocalStoreService.setSubscribed(true);
   }
 
+  // v181 one-shot — clear the stale gameFreeUsed bool that v171..v178
+  // dispose() over-eagerly burnt for testers who only briefly held
+  // the orb and then tab-switched. After this runs once, the flag
+  // only flips at legitimate session-end (60s timer expiry / manual
+  // end). See LocalStoreService.migrateGameFreeUsedFlagOnce.
+  await LocalStoreService.migrateGameFreeUsedFlagOnce();
+
   runApp(const MirrorApp());
 }
 

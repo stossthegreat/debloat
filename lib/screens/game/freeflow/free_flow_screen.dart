@@ -286,18 +286,12 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   @override
   void dispose() {
     _disposed = true;
-    // Persist gameFreeUsed if a free user actually used their
-    // session (clockStarted is the truthful "they held to talk"
-    // marker). Bro v6 fix: marking on first hold caused
-    // mid-session paywalls; deferring to dispose ensures the
-    // flag flips when they LEAVE the session, not on the first
-    // hold within it. _lucienUpsellShown already calls
-    // markGameFreeUsed on the timer-expiry path, so this is the
-    // "you bailed mid-session" path.
-    if (_firstEverSession && _clockStarted && !_lucienUpsellShown) {
-      // ignore: discarded_futures
-      LocalStoreService.markGameFreeUsed();
-    }
+    // v181 — DO NOT mark gameFreeUsed here. The pre-v179 logic
+    // burnt the free pass on any tab-switch where the user had
+    // briefly held the orb, leading to "I press the orb and it
+    // goes straight to paywall" complaints. The free pass now
+    // only flips at legitimate session-end (60s timer expiry,
+    // user-pressed end, voice-cap) — see _endAndScore.
     // ignore: discarded_futures
     WakelockPlus.disable();
     _clock?.cancel();
@@ -2635,62 +2629,73 @@ class _LucienNudgeBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-          decoration: BoxDecoration(
-            color: const Color(0xCC0E0E10),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: AppColors.accent.withValues(alpha: 0.55),
-              width: 0.9),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.accent.withValues(alpha: 0.28),
-                blurRadius: 22, spreadRadius: 1),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Tap the master.',
-                style: GoogleFonts.playfairDisplay(
-                  color: Colors.white,
-                  fontSize: 15, height: 1.1,
-                  letterSpacing: -0.2,
-                  fontStyle: FontStyle.italic,
-                  fontWeight: FontWeight.w800,
-                ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(22, 16, 22, 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [
+                  AppColors.accent.withValues(alpha: 0.28),
+                  AppColors.accent.withValues(alpha: 0.12),
+                ],
               ),
-              const SizedBox(height: 3),
-              Text('LUCIEN WILL TAKE THE FLOOR',
-                style: AppTypography.label.copyWith(
-                  color: AppColors.accent,
-                  fontSize: 9, letterSpacing: 2.6,
-                  fontWeight: FontWeight.w900,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: AppColors.accent.withValues(alpha: 0.85),
+                width: 1.4),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.accent.withValues(alpha: 0.55),
+                  blurRadius: 34, spreadRadius: 2),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Tap the master.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.playfairDisplay(
+                    color: Colors.white,
+                    fontSize: 22, height: 1.1,
+                    letterSpacing: -0.4,
+                    fontStyle: FontStyle.italic,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text('LUCIEN WILL TAKE THE FLOOR',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.label.copyWith(
+                    color: Colors.white,
+                    fontSize: 11.5, letterSpacing: 3.2,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        // Downward arrow pointing at the LUCIEN — STEP IN button.
-        CustomPaint(
-          size: const Size(14, 8),
-          painter: _BubbleArrowPainter(),
-        ),
-      ],
+          // Downward arrow pointing at the LUCIEN — STEP IN button.
+          CustomPaint(
+            size: const Size(18, 11),
+            painter: _BubbleArrowPainter(),
+          ),
+        ],
+      ),
     )
         .animate(onPlay: (c) => c.repeat(reverse: true))
-        .fadeIn(duration: 380.ms, curve: Curves.easeOut)
-        .slideY(begin: 0.10, end: 0,
-            duration: 380.ms, curve: Curves.easeOut)
+        .fadeIn(duration: 360.ms, curve: Curves.easeOut)
+        .slideY(begin: 0.12, end: 0,
+            duration: 360.ms, curve: Curves.easeOut)
         .then()
-        .scaleXY(begin: 1.0, end: 1.04,
-            duration: 800.ms, curve: Curves.easeInOut)
-        .fade(begin: 1.0, end: 0.78,
-            duration: 800.ms, curve: Curves.easeInOut);
+        .scaleXY(begin: 1.0, end: 1.05,
+            duration: 850.ms, curve: Curves.easeInOut)
+        .fade(begin: 1.0, end: 0.82,
+            duration: 850.ms, curve: Curves.easeInOut);
   }
 }
 
@@ -2698,20 +2703,18 @@ class _BubbleArrowPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final fill = Paint()
-      ..color = const Color(0xCC0E0E10)
+      ..color = AppColors.accent.withValues(alpha: 0.22)
       ..style = PaintingStyle.fill;
     final stroke = Paint()
-      ..color = AppColors.accent.withValues(alpha: 0.55)
+      ..color = AppColors.accent.withValues(alpha: 0.85)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.9;
+      ..strokeWidth = 1.4;
     final path = Path()
       ..moveTo(0, 0)
       ..lineTo(size.width, 0)
       ..lineTo(size.width / 2, size.height)
       ..close();
     canvas.drawPath(path, fill);
-    // Draw only the two slanted sides — the top edge is glued to the
-    // bubble body so it shouldn't paint a horizontal stroke through it.
     canvas.drawLine(const Offset(0, 0), Offset(size.width / 2, size.height), stroke);
     canvas.drawLine(Offset(size.width, 0), Offset(size.width / 2, size.height), stroke);
   }
