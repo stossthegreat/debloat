@@ -1160,13 +1160,17 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   Widget _buildLive() {
     final mins = (_remaining ~/ 60).toString();
     final secs = (_remaining % 60).toString().padLeft(2, '0');
-    // Bro v6: once the convo is actually live (clock started), the
-    // ImHim wordmark moves UP into the top chrome row where the
-    // CHANGE CHARACTER chip + ARENA pill used to sit. Those two
-    // controls disappear during an active conversation so the
-    // wordmark has room and the screen recording reads ImHim
-    // unambiguously at the top.
-    final convoActive = _clockStarted && _phase == _Phase.live;
+    // Bro v6 b: "the ImHim on roleplay should only show when the
+    // user is talking not when the women is talking." So the
+    // visibility gate tightens from "convo is active" to "user is
+    // actively holding to talk." The wordmark now paints ONLY
+    // while _holding == true. When she's responding (or in the
+    // brief silence between turns) the chrome reverts to the
+    // chip + arena pill so the user can still switch character
+    // or jump to the arena while she's mid-reply.
+    final showWordmark = _phase == _Phase.live
+        && _clockStarted
+        && _holding;
     return Stack(
       children: [
         // Top chrome.
@@ -1179,7 +1183,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
               // character chip / vibe label sat. Otherwise the usual
               // chip/label so the user can still pick / switch
               // characters before they start talking.
-              if (convoActive)
+              if (showWordmark)
                 const ImHimWordmark(fontSize: 26, letterSpacing: -0.7)
               else if (widget.tabMode)
                 _ChangeCharacterChip(
@@ -1194,11 +1198,13 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
                       fontWeight: FontWeight.w900,
                     )),
               const Spacer(),
-              // ARENA quick-route — only in tab mode AND only before
-              // the convo has actually started. Once they're in a
-              // live conversation the pill drops out to give the
-              // wordmark + timer the row to themselves.
-              if (widget.tabMode && !convoActive) ...[
+              // ARENA quick-route — only in tab mode AND only when
+              // the user isn't actively talking. While they're
+              // holding to talk the pill drops out to give the
+              // wordmark + timer the row to themselves; the moment
+              // they release (or she replies) the pill comes back
+              // so they can still jump to the arena mid-session.
+              if (widget.tabMode && !showWordmark) ...[
                 _ArenaPill(onTap: _openArena),
                 const SizedBox(width: 8),
               ],
