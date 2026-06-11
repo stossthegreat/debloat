@@ -1160,6 +1160,13 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   Widget _buildLive() {
     final mins = (_remaining ~/ 60).toString();
     final secs = (_remaining % 60).toString().padLeft(2, '0');
+    // Bro v6: once the convo is actually live (clock started), the
+    // ImHim wordmark moves UP into the top chrome row where the
+    // CHANGE CHARACTER chip + ARENA pill used to sit. Those two
+    // controls disappear during an active conversation so the
+    // wordmark has room and the screen recording reads ImHim
+    // unambiguously at the top.
+    final convoActive = _clockStarted && _phase == _Phase.live;
     return Stack(
       children: [
         // Top chrome.
@@ -1168,24 +1175,30 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
           child: Row(
             children: [
               const SizedBox(width: 8),
-              // CHANGE CHARACTER chip in tab mode, plain label in push mode.
-              widget.tabMode
-                  ? _ChangeCharacterChip(
-                      current: _vibe?.label ?? '',
-                      onTap: _showCharacterSheet,
-                    )
-                  : Text(_vibe?.label ?? '',
-                      style: AppTypography.label.copyWith(
-                        color: AppColors.accent,
-                        fontSize: 11,
-                        letterSpacing: 2.8,
-                        fontWeight: FontWeight.w900,
-                      )),
+              // CONVO ACTIVE → ImHim wordmark in the slot where the
+              // character chip / vibe label sat. Otherwise the usual
+              // chip/label so the user can still pick / switch
+              // characters before they start talking.
+              if (convoActive)
+                const ImHimWordmark(fontSize: 26, letterSpacing: -0.7)
+              else if (widget.tabMode)
+                _ChangeCharacterChip(
+                    current: _vibe?.label ?? '',
+                    onTap: _showCharacterSheet)
+              else
+                Text(_vibe?.label ?? '',
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.accent,
+                      fontSize: 11,
+                      letterSpacing: 2.8,
+                      fontWeight: FontWeight.w900,
+                    )),
               const Spacer(),
-              // ARENA quick-route in tab mode — sits between the timer
-              // and the (hidden) close button so the layout is
-              // balanced and the arena is one tap away.
-              if (widget.tabMode) ...[
+              // ARENA quick-route — only in tab mode AND only before
+              // the convo has actually started. Once they're in a
+              // live conversation the pill drops out to give the
+              // wordmark + timer the row to themselves.
+              if (widget.tabMode && !convoActive) ...[
                 _ArenaPill(onTap: _openArena),
                 const SizedBox(width: 8),
               ],
@@ -1237,29 +1250,13 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         //
         // AnimatedOpacity gives a clean fade so screen recordings show
         // it land + lift rather than blink.
-        // Bro v6: "make the ImHim that shows on game when user
-        // presses mic big — need people to see it clearly so like
-        // double the size carefully not to overlap." 22 → 42pt
-        // (~2x), top: 46 → 64 to slide it 18px down off the top
-        // chrome (vibe chip + timer row sits at top: 6 with ~40px
-        // content height = ends near 46). The orb area is centred
-        // in the screen so the bottom of the wordmark (~115-120)
-        // stays clear of it.
-        Positioned(
-          top: 64, left: 0, right: 0,
-          child: IgnorePointer(
-            child: AnimatedOpacity(
-              opacity: (_phase == _Phase.live &&
-                       (_holding || _herSpeaking || _responseActive))
-                  ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.easeOut,
-              child: const Center(
-                child: ImHimWordmark(fontSize: 42, letterSpacing: -1.2),
-              ),
-            ),
-          ),
-        ),
+        // ImHim wordmark moved INTO the top chrome row above (when
+        // convoActive). The standalone Positioned overlay that used
+        // to render it over the orb is gone — was overlapping the
+        // orb when scaled up to the viral size bro asked for. Top
+        // chrome is the right home: it's always above the orb, has
+        // empty space the moment the chip + arena pill drop out,
+        // and reads cleanly on screen recordings.
 
         // Centre — fixed orb up top; the caption sits in a scrollable
         // band below it so long text (her replies, Lucien's reads) never
