@@ -58,6 +58,33 @@ class ReviewPromptService {
     );
   }
 
+  /// Wow-moment trigger — fires after a successful Pro purchase. This
+  /// is the "I just paid for this and I'm excited" beat, which is the
+  /// HIGHEST-converting moment for a positive rating. Same one-prompt-
+  /// per-device ceiling as [maybePrompt], so a user who already saw the
+  /// triple-milestone prompt won't see this one (or vice-versa).
+  ///
+  /// Bro v7: "after a wow moment / after a conversion — pop up with 5
+  /// pressable stars, message about feedback being important, clean
+  /// beautiful very cleverly placed." We let the unlock land first
+  /// (1.4s delay so the user sees their purchased experience for a
+  /// breath) and only THEN slide the prompt in.
+  static Future<void> maybePromptAfterPurchase(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_kPrompted) ?? false) return;
+    if (!context.mounted) return;
+    // Let the post-purchase route resolve + first paint settle so the
+    // dialog feels like a thank-you, not an interruption.
+    await Future.delayed(const Duration(milliseconds: 1400));
+    if (!context.mounted) return;
+    await prefs.setBool(_kPrompted, true);
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const ReviewPromptDialog(),
+    );
+  }
+
   static Future<void> _setFlag(String key) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key, true);

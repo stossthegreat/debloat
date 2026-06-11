@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../services/paywall_gate.dart';
 import '../../theme/app_colors.dart';
@@ -33,6 +34,13 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
   bool _pro = false;
   bool _screenshotUsed = false;
   bool _loaded = false;
+  /// Mirrors the Looks-tab masthead streak — the bigger of the
+  /// triple-pillar streak (LOOKS+AURA+GAME hit on consecutive days)
+  /// and whatever protocol streak the user is currently riding.
+  /// Triple streak is the primary signal; we just read its
+  /// SharedPref directly so the Rizz tab doesn't need to spin up
+  /// ProtocolService.
+  int _dayStreak = 0;
 
   @override
   void initState() {
@@ -43,10 +51,13 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
   Future<void> _refresh() async {
     final pro = await PaywallGate.isPro();
     final ssUsed = await PaywallGate.rizzScreenshotCapReached();
+    final prefs = await SharedPreferences.getInstance();
+    final streak = prefs.getInt('triple_streak_count') ?? 0;
     if (!mounted) return;
     setState(() {
       _pro = pro;
       _screenshotUsed = ssUsed;
+      _dayStreak = streak;
       _loaded = true;
     });
   }
@@ -102,11 +113,21 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
             // Bro v5: "take rizz title and subtitle off — add settings
             // top right of screen like looks tab." Settings cog sits
             // in a thin top row; the cards begin immediately under.
+            // v7 graft: streak flame + progress chart icon riding the
+            // same row to the LEFT of the cog so the user can jump to
+            // Progress and feel their streak from anywhere in the app.
             Padding(
               padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
               child: Row(
                 children: [
                   const Spacer(),
+                  if (_dayStreak > 0) ...[
+                    _RizzStreakBadge(days: _dayStreak),
+                    const SizedBox(width: 8),
+                  ],
+                  _RizzProgressChip(
+                      onTap: () => context.push('/progress')),
+                  const SizedBox(width: 8),
                   _RizzSettingsCog(
                       onTap: () => context.push('/settings')),
                 ],
@@ -186,6 +207,69 @@ class RizzCardAction {
 /// Local settings-cog widget — circular, surface1 background, matches
 /// the Looks tab _MastheadCog so both tabs read as the same chrome
 /// language.
+class _RizzStreakBadge extends StatelessWidget {
+  final int days;
+  const _RizzStreakBadge({required this.days});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.red.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(
+          color: AppColors.red.withValues(alpha: 0.45), width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.local_fire_department_rounded,
+              color: AppColors.red, size: 16),
+          const SizedBox(width: 5),
+          Text('$days',
+            style: GoogleFonts.inter(
+              color: AppColors.red,
+              fontSize: 13.5, height: 1,
+              letterSpacing: 0.2,
+              fontWeight: FontWeight.w900,
+            )),
+        ],
+      ),
+    );
+  }
+}
+
+class _RizzProgressChip extends StatelessWidget {
+  final VoidCallback onTap;
+  const _RizzProgressChip({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: () { HapticFeedback.selectionClick(); onTap(); },
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: 38, height: 38,
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: AppColors.signalAmber.withValues(alpha: 0.55),
+              width: 0.8),
+          ),
+          alignment: Alignment.center,
+          child: const Icon(Icons.show_chart_rounded,
+              size: 18, color: AppColors.signalAmber),
+        ),
+      ),
+    );
+  }
+}
+
 class _RizzSettingsCog extends StatelessWidget {
   final VoidCallback onTap;
   const _RizzSettingsCog({required this.onTap});

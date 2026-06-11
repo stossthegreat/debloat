@@ -35,6 +35,7 @@ class ProgressScreen extends StatefulWidget {
 class _ProgressScreenState extends State<ProgressScreen> {
   List<ScanRecord> _scans = [];
   List<GenerationRecord> _generations = [];
+  List<GameScoreEntry> _gameScores = [];
   bool _loading = true;
 
   // Auralay training stats — surfaced in the TRAINING section.
@@ -50,12 +51,14 @@ class _ProgressScreenState extends State<ProgressScreen> {
   Future<void> _loadAll() async {
     final scans = await LocalStoreService.loadScans();
     final gens  = await LocalStoreService.loadGenerations();
+    final game  = await LocalStoreService.loadGameScores();
     final gz    = await GazeProgressStore.completedCount();
     final pr    = await PresenceProgressStore.completedCount();
     if (!mounted) return;
     setState(() {
       _scans = scans;
       _generations = gens;
+      _gameScores = game;
       _gazeCompleted = gz;
       _presenceCompleted = pr;
       _loading = false;
@@ -77,11 +80,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
           child: _loading
               ? const Center(child: CircularProgressIndicator(
                   color: AppColors.red, strokeWidth: 2))
-              // Empty-state ONLY when nothing exists on either side — no
-              // scans AND no Auralay training activity. Auralay-only users
-              // (Eyes/Game without scanning) still get a populated Progress
-              // tab with their training block.
+              // Empty-state ONLY when nothing exists on any pillar — no
+              // scans AND no Auralay training AND no game sessions. As
+              // soon as the user has touched any surface, the tab shows
+              // the relevant blocks (training, game chart, scan chart).
               : (_scans.isEmpty &&
+                      _gameScores.isEmpty &&
                       _gazeCompleted == 0 &&
                       _presenceCompleted == 0)
                   ? _emptyState()
@@ -98,6 +102,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
     final deltas = _scans.length >= 2 ? _computeAxisDeltas(sorted) : null;
     final hasTraining = _gazeCompleted > 0 || _presenceCompleted > 0;
     final hasScans    = _scans.isNotEmpty;
+    final hasGame     = _gameScores.isNotEmpty;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(Sp.lg, Sp.lg, Sp.lg, Sp.xxl),
@@ -118,6 +123,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         ),
         const SizedBox(height: 2),
         Text('${_scans.length} SCAN${_scans.length == 1 ? '' : 'S'}'
+             ' · ${_gameScores.length} GAME REP${_gameScores.length == 1 ? '' : 'S'}'
              ' · ${_generations.length} GENERATIONS'
              ' · ${_gazeCompleted + _presenceCompleted} DRILLS',
           style: AppTypography.label.copyWith(
@@ -141,7 +147,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         if (hasScans) ...[
           // Score-over-time chart (Mirrorly's face-score timeline)
           _ChartCard(scans: sorted)
-            .animate().fadeIn(delay: hasTraining ? 0.ms : 0.ms, duration: 400.ms),
+            .animate().fadeIn(duration: 400.ms),
 
           const SizedBox(height: Sp.md),
 
@@ -154,6 +160,18 @@ class _ProgressScreenState extends State<ProgressScreen> {
           _ScanHistoryList(scans: _scans)
             .animate().fadeIn(delay: 280.ms, duration: 400.ms),
 
+          const SizedBox(height: Sp.lg),
+        ],
+
+        // ── GAME · OVER TIME — Lucien scorecard arc.
+        // Mirror of the Aesthetic Index chart, but for roleplay reps.
+        // Renders the moment the user has finished one Free Flow
+        // session; with one point it shows the single dot + the
+        // session-count caption, with multiple points it draws the
+        // arc so the user sees their voice game compounding.
+        if (hasGame) ...[
+          _GameChartCard(scores: _gameScores)
+            .animate().fadeIn(delay: 200.ms, duration: 400.ms),
           const SizedBox(height: Sp.lg),
         ],
 
@@ -1044,4 +1062,176 @@ class _TechDot extends StatelessWidget {
       ],
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Game · over time — Lucien scorecard arc.
+//  Same structure as _ChartCard, tuned for game scores: amber accent
+//  (matches the "voice" surface across the rest of the app) and a
+//  caption that says how many reps the user has actually banked.
+// ═══════════════════════════════════════════════════════════════════════════
+class _GameChartCard extends StatelessWidget {
+  final List<GameScoreEntry> scores;
+  const _GameChartCard({required this.scores});
+
+  @override
+  Widget build(BuildContext context) {
+    final latest = scores.last.score;
+    final best   = scores.map((e) => e.score).reduce(math.max);
+    return Container(
+      padding: const EdgeInsets.all(Sp.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(Rd.xl),
+        border: Border.all(color: AppColors.signalAmber.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('GAME · OVER TIME',
+                style: AppTypography.label.copyWith(
+                  color: AppColors.signalAmber,
+                  letterSpacing: 2.5, fontSize: 9)),
+              const Spacer(),
+              Text('BEST $best · NOW $latest',
+                style: AppTypography.label.copyWith(
+                  color: AppColors.textTertiary,
+                  letterSpacing: 1.6, fontSize: 8.5)),
+            ],
+          ),
+          const SizedBox(height: Sp.md),
+          SizedBox(
+            height: 160,
+            child: CustomPaint(
+              size: Size.infinite,
+              painter: _GameChartPainter(scores: scores),
+            ),
+          ),
+          const SizedBox(height: Sp.sm),
+          Row(
+            children: [
+              Text(_fmt(scores.first.takenAt),
+                style: AppTypography.label.copyWith(
+                  color: AppColors.textTertiary, fontSize: 8.5, letterSpacing: 1.8)),
+              const Spacer(),
+              Text('${scores.length} REP${scores.length == 1 ? '' : 'S'}',
+                style: AppTypography.label.copyWith(
+                  color: AppColors.textTertiary, fontSize: 8.5, letterSpacing: 1.8)),
+              const Spacer(),
+              Text(_fmt(scores.last.takenAt),
+                style: AppTypography.label.copyWith(
+                  color: AppColors.textTertiary, fontSize: 8.5, letterSpacing: 1.8)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _fmt(DateTime d) {
+    const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    return '${d.day} ${months[d.month - 1]}';
+  }
+}
+
+class _GameChartPainter extends CustomPainter {
+  final List<GameScoreEntry> scores;
+  _GameChartPainter({required this.scores});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (scores.isEmpty) return;
+
+    const padX = 10.0, padTop = 14.0, padBot = 14.0;
+    final chartW = size.width - padX * 2;
+    final chartH = size.height - padTop - padBot;
+
+    final values = scores.map((s) => s.score.toDouble()).toList();
+    final minS = values.reduce(math.min);
+    final maxS = values.reduce(math.max);
+    final yMin = math.max(0.0, (minS - 8).floorToDouble());
+    final yMax = math.min(100.0, (maxS + 8).ceilToDouble());
+    final yRange = (yMax - yMin).clamp(1.0, 100.0);
+
+    final gridPaint = Paint()
+      ..color = AppColors.surface3.withValues(alpha: 0.6)
+      ..strokeWidth = 0.6;
+    for (var i = 0; i <= 3; i++) {
+      final y = padTop + chartH * (i / 3);
+      canvas.drawLine(Offset(padX, y), Offset(size.width - padX, y), gridPaint);
+    }
+
+    final points = <Offset>[];
+    for (var i = 0; i < scores.length; i++) {
+      final x = padX + (scores.length == 1 ? chartW / 2 : chartW * (i / (scores.length - 1)));
+      final y = padTop + chartH * (1 - (scores[i].score - yMin) / yRange);
+      points.add(Offset(x, y));
+    }
+
+    if (points.length > 1) {
+      final areaPath = Path()
+        ..moveTo(points.first.dx, padTop + chartH)
+        ..lineTo(points.first.dx, points.first.dy);
+      for (var i = 1; i < points.length; i++) {
+        final prev = points[i - 1];
+        final cur  = points[i];
+        final midX = (prev.dx + cur.dx) / 2;
+        areaPath.cubicTo(midX, prev.dy, midX, cur.dy, cur.dx, cur.dy);
+      }
+      areaPath
+        ..lineTo(points.last.dx, padTop + chartH)
+        ..close();
+      canvas.drawPath(areaPath, Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+          colors: [
+            AppColors.signalAmber.withValues(alpha: 0.18),
+            AppColors.signalAmber.withValues(alpha: 0.02),
+          ],
+        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)));
+    }
+
+    if (points.length > 1) {
+      final linePath = Path()..moveTo(points.first.dx, points.first.dy);
+      for (var i = 1; i < points.length; i++) {
+        final prev = points[i - 1];
+        final cur  = points[i];
+        final midX = (prev.dx + cur.dx) / 2;
+        linePath.cubicTo(midX, prev.dy, midX, cur.dy, cur.dx, cur.dy);
+      }
+      canvas.drawPath(linePath, Paint()
+        ..color = AppColors.signalAmber
+        ..strokeWidth = 2.2
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round);
+    }
+
+    for (var i = 0; i < points.length; i++) {
+      final p = points[i];
+      canvas.drawCircle(p, 4.5, Paint()..color = AppColors.surface1);
+      canvas.drawCircle(p, 4.5, Paint()
+        ..color = AppColors.signalAmber
+        ..strokeWidth = 1.6
+        ..style = PaintingStyle.stroke);
+
+      if (i == 0 || i == points.length - 1) {
+        final tp = TextPainter(
+          text: TextSpan(
+            text: '${scores[i].score}',
+            style: TextStyle(
+              color: AppColors.signalAmber, fontSize: 10,
+              fontWeight: FontWeight.w800, letterSpacing: 0.5,
+              fontFamilyFallback: const ['monospace']),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy - 20));
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GameChartPainter old) => old.scores != scores;
 }

@@ -10,6 +10,12 @@ import '../models/scan_record.dart';
 class LocalStoreService {
   static const _kScans        = 'scans.v1';
   static const _kGenerations  = 'generations.v1';
+  /// Per-session Lucien scorecard history. Each entry is the score
+  /// the AI returned at the end of a Free Flow session, with the
+  /// epoch-millis timestamp of when it was scored. Powers the
+  /// "GAME · OVER TIME" chart on the Progress page so the user can
+  /// see their roleplay arc, not just the latest number.
+  static const _kGameScores   = 'game.scores.v1';
   static const _kActiveProto  = 'protocol.active.v1';
   static const _kSubscribed   = 'subscription.active.v1';
   static const _kOnboarded    = 'onboarded.v1';
@@ -90,6 +96,36 @@ class LocalStoreService {
   static Future<void> clearScans() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kScans);
+  }
+
+  // ── Game scores (Lucien scorecards over time) ────────────────────────────
+  static Future<List<GameScoreEntry>> loadGameScores() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_kGameScores) ?? const [];
+    return list.map((s) {
+      try {
+        final m = jsonDecode(s) as Map<String, dynamic>;
+        return GameScoreEntry(
+          score:   (m['score']  as num).toInt(),
+          takenAt: DateTime.fromMillisecondsSinceEpoch(m['ts'] as int),
+        );
+      } catch (_) { return null; }
+    }).whereType<GameScoreEntry>().toList()
+      ..sort((a, b) => a.takenAt.compareTo(b.takenAt));
+  }
+
+  static Future<void> saveGameScore(int score) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_kGameScores) ?? const <String>[];
+    final entry = jsonEncode({
+      'score': score.clamp(0, 100),
+      'ts':    DateTime.now().millisecondsSinceEpoch,
+    });
+    final updated = [...list, entry];
+    final trimmed = updated.length > 200
+        ? updated.sublist(updated.length - 200)
+        : updated;
+    await prefs.setStringList(_kGameScores, trimmed);
   }
 
   // ── Generations (AI-rendered images) ─────────────────────────────────────

@@ -903,6 +903,9 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       'game_done_ymd',
       now.year * 10000 + now.month * 100 + now.day,
     );
+    // Append to the Progress-page game timeline so the user's arc
+    // shows up alongside their Looks chart.
+    await LocalStoreService.saveGameScore(next);
   }
 
   void _fail(String msg) {

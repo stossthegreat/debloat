@@ -13,6 +13,7 @@ import '../../services/analytics_service.dart';
 import '../../services/local_store_service.dart';
 import '../../widgets/common/imhim_wordmark.dart';
 import '../../services/purchase_service.dart';
+import '../../services/review_prompt_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 
@@ -249,9 +250,20 @@ class _PaywallScreenState extends State<PaywallScreen> {
         'geometry':    ctx['geometry'],
         'extraImages': ctx['extraImages'] ?? const <dynamic>[],
       });
-      return;
+    } else {
+      context.go('/home');
     }
-    context.go('/home');
+    // Bro v7: "the rating prompt should show after our wow moments
+    // after a conversion." THIS is the wow moment. We've just routed
+    // the user to /report or /home; ReviewPromptService will let the
+    // destination's first paint settle (1.4s) then slide the 5-star
+    // dialog over it. One-prompt-per-device ceiling means a user who
+    // already saw the triple-milestone version won't get re-asked.
+    //
+    // After the context.go call so the destination is mounted by the
+    // time the dialog reads the new BuildContext via root navigator.
+    // ignore: discarded_futures
+    ReviewPromptService.maybePromptAfterPurchase(context);
   }
 
   void _close() {
