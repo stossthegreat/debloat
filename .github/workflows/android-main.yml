@@ -46,6 +46,15 @@ jobs:
       - name: 📦 Get Flutter dependencies
         run: flutter pub get
 
+      - name: 🎨 Regenerate launcher icons from assets/icons/*.png
+        # CRITICAL: without this step the build ships whatever generated
+        # icons happen to be committed in ios/Runner/Assets.xcassets/
+        # and android/app/src/main/res/mipmap-* — i.e. STALE icons. This
+        # reads the source masters in assets/icons/ + the pubspec
+        # flutter_launcher_icons block, and writes fresh platform-
+        # specific icons every build.
+        run: dart run flutter_launcher_icons
+
       - name: 🔍 Verify Flutter setup
         run: flutter doctor -v
 

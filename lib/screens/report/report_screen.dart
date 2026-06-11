@@ -119,7 +119,9 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   void _rotateCopy() {
-    Future.delayed(const Duration(seconds: 2), () {
+    // 1.4s rotation feels quicker / more elite than the old 2s. Long
+    // enough to read, fast enough to feel like real progress.
+    Future.delayed(const Duration(milliseconds: 1400), () {
       if (!mounted || _analysis != null) return;
       setState(() => _copyIdx = (_copyIdx + 1) % _loadingCopy.length);
       _rotateCopy();
@@ -130,7 +132,10 @@ class _ReportScreenState extends State<ReportScreen> {
   /// knows the screen isn't frozen. Bro: "no reason why it should ever
   /// take more than 20-30 seconds" — 30s here matches that ceiling.
   void _watchForSlowResponse() {
-    Future.delayed(const Duration(seconds: 30), () {
+    // Bro v6: "should be quicker and elite loading and it should say
+    // still working even after 20-30 seconds." 20s feels alive vs the
+    // old 30s — by 20s the user is already wondering if it's frozen.
+    Future.delayed(const Duration(seconds: 20), () {
       if (!mounted || _analysis != null || _error != null) return;
       setState(() => _slowResponse = true);
     });
@@ -395,17 +400,16 @@ class _ReportScreenState extends State<ReportScreen> {
               ),
               child: Column(
                 children: [
-                  Text('TAKING LONGER THAN USUAL',
+                  Text('STILL WORKING',
                     style: AppTypography.label.copyWith(
                       color: AppColors.signalAmber,
-                      letterSpacing: 2.4, fontSize: 10,
+                      letterSpacing: 3.2, fontSize: 10.5,
                       fontWeight: FontWeight.w900,
                     )),
                   const SizedBox(height: 6),
                   Text(
-                    'Backend is slow right now — we\'re still '
-                    'working on your scan. Hold tight, it\'s on '
-                    'the way.',
+                    'The honest read is heavy — bones, skin, eyes, '
+                    'archetype. Almost there.',
                     textAlign: TextAlign.center,
                     style: AppTypography.body.copyWith(
                       fontSize: 11.5,

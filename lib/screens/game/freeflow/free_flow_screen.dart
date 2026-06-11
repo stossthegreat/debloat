@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_pcm_sound/flutter_pcm_sound.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -210,8 +211,24 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   final List<int> _pcmQueue = [];
 
   // Session length.
+  /// Default session length for Pro users — 3 minutes per session.
   static const int _sessionSeconds = 180;
+  /// Bro v6: "we want the free roleplay to be one minute then after
+  /// one response add a brutal pop up tap Lucien for your legendary
+  /// teacher." Free users get a single 60-second session, then the
+  /// upsell modal fires.
+  static const int _freeSessionSeconds = 60;
   int _remaining = _sessionSeconds;
+  /// True while THIS session belongs to a non-pro user. Resolved in
+  /// _goLive before the clock starts so the 60-second hard ceiling
+  /// (and the Lucien upsell modal at session end) only fires for
+  /// free users.
+  bool _freeSession = false;
+  /// Did we already fire the post-session Lucien upsell on this
+  /// instance? Guard so the modal doesn't double-stack if the
+  /// session ends via more than one path (timer expiry + manual
+  /// end + cap reached).
+  bool _lucienUpsellShown = false;
   /// True once the user has held the orb for the first time. The
   /// session clock only starts ticking on that first press — sitting
   /// on the screen reading the scenario shouldn't burn seconds.
@@ -292,10 +309,19 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     // push-to-talk hold in _startHold(). A returning free user
     // sees the live UI shell, and the paywall only fires when they
     // actually try to speak.
+    // Resolve free-vs-pro for THIS session so the clock + post-session
+    // upsell run on the correct timing for the right user. Re-read on
+    // every _goLive so a mid-session upgrade flips the user to the Pro
+    // 3-minute ceiling on their next vibe-switch.
+    final pro = await PaywallGate.isPro();
+    if (!mounted) return;
     setState(() {
       _vibe = vibe;
       _phase = _Phase.connecting;
       _error = '';
+      _freeSession = !pro;
+      _lucienUpsellShown = false;
+      _remaining = pro ? _sessionSeconds : _freeSessionSeconds;
     });
     try {
       if (!await _recorder.hasPermission()) {
@@ -752,6 +778,31 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     _clock?.cancel();
     _createTimer?.cancel();
     HapticFeedback.mediumImpact();
+
+    // Bro v6 free-session upsell: when a free user's 60-second session
+    // ends, skip the score → scored cinematic and slide a Lucien
+    // upsell modal in instead. The modal IS the post-session screen
+    // for free users — there's no scorecard reveal until they upgrade.
+    if (_freeSession && !_lucienUpsellShown) {
+      _lucienUpsellShown = true;
+      _pcmQueue.clear();
+      _session.cancelResponse();
+      await _micSub?.cancel();
+      // ignore: discarded_futures
+      _recorder.stop().catchError((_) {});
+      if (!mounted) return;
+      setState(() {
+        _phase = _Phase.scored; // freeze the live UI so the modal sits on top
+        _holding = false;
+        _herSpeaking = false;
+      });
+      // Defer so the current frame completes before the modal pushes.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showLucienUpsell();
+      });
+      return;
+    }
+
     // Stop streaming both ways.
     _pcmQueue.clear();
     _session.cancelResponse();
@@ -1991,6 +2042,200 @@ class _ArenaPill extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Slide a full-screen Lucien upsell modal in at the end of a free
+  /// session. Lucien's portrait dominates the screen — italic Playfair
+  /// headline "Tap Lucien for your legendary teacher" + UNLOCK PRO CTA
+  /// at the bottom. Dismissable via the X but every dismiss / tap on
+  /// the portrait routes to the glow-up paywall.
+  Future<void> _showLucienUpsell() async {
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierColor: Colors.black.withValues(alpha: 0.55),
+        transitionDuration: const Duration(milliseconds: 420),
+        pageBuilder: (_, __, ___) => const _LucienUpsellSheet(),
+        transitionsBuilder: (_, anim, __, child) {
+          final curved = CurvedAnimation(
+              parent: anim, curve: Curves.easeOutCubic);
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween(
+                begin: const Offset(0, 0.08),
+                end:   Offset.zero,
+              ).animate(curved),
+              child: child,
+            ),
+          );
+        },
+      ),
+    );
+    // When the user comes back from the modal (with or without
+    // upgrading) reset the screen to the picker so the next tab
+    // entry behaves cleanly.
+    if (!mounted) return;
+    setState(() {
+      _phase = _Phase.pick;
+      _tabAutoStartFired = false;
+    });
+  }
+}
+
+/// Full-screen Lucien upsell — the v6 post-session conversion.
+/// Bro: "tap Lucien for your legendary teacher, no card, something
+/// beautiful so they press it."
+///
+/// Composition: full-bleed Lucien portrait darkening from top to
+/// bottom · italic Playfair headline center · red UNLOCK PRO CTA
+/// pinned to the bottom safe-area · tiny close X at the top-right.
+/// Tapping the portrait OR the CTA fires the glow-up paywall.
+class _LucienUpsellSheet extends StatelessWidget {
+  const _LucienUpsellSheet();
+
+  Future<void> _toPaywall(BuildContext context) async {
+    HapticFeedback.mediumImpact();
+    Navigator.of(context).pop();
+    if (!context.mounted) return;
+    await context.push('/paywall',
+        extra: {'source': 'glowup_lucien_upsell'});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // Portrait — full bleed. Tapping it routes to paywall too,
+          // since the user reads "tap Lucien" as the action.
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => _toPaywall(context),
+              child: Image.asset(
+                MirrorlyAssets.lucien,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: AppColors.surface1,
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.person_rounded,
+                      size: 96, color: AppColors.surface3),
+                ),
+              ),
+            ),
+          ),
+          // Gradient wash — keep the face legible up top, darken the
+          // bottom so the text + CTA carry.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end:   Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.18),
+                      Colors.black.withValues(alpha: 0.55),
+                      Colors.black.withValues(alpha: 0.94),
+                    ],
+                    stops: const [0.0, 0.55, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Close X.
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+              child: Align(
+                alignment: Alignment.topRight,
+                child: Material(
+                  color: Colors.transparent,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).pop(),
+                    customBorder: const CircleBorder(),
+                    child: Container(
+                      width: 38, height: 38,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.42),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.32),
+                          width: 0.8),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.close_rounded,
+                          size: 18, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Bottom stack — eyebrow, headline, CTA.
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('LUCIEN',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.red,
+                      fontSize: 12.5, letterSpacing: 4.0,
+                      fontWeight: FontWeight.w900,
+                    )),
+                  const SizedBox(height: 8),
+                  Text('Tap Lucien for your\nlegendary teacher.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.playfairDisplay(
+                      color: Colors.white,
+                      fontSize: 30, height: 1.15,
+                      letterSpacing: -0.5,
+                      fontStyle: FontStyle.italic,
+                      fontWeight: FontWeight.w800,
+                    )),
+                  const SizedBox(height: 10),
+                  Text('Real-time coaching until every reply\nlands. '
+                       'Unlimited reps. No script.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: Colors.white.withValues(alpha: 0.82),
+                      fontSize: 14, height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    )),
+                  const SizedBox(height: 22),
+                  Material(
+                    color: AppColors.red,
+                    borderRadius: BorderRadius.circular(14),
+                    child: InkWell(
+                      onTap: () => _toPaywall(context),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        alignment: Alignment.center,
+                        child: Text('UNLOCK PRO',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 13.5, letterSpacing: 3.0,
+                            fontWeight: FontWeight.w900,
+                          )),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
