@@ -156,3 +156,11 @@ class GenerationRecord {
     relatedScanId: j['relatedScanId'] as String?,
   );
 }
+
+/// One row in the Lucien game-score timeline. Written at the end of
+/// every Free Flow session; read by the Progress page chart.
+class GameScoreEntry {
+  final int      score;   // 0..100, Lucien's scorecard for that session
+  final DateTime takenAt;
+  const GameScoreEntry({required this.score, required this.takenAt});
+}

@@ -149,11 +149,19 @@ class DailyNudgeService {
   }
 
   // ── COPY POOL ───────────────────────────────────────────────────────
-  // 6-10 lines per state. (title, body). No emojis. Specific. Loss-
-  // framed. Friend warning voice.
+  // 8-12 lines per state. (title, body). No emojis. Two voices mixed
+  // in every pool so the daily hash alternates between them:
+  //
+  //   1. Loss-framed friend warning  ("Other men know theirs", "She
+  //      moved on") — wakes the user up when they're slipping.
+  //   2. Aspirational every-man's-dream  ("Practice roleplay until
+  //      you're the smoothest", "Scan and get instant glow-up wins")
+  //      — pulls the user toward the version of themselves the app
+  //      builds. Designed for retention + conversion: every line
+  //      promises a beat-by-beat win the user actually wants.
   //
   // The picker hashes by today's date so consecutive days inside the
-  // same state never repeat.
+  // same state never repeat the same line.
 
   static const _copyPool = <_NudgeState, List<(String, String)>>{
     _NudgeState.noScan: [
@@ -167,6 +175,14 @@ class DailyNudgeService {
        'Scan once. Then we work on the version she chooses.'),
       ('Other men know theirs',
        'They\'ve been improving for weeks. Where are you?'),
+      ('Scan. Get instant glow-up wins',
+       '30 seconds in. A protocol out. The version she stares at.'),
+      ('Unlock your face',
+       'One scan. Five fixes. The man she remembers tomorrow.'),
+      ('Your blueprint is one tap away',
+       'Scan tonight. Start becoming the guy she can\'t ignore.'),
+      ('Become impossible to overlook',
+       '30-second scan. Personal glow-up plan. Tonight.'),
     ],
     _NudgeState.postScanNoGame: [
       ('Looks opened the door',
@@ -179,6 +195,14 @@ class DailyNudgeService {
        'Free Flow is two minutes. Then you stop being theory.'),
       ('Tonight she\'ll text someone',
        'Make sure you know how to text her back.'),
+      ('Practice roleplay until you\'re the smoothest',
+       'Lucien is waiting. Two minutes builds the voice she replays.'),
+      ('Become the guy that always knows what to say',
+       'Open Free Flow. Train the line. Show up sharp tomorrow.'),
+      ('The voice she replays',
+       'Two-minute roleplay tonight. Effortless tomorrow.'),
+      ('From scanned to smooth',
+       'Free Flow turns the face into the man. Tap in.'),
     ],
     _NudgeState.protocolActive: [
       ('Don\'t break the spell',
@@ -191,6 +215,14 @@ class DailyNudgeService {
        'Two-minute check-in. Then you can rest.'),
       ('You\'ve done harder things',
        'Two minutes. Today. Lock it in.'),
+      ('Stack one more day',
+       'Every check-in compounds. You\'re becoming him.'),
+      ('Streak is your edge',
+       'Log tonight. Wake up sharper than yesterday.'),
+      ('Two minutes. Lock the version she chooses',
+       'The man at the end of this streak is the one she remembers.'),
+      ('You\'re building him in real time',
+       'Tonight\'s log is tomorrow\'s confidence. Tap in.'),
     ],
     _NudgeState.protocolBroken: [
       ('Two days off',
@@ -203,6 +235,12 @@ class DailyNudgeService {
        'Is fading. You stopped showing up. Come back.'),
       ('One bad day',
        'Doesn\'t end it. Two does. Open the app.'),
+      ('Restart tonight',
+       'The version she falls for is one streak away. Begin.'),
+      ('Comeback streak hits different',
+       'Day one again. Two minutes. Be the guy who returns.'),
+      ('The man she remembers',
+       'Is the one who restarted. Log tonight.'),
     ],
     _NudgeState.gameStale3d: [
       ('Conversation going foreign',
@@ -215,6 +253,12 @@ class DailyNudgeService {
        '3 days off. You\'re going in cold next time. Don\'t.'),
       ('The muscle softens fast',
        '3 days. Reload one rep tonight.'),
+      ('Reload the smooth',
+       'Two-minute Free Flow. Tomorrow\'s conversation stays effortless.'),
+      ('Sharpen the line tonight',
+       'One rep with Lucien. Walk into tomorrow ready.'),
+      ('Practice until you\'re unflappable',
+       'Two minutes. The man she chases is built in reps like this.'),
     ],
     _NudgeState.gameStale7d: [
       ('A week of silence',
@@ -227,6 +271,12 @@ class DailyNudgeService {
        'A week ago you\'d have a line ready. Now you\'d freeze.'),
       ('Frame fading',
        'A full week. Two minutes tonight saves what you built.'),
+      ('Get back to the smoothest you',
+       'Two minutes with Lucien. The week off becomes a story.'),
+      ('Train until you\'re the smoothest',
+       'A week\'s rust. One rep clears it. Open Free Flow.'),
+      ('The line that wins her',
+       'You stopped practicing it. Reload tonight.'),
     ],
     _NudgeState.dormant7d: [
       ('You went quiet',
@@ -237,6 +287,12 @@ class DailyNudgeService {
        'You did. Open the app before it stops mattering.'),
       ('Where did you go',
        'The work you started doesn\'t finish on its own.'),
+      ('Come back to the version she chooses',
+       'Two minutes. Right back where you left off.'),
+      ('The guy she can\'t ignore',
+       'Is still inside. Open the app. Two minutes tonight.'),
+      ('Welcome back, future smoothest',
+       'Reload one rep. Tomorrow you\'re sharp again.'),
     ],
     _NudgeState.dormant14d: [
       ('Three weeks. He didn\'t pause',
@@ -247,6 +303,12 @@ class DailyNudgeService {
        'You didn\'t have to. Open the app.'),
       ('Two weeks dark',
        'Whatever stopped you stops here. Reopen. Two minutes.'),
+      ('Restart the glow-up',
+       'A scan. A rep. Two minutes. The guy she remembers, again.'),
+      ('The man she chases',
+       'Is two minutes back. Open the app. Reload.'),
+      ('Come back smoother',
+       'Two minutes tonight. Pick up where the streak left you.'),
     ],
     _NudgeState.defaultState: [
       ('Tonight, reload',
@@ -257,6 +319,14 @@ class DailyNudgeService {
        'Two minutes. Then sleep.'),
       ('Don\'t go cold',
        'Two-minute rep. Real conversation tomorrow stays effortless.'),
+      ('Become the guy that always knows what to say',
+       'Two minutes with Lucien. Walk in smooth tomorrow.'),
+      ('Practice until you\'re the smoothest',
+       'One rep tonight. The version she replays.'),
+      ('Sharpen the smooth',
+       'Two minutes. Tomorrow\'s conversation owes you nothing.'),
+      ('Build the man she can\'t ignore',
+       'One rep. Every night. The compounding is silent.'),
     ],
   };
 

@@ -275,6 +275,9 @@ class _ScanHubTab extends StatelessWidget {
                     _StreakBadge(days: dayStreak),
                     const SizedBox(width: 8),
                   ],
+                  _ProgressIconChip(
+                      onTap: () => context.push('/progress')),
+                  const SizedBox(width: 8),
                   _MastheadCog(
                       onTap: () => context.push('/settings')),
                 ],
@@ -665,6 +668,40 @@ class _StreakBadge extends StatelessWidget {
               fontWeight: FontWeight.w900,
             )),
         ],
+      ),
+    );
+  }
+}
+
+// ── Progress chip — sits between the streak flame and the settings
+// cog. Single circular icon, same diameter as _MastheadCog, accent
+// hairline so the user reads it as "a chart you can open" rather
+// than another setting. Routes to /progress.
+class _ProgressIconChip extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ProgressIconChip({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: () { HapticFeedback.selectionClick(); onTap(); },
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: 38, height: 38,
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: AppColors.signalAmber.withValues(alpha: 0.55),
+              width: 0.8),
+          ),
+          alignment: Alignment.center,
+          child: const Icon(Icons.show_chart_rounded,
+              size: 18, color: AppColors.signalAmber),
+        ),
       ),
     );
   }
