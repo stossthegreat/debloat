@@ -11,15 +11,10 @@
 		2D51D0F4994CC08660933170 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2358E5BB07F6053D8C292DBD /* Foundation.framework */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
-		40B63DB87858E2F0207698F9 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF12F53B4668C7172B5EE9B /* Theme.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
-		89FB72F7E159A20002B2159B /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F579982D8E0D9B8B23A8FF7 /* KeyboardViewController.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
-		C65F58ED167CF30B597C77C1 /* ImHimKeyboard.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = B9866C2FDB1D28869E0D9442 /* ImHimKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		F121E6A83753863049D40554 /* ScreenshotScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EBBB5740C4CC0D60728151C /* ScreenshotScanner.swift */; };
-		FBB3B66E6AA5446EFACDB085 /* RizzClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E64CB180A4ED3803A94663EF /* RizzClient.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,13 +24,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
-		};
-		BB772CA4CC7BAC3EAA71C25D /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 60C913BF68A82D3B8EF5363D;
-			remoteInfo = ImHimKeyboard;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -50,32 +38,18 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FCB4DBBBC871165CD27CCCC3 /* Embed App Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				C65F58ED167CF30B597C77C1 /* ImHimKeyboard.appex in Embed App Extensions */,
-			);
-			name = "Embed App Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
-		1F579982D8E0D9B8B23A8FF7 /* KeyboardViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
 		2358E5BB07F6053D8C292DBD /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
-		3EBBB5740C4CC0D60728151C /* ScreenshotScanner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenshotScanner.swift; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
-		90CBCFE4229B0B8FD4A7DC8A /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
 		97C146EE1CF9000F007C117D /* Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Runner.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -84,9 +58,6 @@
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B9866C2FDB1D28869E0D9442 /* ImHimKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ImHimKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		E319BCEFFB76D00BA5B338EE /* ImHimKeyboard.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = ImHimKeyboard.entitlements; sourceTree = "<group>"; };
-		E64CB180A4ED3803A94663EF /* RizzClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RizzClient.swift; sourceTree = "<group>"; };
-		FAF12F53B4668C7172B5EE9B /* Theme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -94,14 +65,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		E3EF1BF7150501DA79254211 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				2D51D0F4994CC08660933170 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -124,20 +87,6 @@
 			path = RunnerTests;
 			sourceTree = "<group>";
 		};
-		940183F2B9D6CFA1CE950FD4 /* ImHimKeyboard */ = {
-			isa = PBXGroup;
-			children = (
-				1F579982D8E0D9B8B23A8FF7 /* KeyboardViewController.swift */,
-				3EBBB5740C4CC0D60728151C /* ScreenshotScanner.swift */,
-				E64CB180A4ED3803A94663EF /* RizzClient.swift */,
-				FAF12F53B4668C7172B5EE9B /* Theme.swift */,
-				90CBCFE4229B0B8FD4A7DC8A /* Info.plist */,
-				E319BCEFFB76D00BA5B338EE /* ImHimKeyboard.entitlements */,
-			);
-			name = ImHimKeyboard;
-			path = ImHimKeyboard;
-			sourceTree = SOURCE_ROOT;
-		};
 		9740EEB11CF90186004384FC /* Flutter */ = {
 			isa = PBXGroup;
 			children = (
@@ -157,7 +106,6 @@
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				0CD96DAD5C88D305C95C9F17 /* Frameworks */,
-				940183F2B9D6CFA1CE950FD4 /* ImHimKeyboard */,
 			);
 			sourceTree = "<group>";
 		};
@@ -214,23 +162,6 @@
 			productReference = 331C8081294A63A400263BE5 /* RunnerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		60C913BF68A82D3B8EF5363D /* ImHimKeyboard */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 357A22F83DEA41A053A37534 /* Build configuration list for PBXNativeTarget "ImHimKeyboard" */;
-			buildPhases = (
-				C3386C2A7796A79B6F800813 /* Sources */,
-				E3EF1BF7150501DA79254211 /* Frameworks */,
-				2D6DE964A9EBF55D4FCC1FEF /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = ImHimKeyboard;
-			productName = ImHimKeyboard;
-			productReference = B9866C2FDB1D28869E0D9442 /* ImHimKeyboard.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
 		97C146ED1CF9000F007C117D /* Runner */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 97C147051CF9000F007C117D /* Build configuration list for PBXNativeTarget "Runner" */;
@@ -241,12 +172,10 @@
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
-				FCB4DBBBC871165CD27CCCC3 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				399BF8D4EBE57DB904223318 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
@@ -288,19 +217,11 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
-				60C913BF68A82D3B8EF5363D /* ImHimKeyboard */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		2D6DE964A9EBF55D4FCC1FEF /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		331C807F294A63A400263BE5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -373,17 +294,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		C3386C2A7796A79B6F800813 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				89FB72F7E159A20002B2159B /* KeyboardViewController.swift in Sources */,
-				F121E6A83753863049D40554 /* ScreenshotScanner.swift in Sources */,
-				FBB3B66E6AA5446EFACDB085 /* RizzClient.swift in Sources */,
-				40B63DB87858E2F0207698F9 /* Theme.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -391,12 +301,6 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
-		};
-		399BF8D4EBE57DB904223318 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = ImHimKeyboard;
-			target = 60C913BF68A82D3B8EF5363D /* ImHimKeyboard */;
-			targetProxy = BB772CA4CC7BAC3EAA71C25D /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -502,7 +406,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -729,7 +632,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -752,7 +654,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -777,16 +678,6 @@
 				331C8088294A63A400263BE5 /* Debug */,
 				331C8089294A63A400263BE5 /* Release */,
 				331C808A294A63A400263BE5 /* Profile */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		357A22F83DEA41A053A37534 /* Build configuration list for PBXNativeTarget "ImHimKeyboard" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				058AEBB392568D5A51867B05 /* Release */,
-				6BF943294A9BFEF08102413E /* Debug */,
-				80778CBE9463C39A062D2A9E /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
