@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../config/dev_flags.dart';
+import '../../services/analytics_service.dart';
 import '../../services/creator_mode_store.dart';
 import '../../services/face_asset_service.dart';
 import '../../services/local_store_service.dart';
@@ -18,8 +19,20 @@ import '../../widgets/common/imhim_wordmark.dart';
 /// requires working Terms, Privacy Policy, Restore Purchases, and a
 /// Manage Subscription path; all four are surfaced from here as well
 /// as from the paywall.
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // ignore: discarded_futures
+    AnalyticsService.settingsScreenViewed();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,6 +135,22 @@ class SettingsScreen extends StatelessWidget {
               // reflected the moment the user returns here.
               _SectionHeader('USAGE'),
               const _VoiceCapTile(),
+
+              const SizedBox(height: Sp.lg),
+
+              // ── KEYBOARD ──────────────────────────────────────────────────
+              _SectionHeader('KEYBOARD'),
+              _SettingTile(
+                icon: Icons.keyboard_alt_rounded,
+                title: 'ImHim Keyboard',
+                subtitle: 'Three replies inside iMessage, Hinge, Tinder',
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  // ignore: discarded_futures
+                  AnalyticsService.keyboardInstallTileTapped('settings');
+                  context.push('/keyboard-install');
+                },
+              ),
 
               const SizedBox(height: Sp.lg),
 
@@ -489,6 +518,11 @@ class _VoiceCapTileState extends State<_VoiceCapTile> {
       _pro    = pro;
       _loaded = true;
     });
+    // ignore: discarded_futures
+    AnalyticsService.settingsVoiceCapViewed(
+      usedMs: ms,
+      capMs:  LocalStoreService.kVoiceMinutesPerMonth * 60 * 1000,
+    );
   }
 
   String _fmt(int totalMs) {

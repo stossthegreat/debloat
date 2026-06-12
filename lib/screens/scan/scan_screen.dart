@@ -995,6 +995,8 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       final usedFree = await LocalStoreService.scanFreeUsed();
       if (usedFree) {
         if (!mounted) return;
+        // ignore: discarded_futures
+        AnalyticsService.scanBlockedFreeCap();
         context.go('/paywall', extra: {
           'afterPurchase': '/report',
           'imageBytes':    imageBytes,

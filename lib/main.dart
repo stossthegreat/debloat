@@ -76,8 +76,52 @@ void main() async {
   runApp(const MirrorApp());
 }
 
-class MirrorApp extends StatelessWidget {
+class MirrorApp extends StatefulWidget {
   const MirrorApp({super.key});
+
+  @override
+  State<MirrorApp> createState() => _MirrorAppState();
+}
+
+class _MirrorAppState extends State<MirrorApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    // App-lifecycle observer — the drop-off detector. Pairs with the
+    // AnalyticsRouteObserver wired into appRouter so every backgrounding
+    // event carries the screen the user was looking at when they bailed.
+    // Resumes also fire so we can measure session count + return cadence.
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+        // ignore: discarded_futures
+        AnalyticsService.appPaused();
+        break;
+      case AppLifecycleState.resumed:
+        // ignore: discarded_futures
+        AnalyticsService.appResumed();
+        break;
+      case AppLifecycleState.detached:
+      case AppLifecycleState.inactive:
+        // detached fires on cold-kill and is best-effort: the OS may
+        // not give us long enough to flush the event over the wire.
+        // We still try.
+        // ignore: discarded_futures
+        AnalyticsService.appPaused();
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

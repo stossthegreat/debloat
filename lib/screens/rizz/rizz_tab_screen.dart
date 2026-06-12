@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../services/analytics_service.dart';
 import '../../services/paywall_gate.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/common/mirrorly_components.dart';
@@ -70,7 +71,11 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
 
   Future<void> _tapScreenshot() async {
     HapticFeedback.selectionClick();
+    // ignore: discarded_futures
+    AnalyticsService.rizzCardTapped('screenshot');
     if (!_pro && _screenshotUsed) {
+      // ignore: discarded_futures
+      AnalyticsService.rizzBlockedFreeCap('screenshot');
       await _openPaywall('rizz_screenshot_capped');
       return;
     }
@@ -80,7 +85,11 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
 
   Future<void> _tapLines() async {
     HapticFeedback.selectionClick();
+    // ignore: discarded_futures
+    AnalyticsService.rizzCardTapped('lines');
     if (!_pro) {
+      // ignore: discarded_futures
+      AnalyticsService.rizzBlockedFreeCap('lines');
       await _openPaywall('rizz_lines_locked');
       return;
     }
@@ -89,7 +98,11 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
 
   Future<void> _tapChat() async {
     HapticFeedback.selectionClick();
+    // ignore: discarded_futures
+    AnalyticsService.rizzCardTapped('chat');
     if (!_pro) {
+      // ignore: discarded_futures
+      AnalyticsService.rizzBlockedFreeCap('chat');
       await _openPaywall('rizz_chat_locked');
       return;
     }
@@ -133,11 +146,30 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
                 ],
               ),
             ),
-            // Bro v6: "push the three cards down a bit, they're too
-            // high — not massively just a cm or two." 18 → 64px so
-            // the trio sits below the optical centre rather than
-            // hugging the settings cog.
-            const SizedBox(height: 64),
+            const SizedBox(height: 36),
+
+            // Bro v9: ImHim Keyboard hero. The "rizz from anywhere"
+            // surface — install the iOS keyboard extension and any
+            // screenshot in any app generates three replies inline.
+            // Lives ABOVE the three legacy cards because it's the
+            // bigger product story; the cards are still here as the
+            // fallback flow when the user hasn't installed the
+            // keyboard yet (or is on Android).
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: _KeyboardHeroCard(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  // ignore: discarded_futures
+                  AnalyticsService.keyboardInstallTileTapped('rizz_tab');
+                  context.push('/keyboard-install');
+                },
+              ),
+            ).animate().fadeIn(duration: 360.ms)
+              .slideY(begin: 0.02, end: 0, duration: 360.ms,
+                  curve: Curves.easeOut),
+
+            const SizedBox(height: 28),
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -150,7 +182,7 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
                 onTap:    _tapScreenshot,
                 locked:   showScreenshotLock,
               ),
-            ).animate().fadeIn(duration: 360.ms)
+            ).animate().fadeIn(delay: 80.ms, duration: 360.ms)
               .slideY(begin: 0.02, end: 0, duration: 360.ms,
                   curve: Curves.easeOut),
 
@@ -457,6 +489,97 @@ class _RizzCard extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Keyboard hero — the elite "rizz from anywhere" card. Slightly taller
+//  than the legacy Rizz cards and lit with a soft red glow so the eye
+//  lands on it before the three smaller cards below. Italic Playfair
+//  headline, downward chevron hint.
+// ═══════════════════════════════════════════════════════════════════════════
+class _KeyboardHeroCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _KeyboardHeroCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 18, 18, 18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft, end: Alignment.bottomRight,
+              colors: [
+                AppColors.red.withValues(alpha: 0.28),
+                AppColors.red.withValues(alpha: 0.10),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: AppColors.red.withValues(alpha: 0.55), width: 1.0),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.red.withValues(alpha: 0.22),
+                blurRadius: 30, spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 56, height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.red.withValues(alpha: 0.20),
+                  border: Border.all(
+                    color: AppColors.red.withValues(alpha: 0.6), width: 0.9),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(Icons.keyboard_alt_rounded,
+                    color: AppColors.red, size: 26),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Rizz from anywhere.',
+                      style: GoogleFonts.playfairDisplay(
+                        color: Colors.white,
+                        fontSize: 19, height: 1.08,
+                        letterSpacing: -0.5,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Install the ImHim keyboard — three replies on any '
+                      'screenshot, inside iMessage, Hinge, Tinder.',
+                      style: GoogleFonts.inter(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5, height: 1.35,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded,
+                  color: Colors.white, size: 22),
+            ],
+          ),
+        ),
       ),
     );
   }

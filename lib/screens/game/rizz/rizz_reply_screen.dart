@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../services/analytics_service.dart';
 import '../../../services/local_store_service.dart';
 import '../../../services/paywall_gate.dart';
 import '../../../services/rizz_reply_service.dart';
@@ -95,6 +96,10 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
         _herCtrl.clear();
         _showTextEntry = false;
       });
+      // ignore: discarded_futures
+      AnalyticsService.rizzScreenshotUploaded(
+        hasText: _herCtrl.text.trim().isNotEmpty,
+      );
       // Auto-generate the moment the image lands — saves a tap. The
       // user picked a screenshot precisely because they want rizz.
       await _generate();
@@ -124,6 +129,8 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
     if (!pro && ssUsed) {
       if (!mounted) return;
       setState(() => _generating = false);
+      // ignore: discarded_futures
+      AnalyticsService.rizzBlockedFreeCap('screenshot_generate');
       await context.push('/paywall',
           extra: {'source': 'rizz_screenshot_capped'});
       return;
@@ -166,6 +173,11 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
         _replies = result;
         _generating = false;
       });
+      // ignore: discarded_futures
+      AnalyticsService.rizzRepliesGenerated(
+        count:  result.length,
+        isFree: !pro,
+      );
       // Burn the free pass — every subsequent tap routes to paywall.
       // Pro users keep generating without ever flipping this bit.
       if (!pro) {

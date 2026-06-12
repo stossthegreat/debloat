@@ -10,6 +10,7 @@ import '../../models/protocol.dart';
 import '../../models/scan_record.dart';
 import '../../models/technique.dart';
 import '../../providers/auralay_app_provider.dart';
+import '../../services/analytics_service.dart';
 import '../../services/gaze/gaze_progress_store.dart';
 import '../../services/local_store_service.dart';
 import '../../services/presence/presence_progress_store.dart';
@@ -45,6 +46,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
   @override
   void initState() {
     super.initState();
+    // ignore: discarded_futures
+    AnalyticsService.progressScreenViewed();
     _loadAll();
   }
 
@@ -125,6 +128,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
             ),
             const Spacer(),
             _ProgressCloseButton(onTap: () {
+              // ignore: discarded_futures
+              AnalyticsService.progressCloseTapped();
               if (context.canPop()) {
                 context.pop();
               } else {
@@ -264,6 +269,8 @@ class _ProgressLocked extends StatelessWidget {
               ),
             ),
             _ProgressCloseButton(onTap: () {
+              // ignore: discarded_futures
+              AnalyticsService.progressCloseTapped();
               if (context.canPop()) {
                 context.pop();
               } else {

@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/protocol.dart';
 import '../../models/scan_record.dart';
+import '../../services/analytics_service.dart';
 import '../../services/local_store_service.dart';
 import '../../services/protocol_service.dart';
 import '../../services/review_prompt_service.dart';
@@ -179,6 +180,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void _switchTab(int i) {
     HapticFeedback.selectionClick();
     setState(() => _tab = i);
+    // Tab-switch analytics — paired with the router observer's
+    // screen_view event so we can rebuild the LOOKS / GAME / RIZZ
+    // funnel without having to dedupe screen_views by source.
+    const tabNames = ['looks', 'game', 'rizz'];
+    if (i >= 0 && i < tabNames.length) {
+      // ignore: discarded_futures
+      AnalyticsService.tabOpened(tabNames[i]);
+    }
     // Re-read scan + pillar prefs whenever the user returns to the
     // Ascend tab — keeps LOOKS / AURA / GAME live the moment they
     // finish a lesson elsewhere in the app.

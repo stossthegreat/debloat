@@ -43,15 +43,8 @@ class _ReviewPromptDialogState extends State<ReviewPromptDialog> {
     HapticFeedback.mediumImpact();
 
     final comment = _commentCtrl.text.trim();
-    AnalyticsService.instance?.logEvent(
-      name: 'review_submitted',
-      parameters: {
-        'rating': _rating,
-        'has_comment': comment.isEmpty ? 0 : 1,
-        if (comment.isNotEmpty) 'comment': comment.substring(
-          0, comment.length > 100 ? 100 : comment.length),
-      },
-    );
+    // ignore: discarded_futures
+    AnalyticsService.reviewRatingChosen(_rating);
 
     if (_rating >= 4) {
       // requestReview() triggers Apple's native StoreKit review sheet
@@ -62,6 +55,8 @@ class _ReviewPromptDialogState extends State<ReviewPromptDialog> {
       try {
         final reviewer = InAppReview.instance;
         if (await reviewer.isAvailable()) {
+          // ignore: discarded_futures
+          AnalyticsService.reviewNativeOpened();
           await reviewer.requestReview();
         }
       } catch (_) {/* best effort */}
@@ -80,10 +75,8 @@ class _ReviewPromptDialogState extends State<ReviewPromptDialog> {
 
   void _dismiss() {
     HapticFeedback.selectionClick();
-    AnalyticsService.instance?.logEvent(
-      name: 'review_dismissed',
-      parameters: const {'reason': 'not_now'},
-    );
+    // ignore: discarded_futures
+    AnalyticsService.reviewDismissed();
     Navigator.of(context).pop();
   }
 

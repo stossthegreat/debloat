@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Display name shown in iOS Settings → Keyboards. -->
+	<key>CFBundleDisplayName</key>
+	<string>ImHim Keyboard</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+
+	<!-- NSExtension: declares this bundle as a custom keyboard. -->
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionAttributes</key>
+		<dict>
+			<!--
+				IsASCIICapable=NO  → users can input any non-ASCII chars
+				PrefersRightToLeft=NO
+				PrimaryLanguage     → en-US is sensible default
+				RequestsOpenAccess=YES → REQUIRED so the extension can reach the
+					/rizz/reply backend AND read the Photo Library for the most
+					recent screenshot. Without this we have no network and no
+					Photos. Apple shows the "Allow Full Access" warning in
+					Settings; the Flutter onboarding flow walks the user through
+					what it does and doesn't grant.
+			-->
+			<key>IsASCIICapable</key>
+			<false/>
+			<key>PrefersRightToLeft</key>
+			<false/>
+			<key>PrimaryLanguage</key>
+			<string>en-US</string>
+			<key>RequestsOpenAccess</key>
+			<true/>
+		</dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.keyboard-service</string>
+		<key>NSExtensionPrincipalClass</key>
+		<string>$(PRODUCT_MODULE_NAME).KeyboardViewController</string>
+	</dict>
+
+	<!-- Photo Library usage string. Shown the first time the keyboard
+	     asks for Photos access so it can grab the most recent screenshot.
+	     Apple is strict here — the string MUST be a clear, user-readable
+	     explanation. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ImHim reads your most recent screenshot so it can write three reply options to drop straight into your chat. We never store or upload your screenshot beyond the single reply-generation request.</string>
+</dict>
+</plist>

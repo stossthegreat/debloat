@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../widgets/review_prompt_dialog.dart';
+import 'analytics_service.dart';
 
 /// Three-milestone gate for the App Store / Play Store review prompt.
 ///
@@ -51,6 +52,8 @@ class ReviewPromptService {
     await Future.delayed(const Duration(milliseconds: 600));
     if (!context.mounted) return;
     await prefs.setBool(_kPrompted, true);
+    // ignore: discarded_futures
+    AnalyticsService.reviewPromptShown('milestones');
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -78,6 +81,8 @@ class ReviewPromptService {
     await Future.delayed(const Duration(milliseconds: 1400));
     if (!context.mounted) return;
     await prefs.setBool(_kPrompted, true);
+    // ignore: discarded_futures
+    AnalyticsService.reviewPromptShown('post_purchase');
     await showDialog<void>(
       context: context,
       barrierDismissible: false,

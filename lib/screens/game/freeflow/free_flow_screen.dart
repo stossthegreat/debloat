@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../config/dev_flags.dart';
+import '../../../services/analytics_service.dart';
 import '../../../services/audio_session.dart';
 import '../../../services/creator_mode_store.dart';
 import '../../../services/local_store_service.dart';
@@ -260,6 +261,8 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   void initState() {
     super.initState();
     // ignore: discarded_futures
+    AnalyticsService.freeflowScreenViewed();
+    // ignore: discarded_futures
     WakelockPlus.enable();
     // GAME-tab mode: auto-pick INTO YOU and go straight into the live
     // circle so the user lands on the recording orb the moment they
@@ -352,6 +355,11 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       _lucienUpsellShown = false;
       _remaining = pro ? _sessionSeconds : _freeSessionSeconds;
     });
+    // ignore: discarded_futures
+    AnalyticsService.freeflowSessionStarted(
+      vibe:   vibe.label,
+      isFree: !pro,
+    );
     try {
       if (!await _recorder.hasPermission()) {
         _fail('Microphone permission denied.');
@@ -615,6 +623,8 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         // Pro path — monthly minute cap.
         if (await LocalStoreService.voiceCapReached()) {
           if (!mounted) return;
+          // ignore: discarded_futures
+          AnalyticsService.freeflowVoiceCapHit();
           HapticFeedback.mediumImpact();
           await context.push('/paywall',
               extra: {'source': 'game_voice_monthly_capped'});
@@ -630,6 +640,8 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       // hit the paywall on every hold.
       if (!_firstEverSession) {
         if (!mounted) return;
+        // ignore: discarded_futures
+        AnalyticsService.freeflowBlockedFreeCap('orb');
         HapticFeedback.mediumImpact();
         await context.push('/paywall',
             extra: {'source': 'game_speak_capped'});
@@ -669,6 +681,8 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     if (!_clockStarted) {
       _clockStarted = true;
       _startClock();
+      // ignore: discarded_futures
+      AnalyticsService.freeflowFirstHold();
     }
   }
 
@@ -706,6 +720,11 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
 
   Future<void> _lucienStepIn() async {
     if (_phase != _Phase.live) return;
+    // ignore: discarded_futures
+    AnalyticsService.freeflowLucienTapped(
+      hadFirstReply: _hadFirstSheReply,
+      isFree:        _freeSession,
+    );
     // Bro v8 paywall gate — Lucien step-in is the SAME premium
     // surface as push-to-talk. A returning free user (one who has
     // already burnt their one 60-second free session) gets routed
@@ -719,6 +738,8 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     if (pro) {
       if (await LocalStoreService.voiceCapReached()) {
         if (!mounted) return;
+        // ignore: discarded_futures
+        AnalyticsService.freeflowVoiceCapHit();
         HapticFeedback.mediumImpact();
         await context.push('/paywall',
             extra: {'source': 'game_voice_monthly_capped'});
@@ -727,6 +748,8 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     } else if (!_firstEverSession) {
       // Non-pro AND not on the free pass → paywall.
       if (!mounted) return;
+      // ignore: discarded_futures
+      AnalyticsService.freeflowBlockedFreeCap('lucien');
       HapticFeedback.mediumImpact();
       await context.push('/paywall',
           extra: {'source': 'game_lucien_capped'});
@@ -857,6 +880,19 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     _clock?.cancel();
     _createTimer?.cancel();
     HapticFeedback.mediumImpact();
+
+    // ── Analytics: where did this session land?  ──────────────────
+    // "timer" — clock hit zero (free or pro ceiling)
+    // "user"  — they tapped END & GET SCORED
+    // (cap / error / bail report from their own callers)
+    final cap = _freeSession ? _freeSessionSeconds : _sessionSeconds;
+    final reason = _remaining <= 0 ? 'timer' : 'user';
+    // ignore: discarded_futures
+    AnalyticsService.freeflowSessionEnded(
+      reason:          reason,
+      durationSec:     cap - _remaining,
+      transcriptTurns: _transcript.length,
+    );
 
     // Bro v6 free-session upsell: when a free user's 60-second session
     // ends, skip the score → scored cinematic and slide a Lucien
@@ -1890,6 +1926,8 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   /// the portrait routes to the glow-up paywall.
   Future<void> _showLucienUpsell() async {
     if (!mounted) return;
+    // ignore: discarded_futures
+    AnalyticsService.freeflowLucienUpsellShown();
     await Navigator.of(context).push(
       PageRouteBuilder<void>(
         opaque: false,

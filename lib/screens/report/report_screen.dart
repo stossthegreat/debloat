@@ -180,6 +180,8 @@ class _ReportScreenState extends State<ReportScreen> {
         setState(() {
           _analysis = result;
         });
+        // ignore: discarded_futures
+        AnalyticsService.reportViewed(_isPro ? 'full' : 'locked');
       }
       // Persist the scan so it lights up Progress + Advisor tabs.
       await _persistScan(result);
@@ -862,6 +864,23 @@ class _ReportScreenState extends State<ReportScreen> {
 
     Future<void> openPaywall(String src) async {
       HapticFeedback.mediumImpact();
+      // Split the funnel: "_locked" tile taps (per-section curiosity)
+      // vs. the main unlock CTAs ("glowup_unlock_main" / "glowup_after_tap").
+      // Both surfaces eventually fire paywall_shown via paywall_screen,
+      // but distinguishing the SOURCE of intent lets us measure which
+      // teaser surface is doing the real conversion work.
+      if (src.endsWith('_locked')) {
+        // Strip the prefix + suffix so the param reads as a clean
+        // section tag (verdict / pertrait / geometry / protocols).
+        final section = src
+            .replaceFirst('glowup_', '')
+            .replaceFirst('_locked', '');
+        // ignore: discarded_futures
+        AnalyticsService.reportLockedSectionTapped(section);
+      } else {
+        // ignore: discarded_futures
+        AnalyticsService.reportUnlockTapped(src);
+      }
       await context.push('/paywall', extra: {'source': src});
     }
 
@@ -964,6 +983,8 @@ class _ReportScreenState extends State<ReportScreen> {
                 borderRadius: BorderRadius.circular(99),
                 onTap: () {
                   HapticFeedback.selectionClick();
+                  // ignore: discarded_futures
+                  AnalyticsService.reportDoneTapped();
                   context.go('/home', extra: {'initialTab': 1});
                 },
                 child: Container(

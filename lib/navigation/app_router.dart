@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../models/face_geometry.dart';
 import '../screens/chat/chat_screen.dart';
 import '../screens/home/home_screen.dart';
+import '../screens/keyboard/keyboard_install_screen.dart';
 import '../screens/legal/legal_screen.dart';
 import '../screens/onboarding/gender_pick_screen.dart';
 import '../screens/onboarding/intro_reel_screen.dart';
@@ -14,6 +15,7 @@ import '../screens/scan/scan_screen.dart';
 import '../screens/report/report_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/splash/splash_screen.dart';
+import '../services/analytics_route_observer.dart';
 
 // ── Auralay graft (Eyes + Game tabs) ───────────────────────────────────────
 import '../screens/debug/diagnostic_screen.dart';
@@ -34,6 +36,11 @@ import '../services/test/charisma_test_engine.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
+  // Every navigator push/pop/replace fires screen_view through
+  // AnalyticsRouteObserver, which also updates
+  // AnalyticsService.currentScreen so the app-lifecycle hook in
+  // main.dart's MirrorApp can tag "where did the user quit from".
+  observers: [AnalyticsRouteObserver()],
   routes: [
     GoRoute(path: '/',           builder: (_, __) => const SplashScreen()),
     GoRoute(path: '/intro',      builder: (_, __) => const IntroReelScreen()),
@@ -85,6 +92,14 @@ final appRouter = GoRouter(
       builder: (_, __) => const RizzChatScreen(),
     ),
     GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
+    // ImHim Keyboard onboarding — three-step explainer + iOS Settings
+    // deep-link. The keyboard extension itself lives in its own iOS
+    // target (ios/ImHimKeyboard); this is the conversion surface that
+    // walks the user through Apple's "Allow Full Access" prompt.
+    GoRoute(
+      path: '/keyboard-install',
+      builder: (_, __) => const KeyboardInstallScreen(),
+    ),
     GoRoute(
       path: '/protocol',
       builder: (_, state) {
