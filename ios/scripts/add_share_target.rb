@@ -104,6 +104,19 @@ if embed_phase.nil?
 end
 embed_phase.symbol_dst_subfolder_spec ||= :plug_ins
 
+# Xcode 15+ rejects the project as cyclic if Embed App Extensions
+# sits AFTER Flutter's "Thin Binary" script — both phases touch
+# Runner.app/Info.plist + the bundle. Moving it to right after
+# Resources (typical Apple-recommended slot) breaks the cycle.
+# Idempotent — if it's already in the right place we no-op.
+target_index = 4
+current_index = runner.build_phases.index(embed_phase)
+if current_index && current_index > target_index
+  runner.build_phases.delete(embed_phase)
+  runner.build_phases.insert(target_index, embed_phase)
+  puts "moved Embed App Extensions to position #{target_index} (was #{current_index})"
+end
+
 product = target.product_reference
 unless embed_phase.files_references.include?(product)
   build_file = embed_phase.add_file_reference(product)
