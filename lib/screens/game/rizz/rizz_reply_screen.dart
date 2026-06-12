@@ -692,37 +692,200 @@ class _TypedHerCard extends StatelessWidget {
   }
 }
 
-class _GeneratingPanel extends StatelessWidget {
+// ═══════════════════════════════════════════════════════════════════════════
+//  Scanning panel — the WingAI-style screenshot scanner.
+//
+//  Composition (top to bottom):
+//    · Screenshot full-width inside a rounded card, slightly dimmed so the
+//      scan line + glow read clearly over any photo.
+//    · A red gradient scan line that travels top → bottom → top forever
+//      while the AI is reading; the line has a soft red bloom above and
+//      below so it feels alive.
+//    · A "SCANNING" label + italic Playfair percentage that eases from 0
+//      towards 96% on its own clock (so the user always sees progress
+//      even when the network is slow). The instant the parent flips
+//      _generating off, the result chips replace the panel — the
+//      percentage never has to reach 100, the replies ARE the 100.
+//    · A thin red progress bar bound to the same animated value.
+//
+//  Implementation: two AnimationControllers (scan-line + percentage),
+//  both autoplay-loop on mount + cleaned up on dispose.
+// ═══════════════════════════════════════════════════════════════════════════
+class _GeneratingPanel extends StatefulWidget {
   final Uint8List? bytes;
   const _GeneratingPanel({required this.bytes});
+
+  @override
+  State<_GeneratingPanel> createState() => _GeneratingPanelState();
+}
+
+class _GeneratingPanelState extends State<_GeneratingPanel>
+    with TickerProviderStateMixin {
+  /// Scan-line controller — loops 1.4s, drives a Tween from 0 → 1.
+  /// The image's stack uses this value as a fraction of its own
+  /// height to position the red line.
+  late final AnimationController _scanCtl;
+
+  /// Percentage controller — eases from 0 → 96 over ~14 seconds.
+  /// Never autoplays past 96, so the user can keep watching it
+  /// climb without the UX ever lying that things finished when
+  /// they haven't. The replies appearing IS the 100% beat.
+  late final AnimationController _pctCtl;
+
+  @override
+  void initState() {
+    super.initState();
+    _scanCtl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+
+    _pctCtl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 14),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _scanCtl.dispose();
+    _pctCtl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (bytes != null)
-          _ScreenshotFull(bytes: bytes!),
-        const SizedBox(height: 22),
-        Center(
-          child: Column(
-            children: [
-              const SizedBox(
-                width: 28, height: 28,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.6, color: AppColors.red),
+        if (widget.bytes != null)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: AspectRatio(
+              aspectRatio: 9 / 16,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // The screenshot.
+                  Image.memory(
+                    widget.bytes!,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                  ),
+                  // Subtle darken so the scan line + glow read clearly.
+                  Container(color: Colors.black.withValues(alpha: 0.18)),
+                  // The travelling scan line, fraction of card height.
+                  AnimatedBuilder(
+                    animation: _scanCtl,
+                    builder: (_, __) {
+                      // Curve gives the line a soft pause at each end
+                      // instead of a hard ping-pong.
+                      final v = Curves.easeInOutSine.transform(_scanCtl.value);
+                      return Align(
+                        alignment: Alignment(0, v * 2 - 1),
+                        child: _ScanLine(),
+                      );
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-              Text('READING THE CHAT…',
-                style: GoogleFonts.inter(
-                  color: AppColors.textSecondary,
-                  fontSize: 12, letterSpacing: 2.8,
-                  fontWeight: FontWeight.w800,
-                )),
+            ),
+          ),
+        const SizedBox(height: 22),
+
+        // SCANNING label + italic Playfair percentage.
+        AnimatedBuilder(
+          animation: _pctCtl,
+          builder: (_, __) {
+            final pct = (Curves.easeOutCubic.transform(_pctCtl.value) * 96)
+                .clamp(0, 96)
+                .toInt();
+            return Column(
+              children: [
+                Text(
+                  'SCANNING',
+                  style: GoogleFonts.inter(
+                    color: AppColors.red,
+                    fontSize: 11, letterSpacing: 3.6,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                RichText(
+                  text: TextSpan(
+                    style: GoogleFonts.playfairDisplay(
+                      fontSize: 42, height: 1,
+                      letterSpacing: -1.6,
+                      fontStyle: FontStyle.italic,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: '$pct',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      TextSpan(
+                        text: '%',
+                        style: TextStyle(color: AppColors.red),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                // Thin progress bar — same animated value.
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 36),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: LinearProgressIndicator(
+                      value: pct / 100,
+                      backgroundColor: AppColors.surface3,
+                      valueColor: const AlwaysStoppedAnimation(AppColors.red),
+                      minHeight: 3,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// The travelling red bar that sits inside the screenshot card.
+/// Thin core line with a soft red bloom above and below — gives the
+/// "screen being scanned" feel without overpowering the image.
+class _ScanLine extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 26,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+          colors: [
+            AppColors.red.withValues(alpha: 0.00),
+            AppColors.red.withValues(alpha: 0.55),
+            AppColors.red.withValues(alpha: 0.00),
+          ],
+          stops: const [0.0, 0.5, 1.0],
+        ),
+      ),
+      child: Center(
+        child: Container(
+          height: 2,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.red.withValues(alpha: 0.9),
+                blurRadius: 14, spreadRadius: 2),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
