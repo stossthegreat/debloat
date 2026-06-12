@@ -42,6 +42,12 @@ class LocalStoreService {
   /// LINES + CHAT cards are LOCKED for free users entirely; only the
   /// screenshot generator gets a single free preview.
   static const _kRizzScreenshotFreeUsed = 'rizz.screenshot.free.used.v1';
+  /// Free-tier SCAN allowance — ONE scan, period. The onboarding
+  /// face-scan is the only free scan a non-pro user will ever do;
+  /// every subsequent scan attempt routes straight to the paywall
+  /// regardless of how many weeks have passed. Marked at the
+  /// SUCCESS path of /scan after the geometry lands.
+  static const _kScanFreeUsed = 'scan.free.used.v1';
 
   // ── Usage caps (paywall flood gates) ──────────────────────────────────
   // Bro: "two scans a week and 10 mirror tab image renders a month.
@@ -326,6 +332,21 @@ class LocalStoreService {
     if (prefs.getBool(_kGameFreeUsedV181Migrated) ?? false) return;
     await prefs.remove(_kGameFreeUsed);
     await prefs.setBool(_kGameFreeUsedV181Migrated, true);
+  }
+
+  /// True once the user has consumed their ONE free face scan. The
+  /// onboarding scan is the only free scan; after that every scan
+  /// attempt by a non-pro user routes to the paywall. Marked at the
+  /// /scan SUCCESS path, never on entry, so a user who bails before
+  /// the geometry lands isn't penalised.
+  static Future<bool> scanFreeUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kScanFreeUsed) ?? false;
+  }
+
+  static Future<void> markScanFreeUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kScanFreeUsed, true);
   }
 
   /// True once the free Rizz screenshot generation has been consumed.

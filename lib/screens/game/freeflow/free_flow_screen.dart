@@ -706,6 +706,32 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
 
   Future<void> _lucienStepIn() async {
     if (_phase != _Phase.live) return;
+    // Bro v8 paywall gate — Lucien step-in is the SAME premium
+    // surface as push-to-talk. A returning free user (one who has
+    // already burnt their one 60-second free session) gets routed
+    // to the paywall the moment they tap LUCIEN — STEP IN, same
+    // as if they'd held the orb. Pro users with their monthly
+    // 40-minute voice cap exhausted also get bounced. First-ever
+    // free session users (the in-memory _firstEverSession flag)
+    // sail through; the session itself burns the free pass at
+    // _endAndScore.
+    final pro = await PaywallGate.isPro();
+    if (pro) {
+      if (await LocalStoreService.voiceCapReached()) {
+        if (!mounted) return;
+        HapticFeedback.mediumImpact();
+        await context.push('/paywall',
+            extra: {'source': 'game_voice_monthly_capped'});
+        return;
+      }
+    } else if (!_firstEverSession) {
+      // Non-pro AND not on the free pass → paywall.
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      await context.push('/paywall',
+          extra: {'source': 'game_lucien_capped'});
+      return;
+    }
     HapticFeedback.heavyImpact();
     // Dismiss the nudge bubble — the user found the button, no
     // need to keep pointing at it for the rest of the session.
@@ -1197,13 +1223,13 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
           child: Row(
             children: [
               const SizedBox(width: 8),
-              // CONVO ACTIVE → ImHim wordmark in the slot where the
-              // character chip / vibe label sat. Otherwise the usual
-              // chip/label so the user can still pick / switch
-              // characters before they start talking.
-              if (showWordmark)
-                const ImHimWordmark(fontSize: 26, letterSpacing: -0.7)
-              else if (widget.tabMode)
+              // Bro v8: ImHim wordmark moved OUT of the chrome row
+              // to a dedicated slot above the orb (see the wordmark
+              // Positioned block further down). The chrome row now
+              // always carries the character chip + ARENA pill so
+              // the user can switch character mid-session even
+              // while holding to talk.
+              if (widget.tabMode)
                 _ChangeCharacterChip(
                     current: _vibe?.label ?? '',
                     onTap: _showCharacterSheet)
@@ -1216,13 +1242,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
                       fontWeight: FontWeight.w900,
                     )),
               const Spacer(),
-              // ARENA quick-route — only in tab mode AND only when
-              // the user isn't actively talking. While they're
-              // holding to talk the pill drops out to give the
-              // wordmark + timer the row to themselves; the moment
-              // they release (or she replies) the pill comes back
-              // so they can still jump to the arena mid-session.
-              if (widget.tabMode && !showWordmark) ...[
+              if (widget.tabMode) ...[
                 _ArenaPill(onTap: _openArena),
                 const SizedBox(width: 8),
               ],
@@ -1282,13 +1302,33 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         // empty space the moment the chip + arena pill drop out,
         // and reads cleanly on screen recordings.
 
-        // Centre — fixed orb up top; the caption sits in a scrollable
-        // band below it so long text (her replies, Lucien's reads) never
-        // collides with the bottom controls.
+        // Centre — wordmark slot + fixed orb; the caption sits in a
+        // scrollable band below it so long text (her replies, Lucien's
+        // reads) never collides with the bottom controls.
+        //
+        // Bro v8: orb dropped ~14 logical pixels (top: 56 → 82) to make
+        // room for the ImHim wordmark that now sits directly above it.
+        // Wordmark only paints while the user is actively holding to
+        // talk — same gate as v176, just relocated from the chrome row
+        // so the brand reads as "above the record button" the moment
+        // they speak.
         Positioned(
-          top: 56, left: 0, right: 0, bottom: 188,
+          top: 82, left: 0, right: 0, bottom: 188,
           child: Column(
             children: [
+              // ImHim wordmark — only while holding. Wrapped in an
+              // AnimatedSwitcher-equivalent SizedBox with a fixed
+              // height so the orb doesn't jump when it appears.
+              SizedBox(
+                height: 36,
+                child: AnimatedOpacity(
+                  opacity: showWordmark ? 1 : 0,
+                  duration: const Duration(milliseconds: 220),
+                  child: const ImHimWordmark(
+                      fontSize: 30, letterSpacing: -0.8),
+                ),
+              ),
+              const SizedBox(height: 4),
               // The orb IS the talk button. Hold it to speak; a ring
               // spins while you hold; release to send. Uses raw pointer
               // events (Listener) not tap gestures, so sliding your
@@ -1454,23 +1494,36 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         ),
 
         // Bottom — status + Lucien step-in.
+        // Bro v8: dropped the redundant "HOLD THE CIRCLE TO TALK" idle
+        // status — the big white "HOLD TO SPEAK" caption directly
+        // under the orb already says exactly that. We still surface
+        // the LIVE states (connecting / listening / she's talking)
+        // so the user has feedback during the conversation; idle just
+        // renders nothing so the LUCIEN button gets room to breathe.
         Positioned(
           left: 0, right: 0, bottom: 28,
           child: Column(
             children: [
-              Text(
-                _phase == _Phase.connecting
-                    ? 'CONNECTING…'
-                    : _holding
-                        ? 'LISTENING… RELEASE TO SEND'
-                        : (_herSpeaking
-                            ? 'SHE\'S TALKING'
-                            : 'HOLD THE CIRCLE TO TALK'),
-                style: AppTypography.label.copyWith(
-                  color: AppColors.accent,
-                  fontSize: 11,
-                  letterSpacing: 3,
-                  fontWeight: FontWeight.w900,
+              SizedBox(
+                height: 16,
+                child: Builder(
+                  builder: (_) {
+                    final txt = _phase == _Phase.connecting
+                        ? 'CONNECTING…'
+                        : _holding
+                            ? 'LISTENING… RELEASE TO SEND'
+                            : (_herSpeaking ? 'SHE\'S TALKING' : '');
+                    if (txt.isEmpty) return const SizedBox.shrink();
+                    return Text(
+                      txt,
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.accent,
+                        fontSize: 11,
+                        letterSpacing: 3,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 16),

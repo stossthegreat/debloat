@@ -966,13 +966,12 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
     // Pro users: enforce the 2/week quota. Under quota → mark slot,
     // proceed. Over quota → paywall with the same payload so the
     // resubscribe path still preserves the scan.
-    // Bro v6 — conversion flow rewrite:
-    //   Every successful scan lands on /report. Free users see the
-    //   TEASER variant (score reveal + blurred glow-up + locked
-    //   sections + paywall CTAs everywhere). Pro users see the full
-    //   report under their weekly quota; over-quota Pro lands on
-    //   the paywall with the payload preserved so resubscribe still
-    //   keeps their MediaPipe capture.
+    // Bro v8 — ONE free scan, that's it:
+    //   The onboarding scan is the only free scan a non-pro user
+    //   ever gets. First scan → teaser report. Every subsequent
+    //   scan attempt → paywall with the captured payload stashed
+    //   so the resubscribe path forwards them to the report they
+    //   just earned. Pro users keep the 2/week quota.
     final pro = await PaywallGate.isPro();
     if (pro) {
       final usedThisWeek = await LocalStoreService.scansThisWeek();
@@ -988,6 +987,24 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
         return;
       }
       await LocalStoreService.markScanUsed();
+    } else {
+      // Free path — ONE scan, then paywall forever. Check BEFORE
+      // we route to /report so a free user who got their teaser
+      // and came back for another can't burn through unlimited
+      // half-results.
+      final usedFree = await LocalStoreService.scanFreeUsed();
+      if (usedFree) {
+        if (!mounted) return;
+        context.go('/paywall', extra: {
+          'afterPurchase': '/report',
+          'imageBytes':    imageBytes,
+          'geometry':      primaryGeom,
+          'extraImages':   extraImages,
+          'source':        'scan_free_capped',
+        });
+        return;
+      }
+      await LocalStoreService.markScanFreeUsed();
     }
     if (!mounted) return;
 

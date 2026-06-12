@@ -114,6 +114,17 @@ class SettingsScreen extends StatelessWidget {
 
               const SizedBox(height: Sp.lg),
 
+              // ── USAGE ────────────────────────────────────────────────────
+              // Live readout of this month's Pro voice-time allowance
+              // (40 minutes of Free Flow / Council per calendar month,
+              // resets on the 1st). Reads voiceMsThisMonth straight
+              // from prefs each build, so a long roleplay session is
+              // reflected the moment the user returns here.
+              _SectionHeader('USAGE'),
+              const _VoiceCapTile(),
+
+              const SizedBox(height: Sp.lg),
+
               // ── SCAN ──────────────────────────────────────────────────────
               _SectionHeader('SCAN'),
               _SettingTile(
@@ -444,6 +455,103 @@ class SettingsScreen extends StatelessWidget {
 }
 
 // ── Components ────────────────────────────────────────────────────────────────
+
+/// USAGE → Voice cap tile. Reads voiceMsThisMonth on build, renders the
+/// remaining minutes against the 40-min monthly Pro ceiling. Tile is
+/// always visible — for free users it surfaces the unused 40-minute
+/// budget Pro unlocks (and routes to /paywall on tap so it doubles as
+/// a soft upsell). Pro users get the live "X min left" readout so they
+/// never wonder how much roleplay time they've spent.
+class _VoiceCapTile extends StatefulWidget {
+  const _VoiceCapTile();
+
+  @override
+  State<_VoiceCapTile> createState() => _VoiceCapTileState();
+}
+
+class _VoiceCapTileState extends State<_VoiceCapTile> {
+  int _usedMs = 0;
+  bool _pro   = false;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final ms  = await LocalStoreService.voiceMsThisMonth();
+    final pro = await LocalStoreService.isSubscribed();
+    if (!mounted) return;
+    setState(() {
+      _usedMs = ms;
+      _pro    = pro;
+      _loaded = true;
+    });
+  }
+
+  String _fmt(int totalMs) {
+    final s = (totalMs / 1000).floor();
+    final m = (s / 60).floor();
+    final ss = (s % 60).toString().padLeft(2, '0');
+    return '$m:$ss';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final capMs = LocalStoreService.kVoiceMinutesPerMonth * 60 * 1000;
+    final remainingMs = (capMs - _usedMs).clamp(0, capMs);
+    final pct = _loaded ? (_usedMs / capMs).clamp(0.0, 1.0) : 0.0;
+    final overCap = _usedMs >= capMs;
+    final color = overCap ? AppColors.signalRed : AppColors.accent;
+
+    return _SettingTile(
+      icon: Icons.mic_rounded,
+      title: 'Roleplay voice — monthly',
+      subtitle: !_loaded
+          ? 'Loading…'
+          : _pro
+              ? (overCap
+                  ? 'Capped — resets on the 1st'
+                  : '${_fmt(remainingMs)} left of '
+                    '${LocalStoreService.kVoiceMinutesPerMonth}:00')
+              : 'Pro unlocks ${LocalStoreService.kVoiceMinutesPerMonth}'
+                ' minutes a month',
+      trailing: SizedBox(
+        width: 70,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(_pro
+                    ? '${_fmt(_usedMs)} / '
+                      '${LocalStoreService.kVoiceMinutesPerMonth}:00'
+                    : '0 / ${LocalStoreService.kVoiceMinutesPerMonth}:00',
+                style: AppTypography.label.copyWith(
+                  color: color,
+                  fontSize: 11, letterSpacing: 0.6,
+                  fontWeight: FontWeight.w900,
+                )),
+            const SizedBox(height: 4),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                value: _pro ? pct : 0.0,
+                backgroundColor: AppColors.surface3,
+                valueColor: AlwaysStoppedAnimation(color),
+                minHeight: 3,
+              ),
+            ),
+          ],
+        ),
+      ),
+      onTap: () {
+        HapticFeedback.selectionClick();
+        if (!_pro) context.push('/paywall');
+      },
+    );
+  }
+}
 
 class _SectionHeader extends StatelessWidget {
   final String label;
