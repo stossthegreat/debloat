@@ -24,6 +24,7 @@ import '../screens/game/lines/lines_screen.dart';
 import '../screens/game/rizz/rizz_reply_screen.dart';
 import '../screens/rizz/rizz_chat_screen.dart';
 import '../screens/rizz/rizz_tab_screen.dart' show RizzCardAction;
+import '../services/share_intake_service.dart' show SharedScreenshotPayload;
 import '../models/gaze/gaze_syllabus.dart';
 import '../screens/lessons/lesson_detail_screen.dart';
 import '../screens/test/charisma_test_screen.dart';
@@ -84,7 +85,14 @@ final appRouter = GoRouter(
       builder: (_, state) {
         final extra = state.extra;
         final launchUpload = extra is RizzCardAction && extra.launchUpload;
-        return RizzReplyScreen(launchUpload: launchUpload);
+        // The iOS Share Extension routes here with the screenshot bytes
+        // already loaded. The screen auto-fires the OCR + reply
+        // pipeline as if the user had picked the image from Photos.
+        final preloaded = extra is SharedScreenshotPayload ? extra.bytes : null;
+        return RizzReplyScreen(
+          launchUpload:        launchUpload,
+          preloadedScreenshot: preloaded,
+        );
       },
     ),
     GoRoute(

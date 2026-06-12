@@ -36,7 +36,18 @@ class RizzReplyScreen extends StatefulWidget {
   /// True when opened from the "Upload a screenshot" tab card — fires
   /// the photo picker immediately so the user lands in the iOS sheet.
   final bool launchUpload;
-  const RizzReplyScreen({super.key, this.launchUpload = false});
+
+  /// Non-null when the screen was opened via the iOS Share Extension
+  /// (a screenshot shared from outside the app). Bytes are wired
+  /// straight into the existing OCR + reply pipeline as if the user
+  /// had picked the image from Photos.
+  final Uint8List? preloadedScreenshot;
+
+  const RizzReplyScreen({
+    super.key,
+    this.launchUpload = false,
+    this.preloadedScreenshot,
+  });
 
   @override
   State<RizzReplyScreen> createState() => _RizzReplyScreenState();
@@ -63,6 +74,19 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
   @override
   void initState() {
     super.initState();
+    // Share-extension intake: if the screen was opened with bytes
+    // already in hand, plant them in state and auto-fire the same
+    // OCR + reply pipeline the image picker uses.
+    if (widget.preloadedScreenshot != null) {
+      _screenshotBytes = widget.preloadedScreenshot;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        // ignore: discarded_futures
+        AnalyticsService.rizzScreenshotUploaded(hasText: false);
+        await _generate();
+      });
+      return;
+    }
     if (widget.launchUpload) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _pick(ImageSource.gallery);

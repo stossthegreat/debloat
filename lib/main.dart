@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +12,7 @@ import 'services/daily_nudge_service.dart';
 import 'services/local_store_service.dart';
 import 'services/notification_service.dart';
 import 'services/purchase_service.dart';
+import 'services/share_intake_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -73,6 +76,12 @@ void main() async {
   // end). See LocalStoreService.migrateGameFreeUsedFlagOnce.
   await LocalStoreService.migrateGameFreeUsedFlagOnce();
 
+  // Share Extension intake — listen for incoming screenshots from
+  // the iOS Share Sheet (ios/ImHimShare/ShareViewController.swift).
+  // Calling wire() before runApp guarantees we don't miss the cold-
+  // start MethodChannel event when the user shares directly into us.
+  ShareIntakeService.instance.wire();
+
   runApp(const MirrorApp());
 }
 
@@ -84,18 +93,43 @@ class MirrorApp extends StatefulWidget {
 }
 
 class _MirrorAppState extends State<MirrorApp> with WidgetsBindingObserver {
+  late final StreamSubscription<SharedScreenshot> _shareSub;
+
   @override
   void initState() {
     super.initState();
     // App-lifecycle observer — the drop-off detector. Pairs with the
     // AnalyticsRouteObserver wired into appRouter so every backgrounding
     // event carries the screen the user was looking at when they bailed.
-    // Resumes also fire so we can measure session count + return cadence.
     WidgetsBinding.instance.addObserver(this);
+
+    // Listen for incoming shared screenshots from the iOS Share
+    // Extension. The intake service was already wired in main() so
+    // we don't miss the cold-start event; here we subscribe to the
+    // BROADCAST stream and push the navigation as soon as bytes land.
+    _shareSub = ShareIntakeService.instance.stream.listen(_onSharedScreenshot);
+
+    // Cold-start sweep — if the app was launched directly via the
+    // share extension (URL scheme), the boot sequence has likely
+    // already raced past the MethodChannel event. Pull whatever's
+    // pending after the first frame so the navigation still happens.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final shot = await ShareIntakeService.instance.pullPending();
+      if (shot != null) _onSharedScreenshot(shot);
+    });
+  }
+
+  void _onSharedScreenshot(SharedScreenshot shot) {
+    // Route to /rizz with the screenshot bytes in `extra`. The
+    // RizzReplyScreen reads `extra` on init and auto-fires the
+    // existing OCR + reply pipeline as if the user had picked the
+    // image with the in-app picker.
+    appRouter.go('/rizz', extra: SharedScreenshotPayload(bytes: shot.bytes));
   }
 
   @override
   void dispose() {
+    _shareSub.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

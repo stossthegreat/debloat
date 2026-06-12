@@ -53,5 +53,25 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!--
+		URL Types — registers the "imhim://" custom scheme. The
+		ImHimShare Share Extension deep-links into this scheme after
+		writing the screenshot to the App Group, which surfaces the
+		main Runner app + sends Flutter the "new shared screenshot
+		landed" signal via ShareIntakeService.
+	-->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.mirrorly.app</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>imhim</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
