@@ -13,6 +13,7 @@ import '../../../services/local_store_service.dart';
 import '../../../services/paywall_gate.dart';
 import '../../../services/rizz_reply_service.dart';
 import '../../../theme/app_colors.dart';
+import '../../../widgets/common/imhim_wordmark.dart';
 
 /// Debug pane visibility — flip true to surface the OCR / endpoint /
 /// raw-response trail under the GIMME MORE button. Off for ship.
@@ -277,27 +278,61 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
 
   // ── INPUT STATE ────────────────────────────────────────────────────
   Widget _inputLayout(bool hasImage) {
+    // Share-extension mode — the user arrived from the iOS Share
+    // Sheet, the screenshot is already in hand, the scanner is
+    // already running. Swap the "Drop her chat." headline for the
+    // ImHim wordmark so the experience reads as ours from the
+    // moment we open. Plays the same WingAI mental model: their
+    // app opens with the brand on top + the scanning UI below.
+    final fromShare = widget.preloadedScreenshot != null;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(22, 6, 22, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Drop her chat.',
-            style: GoogleFonts.playfairDisplay(
-              color: Colors.white,
-              fontSize: 36, height: 1.05,
-              letterSpacing: -0.7,
-              fontStyle: FontStyle.italic,
-              fontWeight: FontWeight.w800,
-            )),
-          Text('Get 3 hits.',
-            style: GoogleFonts.playfairDisplay(
-              color: AppColors.red,
-              fontSize: 36, height: 1.05,
-              letterSpacing: -0.7,
-              fontStyle: FontStyle.italic,
-              fontWeight: FontWeight.w800,
-            )),
+          if (fromShare) ...[
+            const SizedBox(height: 6),
+            Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  ImHimWordmark(fontSize: 38, letterSpacing: -0.9),
+                  SizedBox(width: 10),
+                  _BrandHeartbeatDot(),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Center(
+              child: Text(
+                'Reading your chat — three hits incoming.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  color: AppColors.textSecondary,
+                  fontSize: 13.5, height: 1.4,
+                  letterSpacing: 0.1,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ] else ...[
+            Text('Drop her chat.',
+              style: GoogleFonts.playfairDisplay(
+                color: Colors.white,
+                fontSize: 36, height: 1.05,
+                letterSpacing: -0.7,
+                fontStyle: FontStyle.italic,
+                fontWeight: FontWeight.w800,
+              )),
+            Text('Get 3 hits.',
+              style: GoogleFonts.playfairDisplay(
+                color: AppColors.red,
+                fontSize: 36, height: 1.05,
+                letterSpacing: -0.7,
+                fontStyle: FontStyle.italic,
+                fontWeight: FontWeight.w800,
+              )),
+          ],
 
           const SizedBox(height: 28),
 
@@ -350,11 +385,30 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
 
   // ── RESULTS STATE ──────────────────────────────────────────────────
   Widget _resultsLayout() {
+    // Carry the ImHim wordmark into the results view too when the
+    // flow began at the Share Extension. Keeps the WingAI-style
+    // brand-on-top continuity all the way through to the chips.
+    final fromShare = widget.preloadedScreenshot != null;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(22, 6, 22, 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (fromShare) ...[
+            const SizedBox(height: 4),
+            Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  ImHimWordmark(fontSize: 30, letterSpacing: -0.7),
+                  SizedBox(width: 8),
+                  _BrandHeartbeatDot(),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+          ],
+
           // Full screenshot preview (or typed-text card if no image).
           if (_screenshotBytes != null)
             _ScreenshotFull(bytes: _screenshotBytes!)
@@ -1508,6 +1562,61 @@ class _ScenarioStrip extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+/// Small red pulsing dot that sits beside the wordmark in the
+/// share-extension header. Same visual cue we use on the Progress
+/// page heading — "this is live, working, on your case right now".
+class _BrandHeartbeatDot extends StatefulWidget {
+  const _BrandHeartbeatDot();
+
+  @override
+  State<_BrandHeartbeatDot> createState() => _BrandHeartbeatDotState();
+}
+
+class _BrandHeartbeatDotState extends State<_BrandHeartbeatDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctl,
+      builder: (_, __) {
+        final v = Curves.easeInOut.transform(_ctl.value);
+        return Container(
+          width: 8, height: 8,
+          margin: const EdgeInsets.only(top: 6),
+          decoration: BoxDecoration(
+            color: AppColors.red,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.red.withValues(alpha: 0.35 + 0.35 * v),
+                blurRadius: 8 + 8 * v,
+                spreadRadius: 0.5 + v,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
