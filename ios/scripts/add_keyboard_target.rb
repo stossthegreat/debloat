@@ -19,9 +19,12 @@ require 'xcodeproj'
 PROJECT_PATH       = File.expand_path('../Runner.xcodeproj', __dir__)
 EXTENSION_NAME     = 'ImHimKeyboard'
 EXTENSION_BUNDLE_ID = 'com.mirrorly.app.keyboard'
-APP_GROUP          = 'group.com.mirrorly.app.shared'
 DEPLOYMENT_TARGET  = '15.5'
 SWIFT_VERSION      = '5.0'
+# Same team as Runner. Look this up once via:
+#   xcrun security find-identity -v -p codesigning | grep "Apple Distribution"
+# or read it off the Runner target's DEVELOPMENT_TEAM build setting.
+DEVELOPMENT_TEAM   = '7T3XFY333F'
 SOURCE_FILES = %w[
   KeyboardViewController.swift
   ScreenshotScanner.swift
@@ -59,9 +62,12 @@ SOURCE_FILES.each do |fname|
   puts "+ added source #{fname}"
 end
 
-# Info.plist + entitlements as file refs (not in build phases — they're
-# referenced via INFOPLIST_FILE / CODE_SIGN_ENTITLEMENTS build settings).
-%w[Info.plist ImHimKeyboard.entitlements].each do |fname|
+# Info.plist as a file ref (referenced via INFOPLIST_FILE build setting).
+# No entitlements file in v187 — App Groups + bundle ID would need to
+# be registered on the Apple Developer Portal first. Re-add an
+# entitlements file once that's done; the source it loaded was at
+# ios/ImHimKeyboard/ImHimKeyboard.entitlements in v186.
+%w[Info.plist].each do |fname|
   next if group.files.any? { |f| f.path == fname }
   group.new_reference(fname)
 end
@@ -72,7 +78,6 @@ target.build_configurations.each do |cfg|
     'PRODUCT_NAME'                        => EXTENSION_NAME,
     'PRODUCT_BUNDLE_IDENTIFIER'           => EXTENSION_BUNDLE_ID,
     'INFOPLIST_FILE'                      => "#{EXTENSION_NAME}/Info.plist",
-    'CODE_SIGN_ENTITLEMENTS'              => "#{EXTENSION_NAME}/#{EXTENSION_NAME}.entitlements",
     'SWIFT_VERSION'                       => SWIFT_VERSION,
     'IPHONEOS_DEPLOYMENT_TARGET'          => DEPLOYMENT_TARGET,
     'TARGETED_DEVICE_FAMILY'              => '1,2',
@@ -80,6 +85,7 @@ target.build_configurations.each do |cfg|
     'ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES' => 'YES',
     'LD_RUNPATH_SEARCH_PATHS'             => '$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks',
     'CODE_SIGN_STYLE'                     => 'Automatic',
+    'DEVELOPMENT_TEAM'                    => DEVELOPMENT_TEAM,
   })
 end
 
@@ -108,24 +114,17 @@ unless runner.dependencies.any? { |d| d.target == target }
   puts '+ Runner now depends on ImHimKeyboard'
 end
 
-# ── 6. Wire the App Group entitlements onto the Runner target ────────────────
-#     The file already lives at ios/Runner/Runner.entitlements; we just need
-#     the build setting to reference it.
-runner.build_configurations.each do |cfg|
-  cur = cfg.build_settings['CODE_SIGN_ENTITLEMENTS']
-  if cur.nil? || cur.empty?
-    cfg.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'Runner/Runner.entitlements'
-  end
-end
-
-# ── 7. Save ──────────────────────────────────────────────────────────────────
+# ── 6. Save ──────────────────────────────────────────────────────────────────
 project.save
 puts
 puts 'OK — ImHimKeyboard target wired into Runner.xcodeproj.'
-puts "App Group: #{APP_GROUP}"
-puts 'Next:'
-puts '  1. Open ios/Runner.xcworkspace in Xcode.'
-puts '  2. Select Runner target → Signing & Capabilities → ensure App Group'
-puts "     #{APP_GROUP} is checked. Repeat for ImHimKeyboard target."
-puts '  3. Pick your team, let Xcode generate provisioning profiles.'
-puts '  4. Build & run on a device (extensions can be flaky on simulator).'
+puts 'Before the next Codemagic build:'
+puts "  1. Register bundle id #{EXTENSION_BUNDLE_ID} on the Apple Developer"
+puts '     portal (Certificates / IDs / App IDs). Can be done from the'
+puts '     Apple Developer iOS app on your phone.'
+puts '  2. Have Codemagic / Xcode regenerate the App Store provisioning'
+puts '     profile so it includes the new bundle id.'
+puts '  3. (Optional, only if you want shared state between the main app'
+puts '     and the keyboard) register App Group group.com.mirrorly.app.shared'
+puts '     on the same dev portal, then add the entitlements files back'
+puts '     and uncomment the App Group lookup in RizzClient.swift.'

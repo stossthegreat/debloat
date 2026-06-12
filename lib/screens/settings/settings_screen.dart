@@ -139,20 +139,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: Sp.lg),
 
               // ── KEYBOARD ──────────────────────────────────────────────────
-              _SectionHeader('KEYBOARD'),
-              _SettingTile(
-                icon: Icons.keyboard_alt_rounded,
-                title: 'ImHim Keyboard',
-                subtitle: 'Three replies inside iMessage, Hinge, Tinder',
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  // ignore: discarded_futures
-                  AnalyticsService.keyboardInstallTileTapped('settings');
-                  context.push('/keyboard-install');
-                },
-              ),
-
-              const SizedBox(height: Sp.lg),
+              // v187 — temporarily hidden. The ImHim Keyboard extension
+              // target was pulled from the Xcode project pending Apple
+              // Developer Portal setup (App Group + bundle ID).
+              // Re-enable the tile once the portal side is sorted; the
+              // /keyboard-install screen + native sources are all still
+              // on disk.
+              // _SectionHeader('KEYBOARD'),
+              // _SettingTile(
+              //   icon: Icons.keyboard_alt_rounded,
+              //   title: 'ImHim Keyboard',
+              //   subtitle: 'Three replies inside iMessage, Hinge, Tinder',
+              //   onTap: () {
+              //     HapticFeedback.selectionClick();
+              //     AnalyticsService.keyboardInstallTileTapped('settings');
+              //     context.push('/keyboard-install');
+              //   },
+              // ),
+              // const SizedBox(height: Sp.lg),
 
               // ── SCAN ──────────────────────────────────────────────────────
               _SectionHeader('SCAN'),

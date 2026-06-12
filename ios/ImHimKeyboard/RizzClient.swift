@@ -29,16 +29,13 @@ final class RizzClient {
     /// If the main app rotates its backend host, bump this constant.
     private let host = URL(string: "https://mirrorly-production.up.railway.app")!
 
-    /// Shared UserDefaults written by the Flutter side. Lets the main
-    /// app push the current selected vibe / tone into the keyboard
-    /// without the user reconfiguring it twice.
-    private let shared = UserDefaults(suiteName: "group.com.mirrorly.app.shared")
-
-    /// Pull the user's preferred vibe (set in the Flutter Rizz tab).
-    /// Falls back to "playful" if the main app hasn't written it yet.
-    var preferredVibe: String {
-        shared?.string(forKey: "rizz.vibe") ?? "playful"
-    }
+    /// Default vibe — "playful" mirrors the Flutter Rizz screen's
+    /// default selection. We could wire an App Group shared
+    /// UserDefaults here later to pick up the user's chosen vibe
+    /// from the main app, but App Groups require dev-portal
+    /// registration and the v187 build is shipping without that
+    /// setup to keep CI green. Hard default for now.
+    var preferredVibe: String { "playful" }
 
     /// POST screenshot → 3 replies. Reuses the same JSON payload shape
     /// the Flutter app uses: { vibe, ctx, scenario, imageBase64 }.
