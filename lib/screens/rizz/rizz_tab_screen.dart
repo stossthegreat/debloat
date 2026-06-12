@@ -148,12 +148,9 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
             ),
             const SizedBox(height: 36),
 
-            // ImHim Keyboard hero — the "rizz from anywhere" surface.
-            // Lives ABOVE the three legacy cards because the keyboard
-            // IS the big product story. Tapping routes to the
-            // /keyboard-install onboarding screen; the native extension
-            // target itself comes online once the App Group + bundle id
-            // are registered on the Apple Developer portal.
+            // ImHim inside iMessage — the WingAI-style "+" drawer
+            // surface. Tap +, pick ImHim, screenshot a chat, drop
+            // three replies into the compose box.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
               child: _KeyboardHeroCard(
@@ -161,7 +158,7 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
                   HapticFeedback.selectionClick();
                   // ignore: discarded_futures
                   AnalyticsService.keyboardInstallTileTapped('rizz_tab');
-                  context.push('/keyboard-install');
+                  context.push('/imessage-install');
                 },
               ),
             ).animate().fadeIn(duration: 360.ms)
@@ -541,7 +538,7 @@ class _KeyboardHeroCard extends StatelessWidget {
                     color: AppColors.red.withValues(alpha: 0.6), width: 0.9),
                 ),
                 alignment: Alignment.center,
-                child: const Icon(Icons.keyboard_alt_rounded,
+                child: const Icon(Icons.add_comment_rounded,
                     color: AppColors.red, size: 26),
               ),
               const SizedBox(width: 14),
@@ -550,7 +547,7 @@ class _KeyboardHeroCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Rizz from anywhere.',
+                      'Rizz inside iMessage.',
                       style: GoogleFonts.playfairDisplay(
                         color: Colors.white,
                         fontSize: 19, height: 1.08,
@@ -561,8 +558,8 @@ class _KeyboardHeroCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Install the ImHim keyboard — three replies on any '
-                      'screenshot, inside iMessage, Hinge, Tinder.',
+                      'Tap + inside Messages, pick ImHim, drop three '
+                      'replies straight into the chat.',
                       style: GoogleFonts.inter(
                         color: AppColors.textSecondary,
                         fontSize: 12.5, height: 1.35,

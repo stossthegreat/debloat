@@ -1,22 +1,25 @@
 //
-//  KeyboardViewController.swift
-//  ImHimKeyboard
+//  MessagesViewController.swift
+//  ImHimMessages
 //
-//  The visible keyboard. Three states drive the whole UI:
+//  THE iMessage app — what you actually wanted. Lives in the "+"
+//  drawer of iMessage. Open a chat, tap +, pick ImHim, our UI takes
+//  over the bottom half, scans your latest screenshot, drops three
+//  replies in. Tap one, it inserts straight into the iMessage
+//  compose box — you tap send. Zero copy-paste, no app switch.
 //
-//    .waiting   — fresh boot. "Waiting for screenshot…" + manual "Pick"
-//                 button. Polls Photos every 1.5s for the latest screenshot.
-//    .loading   — we've sent the image to /rizz/reply, awaiting replies.
-//    .replies   — three reply chips, tap to insert into the active field.
-//    .error     — short toast-style banner with a retry chip.
-//
-//  Mirrors WingAI's UX: open the keyboard, take a screenshot, the chips
-//  arrive in <5s, one tap drops a reply into iMessage. No app switch.
+//  States, top to bottom:
+//    .waiting   — "Drop a screenshot." Polls Photos every 1.5s.
+//    .loading   — "Reading the chat… three options incoming."
+//    .replies   — three tappable chips, each inserts via
+//                  activeConversation.insertText.
+//    .error     — short message + retry chip.
 //
 
+import Messages
 import UIKit
 
-final class KeyboardViewController: UIInputViewController {
+final class MessagesViewController: MSMessagesAppViewController {
 
     // MARK: - State
 
@@ -55,13 +58,12 @@ final class KeyboardViewController: UIInputViewController {
         row.translatesAutoresizingMaskIntoConstraints = false
 
         let wordmark = UILabel()
-        wordmark.attributedText = makeWordmark(size: 18)
+        wordmark.attributedText = makeWordmark(size: 22)
         wordmark.translatesAutoresizingMaskIntoConstraints = false
 
         let dot = UIView()
         dot.backgroundColor = Theme.red
         dot.layer.cornerRadius = 3
-        dot.translatesAutoresizingMaskIntoConstraints = false
         dot.widthAnchor.constraint(equalToConstant: 6).isActive = true
         dot.heightAnchor.constraint(equalToConstant: 6).isActive = true
 
@@ -71,11 +73,9 @@ final class KeyboardViewController: UIInputViewController {
         row.addArrangedSubview(wordmark)
         row.addArrangedSubview(dot)
         row.addArrangedSubview(spacer)
-        row.addArrangedSubview(makeNextKeyboardButton())
         return row
     }()
 
-    /// Status/CTA region. Re-built per render(); we don't reuse subviews.
     private let bodyContainer: UIView = {
         let v = UIView()
         v.translatesAutoresizingMaskIntoConstraints = false
@@ -90,43 +90,45 @@ final class KeyboardViewController: UIInputViewController {
 
         view.addSubview(rootStack)
         NSLayoutConstraint.activate([
-            rootStack.topAnchor.constraint(equalTo: view.topAnchor, constant: 10),
-            rootStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 14),
-            rootStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
-            rootStack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -10),
+            rootStack.topAnchor.constraint(equalTo: view.topAnchor, constant: 14),
+            rootStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            rootStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            rootStack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -14),
         ])
 
         rootStack.addArrangedSubview(headerRow)
         rootStack.addArrangedSubview(bodyContainer)
 
-        // First-paint: figure out if we have Photos access.
-        scanner.requestAuthorization { [weak self] status in
+        scanner.requestAuthorization { [weak self] _ in
             self?.render()
-            if status == .authorized || status == .limited {
-                self?.startPolling()
-            }
+            self?.startPolling()
         }
     }
 
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
+    override func willBecomeActive(with conversation: MSConversation) {
+        super.willBecomeActive(with: conversation)
         if scanner.hasAccess && pollTimer == nil {
             startPolling()
         }
         render()
     }
 
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
+    override func didResignActive(with conversation: MSConversation) {
+        super.didResignActive(with: conversation)
         stopPolling()
+    }
+
+    override func didTransition(to presentationStyle: MSMessagesAppPresentationStyle) {
+        // The expanded presentation is where the meaningful UI lives —
+        // compact mode is just a teaser. We render the same scaffold
+        // in both; layout adjusts to the new bounds automatically.
+        render()
     }
 
     // MARK: - Polling
 
     private func startPolling() {
         stopPolling()
-        // Quick first attempt — the user often takes the screenshot BEFORE
-        // they switch to our keyboard, so check once on mount.
         tryConsumeScreenshot()
         pollTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
             self?.tryConsumeScreenshot()
@@ -139,8 +141,6 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func tryConsumeScreenshot() {
-        // Only poll while idle — don't yank the user out of the replies
-        // view by detecting an older screenshot.
         if case .waiting = state {} else { return }
         scanner.fetchLatestScreenshot { [weak self] data in
             guard let self = self, let data = data else { return }
@@ -156,7 +156,7 @@ final class KeyboardViewController: UIInputViewController {
             switch result {
             case .success(let replies):
                 if replies.isEmpty {
-                    self.state = .error("No replies — try again.")
+                    self.state = .error("No replies — try a clearer screenshot.")
                 } else {
                     self.state = .replies(replies)
                 }
@@ -169,9 +169,7 @@ final class KeyboardViewController: UIInputViewController {
     // MARK: - Render
 
     private func render() {
-        // Wipe body subviews so each state owns the layout cleanly.
         bodyContainer.subviews.forEach { $0.removeFromSuperview() }
-
         let inner: UIView
         if !scanner.hasAccess {
             inner = makePermissionPrompt()
@@ -198,19 +196,19 @@ final class KeyboardViewController: UIInputViewController {
     private func makeWaitingView() -> UIView {
         let card = UIView()
         card.backgroundColor = Theme.surface1
-        card.layer.cornerRadius = 18
+        card.layer.cornerRadius = 20
         card.layer.borderWidth = 0.8
         card.layer.borderColor = Theme.divider.cgColor
 
         let title = UILabel()
         title.text = "Drop a screenshot."
-        title.font = makeItalic(size: 22, weight: .heavy)
+        title.font = Theme.italic(size: 24)
         title.textColor = Theme.textPrimary
         title.textAlignment = .center
 
         let sub = UILabel()
-        sub.text = "Take the screenshot — we'll read it and write three replies."
-        sub.font = Theme.body(size: 12.5, weight: .medium)
+        sub.text = "Take a screenshot of any chat — we'll read it and write three replies you can drop straight in."
+        sub.font = Theme.body(size: 13)
         sub.textColor = Theme.textSecondary
         sub.textAlignment = .center
         sub.numberOfLines = 0
@@ -218,21 +216,17 @@ final class KeyboardViewController: UIInputViewController {
         let pulse = makeRedPill(text: "WAITING FOR SCREENSHOT")
         animatePulse(pulse)
 
-        let manual = makeOutlinePill(text: "OR PICK FROM PHOTOS")
-        let tap = UITapGestureRecognizer(target: self, action: #selector(pickManually))
-        manual.addGestureRecognizer(tap)
-
-        let stack = UIStackView(arrangedSubviews: [title, sub, pulse, manual])
+        let stack = UIStackView(arrangedSubviews: [title, sub, pulse])
         stack.axis = .vertical
         stack.alignment = .center
-        stack.spacing = 10
+        stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
-            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14),
-            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
-            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 22),
+            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -18),
+            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 22),
+            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -22),
         ])
         return card
     }
@@ -240,9 +234,9 @@ final class KeyboardViewController: UIInputViewController {
     private func makeLoadingView() -> UIView {
         let card = UIView()
         card.backgroundColor = Theme.surface1
-        card.layer.cornerRadius = 18
+        card.layer.cornerRadius = 20
+        card.layer.borderColor = Theme.red.withAlphaComponent(0.45).cgColor
         card.layer.borderWidth = 0.8
-        card.layer.borderColor = Theme.red.withAlphaComponent(0.4).cgColor
 
         let spinner = UIActivityIndicatorView(style: .medium)
         spinner.color = Theme.red
@@ -250,36 +244,30 @@ final class KeyboardViewController: UIInputViewController {
 
         let title = UILabel()
         title.text = "Reading the chat…"
-        title.font = makeItalic(size: 20, weight: .heavy)
+        title.font = Theme.italic(size: 22)
         title.textColor = Theme.textPrimary
+        title.textAlignment = .center
 
         let sub = UILabel()
-        sub.text = "THREE OPTIONS INCOMING"
-        sub.font = Theme.label(size: 10.5)
-        sub.textColor = Theme.red
-        let traits = sub.font.fontDescriptor.withSymbolicTraits([])
-        if let trait = traits {
-            sub.font = UIFont(descriptor: trait, size: 10.5)
-        }
         sub.attributedText = NSAttributedString(
             string: "THREE OPTIONS INCOMING",
             attributes: [
                 .kern: 3.2,
                 .foregroundColor: Theme.red,
-                .font: Theme.label(size: 10.5),
+                .font: Theme.label(size: 11),
             ]
         )
 
         let stack = UIStackView(arrangedSubviews: [spinner, title, sub])
         stack.axis = .vertical
         stack.alignment = .center
-        stack.spacing = 8
+        stack.spacing = 10
         stack.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
-            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -18),
             stack.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 22),
+            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -22),
         ])
         return card
     }
@@ -292,18 +280,11 @@ final class KeyboardViewController: UIInputViewController {
         for (idx, r) in replies.enumerated() {
             v.addArrangedSubview(makeReplyChip(r, index: idx))
         }
-        // Bottom row: re-scan + "type your own"
-        let actionRow = UIStackView()
-        actionRow.axis = .horizontal
-        actionRow.spacing = 8
-        actionRow.distribution = .fillEqually
 
         let rescan = makeOutlinePill(text: "NEW SCREENSHOT")
-        let rescanTap = UITapGestureRecognizer(target: self, action: #selector(resetToWaiting))
-        rescan.addGestureRecognizer(rescanTap)
-        actionRow.addArrangedSubview(rescan)
-
-        v.addArrangedSubview(actionRow)
+        let tap = UITapGestureRecognizer(target: self, action: #selector(resetToWaiting))
+        rescan.addGestureRecognizer(tap)
+        v.addArrangedSubview(rescan)
         return v
     }
 
@@ -314,7 +295,6 @@ final class KeyboardViewController: UIInputViewController {
         chip.layer.borderWidth = 0.8
         chip.layer.borderColor = Theme.divider.cgColor
         chip.translatesAutoresizingMaskIntoConstraints = false
-        chip.tag = index
 
         let tag = UILabel()
         tag.attributedText = NSAttributedString(
@@ -329,7 +309,7 @@ final class KeyboardViewController: UIInputViewController {
 
         let body = UILabel()
         body.text = r.text
-        body.font = Theme.body(size: 14, weight: .medium)
+        body.font = Theme.body(size: 14)
         body.textColor = Theme.textPrimary
         body.numberOfLines = 0
         body.translatesAutoresizingMaskIntoConstraints = false
@@ -348,7 +328,6 @@ final class KeyboardViewController: UIInputViewController {
             stack.trailingAnchor.constraint(equalTo: chip.trailingAnchor, constant: -14),
         ])
         chip.addTarget(self, action: #selector(replyTapped(_:)), for: .touchUpInside)
-        // Store the text on the chip itself so the tap handler can pull it.
         chip.accessibilityValue = r.text
         return chip
     }
@@ -364,6 +343,7 @@ final class KeyboardViewController: UIInputViewController {
         title.text = msg
         title.font = Theme.body(size: 13, weight: .semibold)
         title.textColor = Theme.textPrimary
+        title.textAlignment = .center
         title.numberOfLines = 0
 
         let retry = makeOutlinePill(text: "TRY AGAIN")
@@ -372,15 +352,15 @@ final class KeyboardViewController: UIInputViewController {
 
         let stack = UIStackView(arrangedSubviews: [title, retry])
         stack.axis = .vertical
-        stack.spacing = 8
+        stack.spacing = 10
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
-            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
-            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
-            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -14),
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
+            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
         ])
         return card
     }
@@ -394,13 +374,13 @@ final class KeyboardViewController: UIInputViewController {
 
         let title = UILabel()
         title.text = "Photos access needed."
-        title.font = makeItalic(size: 18, weight: .heavy)
+        title.font = Theme.italic(size: 19)
         title.textColor = Theme.textPrimary
         title.textAlignment = .center
 
         let sub = UILabel()
-        sub.text = "Open ImHim → Keyboard, tap Enable, then turn on \"Allow Full Access.\""
-        sub.font = Theme.body(size: 12, weight: .medium)
+        sub.text = "iOS needs to share your latest screenshot with ImHim so we can read it. Tap Allow when prompted."
+        sub.font = Theme.body(size: 12.5)
         sub.textColor = Theme.textSecondary
         sub.textAlignment = .center
         sub.numberOfLines = 0
@@ -412,26 +392,12 @@ final class KeyboardViewController: UIInputViewController {
         stack.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
-            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14),
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
             stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
             stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
         ])
         return card
-    }
-
-    private func makeNextKeyboardButton() -> UIView {
-        // Required by Apple — every custom keyboard must surface a way to
-        // switch back to the system keyboard. Globe glyph, low-key.
-        let btn = UIButton(type: .system)
-        btn.setImage(UIImage(systemName: "globe"), for: .normal)
-        btn.tintColor = Theme.textTertiary
-        btn.addTarget(self,
-                      action: #selector(handleInputModeList(from:with:)),
-                      for: .allTouchEvents)
-        btn.widthAnchor.constraint(equalToConstant: 34).isActive = true
-        btn.heightAnchor.constraint(equalToConstant: 30).isActive = true
-        return btn
     }
 
     private func makeRedPill(text: String) -> UIView {
@@ -439,7 +405,7 @@ final class KeyboardViewController: UIInputViewController {
         pill.attributedText = NSAttributedString(
             string: text,
             attributes: [
-                .kern: 3.4,
+                .kern: 3.2,
                 .foregroundColor: Theme.red,
                 .font: Theme.label(size: 11),
             ]
@@ -450,7 +416,7 @@ final class KeyboardViewController: UIInputViewController {
         pill.layer.masksToBounds = true
         pill.layer.borderWidth = 0.9
         pill.layer.borderColor = Theme.red.withAlphaComponent(0.65).cgColor
-        pill.setContentHuggingPriority(.required, for: .horizontal)
+
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(pill)
@@ -459,12 +425,9 @@ final class KeyboardViewController: UIInputViewController {
             pill.topAnchor.constraint(equalTo: container.topAnchor),
             pill.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             pill.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            pill.heightAnchor.constraint(equalToConstant: 30),
-            pill.widthAnchor.constraint(greaterThanOrEqualToConstant: 160),
+            pill.heightAnchor.constraint(equalToConstant: 32),
+            pill.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
         ])
-        // Padding via attributed string isn't free in UILabel; just give
-        // the pill width via insets through layout margin.
-        pill.textAlignment = .center
         return container
     }
 
@@ -479,12 +442,12 @@ final class KeyboardViewController: UIInputViewController {
             ]
         )
         pill.textAlignment = .center
-        pill.backgroundColor = .clear
         pill.layer.cornerRadius = 99
         pill.layer.masksToBounds = true
         pill.layer.borderWidth = 0.8
         pill.layer.borderColor = Theme.textTertiary.cgColor
         pill.isUserInteractionEnabled = true
+
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(pill)
@@ -493,8 +456,8 @@ final class KeyboardViewController: UIInputViewController {
             pill.topAnchor.constraint(equalTo: container.topAnchor),
             pill.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             pill.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            pill.heightAnchor.constraint(equalToConstant: 28),
-            pill.widthAnchor.constraint(greaterThanOrEqualToConstant: 140),
+            pill.heightAnchor.constraint(equalToConstant: 30),
+            pill.widthAnchor.constraint(greaterThanOrEqualToConstant: 160),
         ])
         container.isUserInteractionEnabled = true
         return container
@@ -530,22 +493,14 @@ final class KeyboardViewController: UIInputViewController {
         return attr
     }
 
-    private func makeItalic(size: CGFloat, weight: UIFont.Weight) -> UIFont {
-        let base = UIFont.systemFont(ofSize: size, weight: weight)
-        if let d = base.fontDescriptor.withSymbolicTraits([.traitItalic]) {
-            return UIFont(descriptor: d, size: size)
-        }
-        return base
-    }
-
     // MARK: - Actions
 
     @objc private func replyTapped(_ sender: UIControl) {
         guard let text = sender.accessibilityValue else { return }
-        // Haptic on insert — keeps the "this worked" beat alive.
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        textDocumentProxy.insertText(text)
-        // Reset back to waiting so the next screenshot is ready to land.
+        // THE LANDING — drops the reply straight into the iMessage
+        // compose box. User taps Send (one tap) and the message goes.
+        activeConversation?.insertText(text, completionHandler: nil)
         resetToWaiting()
     }
 
@@ -553,24 +508,13 @@ final class KeyboardViewController: UIInputViewController {
         state = .waiting
         if scanner.hasAccess { startPolling() }
     }
-
-    @objc private func pickManually() {
-        // Manual pick isn't supported from inside a keyboard extension
-        // (UIImagePickerController + PHPickerViewController both require
-        // a presenting view controller that the keyboard context can't
-        // safely host). Instead, the chip nudges the user to take a
-        // screenshot — same affordance, no host-app dependency.
-        UINotificationFeedbackGenerator().notificationOccurred(.warning)
-        state = .error("Take a screenshot of the chat — we'll pick it up automatically.")
-    }
 }
 
 private extension RizzError {
     var userMessage: String {
         switch self {
-        case .noAccess:           return "Photos access not granted."
-        case .network(let m):     return "Network issue · \(m.prefix(40))"
-        case .decode(let m):      return "Bad response · \(m.prefix(40))"
+        case .network(let m):  return "Network issue · \(m.prefix(48))"
+        case .decode(let m):   return "Bad response · \(m.prefix(48))"
         }
     }
 }

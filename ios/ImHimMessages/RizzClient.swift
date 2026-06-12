@@ -1,12 +1,9 @@
 //
 //  RizzClient.swift
-//  ImHimKeyboard
+//  ImHimMessages
 //
-//  Talks to the same /rizz/reply backend the in-app Rizz screen uses.
-//  Hard-coded host so the keyboard never needs to do an app-launch
-//  handshake — the App Group UserDefaults still carries config the
-//  main app sets (selected vibe, telemetry opt-in), but the host
-//  itself is a constant.
+//  Talks to the same /rizz/reply backend the main app's Rizz screen
+//  hits. Same JSON payload shape: { vibe, ctx, scenario, imageBase64 }.
 //
 
 import Foundation
@@ -18,7 +15,6 @@ struct RizzReplyItem {
 }
 
 enum RizzError: Error {
-    case noAccess
     case network(String)
     case decode(String)
 }
@@ -26,31 +22,24 @@ enum RizzError: Error {
 final class RizzClient {
 
     /// Same host as ApiConfig.backendBaseUrl in lib/config/api_config.dart.
-    /// If the main app rotates its backend host, bump this constant.
     private let host = URL(string: "https://mirrorly-production.up.railway.app")!
 
-    /// Default vibe — "playful" mirrors the Flutter Rizz screen's
-    /// default selection. We could wire an App Group shared
-    /// UserDefaults here later to pick up the user's chosen vibe
-    /// from the main app, but App Groups require dev-portal
-    /// registration and the v187 build is shipping without that
-    /// setup to keep CI green. Hard default for now.
+    /// Hard default vibe. Could be pulled from a shared App Group
+    /// once the entitlement is registered on the dev portal, but for
+    /// now the iMessage extension picks "playful" — matches what the
+    /// main app's Rizz screen defaults to.
     var preferredVibe: String { "playful" }
 
-    /// POST screenshot → 3 replies. Reuses the same JSON payload shape
-    /// the Flutter app uses: { vibe, ctx, scenario, imageBase64 }.
     func fetchReplies(
         screenshot: Data,
         completion: @escaping (Result<[RizzReplyItem], RizzError>) -> Void
     ) {
-        // Re-encode the screenshot at a reasonable size + JPEG quality so
-        // the upload doesn't burn the user's data on a 8MB iCloud PNG.
         let payloadImage = compress(screenshot) ?? screenshot
         let b64 = payloadImage.base64EncodedString()
 
         let body: [String: Any] = [
             "vibe":        preferredVibe,
-            "ctx":         "keyboard",      // server-side tagging so we can A/B
+            "ctx":         "imessage",
             "scenario":    "",
             "imageBase64": b64,
         ]
@@ -66,7 +55,7 @@ final class RizzClient {
             return
         }
 
-        let task = URLSession.shared.dataTask(with: req) { data, response, err in
+        URLSession.shared.dataTask(with: req) { data, _, err in
             if let err = err {
                 DispatchQueue.main.async {
                     completion(.failure(.network(err.localizedDescription)))
@@ -104,13 +93,12 @@ final class RizzClient {
                     completion(.failure(.decode(error.localizedDescription)))
                 }
             }
-        }
-        task.resume()
+        }.resume()
     }
 
-    /// Squash to 1600px on the long edge + JPEG q 0.78. Mirrors what the
-    /// Flutter app does before sending vision payloads. Keeps the upload
-    /// under ~500 KB for a typical iPhone screenshot.
+    /// Squash to ≤1600px long edge + JPEG q 0.78. Keeps the upload
+    /// under ~500 KB for a typical iPhone screenshot — matches what
+    /// the Flutter Rizz screen does before sending vision payloads.
     private func compress(_ data: Data) -> Data? {
         guard let img = UIImage(data: data) else { return nil }
         let maxEdge: CGFloat = 1600

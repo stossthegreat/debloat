@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../models/face_geometry.dart';
 import '../screens/chat/chat_screen.dart';
 import '../screens/home/home_screen.dart';
-import '../screens/keyboard/keyboard_install_screen.dart';
+import '../screens/imessage/imessage_install_screen.dart';
 import '../screens/legal/legal_screen.dart';
 import '../screens/onboarding/gender_pick_screen.dart';
 import '../screens/onboarding/intro_reel_screen.dart';
@@ -92,13 +92,14 @@ final appRouter = GoRouter(
       builder: (_, __) => const RizzChatScreen(),
     ),
     GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
-    // ImHim Keyboard onboarding — three-step explainer + iOS Settings
-    // deep-link. The keyboard extension itself lives in its own iOS
-    // target (ios/ImHimKeyboard); this is the conversion surface that
-    // walks the user through Apple's "Allow Full Access" prompt.
+    // ImHim iMessage app onboarding — three-step explainer for the
+    // "+ drawer inside iMessage" surface. Same shape as WingAI:
+    // user takes a screenshot, opens Messages, taps +, picks ImHim,
+    // three replies drop into the compose box. The native extension
+    // lives in ios/ImHimMessages/.
     GoRoute(
-      path: '/keyboard-install',
-      builder: (_, __) => const KeyboardInstallScreen(),
+      path: '/imessage-install',
+      builder: (_, __) => const ImessageInstallScreen(),
     ),
     GoRoute(
       path: '/protocol',

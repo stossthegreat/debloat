@@ -138,17 +138,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               const SizedBox(height: Sp.lg),
 
-              // ── KEYBOARD ──────────────────────────────────────────────────
-              _SectionHeader('KEYBOARD'),
+              // ── iMESSAGE ─────────────────────────────────────────────────
+              _SectionHeader('iMESSAGE'),
               _SettingTile(
-                icon: Icons.keyboard_alt_rounded,
-                title: 'ImHim Keyboard',
-                subtitle: 'Three replies inside iMessage, Hinge, Tinder',
+                icon: Icons.add_comment_rounded,
+                title: 'ImHim inside iMessage',
+                subtitle: 'Tap + in Messages, pick ImHim, drop replies in',
                 onTap: () {
                   HapticFeedback.selectionClick();
                   // ignore: discarded_futures
                   AnalyticsService.keyboardInstallTileTapped('settings');
-                  context.push('/keyboard-install');
+                  context.push('/imessage-install');
                 },
               ),
 

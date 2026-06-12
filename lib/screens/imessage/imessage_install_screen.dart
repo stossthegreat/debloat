@@ -5,36 +5,27 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../services/analytics_service.dart';
-import '../../services/keyboard_install_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/imhim_wordmark.dart';
 
-/// "Install the ImHim Keyboard" onboarding. Three-step explainer with a
-/// hero CTA that deep-links to iOS Settings → ImHim. The keyboard itself
-/// is a separate iOS target; this screen is the conversion surface that
-/// walks the user through Apple's "Allow Full Access" gauntlet.
-class KeyboardInstallScreen extends StatefulWidget {
-  const KeyboardInstallScreen({super.key});
+/// "Use ImHim inside iMessage" onboarding. Walks the user through the
+/// three taps Apple needs them to make to enable the iMessage extension:
+/// open a chat → tap the + button → pick ImHim from the app drawer.
+class ImessageInstallScreen extends StatefulWidget {
+  const ImessageInstallScreen({super.key});
 
   @override
-  State<KeyboardInstallScreen> createState() =>
-      _KeyboardInstallScreenState();
+  State<ImessageInstallScreen> createState() =>
+      _ImessageInstallScreenState();
 }
 
-class _KeyboardInstallScreenState extends State<KeyboardInstallScreen> {
+class _ImessageInstallScreenState extends State<ImessageInstallScreen> {
   @override
   void initState() {
     super.initState();
     // ignore: discarded_futures
     AnalyticsService.keyboardInstallViewed();
-  }
-
-  Future<void> _openSettings() async {
-    HapticFeedback.mediumImpact();
-    // ignore: discarded_futures
-    AnalyticsService.keyboardInstallSettingsTapped();
-    await KeyboardInstallService.openSystemKeyboardSettings();
   }
 
   @override
@@ -48,7 +39,7 @@ class _KeyboardInstallScreenState extends State<KeyboardInstallScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Chrome row: close X + ImHim wordmark ─────────────
+              // Chrome row: close X + wordmark.
               Row(
                 children: [
                   _CloseButton(onTap: () {
@@ -66,9 +57,8 @@ class _KeyboardInstallScreenState extends State<KeyboardInstallScreen> {
               ),
               const SizedBox(height: 28),
 
-              // ── Hero block ──────────────────────────────────────
               Text(
-                'Rizz from anywhere.',
+                'Rizz inside iMessage.',
                 style: GoogleFonts.playfairDisplay(
                   color: Colors.white,
                   fontSize: 34, height: 1.06,
@@ -81,9 +71,9 @@ class _KeyboardInstallScreenState extends State<KeyboardInstallScreen> {
                       duration: 420.ms, curve: Curves.easeOut),
               const SizedBox(height: 10),
               Text(
-                'Install the ImHim keyboard. Screenshot any '
-                'chat — three replies appear straight inside iMessage, '
-                'Hinge, Tinder. Zero app switching.',
+                'Take a screenshot of any chat. Open Messages, tap the '
+                'plus button, pick ImHim. Three replies appear — drop one '
+                'into the message box and send.',
                 style: GoogleFonts.inter(
                   color: AppColors.textSecondary,
                   fontSize: 14.5, height: 1.45,
@@ -93,69 +83,35 @@ class _KeyboardInstallScreenState extends State<KeyboardInstallScreen> {
 
               const SizedBox(height: 28),
 
-              // ── Step pack ───────────────────────────────────────
               _Step(
                 index: 1,
-                title: 'Open Settings',
-                body: 'Tap the button below — drops you straight into the '
-                      'ImHim row in iOS Settings.',
+                title: 'Open Messages',
+                body: 'Open any chat — iMessage, group chat, Hinge link.',
                 delay: 200,
               ),
               _Step(
                 index: 2,
-                title: 'Keyboards → Add New Keyboard',
-                body: 'Pick "ImHim Keyboard" from the list. It joins your '
-                      'system keyboards.',
+                title: 'Tap the + button',
+                body: 'Next to the message box. The iMessage app drawer slides up.',
                 delay: 300,
               ),
               _Step(
                 index: 3,
-                title: 'Toggle "Allow Full Access"',
-                body: 'Required so we can read your latest screenshot + reach '
-                      'our backend. We never log keystrokes. Ever.',
+                title: 'Pick ImHim',
+                body: 'Our icon sits with the rest of your iMessage apps. '
+                      'Tap it, screenshot the chat, three replies arrive in seconds.',
                 delay: 400,
               ),
 
               const SizedBox(height: 24),
 
-              // ── Primary CTA ─────────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                height: 58,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.red,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  onPressed: _openSettings,
-                  child: Text(
-                    'OPEN SETTINGS',
-                    style: AppTypography.label.copyWith(
-                      color: Colors.white,
-                      fontSize: 13,
-                      letterSpacing: 3.6,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              )
-                  .animate(onPlay: (c) => c.repeat(reverse: true))
-                  .scaleXY(begin: 1.0, end: 1.015,
-                      duration: 1400.ms, curve: Curves.easeInOut),
-              const SizedBox(height: 14),
-
-              // ── Quiet reassurance row ───────────────────────────
               _ReassureRow(
                 icon: Icons.lock_outline,
-                text: 'No keystrokes ever leave your phone.',
+                text: 'Reads only the screenshot you took. No keystrokes.',
               ),
               _ReassureRow(
                 icon: Icons.photo_camera_back_outlined,
-                text: 'Screenshots are read once and dropped — never stored.',
+                text: 'Screenshots are sent once, never stored.',
               ),
               _ReassureRow(
                 icon: Icons.bolt_rounded,
