@@ -1381,8 +1381,14 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         // talk — same gate as v176, just relocated from the chrome row
         // so the brand reads as "above the record button" the moment
         // they speak.
+        // v216 layout pass: bottom edge pulled in from 188 → 156 so
+        // the caption band reaches the Lucien button, and the column
+        // alignment switched to bottom-anchored scroll (reverse: true)
+        // so the writing sits right above the button instead of
+        // floating up near HOLD TO SPEAK. HOLD TO SPEAK pulled tighter
+        // against the orb by lifting its translate offset from -8 → -22.
         Positioned(
-          top: 82, left: 0, right: 0, bottom: 188,
+          top: 82, left: 0, right: 0, bottom: 156,
           child: Column(
             children: [
               // ImHim wordmark — only while holding. Wrapped in an
@@ -1397,7 +1403,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
                       fontSize: 30, letterSpacing: -0.8),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 0),
               // The orb IS the talk button. Hold it to speak; a ring
               // spins while you hold; release to send. Uses raw pointer
               // events (Listener) not tap gestures, so sliding your
@@ -1459,7 +1465,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
               if (_phase == _Phase.live && !_holding && !_herSpeaking) ...[
                 if (_firstEverSession && !_clockStarted)
                   Transform.translate(
-                    offset: const Offset(0, -12),
+                    offset: const Offset(0, -26),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: _FirstTimeBubble(),
@@ -1467,9 +1473,13 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
                   )
                 else
                   Transform.translate(
-                    offset: const Offset(0, -8),
+                    // Lifted from -8 → -22 to tuck HOLD TO SPEAK
+                    // directly under the orb edge — used to float
+                    // half a finger-width below the orb which felt
+                    // disconnected.
+                    offset: const Offset(0, -22),
                     child: Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.only(bottom: 2),
                       child: Text(
                         'HOLD TO SPEAK',
                         textAlign: TextAlign.center,
@@ -1517,11 +1527,18 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
                         fontWeight: FontWeight.w900,
                       )),
                 ),
-              // Scrollable caption band — long lines scroll here instead
-              // of running under the controls.
+              // Scrollable caption band — long lines scroll here
+              // instead of running under the controls. `reverse: true`
+              // keeps the text bottom-anchored against the Lucien
+              // button so short captions don't leave a giant dead
+              // zone above the button (the v215 layout floated text
+              // right under HOLD TO SPEAK with empty space below).
+              // Long multi-turn convos auto-scroll to keep the latest
+              // line at the bottom — same UX as iMessage / WhatsApp.
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(28, 2, 28, 8),
+                  reverse: true,
+                  padding: const EdgeInsets.fromLTRB(28, 8, 28, 2),
                   child: Column(
                     children: [
                       if (_herCaption.isEmpty &&

@@ -264,7 +264,23 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
           child: Column(
             children: [
               _Header(
-                onBack:  () => Navigator.of(context).maybePop(),
+                // v216 fix: Navigator.maybePop() did nothing when the
+                // screen was entered via go() from the iOS Share
+                // Extension (and sometimes from the Rizz tab too —
+                // go_router's nested-stack push doesn't always leave
+                // a Navigator route in the local Material stack).
+                // Result: tapping the back chevron after a screenshot
+                // landed felt completely broken. Now we route through
+                // go_router and fall back to /home so there is always
+                // a valid destination.
+                onBack: () {
+                  HapticFeedback.lightImpact();
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/home');
+                  }
+                },
                 onReset: hasImage || hasResults ? _reset : null,
               ),
               Expanded(
