@@ -34,15 +34,15 @@
 		<dict>
 			<key>CFBundleIconFiles</key>
 			<array>
-				<string>iMessage App Icon-29@2x</string>
-				<string>iMessage App Icon-29@3x</string>
-				<string>iMessage App Icon-60x45@2x</string>
-				<string>iMessage App Icon-60x45@3x</string>
-				<string>iMessage App Icon-67x50@2x</string>
-				<string>iMessage App Icon-27x20@2x</string>
-				<string>iMessage App Icon-27x20@3x</string>
-				<string>iMessage App Icon-32x24@2x</string>
-				<string>iMessage App Icon-32x24@3x</string>
+				<string>iMessage App Icon29x29@2x</string>
+				<string>iMessage App Icon29x29@3x</string>
+				<string>iMessage App Icon60x45@2x</string>
+				<string>iMessage App Icon60x45@3x</string>
+				<string>iMessage App Icon67x50@2x</string>
+				<string>iMessage App Icon27x20@2x</string>
+				<string>iMessage App Icon27x20@3x</string>
+				<string>iMessage App Icon32x24@2x</string>
+				<string>iMessage App Icon32x24@3x</string>
 			</array>
 			<key>CFBundleIconName</key>
 			<string>iMessage App Icon</string>
@@ -54,12 +54,12 @@
 		<dict>
 			<key>CFBundleIconFiles</key>
 			<array>
-				<string>iMessage App Icon-29@2x-1</string>
-				<string>iMessage App Icon-74x55@2x</string>
-				<string>iMessage App Icon-27x20@2x</string>
-				<string>iMessage App Icon-27x20@3x</string>
-				<string>iMessage App Icon-32x24@2x</string>
-				<string>iMessage App Icon-32x24@3x</string>
+				<string>iMessage App Icon29x29@2x-1</string>
+				<string>iMessage App Icon74x55@2x</string>
+				<string>iMessage App Icon27x20@2x</string>
+				<string>iMessage App Icon27x20@3x</string>
+				<string>iMessage App Icon32x24@2x</string>
+				<string>iMessage App Icon32x24@3x</string>
 			</array>
 			<key>CFBundleIconName</key>
 			<string>iMessage App Icon</string>
