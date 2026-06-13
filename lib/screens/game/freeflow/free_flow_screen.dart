@@ -320,6 +320,34 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   // ─── Go live ────────────────────────────────────────────────────────
 
   Future<void> _goLive(_Vibe vibe) async {
+    // v225 leak fix — REAL root cause of "had to hard close the app".
+    //
+    // _pcmWatchdog is a Timer.periodic created on EVERY _goLive call
+    // (line ~395) but it's never cancelled anywhere — not in
+    // _switchCharacter, not in _restartTabSession, not even in
+    // dispose(). After N character switches the screen has N watchdogs
+    // all firing every 250ms, racing on _kickPcmIfStalled, which
+    // eventually leaves FlutterPcmSound in a half-stalled state that
+    // only a process kill recovers from. THAT's why bro's been seeing
+    // "works for a few in a row then breaks" + having to hard close —
+    // the watchdogs accumulate silently each switch.
+    //
+    // Cancel ALL prior timers + subs here so resources don't pile up.
+    // Recorder + session stay fire-and-forget (awaiting them is what
+    // v216 broke — see commit 0179a2a / v221 revert).
+    _pcmWatchdog?.cancel();
+    _pcmWatchdog = null;
+    _clock?.cancel();
+    _createTimer?.cancel();
+    _eventSub?.cancel();
+    _eventSub = null;
+    _micSub?.cancel();
+    _micSub = null;
+    // ignore: discarded_futures
+    _recorder.stop();
+    // ignore: discarded_futures
+    _session.close();
+
     // No in-flight guard here — _switchCharacter explicitly tears
     // the previous session down before calling this, and blocking
     // a legitimate restart while the OLD _goLive is still awaiting
@@ -644,21 +672,18 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         _beginHold();
         return;
       }
-      // Free path — current session is allowed if it's the user's
-      // free one. Returning free users (i.e. _firstEverSession is
-      // false because gameFreeUsed was already true at _goLive)
-      // hit the paywall on every hold.
-      if (!_firstEverSession) {
-        if (!mounted) return;
-        // ignore: discarded_futures
-        AnalyticsService.freeflowBlockedFreeCap('orb');
-        HapticFeedback.mediumImpact();
-        await context.push('/paywall',
-            extra: {'source': 'game_speak_capped'});
-        return;
-      }
+      // v224 — Free roleplay killed. The OpenAI Realtime API cost per
+      // minute is enough that letting 20k free users burn one minute
+      // each ($X each call) is not survivable on the current pricing.
+      // Every free hold now pushes the paywall immediately. The
+      // _FirstTimeBubble that overlays the orb does the sell — see
+      // the rewrite at the bottom of this file.
       if (!mounted) return;
-      _beginHold();
+      // ignore: discarded_futures
+      AnalyticsService.freeflowBlockedFreeCap('orb');
+      HapticFeedback.mediumImpact();
+      await context.push('/paywall',
+          extra: {'source': 'game_speak_capped'});
     });
   }
 
@@ -2649,23 +2674,23 @@ class _FirstTimeBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
           colors: [
-            Color(0x14FFFFFF),
+            Color(0x18FFFFFF),
             Color(0x05000000),
           ],
         ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: AppColors.red.withValues(alpha: 0.32),
+          color: AppColors.red.withValues(alpha: 0.38),
           width: 0.8),
         boxShadow: [
           BoxShadow(
-            color: AppColors.red.withValues(alpha: 0.18),
-            blurRadius: 28,
+            color: AppColors.red.withValues(alpha: 0.22),
+            blurRadius: 30,
             spreadRadius: 1,
           ),
         ],
@@ -2673,52 +2698,81 @@ class _FirstTimeBubble extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          Text('REAL-TIME AI',
+            textAlign: TextAlign.center,
+            style: AppTypography.label.copyWith(
+              color: AppColors.red,
+              fontSize: 10, letterSpacing: 3.4,
+              fontWeight: FontWeight.w900,
+            )),
+          const SizedBox(height: 8),
           Text(
-            'Become the guy who\nalways knows what to say.',
+            'Live AI. Real pressure.',
             textAlign: TextAlign.center,
             style: GoogleFonts.playfairDisplay(
               color: Colors.white,
-              fontSize: 21, height: 1.18,
-              letterSpacing: -0.5,
+              fontSize: 24, height: 1.1,
+              letterSpacing: -0.6,
               fontStyle: FontStyle.italic,
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
-            'Live conversations. Real pressure.\nInstant coaching from Lucien.',
+            "The AI listens. Reacts. Pushes back —\n"
+            "tone, tempo, judgment, all of it.\n"
+            "Every rep in here is one freeze less out there.",
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               color: AppColors.textSecondary,
-              fontSize: 12.5, height: 1.4,
+              fontSize: 12.5, height: 1.42,
               letterSpacing: 0.1,
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.red.withValues(alpha: 0.18),
+          // Tappable CTA — routes straight to paywall instead of just
+          // hinting "HOLD TO SPEAK" (which silently paywalled anyway).
+          // Make the conversion path one tap, not two.
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(99),
+            child: InkWell(
               borderRadius: BorderRadius.circular(99),
-              border: Border.all(
-                color: AppColors.red.withValues(alpha: 0.65),
-                width: 0.9),
-            ),
-            child: Text('HOLD TO SPEAK',
-              style: AppTypography.label.copyWith(
-                color: AppColors.red,
-                fontSize: 11, letterSpacing: 3.6,
-                fontWeight: FontWeight.w900,
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                // ignore: discarded_futures
+                AnalyticsService.freeflowBlockedFreeCap('first_time_bubble');
+                context.push('/paywall',
+                    extra: {'source': 'game_first_time_bubble'});
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 22, vertical: 11),
+                decoration: BoxDecoration(
+                  color: AppColors.red,
+                  borderRadius: BorderRadius.circular(99),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.red.withValues(alpha: 0.55),
+                      blurRadius: 18, spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: Text('UNLOCK PRO TO PRACTICE',
+                  style: AppTypography.label.copyWith(
+                    color: Colors.white,
+                    fontSize: 12, letterSpacing: 2.8,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
             ),
           )
               .animate(onPlay: (c) => c.repeat(reverse: true))
               .fadeIn(duration: 900.ms, curve: Curves.easeInOut)
               .then()
-              .fade(begin: 1.0, end: 0.6,
-                  duration: 900.ms, curve: Curves.easeInOut)
-              .scaleXY(begin: 1.0, end: 1.04,
+              .scaleXY(begin: 1.0, end: 1.035,
                   duration: 900.ms, curve: Curves.easeInOut),
         ],
       ),

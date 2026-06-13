@@ -47,7 +47,7 @@ class PaywallScreen extends StatefulWidget {
   State<PaywallScreen> createState() => _PaywallScreenState();
 }
 
-enum _Tier { monthly, annual, rescue }
+enum _Tier { weekly, monthly, annual, rescue }
 
 class _PaywallScreenState extends State<PaywallScreen> {
   _Tier _selected = _Tier.annual;
@@ -139,6 +139,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
   }
 
   Package? _packageFor(_Tier t) => switch (t) {
+    _Tier.weekly  => _offerings.weekly,
     _Tier.monthly => _offerings.monthly,
     _Tier.annual  => _offerings.annual,
     _Tier.rescue  => _offerings.rescue,
@@ -375,8 +376,25 @@ class _PaywallScreenState extends State<PaywallScreen> {
                   //    as primary cadence, with the monthly-equiv
                   //    only as a small parenthetical — never the
                   //    headline number.
+                  // Three subscription tiers — Weekly | Monthly | Annual.
+                  // v224 added Weekly as the low-entry tier; Annual
+                  // keeps the BEST VALUE badge. Rescue (one-time IAP)
+                  // gets its own row below on Android only.
                   Row(
                     children: [
+                      Expanded(child: _PriceCard(
+                        title: 'WEEKLY',
+                        price: _priceFor(_Tier.weekly),
+                        cadence: 'Billed weekly',
+                        footnote: 'Auto-renews until cancelled',
+                        selected: _selected == _Tier.weekly,
+                        available: true,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() => _selected = _Tier.weekly);
+                        },
+                      )),
+                      const SizedBox(width: 8),
                       Expanded(child: _PriceCard(
                         title: 'MONTHLY',
                         price: _priceFor(_Tier.monthly),
@@ -403,23 +421,24 @@ class _PaywallScreenState extends State<PaywallScreen> {
                           setState(() => _selected = _Tier.annual);
                         },
                       )),
-                      if (_showRescueCard) ...[
-                        const SizedBox(width: 8),
-                        Expanded(child: _PriceCard(
-                          title: 'RESCUE',
-                          price: _priceFor(_Tier.rescue),
-                          cadence: 'One-time · 20 renders',
-                          footnote: 'No subscription',
-                          selected: _selected == _Tier.rescue,
-                          available: true,
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            setState(() => _selected = _Tier.rescue);
-                          },
-                        )),
-                      ],
                     ],
                   ).animate().fadeIn(delay: 600.ms, duration: 400.ms),
+
+                  if (_showRescueCard) ...[
+                    const SizedBox(height: 8),
+                    _PriceCard(
+                      title: 'RESCUE',
+                      price: _priceFor(_Tier.rescue),
+                      cadence: 'One-time · 20 renders',
+                      footnote: 'No subscription',
+                      selected: _selected == _Tier.rescue,
+                      available: true,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _selected = _Tier.rescue);
+                      },
+                    ).animate().fadeIn(delay: 700.ms, duration: 400.ms),
+                  ],
 
                   const SizedBox(height: 14),
 
@@ -597,6 +616,11 @@ class _PaywallScreenState extends State<PaywallScreen> {
     final price = _priceFor(_selected);
     String text;
     switch (_selected) {
+      case _Tier.weekly:
+        text = '$price billed weekly. Auto-renews until cancelled. '
+               'ImHim Pro subscription required for scans, AI '
+               'renders, streaks, AI roleplay, and all rizz features.';
+        break;
       case _Tier.monthly:
         text = '$price billed monthly. Auto-renews until cancelled. '
                'ImHim Pro subscription required for scans, AI '
@@ -640,6 +664,18 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
     String text;
     switch (_selected) {
+      case _Tier.weekly:
+        text = 'ImHim Pro — weekly subscription. Your payment of '
+               '$price will be charged to your $storeAccount at '
+               'confirmation of purchase. The subscription '
+               'automatically renews each week for $price unless you '
+               'cancel at least 24 hours before the end of the current '
+               'period. Your account will be charged for renewal '
+               'within 24 hours of the period ending. You can manage '
+               'or cancel your subscription any time in your account '
+               'settings. Uninstalling the app does NOT cancel the '
+               'subscription.';
+        break;
       case _Tier.monthly:
         text = 'ImHim Pro — monthly subscription. Your payment of '
                '$price will be charged to your $storeAccount at '
@@ -696,6 +732,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
         ? 'Cancel anytime in App Store settings'
         : 'Cancel anytime in Google Play settings';
     switch (t) {
+      case _Tier.weekly:
       case _Tier.monthly:
       case _Tier.annual:
         // Bro v5: monthly/annual share the same monthly entitlement

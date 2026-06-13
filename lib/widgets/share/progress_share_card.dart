@@ -106,9 +106,12 @@ class ProgressShareCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final hasAes   = aestheticNow != null;
-    final hasVoice = voiceNow != null;
-    final hasAura  = auraNow != null;
+    // v224 redesign: LOOKS + GAME are the two hero numbers. Aura is
+    // a secondary chip. The DAY-360pt hero from v216 is downgraded
+    // to a small eyebrow chip — "DAY 14 · STREAK 14 🔥" — because
+    // a number alone says nothing and screenshot virality lives on
+    // the two scores everyone wants to compare. People save+post
+    // these because the score is the story, not the day count.
 
     return Container(
       width: size.width, height: size.height, color: AppColors.base,
@@ -120,10 +123,10 @@ class ProgressShareCard extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: RadialGradient(
-                  center: const Alignment(0, -0.45),
+                  center: const Alignment(0, -0.35),
                   radius: 0.95,
                   colors: [
-                    base.AppColors.red.withValues(alpha: 0.18),
+                    base.AppColors.red.withValues(alpha: 0.20),
                     Colors.transparent,
                   ],
                 ),
@@ -131,45 +134,29 @@ class ProgressShareCard extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(96, 120, 96, 96),
+            padding: const EdgeInsets.fromLTRB(72, 120, 72, 96),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text('DAY $day · GLOW UP · CERTIFIED',
+                // ── Eyebrow — clear "what this is".
+                Text('MY GLOW UP · CERTIFIED',
                   textAlign: TextAlign.center,
                   style: AppTypography.label.copyWith(
                     color: AppColors.textTertiary,
-                    fontSize: 26, letterSpacing: 6,
+                    fontSize: 26, letterSpacing: 7,
                     fontWeight: FontWeight.w900,
                   )),
                 const SizedBox(height: 22),
+                // ── Brand — two-tone ImHim.
                 _ImHimMark(fontSize: 130),
                 const SizedBox(height: 18),
                 Container(width: 120, height: 3, color: base.AppColors.red),
 
-                const Spacer(flex: 2),
-
-                // ── DAY hero — the receipt number. Bigger than the
-                // score itself because consistency is the share angle.
-                Text('DAY',
-                  style: AppTypography.label.copyWith(
-                    color: AppColors.textTertiary,
-                    fontSize: 28, letterSpacing: 8,
-                    fontWeight: FontWeight.w900,
-                  )),
-                const SizedBox(height: 6),
-                Text('$day',
-                  style: AppTypography.display.copyWith(
-                    color: AppColors.textPrimary,
-                    fontSize: 360, height: 0.9,
-                    fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -12,
-                  )),
-                const SizedBox(height: 14),
+                const SizedBox(height: 28),
+                // ── Day + streak chip — compact, in one strip.
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 36, vertical: 16),
+                      horizontal: 32, vertical: 14),
                   decoration: BoxDecoration(
                     color: base.AppColors.red.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(100),
@@ -179,51 +166,61 @@ class ProgressShareCard extends StatelessWidget {
                   ),
                   child: Text(
                     streakDays > 0
-                        ? 'STREAK · $streakDays 🔥'
-                        : 'RAW · LOG ONE TO START',
+                        ? 'DAY $day  ·  STREAK $streakDays 🔥'
+                        : 'DAY $day  ·  RAW',
                     style: AppTypography.label.copyWith(
                       color: base.AppColors.red,
-                      fontSize: 30, letterSpacing: 4,
+                      fontSize: 28, letterSpacing: 4,
                       fontWeight: FontWeight.w900,
                     )),
                 ),
 
                 const Spacer(flex: 2),
 
-                // ── Score grid — surface, value, delta. Each row only
-                // appears when the user has data for it; the layout
-                // collapses gracefully on day-1 share-outs (just the
-                // DAY hero + counts + tagline).
-                if (hasAes)
-                  _ScoreRow(
-                    label:  'AESTHETIC',
-                    value:  aestheticNow!,
-                    delta:  aestheticDelta,
-                    accent: AppColors.accent,
-                  ),
-                if (hasVoice) ...[
-                  const SizedBox(height: 14),
-                  _ScoreRow(
-                    label:  'VOICE GAME',
-                    value:  voiceNow!,
-                    delta:  voiceDelta,
-                    accent: AppColors.signalAmber,
-                  ),
-                ],
-                if (hasAura) ...[
-                  const SizedBox(height: 14),
-                  _ScoreRow(
-                    label:  'AURA',
-                    value:  auraNow!,
-                    delta:  null,
-                    accent: AppColors.signalGreen,
-                  ),
-                ],
+                // ── HERO SCORE PANELS — Looks + Game side by side.
+                // This is the share angle. Two huge numbers, two
+                // unambiguous labels (LOOKS, GAME), one line of
+                // sub-label that names what GAME actually is so
+                // first-time viewers don't have to guess.
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _HeroScorePanel(
+                      label:    'LOOKS',
+                      subLabel: 'FACE INDEX',
+                      value:    aestheticNow,
+                      delta:    aestheticDelta,
+                      accent:   AppColors.accent,
+                    )),
+                    Container(
+                      width: 1, height: 220,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      color: AppColors.textTertiary.withValues(alpha: 0.35),
+                    ),
+                    Expanded(child: _HeroScorePanel(
+                      label:    'GAME',
+                      subLabel: 'VOICE · ROLEPLAY',
+                      value:    voiceNow,
+                      delta:    voiceDelta,
+                      accent:   AppColors.signalAmber,
+                    )),
+                  ],
+                ),
 
                 const Spacer(flex: 1),
 
-                // Activity strip — single grey-tone line so it reads
-                // as proof, not as the headline.
+                // ── Aura mini-row — only if active.
+                if (auraNow != null && auraNow! > 0) ...[
+                  Text('AURA · ${auraNow!}',
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.signalGreen,
+                      fontSize: 24, letterSpacing: 4,
+                      fontWeight: FontWeight.w900,
+                    )),
+                  const SizedBox(height: 12),
+                ],
+
+                // Activity strip — single line of proof.
                 Text(_activityLine,
                   textAlign: TextAlign.center,
                   style: AppTypography.label.copyWith(
@@ -292,13 +289,20 @@ class ProgressShareCard extends StatelessWidget {
   }
 }
 
-class _ScoreRow extends StatelessWidget {
+/// Hero score column — one big colored label, one massive italic number,
+/// a thin sub-label that says exactly what the number measures, and an
+/// optional delta pill. Two of these sit side-by-side as the centerpiece
+/// of the v224 progress card so the share post screenshots cleanly to
+/// "LOOKS 68 / GAME 72" without anyone having to read fine print.
+class _HeroScorePanel extends StatelessWidget {
   final String label;
-  final int    value;
+  final String subLabel;
+  final int?   value;     // null → "—" placeholder + "NOT YET" sublabel
   final int?   delta;
   final Color  accent;
-  const _ScoreRow({
+  const _HeroScorePanel({
     required this.label,
+    required this.subLabel,
     required this.value,
     required this.delta,
     required this.accent,
@@ -306,42 +310,63 @@ class _ScoreRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasDelta = delta != null && delta != 0;
-    final positive = (delta ?? 0) >= 0;
+    final hasValue   = value != null;
+    final hasDelta   = hasValue && delta != null && delta != 0;
+    final positive   = (delta ?? 0) >= 0;
     final deltaColor = positive ? AppColors.signalGreen : AppColors.signalRed;
-    return Row(
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
-          child: Text(label,
-            style: AppTypography.label.copyWith(
-              color: accent,
-              fontSize: 30, letterSpacing: 4,
-              fontWeight: FontWeight.w900,
-            )),
-        ),
-        Text('$value',
+        Text(label,
+          textAlign: TextAlign.center,
+          style: AppTypography.label.copyWith(
+            color: accent,
+            fontSize: 38, letterSpacing: 5,
+            fontWeight: FontWeight.w900,
+          )),
+        const SizedBox(height: 10),
+        Text(hasValue ? '${value!}' : '—',
+          textAlign: TextAlign.center,
           style: AppTypography.display.copyWith(
-            color: AppColors.textPrimary,
-            fontSize: 56, height: 1,
+            color: hasValue ? AppColors.textPrimary
+                            : AppColors.textTertiary,
+            fontSize: 150, height: 0.95,
             fontStyle: FontStyle.italic,
             fontWeight: FontWeight.w900,
-            letterSpacing: -2,
+            letterSpacing: -6,
+          )),
+        const SizedBox(height: 6),
+        Text(hasValue ? '/ 100' : 'NOT YET',
+          textAlign: TextAlign.center,
+          style: AppTypography.label.copyWith(
+            color: AppColors.textTertiary,
+            fontSize: 22, letterSpacing: 3,
+            fontWeight: FontWeight.w800,
+          )),
+        const SizedBox(height: 6),
+        Text(subLabel,
+          textAlign: TextAlign.center,
+          style: AppTypography.label.copyWith(
+            color: AppColors.textSecondary,
+            fontSize: 18, letterSpacing: 2.5,
+            fontWeight: FontWeight.w700,
           )),
         if (hasDelta) ...[
-          const SizedBox(width: 14),
+          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
-              color: deltaColor.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(8),
+              color: deltaColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: deltaColor.withValues(alpha: 0.55), width: 1.5),
+                color: deltaColor.withValues(alpha: 0.6), width: 1.5),
             ),
             child: Text(
               '${positive ? '+' : ''}$delta',
               style: AppTypography.delta.copyWith(
                 color: deltaColor,
-                fontSize: 24, fontWeight: FontWeight.w900,
+                fontSize: 22, fontWeight: FontWeight.w900,
               )),
           ),
         ],

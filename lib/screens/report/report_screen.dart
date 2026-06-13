@@ -216,28 +216,39 @@ class _ReportScreenState extends State<ReportScreen> {
       setState(() => _savedImagePath = savedPath);
     }
 
-    // Snapshot the AI-recommended fixes + their projected delta onto
-    // the scan record so the Ascend POTENTIAL card can render the
-    // headline + per-fix points without re-hitting /report later.
-    // (Pure persistence — no layout change to this screen.)
+    // Snapshot the AI-recommended fixes onto the scan record so the
+    // Ascend POTENTIAL card can render the headline + per-fix points
+    // without re-hitting /report later.
     final fixSummaries = a.report.fixes.map((f) => ScanFixSummary(
           title:    f.title,
           points:   f.points,
           timeline: f.timeline,
         )).toList();
-    // Use the SAME projection formula as the HeroCard so the Looks-tab
-    // _HopeCard reads 54 → 77 instead of 54 → 67. The previous formula
-    // (sum of per-fix points) under-counted because each fix card is
-    // tagged with a conservative "fastest win" number, not the full
-    // headroom potential the headline card already shows. Bro: "needs
-    // to be the same score that you get in the actual scan."
-    final projectedDelta = _potentialDelta(score.value);
+    // Bro v222 → v224 follow-up: the Looks-tab _HopeCard needs to read
+    // EXACTLY the same NOW → POTENTIAL the user just saw on the
+    // HeroCard. The HeroCard does:
+    //     currentScore   = _honest?.score ?? geometry           (52)
+    //     projectedScore = geometry + _potentialDelta(geometry) (86)
+    // So we persist the SAME pair onto the ScanRecord — store the
+    // honest score (preferred) as scan.score, and store the visible
+    // delta (projected - headlineCurrent) as projectedDelta. The home
+    // _HopeCard's `current + projectedDelta` then lands on the same
+    // PROJECTED the report just headlined. No middle ground.
+    final headlineCurrent  = _honest?.score ?? score.value;
+    final formulaProjected = (score.value + _potentialDelta(score.value))
+        .clamp(0, 100);
+    final projectedDelta   = (formulaProjected - headlineCurrent)
+        .clamp(0, 100);
 
     final record = ScanRecord(
       id:                 id,
       takenAt:            DateTime.now(),
       geometry:           widget.geometry,
-      score:              score.value,
+      // Persist the headline number (honest, falls back to geometry)
+      // so every downstream surface — Looks tab _HopeCard, Ascend
+      // POTENTIAL, Progress charts — reads the SAME score the user
+      // just saw on the HeroCard.
+      score:              headlineCurrent,
       tierLabel:          score.tierLabel,
       archetypeName:      match.archetype.name,
       archetypeMatchPct:  (match.match * 100).round(),

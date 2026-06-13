@@ -27,4 +27,15 @@
 ///     gates all skip when this is true.
 ///   · LocalStoreService.setSubscribed(true) runs on app launch in
 ///     main.dart, so any code reading isSubscribed() returns true.
-const kBypassPaywall = true;
+///
+/// v225 — flipped back to FALSE. v224 killed the free roleplay grace
+/// window + wired the Weekly subscription tier; both are no-ops while
+/// the bypass is on. Every paywall is now live:
+///   · Scan       — 1 free, then paywall every attempt
+///   · Roleplay   — paywall on every free user's hold (no free 60s)
+///   · Lucien     — paywall on step-in for free users
+///   · Renders    — Pro-only on every attempt
+///   · Rizz       — 1 free screenshot reply, then paywall;
+///                  Lines + Chat are Pro-only outright
+///   · Lessons    — Pro-only from Day 1
+const kBypassPaywall = false;
