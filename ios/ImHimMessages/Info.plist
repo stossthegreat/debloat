@@ -20,6 +20,53 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 
 	<!--
+		CFBundleIcons + CFBundleIcons~ipad — tell App Store Connect's
+		validator that our icon set is named "iMessage App Icon" and
+		list the exact filenames at the bundle root. v209 added the
+		individual PNG files to Resources but the validator only
+		recognises them as iMessage icons when this dictionary points
+		at them by basename. Without this the 134x100 lookup fails
+		even though the file is there.
+	-->
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>iMessage App Icon-58</string>
+				<string>iMessage App Icon-87</string>
+				<string>iMessage App Icon-120</string>
+				<string>iMessage App Icon-134</string>
+				<string>iMessage App Icon-180</string>
+				<string>iMessage App Icon-54</string>
+				<string>iMessage App Icon-81</string>
+				<string>iMessage App Icon-64</string>
+				<string>iMessage App Icon-96</string>
+			</array>
+			<key>CFBundleIconName</key>
+			<string>iMessage App Icon</string>
+		</dict>
+	</dict>
+	<key>CFBundleIcons~ipad</key>
+	<dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>iMessage App Icon-58</string>
+				<string>iMessage App Icon-148</string>
+				<string>iMessage App Icon-54</string>
+				<string>iMessage App Icon-81</string>
+				<string>iMessage App Icon-64</string>
+				<string>iMessage App Icon-96</string>
+			</array>
+			<key>CFBundleIconName</key>
+			<string>iMessage App Icon</string>
+		</dict>
+	</dict>
+
+	<!--
 		iMessage App Extension. iOS 17's revamped Messages App Menu (the
 		+ button next to the text field) automatically lists every app
 		that declares this NSExtensionPointIdentifier, so we don't need
