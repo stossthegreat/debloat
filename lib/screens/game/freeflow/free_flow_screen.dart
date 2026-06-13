@@ -411,6 +411,12 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         filterTopic: 'rizz',
       );
       _eventSub = _session.events.listen(_onEvent);
+      // v198 stuck-on-connecting fix: WebSocket connect was awaited
+      // without a timeout. If the server stalled, the session sat
+      // in _Phase.connecting forever and the only recovery was a
+      // hard-kill of the app — exactly what bro reported. 12s
+      // ceiling kicks the user back to _Phase.error with a retry
+      // button instead.
       await _session.connect(body: {
         'mode':            'freeflow',
         'vibeLabel':       vibe.label,
@@ -418,12 +424,15 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         'scenarioSetting': vibe.setting,
         'creator':         _creator,
         'memoryBlock':     memoryBlock,
-      });
+      }).timeout(const Duration(seconds: 12),
+        onTimeout: () => throw 'WS connect timeout');
 
       // 3) Stream the mic up as PCM16 — but only FORWARD chunks while the
       //    user is holding the talk button (push-to-talk). The stream
       //    stays alive; gating on _holding means she never hears herself
       //    and only gets what he actually says.
+      // Same timeout treatment — iOS occasionally hangs on audio-session
+      // acquisition when a previous run didn't release cleanly.
       final micStream = await _recorder.startStream(const RecordConfig(
         encoder:       AudioEncoder.pcm16bits,
         sampleRate:    24000,
@@ -431,7 +440,8 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         echoCancel:    true,
         autoGain:      true,
         noiseSuppress: true,
-      ));
+      )).timeout(const Duration(seconds: 8),
+        onTimeout: () => throw 'mic acquire timeout');
       _micSub = micStream.listen((bytes) {
         if (_disposed || !_holding) return;
         _micChunks++;
