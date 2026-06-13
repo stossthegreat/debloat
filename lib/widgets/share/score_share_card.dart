@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
+import '../../theme/app_colors.dart' as base;
 import '../../theme/auralay_app_colors.dart';
 import '../../theme/auralay_app_typography.dart';
 
-/// MIRRORLY universal score share card — the one that gets posted.
+/// ImHim universal score share card — the one that gets posted.
 ///
 /// 9:16 composition rendered off-screen by [ShareService.shareScore] at
 /// 1080×1920 logical size. Used by every result in the app — The Gaze,
 /// Eye Contact + Voice, and Free Flow — so a shared card always reads as
 /// the same brand, scored the same way: out of 10.
 ///
-///   MIRRORLY
+///   VOICE GAME · CERTIFIED
+///   ImHim  ← two-tone wordmark, red "Him"
 ///   ───────────────
-///   THE GAZE · THE LOCK
+///   FREE FLOW · INTO YOU
 ///
 ///            8
 ///          / 10
@@ -26,12 +29,13 @@ import '../../theme/auralay_app_typography.dart';
 ///   TENSION           ████████░░░░  7
 ///   ...
 ///
-///   MIRRORLY · OWN THE ROOM
+///   ImHim · BECOME THE GUY SHE CAN'T IGNORE · imhim.app
 class ScoreShareCard extends StatelessWidget {
-  /// Brand shown at the very top. Change this one constant to re-skin the
-  /// whole share system for another app (e.g. MIRRORLY).
-  static const String brand = 'MIRRORLY';
-  static const String tagline = 'OWN THE ROOM';
+  /// Brand shown at the very top — rendered as the two-tone ImHim
+  /// wordmark (white "Im", red "Him") so the share card matches the
+  /// in-app wordmark you see on the live roleplay orb.
+  static const String tagline = "BECOME THE GUY SHE CAN'T IGNORE";
+  static const String domain  = 'imhim.app';
 
   /// What this card is for — e.g. "THE GAZE", "FREE FLOW",
   /// "EYE CONTACT + VOICE".
@@ -65,6 +69,19 @@ class ScoreShareCard extends StatelessWidget {
   Color get _scoreColor => score >= 7
       ? AppColors.signalGreen
       : (score <= 3 ? AppColors.signalRed : AppColors.accent);
+
+  /// Surface-specific eyebrow so the card reads clearly out of context.
+  /// "FREE FLOW" → "VOICE GAME · CERTIFIED"; gaze + eye-contact surfaces
+  /// get their own eyebrow so a viewer who's never seen the app knows
+  /// exactly what was scored.
+  String get _certifiedEyebrow {
+    final k = kindLabel.toUpperCase();
+    if (k.contains('FREE FLOW')) return 'VOICE GAME · CERTIFIED';
+    if (k.contains('VOICE'))     return 'VOICE · CERTIFIED';
+    if (k.contains('GAZE'))      return 'EYE CONTACT · CERTIFIED';
+    if (k.contains('EYE'))       return 'EYE CONTACT · CERTIFIED';
+    return 'CERTIFIED';
+  }
 
   String get _date {
     final n = DateTime.now();
@@ -104,24 +121,24 @@ class ScoreShareCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Certificate eyebrow — says exactly what this is.
-                Text('CERTIFICATE OF GAME',
+                // Eyebrow — names the surface ("VOICE GAME · CERTIFIED",
+                // "EYE CONTACT · CERTIFIED" etc.) so someone who has
+                // never seen the app instantly knows what they're
+                // looking at. Replaces the old "CERTIFICATE OF GAME"
+                // which read as nothing.
+                Text(_certifiedEyebrow,
+                    textAlign: TextAlign.center,
                     style: AppTypography.label.copyWith(
                       color: AppColors.textTertiary,
-                      fontSize: 24,
-                      letterSpacing: 8,
+                      fontSize: 26,
+                      letterSpacing: 7,
                       fontWeight: FontWeight.w900,
                     )),
                 const SizedBox(height: 22),
-                // Brand.
-                Text(brand,
-                    style: AppTypography.display.copyWith(
-                      color: AppColors.textPrimary,
-                      fontSize: 80,
-                      letterSpacing: 6,
-                      fontWeight: FontWeight.w900,
-                      fontStyle: FontStyle.italic,
-                    )),
+                // Brand — two-tone ImHim wordmark, rendered at huge
+                // size so the card reads as an ImHim card from across
+                // a feed. Drop-in for the old all-caps MIRRORLY text.
+                _ImHimMark(fontSize: 130),
                 const SizedBox(height: 20),
                 Container(
                     width: 120, height: 3, color: AppColors.accent),
@@ -214,16 +231,34 @@ class ScoreShareCard extends StatelessWidget {
 
                 const Spacer(flex: 2),
 
-                Text('CERTIFIED ON $brand  ·  $_date',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.textPrimary,
-                      fontSize: 24,
-                      letterSpacing: 4,
-                      fontWeight: FontWeight.w900,
-                    )),
+                // Compact footer wordmark + date so the brand appears
+                // again at the bottom of the card for posts cropped to
+                // the score area only.
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _ImHimMark(fontSize: 28),
+                    const SizedBox(width: 14),
+                    Container(
+                      width: 4, height: 4,
+                      decoration: const BoxDecoration(
+                        color: AppColors.textTertiary,
+                        shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 14),
+                    Text('CERTIFIED  $_date',
+                        style: AppTypography.label.copyWith(
+                          color: AppColors.textPrimary,
+                          fontSize: 22,
+                          letterSpacing: 4,
+                          fontWeight: FontWeight.w900,
+                        )),
+                  ],
+                ),
                 const SizedBox(height: 12),
-                Text('$tagline  ·  mirrorly.app',
+                Text('$tagline  ·  $domain',
+                    textAlign: TextAlign.center,
                     style: AppTypography.label.copyWith(
                       color: AppColors.textTertiary,
                       fontSize: 22,
@@ -232,6 +267,38 @@ class ScoreShareCard extends StatelessWidget {
                     )),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Two-tone ImHim wordmark — italic Playfair, white "Im" + red "Him".
+/// Same recipe as widgets/common/imhim_wordmark.dart, copied here so the
+/// share card has no dependency on the theme variant that owns the
+/// canonical red. Sized purely by [fontSize].
+class _ImHimMark extends StatelessWidget {
+  final double fontSize;
+  const _ImHimMark({required this.fontSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final style = GoogleFonts.playfairDisplay(
+      fontSize:      fontSize,
+      height:        1.0,
+      letterSpacing: -fontSize * 0.02,
+      fontStyle:     FontStyle.italic,
+      fontWeight:    FontWeight.w900,
+    );
+    return RichText(
+      text: TextSpan(
+        style: style.copyWith(color: Colors.white),
+        children: [
+          const TextSpan(text: 'Im'),
+          TextSpan(
+            text: 'Him',
+            style: style.copyWith(color: base.AppColors.red),
           ),
         ],
       ),

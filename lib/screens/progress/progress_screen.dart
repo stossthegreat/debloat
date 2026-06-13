@@ -14,6 +14,7 @@ import '../../services/analytics_service.dart';
 import '../../services/gaze/gaze_progress_store.dart';
 import '../../services/local_store_service.dart';
 import '../../services/presence/presence_progress_store.dart';
+import '../../services/share_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 
@@ -110,11 +111,15 @@ class _ProgressScreenState extends State<ProgressScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(Sp.lg, Sp.lg, Sp.lg, Sp.xxl),
       children: [
-        // Masthead — title + heartbeat dot, with a CLOSE X on the
-        // right so the user can always bail back to whatever pushed
-        // them here (Looks masthead chart icon, Rizz masthead chart
-        // icon). Without it, /progress had no exit beyond the OS
-        // back gesture, which on iOS feels broken.
+        // Masthead — title + heartbeat dot, with a SHARE button +
+        // CLOSE X on the right. SHARE renders the ImHim Progress
+        // receipt off-screen (DAY hero, streak, per-surface scores)
+        // and opens the system share sheet so the user can post their
+        // glow-up arc in one tap. CLOSE bails back to wherever pushed
+        // them here (Looks masthead, Rizz masthead). Without share
+        // here the only post-able artefact was a single session card
+        // — the user explicitly asked for a Progress one so the page
+        // "hits harder" on the For You feed.
         Row(
           children: [
             Text('Progress',
@@ -127,6 +132,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 color: AppColors.red, shape: BoxShape.circle),
             ),
             const Spacer(),
+            _ProgressShareButton(onTap: () => _shareProgress(sorted, deltas)),
+            const SizedBox(width: 8),
             _ProgressCloseButton(onTap: () {
               // ignore: discarded_futures
               AnalyticsService.progressCloseTapped();
@@ -205,6 +212,53 @@ class _ProgressScreenState extends State<ProgressScreen> {
             .animate().fadeIn(delay: 400.ms, duration: 400.ms),
         ],
       ],
+    );
+  }
+
+  /// Fire the ImHim Progress share card. Aggregates the user's data
+  /// from every tracked surface (scans, game reps, gaze drills, voice
+  /// drills) plus the Auralay-imported day/streak/aura state into one
+  /// post-able receipt. Deltas come from the same axis-delta pass that
+  /// powers the in-app DELTA · FIRST → LATEST row so the share number
+  /// matches what the user just looked at.
+  void _shareProgress(
+      List<ScanRecord> sortedScans,
+      Map<String, (double, double)>? deltas) {
+    HapticFeedback.lightImpact();
+    // ignore: discarded_futures
+    AnalyticsService.shareTapped(surface: 'progress');
+
+    final aux = context.read<AuralayAppProvider>().state;
+    final aestheticNow = sortedScans.isEmpty ? null : sortedScans.last.score;
+    final aestheticDelta = (deltas != null && deltas['Score'] != null)
+        ? deltas['Score']!.$1.round()
+        : null;
+
+    // Game arc: now = last score, delta = (last − first) across all reps.
+    int? voiceNow;
+    int? voiceDelta;
+    if (_gameScores.isNotEmpty) {
+      final sorted = [..._gameScores]
+        ..sort((a, b) => a.takenAt.compareTo(b.takenAt));
+      voiceNow   = sorted.last.score;
+      voiceDelta = sorted.length >= 2
+          ? sorted.last.score - sorted.first.score
+          : null;
+    }
+
+    // ignore: discarded_futures
+    ShareService.shareProgress(
+      context:        context,
+      day:            aux.currentDay,
+      streakDays:     aux.streakDays,
+      scanCount:      _scans.length,
+      gameReps:       _gameScores.length,
+      drillsCount:    _gazeCompleted + _presenceCompleted,
+      aestheticNow:   aestheticNow,
+      aestheticDelta: aestheticDelta,
+      voiceNow:       voiceNow,
+      voiceDelta:     voiceDelta,
+      auraNow:        aux.auraScore > 0 ? aux.auraScore : null,
     );
   }
 
@@ -1280,6 +1334,44 @@ class _GameChartPainter extends CustomPainter {
 //  header so /progress always has an exit, regardless of which sub-tree
 //  the user is staring at.
 // ═══════════════════════════════════════════════════════════════════════════
+/// SHARE button — same circular footprint as the close X so the
+/// masthead stays balanced, but with a red iOS-style outbox icon and a
+/// red ring instead of grey so it reads as the primary action. Tapping
+/// pipes through to [_ProgressScreenState._shareProgress].
+class _ProgressShareButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ProgressShareButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: () { HapticFeedback.selectionClick(); onTap(); },
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: 38, height: 38,
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: AppColors.red.withValues(alpha: 0.55), width: 1.0),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.red.withValues(alpha: 0.18),
+                blurRadius: 10, spreadRadius: 0),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: const Icon(Icons.ios_share_rounded,
+              size: 18, color: AppColors.red),
+        ),
+      ),
+    );
+  }
+}
+
 class _ProgressCloseButton extends StatelessWidget {
   final VoidCallback onTap;
   const _ProgressCloseButton({required this.onTap});

@@ -320,6 +320,29 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   // ─── Go live ────────────────────────────────────────────────────────
 
   Future<void> _goLive(_Vibe vibe) async {
+    // v216 stuck-on-connecting after DONE / change-character fix:
+    // _endAndScore and _switchCharacter both fire-and-forget
+    // _recorder.stop() so they never hang. On iOS that can leave the
+    // recorder mid-teardown when this second _goLive immediately
+    // calls _recorder.hasPermission() + _recorder.startStream() — the
+    // calls then sit forever waiting for the prior stop to release
+    // the audio session. Result: phase stays _Phase.connecting,
+    // change-character does nothing, only an app kill recovers.
+    //
+    // Await the stop with a hard 2s ceiling so the SECOND session
+    // never races the first session's teardown. Errors are swallowed
+    // — calling stop() on an already-stopped recorder throws and we
+    // don't care.
+    try {
+      await _recorder.stop().timeout(const Duration(seconds: 2));
+    } catch (_) {}
+    // Same for the mic subscription — a dangling listener on the old
+    // stream re-queues bytes into the NEW session as its first chunks,
+    // which OpenAI Realtime then VAD-rejects because they're partial
+    // / mid-utterance. Cancel synchronously here as a belt + braces.
+    try { await _micSub?.cancel(); } catch (_) {}
+    _micSub = null;
+
     // No in-flight guard here — _switchCharacter explicitly tears
     // the previous session down before calling this, and blocking
     // a legitimate restart while the OLD _goLive is still awaiting

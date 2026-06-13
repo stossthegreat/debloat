@@ -330,7 +330,7 @@ class _LessonGate extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('MIRRORLY',
+              Text('IMHIM',
                 style: AppTypography.h1.copyWith(
                   fontSize: 22, letterSpacing: 6,
                   fontWeight: FontWeight.w900,

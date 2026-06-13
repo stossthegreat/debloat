@@ -308,6 +308,11 @@ class AnalyticsService {
       _log('progress_screen_viewed');
   static Future<void> progressCloseTapped() =>
       _log('progress_close_tapped');
+  /// Fires when any in-app SHARE button is tapped. `surface` names the
+  /// origin ("progress", "freeflow", "gaze") so the funnel report can
+  /// tell us which result pages are actually post-able vs. dead ends.
+  static Future<void> shareTapped({required String surface}) =>
+      _log('share_tapped', {'surface': surface});
 
   // ── Settings ───────────────────────────────────────────────────────
 

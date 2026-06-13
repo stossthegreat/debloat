@@ -128,19 +128,38 @@ class EyeStripShareCard extends StatelessWidget {
                             fontWeight: FontWeight.w900,
                           )),
                         const SizedBox(height: 16),
-                        // ─── WORDMARK ROW — italic Playfair + red dot ───
+                        // ─── WORDMARK ROW — two-tone italic Playfair ImHim
+                        // + red dot. Replaces the old all-caps MIRRORLY so
+                        // the eye-strip card matches the rest of the share
+                        // family.
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text('MIRRORLY',
-                              style: GoogleFonts.playfairDisplay(
-                                color: AppColors.textPrimary,
-                                fontSize: 64, height: 1,
-                                letterSpacing: -1.2,
-                                fontStyle: FontStyle.italic,
-                                fontWeight: FontWeight.w900,
-                              )),
+                            RichText(
+                              text: TextSpan(
+                                style: GoogleFonts.playfairDisplay(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 64, height: 1,
+                                  letterSpacing: -1.2,
+                                  fontStyle: FontStyle.italic,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                                children: [
+                                  const TextSpan(text: 'Im'),
+                                  TextSpan(
+                                    text: 'Him',
+                                    style: GoogleFonts.playfairDisplay(
+                                      color: AppColors.accent,
+                                      fontSize: 64, height: 1,
+                                      letterSpacing: -1.2,
+                                      fontStyle: FontStyle.italic,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                             const SizedBox(width: 12),
                             Container(
                               width: 12, height: 12,
@@ -212,7 +231,7 @@ class EyeStripShareCard extends StatelessWidget {
                                 fontSize: 14, letterSpacing: 3.4,
                                 fontWeight: FontWeight.w700,
                               )),
-                            Text('MIRRORLY.APP',
+                            Text('IMHIM.APP',
                               style: AppTypography.label.copyWith(
                                 color: AppColors.accent,
                                 fontSize: 15, letterSpacing: 3.8,

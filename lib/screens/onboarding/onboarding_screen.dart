@@ -82,11 +82,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 children: [
                   Row(
                     children: [
-                      const ImHimWordmark(fontSize: 22, letterSpacing: -0.5),
-                      const SizedBox(width: 6),
+                      // Bumped from 22 → 30 so the onboarding scan +
+                      // score + mirror pages all read as ImHim from
+                      // the first frame of a screen recording — was
+                      // previously almost invisible against the
+                      // 44pt page headlines.
+                      const ImHimWordmark(fontSize: 30, letterSpacing: -0.7),
+                      const SizedBox(width: 8),
                       Container(
                         width: 4, height: 4,
-                        margin: const EdgeInsets.only(top: 9),
+                        margin: const EdgeInsets.only(top: 13),
                         decoration: const BoxDecoration(
                           color: AppColors.red, shape: BoxShape.circle),
                       ),

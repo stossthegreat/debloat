@@ -523,7 +523,7 @@ class _Header extends StatelessWidget {
                 const Icon(Icons.auto_awesome_rounded,
                     color: AppColors.red, size: 14),
                 const SizedBox(width: 5),
-                Text('MIRRORLY',
+                Text('IMHIM',
                   style: GoogleFonts.inter(
                     color: AppColors.red,
                     fontSize: 11.5, letterSpacing: 3.0,

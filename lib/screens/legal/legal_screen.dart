@@ -156,7 +156,7 @@ class LegalDoc {
 
 LegalDoc get termsDoc => LegalDoc(
   title: 'Terms of Use',
-  subtitle: 'MIRRORLY · THE AGREEMENT',
+  subtitle: 'IMHIM · THE AGREEMENT',
   lastUpdatedLine: 'Last updated 26 May 2026.',
   sections: [
     const LegalSection('ABOUT MIRRORLY',

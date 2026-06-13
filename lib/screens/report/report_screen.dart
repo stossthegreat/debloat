@@ -656,7 +656,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     microProofs.isNotEmpty ? microProofs.first : 'MEASURED PROFILE',
                   ],
                   text: '${_honest?.score ?? score.value} → $projected. '
-                        'Same face. mirrorly.app',
+                        'Same face. imhim.app',
                 ),
               ),
             ],

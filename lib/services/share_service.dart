@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/share_card.dart';
 import '../widgets/share/eye_strip_share_card.dart';
+import '../widgets/share/progress_share_card.dart';
 import '../widgets/share/score_share_card.dart';
 
 /// Captures any widget via RepaintBoundary + exports a PNG + opens the
@@ -266,6 +267,97 @@ class ShareService {
           bytes,
           'mirrorly-${DateTime.now().millisecondsSinceEpoch}.png',
           text ?? '$kindLabel · $score/10 on IMHIM',
+          origin: origin,
+        );
+        return;
+      }
+    } catch (e) {
+      errorMsg = 'Share failed: ${e.toString().split('\n').first}';
+    }
+
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(errorMsg),
+        backgroundColor: AppColors.surface2,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  /// Render + share the ImHim PROGRESS receipt — DAY hero, streak,
+  /// per-surface scores + deltas, total reps, brand wordmark + domain.
+  /// Wired to /progress via the masthead SHARE button so the user can
+  /// post a single "DAY 14 · STREAK 14 · +12 AESTHETIC" card the
+  /// moment their numbers feel post-worthy. Pipeline identical to
+  /// [shareScore].
+  static Future<void> shareProgress({
+    required BuildContext context,
+    required int day,
+    required int streakDays,
+    required int scanCount,
+    required int gameReps,
+    required int drillsCount,
+    int? aestheticNow,
+    int? aestheticDelta,
+    int? voiceNow,
+    int? voiceDelta,
+    int? auraNow,
+    String verdict = '',
+    String? text,
+  }) async {
+    HapticFeedback.lightImpact();
+
+    if (context.mounted) {
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.black54,
+        builder: (_) => const _RenderingOverlay(),
+      );
+    }
+
+    final mq = MediaQuery.of(context);
+    final origin = Rect.fromLTWH(
+      mq.size.width / 2 - 1, mq.padding.top + 8, 2, 2);
+
+    String errorMsg = 'Share failed';
+    try {
+      if (!context.mounted) return;
+      final card = ProgressShareCard(
+        day:            day,
+        streakDays:     streakDays,
+        scanCount:      scanCount,
+        gameReps:       gameReps,
+        drillsCount:    drillsCount,
+        aestheticNow:   aestheticNow,
+        aestheticDelta: aestheticDelta,
+        voiceNow:       voiceNow,
+        voiceDelta:     voiceDelta,
+        auraNow:        auraNow,
+        verdict:        verdict,
+      );
+      final bytes = await _captureOffscreen(
+        context:     context,
+        widget:      card,
+        logicalSize: _auralayCardSize(context),
+        pixelRatio:  2.0,
+      );
+      if (bytes == null) {
+        errorMsg = "Couldn't render the card — try again";
+      } else {
+        if (context.mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+        HapticFeedback.mediumImpact();
+        // Default copy is post-ready: claim, receipt, app handle.
+        final defaultText = streakDays > 0
+            ? 'Day $day · streak $streakDays on ImHim.'
+            : 'Day $day on ImHim.';
+        await _shareBytes(
+          bytes,
+          'imhim-progress-${DateTime.now().millisecondsSinceEpoch}.png',
+          text ?? defaultText,
           origin: origin,
         );
         return;

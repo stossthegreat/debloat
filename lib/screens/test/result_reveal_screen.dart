@@ -348,7 +348,7 @@ class _ResultRevealScreenState extends State<ResultRevealScreen>
       roast:          _verdict.roast,
       dimensions:     dimensions,
       techniqueName:  cardLabel,
-      text: 'My AURA score is ${_verdict.score} — ${_verdict.tier}. Test yours: mirrorly.app',
+      text: 'My AURA score is ${_verdict.score} — ${_verdict.tier}. Test yours on ImHim: imhim.app',
     );
   }
 }

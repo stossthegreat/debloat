@@ -1278,12 +1278,17 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                 children: [
                   Row(
                     children: [
-                      // Wordmark — serif, editorial
-                      const ImHimWordmark(fontSize: 22, letterSpacing: -0.6),
+                      // Wordmark — serif, editorial. Bumped from 22 →
+                      // 30 so a screenshot of the scan flow reads as
+                      // ImHim from across the room (was previously
+                      // small enough to disappear next to the camera
+                      // feed). The two-tone red "Him" carries the
+                      // brand on its own.
+                      const ImHimWordmark(fontSize: 30, letterSpacing: -0.8),
                       const SizedBox(width: 10),
                       Container(
                         width: 4, height: 4,
-                        margin: const EdgeInsets.only(top: 6),
+                        margin: const EdgeInsets.only(top: 10),
                         decoration: const BoxDecoration(
                           color: AppColors.red,
                           shape: BoxShape.circle,
