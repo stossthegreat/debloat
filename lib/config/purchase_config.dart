@@ -38,10 +38,6 @@ class PurchaseConfig {
 
   /// Product identifiers — MUST match exactly what's in App Store
   /// Connect and Google Play Console.
-  ///   mirrorly_pro_weekly    →  Weekly subscription (lowest entry
-  ///                             price — register on the store BEFORE
-  ///                             building, otherwise the card shows
-  ///                             a dash like rescue does on iOS)
   ///   mirrorly_pro_monthly   →  Monthly subscription
   ///   mirrorly_pro_yearly    →  Annual subscription (Play Console
   ///                             registered the yearly base plan as
@@ -49,21 +45,27 @@ class PurchaseConfig {
   ///   mirrorly_pro_rescue    →  Rescue one-time IAP (Android only;
   ///                             iOS rescue product is not yet
   ///                             approved on App Store Connect)
+  ///
+  /// PARKED — Weekly tier was wired in v224 but commented out in v227
+  /// while we figure out the right paywall structure. The product id
+  /// + RC slot are kept here as commented stubs so re-enabling is a
+  /// one-line uncomment + the corresponding paywall UI restore.
+  ///     weekly:  'mirrorly_pro_weekly',
   static const productIds = (
-    weekly:  'mirrorly_pro_weekly',
     monthly: 'mirrorly_pro_monthly',
     yearly:  'mirrorly_pro_yearly',
     rescue:  'mirrorly_pro_rescue',
   );
 
   /// RevenueCat package identifiers inside the current Offering.
-  /// RevenueCat has built-in slot names ($rc_weekly, $rc_monthly,
-  /// $rc_annual) for the three subscriptions — those are what we
-  /// attach products to in the dashboard. The rescue one-time IAP is
-  /// a custom package slot named `rescue` (see RC dashboard: the Play
-  /// Store row shows `mirrorly_pro_rescue:rescue`).
+  /// RevenueCat has built-in slot names ($rc_monthly, $rc_annual)
+  /// for the two subscriptions — those are what we attach products
+  /// to in the dashboard. The rescue one-time IAP is a custom
+  /// package slot named `rescue` (see RC dashboard: the Play Store
+  /// row shows `mirrorly_pro_rescue:rescue`).
+  ///
+  /// PARKED weekly slot: weeklyPackage: '\$rc_weekly'
   static const offering = (
-    weeklyPackage:  '\$rc_weekly',
     monthlyPackage: '\$rc_monthly',
     annualPackage:  '\$rc_annual',
     rescuePackage:  'rescue',
