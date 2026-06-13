@@ -320,6 +320,34 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   // ─── Go live ────────────────────────────────────────────────────────
 
   Future<void> _goLive(_Vibe vibe) async {
+    // v225 leak fix — REAL root cause of "had to hard close the app".
+    //
+    // _pcmWatchdog is a Timer.periodic created on EVERY _goLive call
+    // (line ~395) but it's never cancelled anywhere — not in
+    // _switchCharacter, not in _restartTabSession, not even in
+    // dispose(). After N character switches the screen has N watchdogs
+    // all firing every 250ms, racing on _kickPcmIfStalled, which
+    // eventually leaves FlutterPcmSound in a half-stalled state that
+    // only a process kill recovers from. THAT's why bro's been seeing
+    // "works for a few in a row then breaks" + having to hard close —
+    // the watchdogs accumulate silently each switch.
+    //
+    // Cancel ALL prior timers + subs here so resources don't pile up.
+    // Recorder + session stay fire-and-forget (awaiting them is what
+    // v216 broke — see commit 0179a2a / v221 revert).
+    _pcmWatchdog?.cancel();
+    _pcmWatchdog = null;
+    _clock?.cancel();
+    _createTimer?.cancel();
+    _eventSub?.cancel();
+    _eventSub = null;
+    _micSub?.cancel();
+    _micSub = null;
+    // ignore: discarded_futures
+    _recorder.stop();
+    // ignore: discarded_futures
+    _session.close();
+
     // No in-flight guard here — _switchCharacter explicitly tears
     // the previous session down before calling this, and blocking
     // a legitimate restart while the OLD _goLive is still awaiting
