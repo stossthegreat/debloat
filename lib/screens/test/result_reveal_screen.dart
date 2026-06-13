@@ -335,9 +335,9 @@ class _ResultRevealScreenState extends State<ResultRevealScreen>
         widget.result.phaseScores.containsKey(TestPhaseId.smolder) ||
         widget.isSeductionTest;
     final cardLabel = hasTestPhases
-        ? 'SEDUCTION INDEX'
+        ? 'PRESENCE INDEX'
         : hasLessonPhases
-          ? 'SEDUCTION LESSON'
+          ? 'PRESENCE LESSON'
           : 'CHARISMA INDEX';
     await ShareService.shareAuraResult(
       context:        context,

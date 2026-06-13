@@ -170,7 +170,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 const SizedBox(height: Sp.sm),
 
                 // Italic undertagline — the new brand promise.
-                Text('the guy she can\'t ignore.',
+                Text('the guy who owns the room.',
                   style: AppTypography.h1Italic.copyWith(
                     fontSize: 18,
                     color: AppColors.textSecondary,

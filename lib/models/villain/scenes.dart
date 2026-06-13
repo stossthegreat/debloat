@@ -161,7 +161,7 @@ abstract final class VillainScenes {
       id: 'party_girl',
       title: 'PARTY GIRL',
       law: 'ANCHOR THE EMOTION',
-      lawLine: 'Make her FEEL something. Match her state — never kill it.',
+      lawLine: 'Make the moment LAND. Match the state — never kill it.',
       oneLine: 'Three drinks in. Loud. Fast. Do not be serious.',
       objective: "Match her energy. Never say 'easy' or 'you good?'.",
       opening:
@@ -186,7 +186,7 @@ abstract final class VillainScenes {
       law: 'ABUNDANCE',
       lawLine: 'Want her, don\'t need her. Brief, unbothered — you have options.',
       oneLine: 'Mid-set. Headphones in. You have three seconds.',
-      objective: 'Brief. Direct. Do not make her work for you.',
+      objective: 'Brief. Direct. Open without making it feel like work.',
       opening: "What\'s up.",
       setting:
           'Gym floor, around 7pm. She is mid-workout, headphones in, '
@@ -200,7 +200,7 @@ abstract final class VillainScenes {
           'with a small laugh and "maybe later, what\'s your name."',
       coachFocus:
           'Did he hover? Did he over-explain why he was talking to her? '
-          'Did he stretch a 3-second beat? Did he make her work for him?',
+          'Did he stretch a 3-second beat? Did he make the opener feel like work?',
     ),
 
     VillainScene(
@@ -285,7 +285,7 @@ abstract final class VillainScenes {
       law: 'THE CLOSE',
       lawLine: 'One laugh, then assume the yes. Don\'t ask for permission.',
       oneLine: 'Cold. Bored. In line eight minutes. One shot.',
-      objective: 'Make her laugh once. Do not try to win the conversation.',
+      objective: 'Land the laugh once. Do not try to win the conversation.',
       opening:
           "This line is insane right.",
       setting:

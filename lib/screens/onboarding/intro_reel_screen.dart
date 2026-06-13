@@ -15,9 +15,9 @@ import '../../theme/app_colors.dart';
 ///
 /// Script (final):
 ///   Every man knows that guy.
-///   The guy she notices.
-///   The guy she remembers.
-///   The guy she chooses.
+///   The guy the room notices.
+///   The guy the room remembers.
+///   The guy the room follows.
 ///   ─ beat ─
 ///   Most men think it\'s luck.
 ///   It\'s not.

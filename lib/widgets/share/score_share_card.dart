@@ -29,12 +29,12 @@ import '../../theme/auralay_app_typography.dart';
 ///   TENSION           ████████░░░░  7
 ///   ...
 ///
-///   ImHim · BECOME THE GUY SHE CAN'T IGNORE · imhim.app
+///   ImHim · BECOME THE GUY WHO OWNS THE ROOM · imhim.app
 class ScoreShareCard extends StatelessWidget {
   /// Brand shown at the very top — rendered as the two-tone ImHim
   /// wordmark (white "Im", red "Him") so the share card matches the
   /// in-app wordmark you see on the live roleplay orb.
-  static const String tagline = "BECOME THE GUY SHE CAN'T IGNORE";
+  static const String tagline = "BECOME THE GUY WHO OWNS THE ROOM";
   static const String domain  = 'imhim.app';
 
   /// What this card is for — e.g. "THE GAZE", "FREE FLOW",

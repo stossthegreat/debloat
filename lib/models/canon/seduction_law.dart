@@ -1,14 +1,13 @@
 /// The Rizz tab reference book — sits at the bottom of the page as the
-/// "THE LAWS" section. Robert Greene's Art of Seduction archetypes + the
-/// 24 Laws of Seduction, compressed into plain English so users actually
-/// read them.
+/// "THE LAWS" section. Robert Greene's archetypes + the 24 Laws of
+/// Influence, compressed into plain English so users actually read them.
 ///
 /// Three sections:
-///   1. THE ARCHETYPES  — Greene's 9 seducer types ("which one are you?")
+///   1. THE ARCHETYPES  — Greene's 9 charisma archetypes ("which one are you?")
 ///   2. THE 24 LAWS     — grouped into four phases (choosing → temptation
 ///                        → pain & pleasure → the final move)
-///   3. THE FRAME LAWS  — modern, derived from dating science / behavioural
-///                        charisma research
+///   3. THE FRAME LAWS  — modern, derived from social-influence and
+///                        behavioural charisma research
 class LawSection {
   final String id;
   final String title;
@@ -45,28 +44,28 @@ abstract final class SeductionLaws {
     title: 'THE ARCHETYPES',
     subtitle: 'Greene\'s nine — which one are you?',
     intro:
-        'Robert Greene mapped nine archetypes of the seducer — each is a '
-        'different door into the same room. You will recognise yourself '
-        'in two or three. Lean into the one that is already yours. Borrow '
-        'tools from the others. Never imitate a type you are not.',
+        'Robert Greene mapped nine archetypes of the magnetic personality '
+        '— each is a different door into the same room. You will recognise '
+        'yourself in two or three. Lean into the one that is already yours. '
+        'Borrow tools from the others. Never imitate a type you are not.',
     entries: [
       LawEntry(
         name: 'THE SIREN',
-        summary: 'Pure presence. Pure sensuality. The room slows around her.',
+        summary: 'Pure presence. Pure command. The room slows around them.',
         example: 'Marilyn. Cleopatra. Nothing said quickly. Everything '
                  'said with the body first.',
       ),
       LawEntry(
         name: 'THE RAKE',
-        summary: 'Open desire. Refuses to apologise for wanting.',
-        example: 'Casanova. The man whose intent is so undisguised it '
+        summary: 'Open intent. Refuses to apologise for wanting.',
+        example: 'Casanova. The figure whose intent is so undisguised it '
                  'reads as honesty, not threat.',
       ),
       LawEntry(
-        name: 'THE IDEAL LOVER',
-        summary: 'He sees in her the thing no one else has noticed.',
-        example: 'The lover who, in the first hour, names the part of '
-                 'her she has been hiding from everyone else.',
+        name: 'THE IDEAL LISTENER',
+        summary: 'Sees in the other the thing no one else has noticed.',
+        example: 'The friend who, in the first hour, names the part of '
+                 'them they have been hiding from everyone else.',
       ),
       LawEntry(
         name: 'THE DANDY',
@@ -90,7 +89,7 @@ abstract final class SeductionLaws {
         name: 'THE CHARMER',
         summary: 'Pure flattery, calibrated. Makes the room feel chosen.',
         example: 'The diplomat. The host. The man who, in twenty minutes, '
-                 'has made every woman feel like the only one present.',
+                 'has made every person in the room feel like the only one present.',
       ),
       LawEntry(
         name: 'THE CHARISMATIC',
@@ -110,44 +109,44 @@ abstract final class SeductionLaws {
   // The 24 Laws, plain-English, grouped into the four phases Greene used.
   static const choosing = LawSection(
     id: 'choosing',
-    title: 'CHOOSING THE VICTIM',
+    title: 'CHOOSING WHO',
     subtitle: 'Laws 1–6 · who, and why',
     intro:
-        'Before the first word, the seducer has chosen. Not anyone. The '
+        'Before the first word, the magnetic has chosen. Not anyone. The '
         'right one. The one whose specific lack you can fill. The wrong '
-        'target wastes the playbook.',
+        'reader wastes the playbook.',
     entries: [
       LawEntry(
-        name: '1 · CHOOSE THE RIGHT VICTIM',
+        name: '1 · CHOOSE THE RIGHT MOMENT',
         summary: 'Pick someone who lacks what you carry. Not everyone.',
-        example: 'A bored woman in a happy marriage is the wrong target. '
-                 'A curious woman who tells you she is unimpressed is '
-                 'the right one.',
+        example: 'A distracted stranger in the middle of their own night is '
+                 'the wrong moment. A curious one who tells you they are '
+                 'unimpressed is the right one.',
       ),
       LawEntry(
         name: '2 · CREATE A FALSE SENSE OF SECURITY',
         summary: 'Open friendly. Disarming. Threat-free. Then escalate.',
-        example: 'Make her laugh in the first two minutes. The defences '
+        example: 'Land the laugh in the first two minutes. The defences '
                  'come down. The frame goes up.',
         lessonId: 'approach_without_permission',
       ),
       LawEntry(
         name: '3 · SEND MIXED SIGNALS',
         summary: 'Be two things at once. Hot and cold. Hard and warm.',
-        example: 'The cocky man with one tender admission. She will think '
-                 'about that admission for a week.',
+        example: 'The cocky operator with one tender admission. They will '
+                 'think about that admission for a week.',
         lessonId: 'cocky_caring',
       ),
       LawEntry(
-        name: '4 · APPEAR TO BE AN OBJECT OF DESIRE',
+        name: '4 · APPEAR TO BE AN OBJECT OF INTEREST',
         summary: 'Be visibly wanted by others. Scarcity by demonstration.',
         example: 'Arrive with friends who clearly like you. The pre-selection '
                  'does half the work before you speak.',
       ),
       LawEntry(
         name: '5 · CREATE A NEED',
-        summary: 'Make her aware of an itch she has been ignoring.',
-        example: 'Most men are afraid to actually say what they want. '
+        summary: 'Make them aware of a curiosity they have been ignoring.',
+        example: 'Most people are afraid to actually say what they want. '
                  'You are not. That is the need.',
       ),
       LawEntry(
@@ -165,34 +164,34 @@ abstract final class SeductionLaws {
     title: 'CREATING THE TEMPTATION',
     subtitle: 'Laws 7–12 · the slow burn',
     intro:
-        'The hook is set. Now the slow build. Make her feel that something '
-        'inevitable is happening — but make her not quite sure when, or '
+        'The hook is set. Now the slow build. Make them feel that something '
+        'inevitable is happening — but make them not quite sure when, or '
         'where, or how. Mystery is the engine.',
     entries: [
       LawEntry(
         name: '7 · ENTER THEIR SPIRIT',
-        summary: 'Match her register first. Mirror her tempo, then steer.',
-        example: 'Quiet woman, you arrive quiet. Three minutes later you '
-                 'raise the temperature by half a degree. She follows.',
+        summary: 'Match their register first. Mirror their tempo, then steer.',
+        example: 'Quiet room, you arrive quiet. Three minutes later you '
+                 'raise the temperature by half a degree. They follow.',
         lessonId: 'read_the_energy',
       ),
       LawEntry(
         name: '8 · CREATE TEMPTATION',
-        summary: 'Be the door she has been wondering whether to walk through.',
-        example: 'Talk about the thing she has been curious about and '
+        summary: 'Be the door they have been wondering whether to walk through.',
+        example: 'Talk about the thing they have been curious about and '
                  'never had permission to say out loud.',
       ),
       LawEntry(
         name: '9 · KEEP THEM IN SUSPENSE',
-        summary: 'Be unpredictable. Pattern-break before she gets bored.',
+        summary: 'Be unpredictable. Pattern-break before they get bored.',
         example: 'Three sharp lines. Then a soft one. Then a silence. '
-                 'She cannot guess what is next. She does not leave.',
+                 'They cannot guess what is next. They do not leave.',
       ),
       LawEntry(
         name: '10 · USE THE DEMONIC POWER OF WORDS',
         summary: 'Language is the only weapon. Use it precisely.',
-        example: 'Pick the loaded word. Name the thing she has not named '
-                 'about herself yet. The room changes.',
+        example: 'Pick the loaded word. Name the thing they have not named '
+                 'about themselves yet. The room changes.',
         lessonId: 'specificity',
       ),
       LawEntry(
@@ -205,7 +204,7 @@ abstract final class SeductionLaws {
         name: '12 · POETICISE YOUR PRESENCE',
         summary: 'Be slightly mythic. A small mystery about you, always.',
         example: 'Never explain where you go on Sundays. Never explain '
-                 'why you stopped doing the thing she asked about.',
+                 'why you stopped doing the thing they asked about.',
       ),
     ],
   );
@@ -215,9 +214,9 @@ abstract final class SeductionLaws {
     title: 'PAIN AND PLEASURE',
     subtitle: 'Laws 13–18 · the alternation',
     intro:
-        'Pleasure alone is dull. Pain alone is wounding. The seducer alternates '
-        '— giving, then withholding, then giving more than expected. She '
-        'follows the rhythm without realising she is being trained.',
+        'Pleasure alone is dull. Pain alone is wounding. The magnetic alternates '
+        '— giving, then withholding, then giving more than expected. They '
+        'follow the rhythm without realising they are being read.',
     entries: [
       LawEntry(
         name: '13 · DISARM THROUGH STRATEGIC WEAKNESS',
@@ -233,23 +232,23 @@ abstract final class SeductionLaws {
         lessonId: 'future_pacing',
       ),
       LawEntry(
-        name: '15 · ISOLATE THE VICTIM',
-        summary: 'Pull her out of her usual social weather.',
-        example: 'Take her to the bar she has never heard of. Outside her '
-                 'frame, you are the only frame.',
+        name: '15 · CONTROL THE FRAME',
+        summary: 'Pull them out of their usual social weather.',
+        example: 'Take them to the bar they have never heard of. Outside '
+                 'their frame, you are the only frame.',
       ),
       LawEntry(
         name: '16 · PROVE YOURSELF',
-        summary: 'Do the small thing she did not ask for. Once.',
-        example: 'Remember the wine she said she liked. Pour it without '
+        summary: 'Do the small thing they did not ask for. Once.',
+        example: 'Remember the drink they said they liked. Order it without '
                  'asking, two weeks later. Devastating.',
         lessonId: 'callback',
       ),
       LawEntry(
         name: '17 · EFFECT A REGRESSION',
-        summary: 'Make her feel younger. Less self-conscious. Lighter.',
-        example: 'Laugh at the small absurd thing. She remembers the '
-                 'last time someone made her laugh that hard.',
+        summary: 'Make them feel younger. Less self-conscious. Lighter.',
+        example: 'Laugh at the small absurd thing. They remember the '
+                 'last time someone made them laugh that hard.',
       ),
       LawEntry(
         name: '18 · STIR PLEASURE AND PAIN',
@@ -267,8 +266,8 @@ abstract final class SeductionLaws {
     title: 'THE FINAL MOVE',
     subtitle: 'Laws 19–24 · the close',
     intro:
-        'The build has worked. She is leaning in. Now the most dangerous '
-        'part — because most men ruin it here. The final move is light, '
+        'The build has worked. They are leaning in. Now the most dangerous '
+        'part — because most people ruin it here. The final move is light, '
         'decisive, and short. Never long. Never asking. Never apologising.',
     entries: [
       LawEntry(
@@ -279,34 +278,34 @@ abstract final class SeductionLaws {
       ),
       LawEntry(
         name: '20 · MIX PLEASURE WITH PAIN',
-        summary: 'A small jealousy, well-timed, doubles desire.',
+        summary: 'A small jealousy, well-timed, doubles interest.',
         example: 'Mention, casually, the other person whose attention you '
-                 'have. Then never mention her again.',
+                 'have. Then never mention them again.',
       ),
       LawEntry(
         name: '21 · GIVE THEM SPACE TO FALL',
-        summary: 'Step back. Let her come the last metre.',
-        example: 'Do not chase the kiss. Let the silence between you '
-                 'become unbearable. Then she closes it.',
+        summary: 'Step back. Let them come the last metre.',
+        example: 'Do not chase the close. Let the silence between you '
+                 'become unbearable. Then they close it.',
         lessonId: 'walk_away',
       ),
       LawEntry(
-        name: '22 · USE PHYSICAL LURES',
-        summary: 'Once the frame is set — the body. Slow. Light. Decisive.',
-        example: 'The hand at the small of her back, leading her '
-                 'through the crowd. Said nothing. Meant everything.',
+        name: '22 · USE PHYSICAL PRESENCE',
+        summary: 'Once the frame is set — your presence. Slow. Light. Decisive.',
+        example: 'The lean-in that opens the next beat in the conversation. '
+                 'Said nothing. Meant everything.',
       ),
       LawEntry(
         name: '23 · MASTER THE ART OF THE BOLD MOVE',
         summary: 'When the moment arrives, do not hesitate. Move.',
-        example: 'Reach for her hand in the cab. No question. No look. '
+        example: 'Read the moment. Step in. No question. No look. '
                  'The hesitation kills it.',
       ),
       LawEntry(
         name: '24 · BEWARE THE AFTEREFFECTS',
         summary: 'After the win, do not collapse the frame. Stay sharp.',
         example: 'The text that gives away everything in the morning '
-                 'undoes the work of three weeks. Stay the man she met.',
+                 'undoes the work of three weeks. Stay the version they met.',
         lessonId: 'the_takeaway',
       ),
     ],
@@ -331,7 +330,7 @@ abstract final class SeductionLaws {
       ),
       LawEntry(
         name: 'QUALIFICATION',
-        summary: 'Make her sell herself to you. Reverse the audition.',
+        summary: 'Make them sell themselves to you. Reverse the audition.',
         example: '"Pick the next bottle for us. If it is good I will '
                  'tell my friends I met someone interesting tonight."',
         lessonId: 'qualification',
