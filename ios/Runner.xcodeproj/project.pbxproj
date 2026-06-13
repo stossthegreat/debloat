@@ -7,19 +7,35 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		046ECA168D0D819C6100AA92 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2358E5BB07F6053D8C292DBD /* Foundation.framework */; };
+		013B89A4DAF1180DA019F6E8 /* iMessage App Icon60x45@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 9F5CBBE5F7F5C276F26B4D0B /* iMessage App Icon60x45@2x.png */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		1749273D438DEB731AF1ACFE /* Messages.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4253CCFE3791C75489DD79F0 /* Messages.framework */; };
+		17E296468318303B1468E4A3 /* ImHimMessages.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 9749A1DA2C1AE09B9B63CE56 /* ImHimMessages.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		1F2BC7ED5DEFDE9BFA6DBA64 /* iMessage App Icon27x20@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = 098AE8CA1E8F9255DCE31072 /* iMessage App Icon27x20@3x.png */; };
 		229C9BD5920AD1B172B770BE /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2358E5BB07F6053D8C292DBD /* Foundation.framework */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		411FDED8D47EC6DB38713282 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96D342EE95F28B51C46A9CEF /* ShareViewController.swift */; };
+		43F12046B13DB44C89F756E7 /* iMessage App Icon29x29@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = FFBF9A860CE47BBE53347416 /* iMessage App Icon29x29@3x.png */; };
+		4A07E3DE4A6F2018F6D98BA6 /* iMessage App Icon1024x768.png in Resources */ = {isa = PBXBuildFile; fileRef = 8E2F1D39C254BB26474A8F5A /* iMessage App Icon1024x768.png */; };
+		5997331B58EFD7CF678EB8CB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 52AD5D2003E845C1D915E124 /* Assets.xcassets */; };
+		69C67828E93B958D6363CEA6 /* iMessage App Icon27x20@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = AD5027FF703C74D1E3B6EA4F /* iMessage App Icon27x20@2x.png */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
+		776618231D2B1F65B5A66732 /* MessagesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A42C29BA63ADFE4078545D3A /* MessagesViewController.swift */; };
+		89E8F7D5FD57B4018DA91829 /* iMessage App Icon74x55@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 5FDFF0B7E22EF6B28AC4268E /* iMessage App Icon74x55@2x.png */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		97F91CEFDE9834EC2A053A8B /* iMessage App Icon32x24@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 01B330F1C4A414EC231A0EC8 /* iMessage App Icon32x24@2x.png */; };
+		98A177832674F647528047AB /* iMessage App Icon32x24@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = B6D19ADB8A2A1543B884E18E /* iMessage App Icon32x24@3x.png */; };
+		9FC228E5C2E765C90A331750 /* iMessage App Icon29x29@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 0C707F3D220090BAB6E3D5E4 /* iMessage App Icon29x29@2x.png */; };
 		B291B7A38BE00F4DCAA9B272 /* Social.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BCEAEA6C8CED2995D12D7AF1 /* Social.framework */; };
-		D229F1B1C36F5C36FFAEBE7F /* Messages.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8BD892BFCCCAC34CF8DAD186 /* Messages.framework */; };
+		B7C4E3ED17B7243BDD0A093D /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2358E5BB07F6053D8C292DBD /* Foundation.framework */; };
+		C3F51AAEB549A6201CF5E96F /* iMessage App Icon67x50@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 82538272803169B4848837AC /* iMessage App Icon67x50@2x.png */; };
+		C5E88850BBC2440220811048 /* iMessage App Icon60x45@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = B81944588628A2C2AA943376 /* iMessage App Icon60x45@3x.png */; };
+		CB8AA48562A2AF995D38F5E1 /* iMessage App Icon29x29@2x-1.png in Resources */ = {isa = PBXBuildFile; fileRef = 99B1432D6816F9FD0E90DB67 /* iMessage App Icon29x29@2x-1.png */; };
 		DECE33B1F23D0737F6899480 /* ImHimShare.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 0EC3E3FD8A79ED056971FB5B /* ImHimShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F157B7E92E5D193501CC0BDE /* iMessage App Icon1024x1024.png in Resources */ = {isa = PBXBuildFile; fileRef = A03D984DE2510D198F1F6F62 /* iMessage App Icon1024x1024.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,6 +45,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
+		};
+		35D51946D74674EDAC835315 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BCD04BE126595D790A24ACF3;
+			remoteInfo = ImHimMessages;
 		};
 		788E0828B82AB1A480FA4E98 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -47,6 +70,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				DECE33B1F23D0737F6899480 /* ImHimShare.appex in Embed App Extensions */,
+				17E296468318303B1468E4A3 /* ImHimMessages.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -64,6 +88,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		01B330F1C4A414EC231A0EC8 /* iMessage App Icon32x24@2x.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "iMessage App Icon32x24@2x.png"; path = "Assets.xcassets/iMessage App Icon.stickersiconset/iMessage App Icon32x24@2x.png"; sourceTree = "<group>"; };
+		098AE8CA1E8F9255DCE31072 /* iMessage App Icon27x20@3x.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "iMessage App Icon27x20@3x.png"; path = "Assets.xcassets/iMessage App Icon.stickersiconset/iMessage App Icon27x20@3x.png"; sourceTree = "<group>"; };
+		0C707F3D220090BAB6E3D5E4 /* iMessage App Icon29x29@2x.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "iMessage App Icon29x29@2x.png"; path = "Assets.xcassets/iMessage App Icon.stickersiconset/iMessage App Icon29x29@2x.png"; sourceTree = "<group>"; };
 		0EC3E3FD8A79ED056971FB5B /* ImHimShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ImHimShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		1075D3FF5C23CA90A93E97A2 /* ImHimShare.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = ImHimShare.entitlements; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
@@ -73,24 +100,48 @@
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		4253CCFE3791C75489DD79F0 /* Messages.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Messages.framework; path = System/Library/Frameworks/Messages.framework; sourceTree = SDKROOT; };
+		52AD5D2003E845C1D915E124 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		5FDFF0B7E22EF6B28AC4268E /* iMessage App Icon74x55@2x.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "iMessage App Icon74x55@2x.png"; path = "Assets.xcassets/iMessage App Icon.stickersiconset/iMessage App Icon74x55@2x.png"; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
+		82538272803169B4848837AC /* iMessage App Icon67x50@2x.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "iMessage App Icon67x50@2x.png"; path = "Assets.xcassets/iMessage App Icon.stickersiconset/iMessage App Icon67x50@2x.png"; sourceTree = "<group>"; };
 		8BD892BFCCCAC34CF8DAD186 /* Messages.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Messages.framework; path = System/Library/Frameworks/Messages.framework; sourceTree = SDKROOT; };
+		8E2F1D39C254BB26474A8F5A /* iMessage App Icon1024x768.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "iMessage App Icon1024x768.png"; path = "Assets.xcassets/iMessage App Icon.stickersiconset/iMessage App Icon1024x768.png"; sourceTree = "<group>"; };
 		96D342EE95F28B51C46A9CEF /* ShareViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
+		9749A1DA2C1AE09B9B63CE56 /* ImHimMessages.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ImHimMessages.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		97C146EE1CF9000F007C117D /* Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Runner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		97C146FB1CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		99B1432D6816F9FD0E90DB67 /* iMessage App Icon29x29@2x-1.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "iMessage App Icon29x29@2x-1.png"; path = "Assets.xcassets/iMessage App Icon.stickersiconset/iMessage App Icon29x29@2x-1.png"; sourceTree = "<group>"; };
+		9F5CBBE5F7F5C276F26B4D0B /* iMessage App Icon60x45@2x.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "iMessage App Icon60x45@2x.png"; path = "Assets.xcassets/iMessage App Icon.stickersiconset/iMessage App Icon60x45@2x.png"; sourceTree = "<group>"; };
+		A03D984DE2510D198F1F6F62 /* iMessage App Icon1024x1024.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "iMessage App Icon1024x1024.png"; path = "Assets.xcassets/iMessage App Icon.stickersiconset/iMessage App Icon1024x1024.png"; sourceTree = "<group>"; };
+		A42C29BA63ADFE4078545D3A /* MessagesViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MessagesViewController.swift; sourceTree = "<group>"; };
 		A6549D172457452A5AF0D621 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AD5027FF703C74D1E3B6EA4F /* iMessage App Icon27x20@2x.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "iMessage App Icon27x20@2x.png"; path = "Assets.xcassets/iMessage App Icon.stickersiconset/iMessage App Icon27x20@2x.png"; sourceTree = "<group>"; };
+		B6D19ADB8A2A1543B884E18E /* iMessage App Icon32x24@3x.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "iMessage App Icon32x24@3x.png"; path = "Assets.xcassets/iMessage App Icon.stickersiconset/iMessage App Icon32x24@3x.png"; sourceTree = "<group>"; };
+		B81944588628A2C2AA943376 /* iMessage App Icon60x45@3x.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "iMessage App Icon60x45@3x.png"; path = "Assets.xcassets/iMessage App Icon.stickersiconset/iMessage App Icon60x45@3x.png"; sourceTree = "<group>"; };
 		B9866C2FDB1D28869E0D9442 /* ImHimKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ImHimKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		BCEAEA6C8CED2995D12D7AF1 /* Social.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Social.framework; path = System/Library/Frameworks/Social.framework; sourceTree = SDKROOT; };
+		F309B3AA80E80E32243126D0 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		FFBF9A860CE47BBE53347416 /* iMessage App Icon29x29@3x.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "iMessage App Icon29x29@3x.png"; path = "Assets.xcassets/iMessage App Icon.stickersiconset/iMessage App Icon29x29@3x.png"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		160A7120BB66E8147E17E74C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B7C4E3ED17B7243BDD0A093D /* Foundation.framework in Frameworks */,
+				1749273D438DEB731AF1ACFE /* Messages.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		97C146EB1CF9000F007C117D /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -116,6 +167,7 @@
 				FB7171C441CD533BC9BA4380 /* iOS */,
 				BCEAEA6C8CED2995D12D7AF1 /* Social.framework */,
 				8BD892BFCCCAC34CF8DAD186 /* Messages.framework */,
+				4253CCFE3791C75489DD79F0 /* Messages.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -159,6 +211,7 @@
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				0CD96DAD5C88D305C95C9F17 /* Frameworks */,
 				7440D9FBA4AAD038F895B340 /* ImHimShare */,
+				EBAA3EC58D907F39E067A956 /* ImHimMessages */,
 			);
 			sourceTree = "<group>";
 		};
@@ -170,6 +223,7 @@
 				B9866C2FDB1D28869E0D9442 /* ImHimKeyboard.appex */,
 				0EC3E3FD8A79ED056971FB5B /* ImHimShare.appex */,
 				2A40FAF79C224F561FB715E5 /* ImHimMessages.appex */,
+				9749A1DA2C1AE09B9B63CE56 /* ImHimMessages.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -188,6 +242,30 @@
 			);
 			path = Runner;
 			sourceTree = "<group>";
+		};
+		EBAA3EC58D907F39E067A956 /* ImHimMessages */ = {
+			isa = PBXGroup;
+			children = (
+				A42C29BA63ADFE4078545D3A /* MessagesViewController.swift */,
+				F309B3AA80E80E32243126D0 /* Info.plist */,
+				52AD5D2003E845C1D915E124 /* Assets.xcassets */,
+				AD5027FF703C74D1E3B6EA4F /* iMessage App Icon27x20@2x.png */,
+				098AE8CA1E8F9255DCE31072 /* iMessage App Icon27x20@3x.png */,
+				0C707F3D220090BAB6E3D5E4 /* iMessage App Icon29x29@2x.png */,
+				99B1432D6816F9FD0E90DB67 /* iMessage App Icon29x29@2x-1.png */,
+				FFBF9A860CE47BBE53347416 /* iMessage App Icon29x29@3x.png */,
+				01B330F1C4A414EC231A0EC8 /* iMessage App Icon32x24@2x.png */,
+				B6D19ADB8A2A1543B884E18E /* iMessage App Icon32x24@3x.png */,
+				9F5CBBE5F7F5C276F26B4D0B /* iMessage App Icon60x45@2x.png */,
+				B81944588628A2C2AA943376 /* iMessage App Icon60x45@3x.png */,
+				82538272803169B4848837AC /* iMessage App Icon67x50@2x.png */,
+				5FDFF0B7E22EF6B28AC4268E /* iMessage App Icon74x55@2x.png */,
+				A03D984DE2510D198F1F6F62 /* iMessage App Icon1024x1024.png */,
+				8E2F1D39C254BB26474A8F5A /* iMessage App Icon1024x768.png */,
+			);
+			name = ImHimMessages;
+			path = ImHimMessages;
+			sourceTree = SOURCE_ROOT;
 		};
 		FB7171C441CD533BC9BA4380 /* iOS */ = {
 			isa = PBXGroup;
@@ -250,11 +328,29 @@
 			);
 			dependencies = (
 				7D96AFE2015625A5DA641148 /* PBXTargetDependency */,
+				D2EE2F0D5B218F108DA69332 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
 			productType = "com.apple.product-type.application";
+		};
+		BCD04BE126595D790A24ACF3 /* ImHimMessages */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 758105A3FAFBD47FF0CDEF5C /* Build configuration list for PBXNativeTarget "ImHimMessages" */;
+			buildPhases = (
+				C1A6EE858C185F67A7A6DAAA /* Sources */,
+				160A7120BB66E8147E17E74C /* Frameworks */,
+				64BBF3DFA96F3A12F6D8C2FF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ImHimMessages;
+			productName = ImHimMessages;
+			productReference = 9749A1DA2C1AE09B9B63CE56 /* ImHimMessages.appex */;
+			productType = "com.apple.product-type.app-extension.messages";
 		};
 /* End PBXNativeTarget section */
 
@@ -292,6 +388,7 @@
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
 				86C7DBC12581C5022572D2DB /* ImHimShare */,
+				BCD04BE126595D790A24ACF3 /* ImHimMessages */,
 			);
 		};
 /* End PBXProject section */
@@ -308,6 +405,27 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		64BBF3DFA96F3A12F6D8C2FF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5997331B58EFD7CF678EB8CB /* Assets.xcassets in Resources */,
+				69C67828E93B958D6363CEA6 /* iMessage App Icon27x20@2x.png in Resources */,
+				1F2BC7ED5DEFDE9BFA6DBA64 /* iMessage App Icon27x20@3x.png in Resources */,
+				9FC228E5C2E765C90A331750 /* iMessage App Icon29x29@2x.png in Resources */,
+				CB8AA48562A2AF995D38F5E1 /* iMessage App Icon29x29@2x-1.png in Resources */,
+				43F12046B13DB44C89F756E7 /* iMessage App Icon29x29@3x.png in Resources */,
+				97F91CEFDE9834EC2A053A8B /* iMessage App Icon32x24@2x.png in Resources */,
+				98A177832674F647528047AB /* iMessage App Icon32x24@3x.png in Resources */,
+				013B89A4DAF1180DA019F6E8 /* iMessage App Icon60x45@2x.png in Resources */,
+				C5E88850BBC2440220811048 /* iMessage App Icon60x45@3x.png in Resources */,
+				C3F51AAEB549A6201CF5E96F /* iMessage App Icon67x50@2x.png in Resources */,
+				89E8F7D5FD57B4018DA91829 /* iMessage App Icon74x55@2x.png in Resources */,
+				F157B7E92E5D193501CC0BDE /* iMessage App Icon1024x1024.png in Resources */,
+				4A07E3DE4A6F2018F6D98BA6 /* iMessage App Icon1024x768.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -384,6 +502,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C1A6EE858C185F67A7A6DAAA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				776618231D2B1F65B5A66732 /* MessagesViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -397,6 +523,12 @@
 			name = ImHimShare;
 			target = 86C7DBC12581C5022572D2DB /* ImHimShare */;
 			targetProxy = 788E0828B82AB1A480FA4E98 /* PBXContainerItemProxy */;
+		};
+		D2EE2F0D5B218F108DA69332 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ImHimMessages;
+			target = BCD04BE126595D790A24ACF3 /* ImHimMessages */;
+			targetProxy = 35D51946D74674EDAC835315 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -494,6 +626,34 @@
 			};
 			name = Profile;
 		};
+		2CCA4565881FC6E3BF8BDD19 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "iMessage App Icon";
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7T3XFY333F;
+				INFOPLIST_FILE = ImHimMessages/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.mirrorly.app.imessage;
+				PRODUCT_BUNDLE_PACKAGE_TYPE = "XPC!";
+				PRODUCT_NAME = ImHimMessages;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+				WRAPPER_EXTENSION = appex;
+			};
+			name = Profile;
+		};
 		331C8088294A63A400263BE5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -540,6 +700,34 @@
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
 			};
 			name = Profile;
+		};
+		51FD6C903A0F1ABAA2C0AD51 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "iMessage App Icon";
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7T3XFY333F;
+				INFOPLIST_FILE = ImHimMessages/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.mirrorly.app.imessage;
+				PRODUCT_BUNDLE_PACKAGE_TYPE = "XPC!";
+				PRODUCT_NAME = ImHimMessages;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+				WRAPPER_EXTENSION = appex;
+			};
+			name = Release;
 		};
 		5654CA5311429B2F797A560E /* Profile */ = {
 			isa = XCBuildConfiguration;
@@ -590,61 +778,6 @@
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
-		};
-		95BE7C6C0810DD15BE172EFB /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				ASSETCATALOG_COMPILER_APPICON_NAME = "iMessage App Icon";
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 7T3XFY333F;
-				INFOPLIST_FILE = ImHimMessages/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.mirrorly.app.imessage;
-				PRODUCT_BUNDLE_PACKAGE_TYPE = "XPC!";
-				PRODUCT_NAME = ImHimMessages;
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				WRAPPER_EXTENSION = appex;
-			};
-			name = Debug;
-		};
-		97B646C83F8F6233DD6725B2 /* Profile */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				ASSETCATALOG_COMPILER_APPICON_NAME = "iMessage App Icon";
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 7T3XFY333F;
-				INFOPLIST_FILE = ImHimMessages/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.mirrorly.app.imessage;
-				PRODUCT_BUNDLE_PACKAGE_TYPE = "XPC!";
-				PRODUCT_NAME = ImHimMessages;
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				VALIDATE_PRODUCT = YES;
-				WRAPPER_EXTENSION = appex;
-			};
-			name = Profile;
 		};
 		97C147031CF9000F007C117D /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -802,7 +935,7 @@
 			};
 			name = Release;
 		};
-		E5FB4055E4092823A94E86DA /* Release */ = {
+		A09FCD6BC25B7EC12C4AC6D8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
@@ -825,10 +958,9 @@
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				VALIDATE_PRODUCT = YES;
 				WRAPPER_EXTENSION = appex;
 			};
-			name = Release;
+			name = Debug;
 		};
 		E7692F36870E83FDA820E5E7 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -873,6 +1005,16 @@
 				331C8088294A63A400263BE5 /* Debug */,
 				331C8089294A63A400263BE5 /* Release */,
 				331C808A294A63A400263BE5 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		758105A3FAFBD47FF0CDEF5C /* Build configuration list for PBXNativeTarget "ImHimMessages" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				51FD6C903A0F1ABAA2C0AD51 /* Release */,
+				A09FCD6BC25B7EC12C4AC6D8 /* Debug */,
+				2CCA4565881FC6E3BF8BDD19 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
