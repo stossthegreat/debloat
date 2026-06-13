@@ -1526,7 +1526,7 @@ class _ScenarioStrip extends StatelessWidget {
 
   static const _chips = <({String label, String emoji, String scenario})>[
     (label: 'More heat',     emoji: '🔥', scenario: 'turn up the heat — push every line one notch hotter, more cinematic, more suggestive. Keep the structure, raise the temperature.'),
-    (label: 'Flirty tease',  emoji: '😏', scenario: 'flirty tease — push-pull, light needle, make her chase. Cheeky but warm.'),
+    (label: 'Flirty tease',  emoji: '😏', scenario: 'flirty tease — push-pull, light needle. Cheeky but warm. Keeps the conversation moving.'),
     (label: 'Make a move',   emoji: '🎯', scenario: 'make a move — pivot each line toward a specific, confident date proposal without sounding pushy.'),
     (label: 'Funnier',       emoji: '😂', scenario: 'funnier — keep the situation, add comedy. Screenshot-to-group-chat funny. Self-aware over earnest.'),
     (label: 'Be playful',    emoji: '😜', scenario: 'be playful — light, cheeky, low-stakes. Drop the heavy moves.'),

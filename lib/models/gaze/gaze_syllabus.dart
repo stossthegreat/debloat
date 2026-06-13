@@ -2,7 +2,7 @@ import 'gaze_lesson.dart';
 
 /// THE GAZE — Lucien's seductive-eye masterclass.
 ///
-/// Twelve named eye MOVES taught the way a real seducer teaches: ONE
+/// Twelve named eye MOVES taught the way a real charisma coach teaches: ONE
 /// punch of WHY this move works on her, then a VIVID anatomy-named
 /// HOW (her LEFT eye, your top lid, her top lip, slow, heavy, dead
 /// brow). No CEO talk, no general "be confident" — every line names
@@ -296,8 +296,8 @@ abstract final class GazeSyllabus {
       story: [
         'This is Sophie Rose Lloyd\'s seventeen-million-view move. The lip triangle.',
         'Left eye, slow to lips, slow to right eye.',
-        'The journey is the seduction.',
-        'She knows exactly what you\'re thinking.',
+        'The journey is the magnetism.',
+        'They know exactly what you\'re thinking.',
       ],
       demo: [
         'Find my left eye. Hold one beat.',
@@ -324,8 +324,8 @@ abstract final class GazeSyllabus {
       },
       isRhythmLesson: true,
       correction: [
-        'You flicked — that\'s a tic, not seduction.',
-        'Half the speed. Make her wait. Again.',
+        'You flicked — that\'s a tic, not presence.',
+        'Half the speed. Make the room wait. Again.',
       ],
     ),
 
@@ -425,8 +425,8 @@ abstract final class GazeSyllabus {
       story: [
         'Tyra Banks named this. The smize — smile with your eyes only.',
         'Most men can\'t isolate the muscle.',
-        'When SHE is talking and you smize while listening, she feels seen, understood, chosen.',
-        'Most underrated move in seduction.',
+        'When THEY are talking and you smize while listening, the speaker feels seen, understood, chosen.',
+        'Most underrated move in presence.',
       ],
       demo: [
         'She\'s talking. Lock her left eye.',
@@ -538,7 +538,7 @@ abstract final class GazeSyllabus {
         'Slow blink — slower than last time. Two beats closed.',
         'Open slow. Don\'t lock yet — let your eyes drift open.',
         'Now drop. Slowest move yet. Three beats down.',
-        'Stay on the lips four full seconds. Make her wait.',
+        'Stay on the lips four full seconds. Make the room wait.',
         'Climb back. Smooth like syrup. No flick.',
         'Hold heavy. Don\'t blink.',
         'Tilt your head — barely. Three degrees.',

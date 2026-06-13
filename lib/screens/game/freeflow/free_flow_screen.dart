@@ -92,7 +92,7 @@ const _vibes = <_Vibe>[
         'flatter. She never explains why.',
     'sage',
     'Coffee shop. She\'s alone at a window table, laptop open, one '
-        'earbud in. She clocked you walk in. Make your move.',
+        'earbud in. She clocked you walk in. Open the conversation.',
     MirrorlyAssets.iceQueen,
   ),
   _Vibe(
@@ -104,7 +104,7 @@ const _vibes = <_Vibe>[
         'Reward her warmth with confidence, not gratitude.',
     'coral',
     'Bar, Friday night. She\'s with her friend and she\'s already '
-        'glanced over twice. The door\'s open. Make your move.',
+        'glanced over twice. The door\'s open. Open the conversation.',
     MirrorlyAssets.arenaWoman,
   ),
   _Vibe(
@@ -117,7 +117,7 @@ const _vibes = <_Vibe>[
         'and she leaves you behind.',
     'shimmer',
     'House party, kitchen. She\'s mid-laugh with two friends, three '
-        'drinks deep, buzzing. Make your move.',
+        'drinks deep, buzzing. Open the conversation.',
     MirrorlyAssets.chaosGirl,
   ),
   _Vibe(
@@ -130,7 +130,7 @@ const _vibes = <_Vibe>[
         'or seeking her approval.',
     'ballad',
     'Bar. She\'s leaning on the counter with a friend, sizing up the '
-        'room, unimpressed by all of it. Make your move.',
+        'room, unimpressed by all of it. Open the conversation.',
     MirrorlyAssets.intellectual,
   ),
   _Vibe(
@@ -143,7 +143,7 @@ const _vibes = <_Vibe>[
         'whole reward.',
     'verse',
     'Rooftop bar. She\'s by the railing, arms crossed, looking at the '
-        'view like it bores her. Make your move.',
+        'view like it bores her. Open the conversation.',
     MirrorlyAssets.socialite,
   ),
 ];
@@ -1544,7 +1544,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
                       if (_herCaption.isEmpty &&
                           _transcript.isEmpty &&
                           _phase == _Phase.live)
-                        Text(_vibe?.context ?? 'Make your move.',
+                        Text(_vibe?.context ?? 'Open the conversation.',
                             textAlign: TextAlign.center,
                             style: AppTypography.h1Italic.copyWith(
                               color: Colors.white,

@@ -554,7 +554,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
         const SizedBox(height: 4),
         Text(_isGlowupVariant
               ? 'Your glow-up is ready.'
-              : 'Become the guy she can\'t ignore',
+              : 'Become the guy who owns every room',
           textAlign: TextAlign.center,
           style: AppTypography.h1.copyWith(
             color: Colors.white,
@@ -791,11 +791,11 @@ class _Pitch extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _line('LOOKS', 'GET YOU NOTICED.', delayMs: 320),
+        _line('LOOKS',    'GET YOU NOTICED.',    delayMs: 320),
         const SizedBox(height: 18),
-        _line('GAME',  'MAKES HER FALL.',  delayMs: 460),
+        _line('PRESENCE', 'HOLDS ATTENTION.',    delayMs: 460),
         const SizedBox(height: 18),
-        _line('IMHIM', 'GIVES YOU BOTH.',  delayMs: 600),
+        _line('GAME',     'ALWAYS DECIDES.',     delayMs: 600),
       ],
     );
   }

@@ -575,7 +575,7 @@ abstract final class EyesSyllabus {
     // ── LESSON 7 ────────────────────────────────────────────────────────
     EyeLesson(
       id: 'the_smolder', number: 7, name: 'THE SMOLDER',
-      oneLine: 'Lids low. Tilt. No blink. Make her stop breathing.',
+      oneLine: 'Lids low. Tilt. No blink. Stop the room breathing.',
       moves: [
         EyeMove(
           name:        'NO BLINK',
@@ -658,12 +658,12 @@ abstract final class EyesSyllabus {
           holdSeconds:  8,
         ),
         EyeMove(
-          name:        'MAKE HER FEEL WATCHED',
+          name:        'COMMAND THE EYE CONTACT',
           why:         'An unbroken stare without blinking is animal. '
-                       'Animal is what attraction actually is.',
-          demoSays:    'Longer. I want her to feel watched before she '
+                       'Animal is what presence actually is.',
+          demoSays:    'Longer. I want the room to feel watched before it '
                        'has noticed me.',
-          youGoSays:   'Six. No blink. Make her feel watched.',
+          youGoSays:   'Six. No blink. Command the eye contact.',
           passSays:    'Predatory without aggressive. Narrow window. You '
                        'hit it.',
           failSays:    'Too aggressive or too soft. Find the middle. Again.',
@@ -826,7 +826,7 @@ abstract final class RizzSyllabus {
     ),
     Lesson(
       id: 'qualification', number: 4, name: 'QUALIFICATION',
-      oneLine: 'Make her qualify herself to you.',
+      oneLine: 'Make them qualify themselves to you.',
       targetLines: [
         TargetLine(
           line: 'Most people who say they know wine just mean they know what is expensive. Which are you?',
@@ -854,7 +854,7 @@ abstract final class RizzSyllabus {
     ),
     Lesson(
       id: 'the_takeaway', number: 6, name: 'THE TAKEAWAY',
-      oneLine: 'Losing interest is the move. Make her chase.',
+      oneLine: 'Losing interest is the move. Let them close the distance.',
       targetLines: [
         TargetLine(
           line: 'You are somewhere else tonight. It is fine. Have a good one.',

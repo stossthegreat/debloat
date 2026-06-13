@@ -185,7 +185,7 @@ abstract final class PresenceSyllabus {
       id: 'the_whisper',
       number: 5,
       name: 'THE WHISPER',
-      oneLine: 'Drop the volume. Make her lean in to hear it.',
+      oneLine: 'Drop the volume. Make the room lean in to hear it.',
       objective: 'Lower the volume on the key line. Pull her in.',
       story: [
         'When the whole room gets louder, you get quieter — and she has '
@@ -201,7 +201,7 @@ abstract final class PresenceSyllabus {
             'something."',
       ],
       targetLine: 'Come here. I want to tell you something.',
-      deliveryCue: 'Quieter than feels natural. Make her come closer.',
+      deliveryCue: 'Quieter than feels natural. Make them come closer.',
       drillSeconds: 10,
       weights: {
         PresenceDimension.voiceAuthority: 0.35,
@@ -217,7 +217,7 @@ abstract final class PresenceSyllabus {
       correction: [
         'You said it at full volume, like an announcement — nothing to '
             'lean toward.',
-        'Quieter. Make her close the distance for you. Again.',
+        'Quieter. Make them close the distance for you. Again.',
       ],
     ),
 

@@ -31,7 +31,7 @@ import '../../theme/auralay_app_typography.dart';
 ///   │                                          │
 ///   │     "I scanned my face and committed."    │
 ///   │                                          │
-///   │   ImHim · BECOME THE GUY SHE CAN'T IGNORE │
+///   │   ImHim · BECOME THE GUY WHO OWNS THE ROOM │
 ///   │   imhim.app                              │
 ///   └──────────────────────────────────────────┘
 ///
@@ -268,7 +268,7 @@ class ProgressShareCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text("BECOME THE GUY SHE CAN'T IGNORE  ·  imhim.app",
+                Text("BECOME THE GUY WHO OWNS THE ROOM  ·  imhim.app",
                   textAlign: TextAlign.center,
                   style: AppTypography.label.copyWith(
                     color: AppColors.textTertiary,

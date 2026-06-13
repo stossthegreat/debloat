@@ -336,7 +336,7 @@ class _LessonGate extends StatelessWidget {
                   fontWeight: FontWeight.w900,
                 )).animate().fadeIn(duration: 480.ms),
               const SizedBox(height: 4),
-              Text('SEDUCTION · LESSON 01',
+              Text('PRESENCE · LESSON 01',
                 style: AppTypography.label.copyWith(
                   color: AppColors.accent,
                   fontSize: 11, letterSpacing: 3.5,

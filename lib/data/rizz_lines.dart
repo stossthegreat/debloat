@@ -468,12 +468,12 @@ abstract final class RizzArsenal {
     // ── CHARM ───────────────────────────────────────────────────────────
     // Heart-melters. Genuine soulful warmth in a sea of performers.
     // The ones that aren't trying to be clever — they\'re just trying
-    // to make her feel seen. These hit different at 2am.
+    // to make the reader feel seen. These hit different at 2am.
     RizzCategory(
       label:    'CHARM',
       slug:     'charm',
       headline: 'The heart-melters.',
-      hint:     'Drop the act. Genuine. The ones that make her feel seen.',
+      hint:     'Drop the act. Genuine. The ones that make the reader feel seen.',
       lines: [
         RizzLine('you laugh like you mean it. that\'s rarer than you think',
                  'NOTICED'),
