@@ -37,6 +37,19 @@ else
   puts "target #{EXTENSION_NAME} already exists"
 end
 
+# THE iMessage-specific bit. Xcodeproj gem creates the target as a
+# generic com.apple.product-type.app-extension, but Apple's App Store
+# Connect validator only accepts the iMessage icon set when the
+# product type is .messages and the wrapper is wrapper.app-extension.
+# Without this the catalog compiles fine but icons aren't recognised
+# as iMessage icons → error 90649 on upload.
+target.product_type = 'com.apple.product-type.app-extension.messages'
+target.product_reference.explicit_file_type = 'wrapper.app-extension'
+target.build_configurations.each do |cfg|
+  cfg.build_settings['WRAPPER_EXTENSION'] = 'appex'
+  cfg.build_settings['PRODUCT_BUNDLE_PACKAGE_TYPE'] = 'XPC!'
+end
+
 %w[Messages.framework].each do |fname|
   next if target.frameworks_build_phase.files_references.any? { |f| f.path&.end_with?(fname) }
   ref = project.frameworks_group.new_file("System/Library/Frameworks/#{fname}")
