@@ -825,9 +825,6 @@ class _Header extends StatelessWidget {
           fontSize: 32, height: 1.18,
           letterSpacing: -0.6,
           fontWeight: FontWeight.w800,
-          decoration: TextDecoration.underline,
-          decorationColor: Colors.white,
-          decorationThickness: 2.0,
         ),
       ).animate().fadeIn(duration: 380.ms)
         .slideY(begin: 0.04, end: 0, curve: Curves.easeOut),
