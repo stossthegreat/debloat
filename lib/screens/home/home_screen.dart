@@ -296,7 +296,7 @@ class _ScanHubTab extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
               child: Text(
-                'The guy who owns the room.',
+                'Looks get attention. Game keeps it.',
                 style: GoogleFonts.inter(
                   color: AppColors.textSecondary,
                   fontSize: 15, height: 1.35,

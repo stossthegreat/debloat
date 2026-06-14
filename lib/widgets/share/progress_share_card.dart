@@ -134,7 +134,11 @@ class ProgressShareCard extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(72, 120, 72, 96),
+            // v232 — bottom padding pulled from 96 → 56 so the footer
+            // wordmark + tagline ride up to give the LOOKS / GAME
+            // panels more vertical room. Top + sides stay where they
+            // were so the masthead still breathes.
+            padding: const EdgeInsets.fromLTRB(72, 120, 72, 56),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -193,7 +197,9 @@ class ProgressShareCard extends StatelessWidget {
                       accent:   AppColors.accent,
                     )),
                     Container(
-                      width: 1, height: 220,
+                      // v232 — divider grown to match the taller
+                      // score panels (numbers up from 150 → 230pt).
+                      width: 1, height: 320,
                       margin: const EdgeInsets.symmetric(horizontal: 8),
                       color: AppColors.textTertiary.withValues(alpha: 0.35),
                     ),
@@ -322,16 +328,21 @@ class _HeroScorePanel extends StatelessWidget {
           textAlign: TextAlign.center,
           style: AppTypography.label.copyWith(
             color: accent,
-            fontSize: 38, letterSpacing: 5,
+            fontSize: 46, letterSpacing: 6,
             fontWeight: FontWeight.w900,
           )),
-        const SizedBox(height: 10),
+        const SizedBox(height: 14),
+        // v232 — score number bumped from 150 → 230pt. Bro: "make
+        // the game and looks numbers a lot bigger." Italic Playfair
+        // display weight stays the same; just the absolute size
+        // grows so a Story / TikTok screenshot leads with the score
+        // even when cropped tight.
         Text(hasValue ? '${value!}' : '—',
           textAlign: TextAlign.center,
           style: AppTypography.display.copyWith(
             color: hasValue ? AppColors.textPrimary
                             : AppColors.textTertiary,
-            fontSize: 150, height: 0.95,
+            fontSize: 230, height: 0.95,
             fontStyle: FontStyle.italic,
             fontWeight: FontWeight.w900,
             letterSpacing: -6,

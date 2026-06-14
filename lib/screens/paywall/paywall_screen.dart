@@ -346,10 +346,12 @@ class _PaywallScreenState extends State<PaywallScreen> {
         child: Stack(
           children: [
             SingleChildScrollView(
-              // v229a — top padding pulled from 56 → 36 so the header
-              // sits where the dropped 80×80 logo used to sit. Bro:
-              // "Hero higher where the logo is."
-              padding: const EdgeInsets.fromLTRB(22, 36, 22, 20),
+              // v232 — top padding back to 56 (was 36 in v229a). Bro
+              // wants the CTA "back where it was, lower down, still
+              // fully visible but lower." Restoring the v228 padding
+              // pushes the whole stack down so the CTA lands at the
+              // pre-glowup-lift position.
+              padding: const EdgeInsets.fromLTRB(22, 56, 22, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -367,10 +369,14 @@ class _PaywallScreenState extends State<PaywallScreen> {
                   //    Different header + different bullets but the
                   //    layout stays identical.
                   _Header(glowup: _isGlowupVariant),
-                  const SizedBox(height: 20),
+                  // v232 — header → bullets gap pushed from 20 → 28
+                  // to balance the bigger underlined hero. Bullets
+                  // themselves now run 22px apart (was 12) so the
+                  // four-line stack fills the available height.
+                  const SizedBox(height: 28),
                   _Bullets(glowup: _isGlowupVariant),
 
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 30),
 
                   // 3. Price cards — real localized prices. Three on
                   //    Android (Monthly / Annual / Rescue one-time),
@@ -793,51 +799,38 @@ class _Header extends StatelessWidget {
   /// True when the paywall was opened from the post-scan locked
   /// teaser — every `source` that starts with `glowup`. Swaps in a
   /// promise that meets the user at the emotional peak right after
-  /// they saw their scan score get teased: "you saw the verdict,
-  /// here's exactly how to gain those points."
+  /// they saw their scan score get teased: "your glow-up is ready."
   final bool glowup;
   const _Header({this.glowup = false});
 
   @override
   Widget build(BuildContext context) {
-    // v229a — glowup variant gets the punchier post-scan headline bro
-    // asked for. Both variants keep the same Inter w800 weight, same
-    // size, same rule, same subhead style — only the copy swaps.
+    // v232 — old "Become the guy that owns every room." line is gone.
+    // Bro: "take the header off. The header is the line underneath
+    // it — Looks get attention. Game keeps it. Way bigger writing,
+    // underlined. No red lines. That's the hero."
+    //
+    // Now ONE line. Hero text, way bigger than the old subhead,
+    // text-decoration underline (not a separate red bar), Inter w800
+    // white. Glowup variant keeps its own hero line.
     final headline = glowup
         ? 'Your glow-up is ready.'
-        : 'Become the guy that owns every room.';
-    final subhead = glowup
-        ? 'Pick now. We show you exactly how to build it.'
         : 'Looks get attention. Game keeps it.';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          headline,
-          style: GoogleFonts.inter(
-            color: Colors.white,
-            fontSize: 30, height: 1.16,
-            letterSpacing: -0.6,
-            fontWeight: FontWeight.w800,
-          ),
-        ).animate().fadeIn(duration: 380.ms)
-          .slideY(begin: 0.04, end: 0, curve: Curves.easeOut),
-        const SizedBox(height: 12),
-        // Underline rule — thin red bar, fixed width, sits where bro
-        // pictured the "underline" under the header.
-        Container(width: 90, height: 3, color: AppColors.red)
-          .animate().fadeIn(delay: 180.ms, duration: 360.ms),
-        const SizedBox(height: 14),
-        Text(
-          subhead,
-          style: GoogleFonts.inter(
-            color: AppColors.textSecondary,
-            fontSize: 15, height: 1.35,
-            letterSpacing: 0.1,
-            fontWeight: FontWeight.w500,
-          ),
-        ).animate().fadeIn(delay: 240.ms, duration: 360.ms),
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        headline,
+        style: GoogleFonts.inter(
+          color: Colors.white,
+          fontSize: 32, height: 1.18,
+          letterSpacing: -0.6,
+          fontWeight: FontWeight.w800,
+          decoration: TextDecoration.underline,
+          decorationColor: Colors.white,
+          decorationThickness: 2.0,
+        ),
+      ).animate().fadeIn(duration: 380.ms)
+        .slideY(begin: 0.04, end: 0, curve: Curves.easeOut),
     );
   }
 }
@@ -846,9 +839,10 @@ class _Header extends StatelessWidget {
 /// header, generous line spacing. The bullet glyph is the red app
 /// accent so the eye scans straight down the list.
 ///
-/// v229a — both variants now reuse the same four bullets per bro:
-/// "I would add same points as other one." Only the headline +
-/// subhead differ between glowup and default; bullets stay constant.
+/// v232 — bullet spacing pushed from 12 → 22 per bro: "better space
+/// between the bullet points so it fills space perfectly." With the
+/// old big header gone the bullet stack needs to carry more vertical
+/// presence; the extra 10px per gap balances the page.
 class _Bullets extends StatelessWidget {
   final bool glowup;
   const _Bullets({this.glowup = false});
@@ -867,7 +861,7 @@ class _Bullets extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (var i = 0; i < items.length; i++) ...[
-          if (i > 0) const SizedBox(height: 12),
+          if (i > 0) const SizedBox(height: 22),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
