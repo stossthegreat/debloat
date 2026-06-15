@@ -441,20 +441,17 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         setState(() => _selected = _Tier.weekly);
                       },
                     ).animate().fadeIn(delay: 600.ms, duration: 400.ms),
-                    // v249 — Annual stack: savings pill ABOVE the card
-                    // (Skeletal-Pro style), then the Annual card itself.
-                    // The pill carries the live SAVE % computed off
-                    // weekly×52 vs annual price. Mirrors how the
-                    // reference paywall floats "3 DAY FREE TRIAL"
-                    // above its Yearly card.
-                    const SizedBox(height: 18),
-                    _AnnualSavingsPill(label: _annualBadge())
-                      .animate().fadeIn(delay: 640.ms, duration: 380.ms),
-                    const SizedBox(height: 6),
+                    // v256 — tight gap between Weekly and Annual per
+                    // bro: "close the gap between weekly and yearly."
+                    // The SAVE % is no longer a floating pill — it's
+                    // baked into the Annual card as a red banner
+                    // running along its top edge (see topBanner param).
+                    const SizedBox(height: 8),
                     _PriceCardLandscape(
                       title: 'ANNUAL',
                       price: _priceFor(_Tier.annual),
                       cadence: 'Billed yearly (${_perMonthForAnnual()}/mo equivalent) · Auto-renews until cancelled',
+                      topBanner: _annualBadge(),
                       selected: _selected == _Tier.annual,
                       onTap: () {
                         HapticFeedback.selectionClick();
@@ -1049,24 +1046,36 @@ class _Point extends StatelessWidget {
   }
 }
 
-/// v249 — Skeletal-Pro-style landscape price card.
+/// v256 — Skeletal-Pro-style landscape price card.
 ///
-/// Reference: Skeletal Pro paywall (IMG_1316). Both cards are
-/// identical rectangles; the price is the dominant glyph, set in a
-/// clean Inter w800 sans-serif with the $ figure carrying the visual
-/// weight. The title sits as a tight uppercase label above the price,
-/// the cadence line is the secondary detail underneath. No inline
-/// badge here — the savings pill lives ABOVE the Annual card now,
-/// floating on the page like "3 DAY FREE TRIAL" in the reference.
+/// Bro's IMG_1316 reference: every card has the title pinned at the
+/// TOP-LEFT (inside the card), the billing cadence underneath it in
+/// muted body text (fully visible — no clipping under the price), and
+/// the price right-aligned on the same vertical centre. The Yearly
+/// card carries a SAVE % banner that runs ALONG THE TOP of the card
+/// (inside the border, full width) — not floating above with a gap.
 ///
-/// Layout (single row, fixed 92px tall — identical across Weekly /
-/// Annual / Rescue):
-///   · title (label) over cadence (footnote) — left, expands
-///   · price                                  — right, end-aligned
+/// Layout:
+///   ┌────────────────────────────────────┐
+///   │   [optional banner: SAVE X%]       │  ← red strip, full width
+///   ├────────────────────────────────────┤
+///   │  TITLE                             │
+///   │  cadence line(s) wrap below ─── $X │
+///   └────────────────────────────────────┘
+///
+/// Height is now content-driven (not fixed 92px). Cadence can wrap
+/// to 3 lines so the long Annual string "Billed yearly ($9.17/mo
+/// equivalent) · Auto-renews until cancelled" is FULLY visible —
+/// bro's flag: "they will refuse my app" if a reviewer sees the
+/// auto-renew disclosure clipped.
 class _PriceCardLandscape extends StatelessWidget {
   final String title;
   final String price;
   final String cadence;
+  /// Optional banner that runs along the TOP of the card, inside the
+  /// border. The Annual card uses this for the live SAVE % computed
+  /// by `_annualBadge()`. When null, no banner row is rendered.
+  final String? topBanner;
   final bool selected;
   final VoidCallback onTap;
   const _PriceCardLandscape({
@@ -1075,6 +1084,7 @@ class _PriceCardLandscape extends StatelessWidget {
     required this.cadence,
     required this.selected,
     required this.onTap,
+    this.topBanner,
   });
 
   @override
@@ -1085,84 +1095,74 @@ class _PriceCardLandscape extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: 180.ms,
-        height: 92,
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
         decoration: BoxDecoration(
           color: selected ? AppColors.redGlow : Colors.transparent,
           border: Border.all(
               color: borderColor, width: selected ? 1.8 : 0.8),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(title,
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 13, letterSpacing: 2.6,
-                      fontWeight: FontWeight.w800,
-                    )),
-                  const SizedBox(height: 6),
-                  Text(cadence,
-                    style: GoogleFonts.inter(
-                      color: Colors.white.withValues(alpha: 0.65),
-                      fontSize: 11.5, fontWeight: FontWeight.w500,
-                      height: 1.25,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (topBanner != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  color: AppColors.red,
+                  child: Center(
+                    child: Text(topBanner!,
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 12, letterSpacing: 1.8,
+                        fontWeight: FontWeight.w900,
+                      )),
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(title,
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 13, letterSpacing: 2.6,
+                              fontWeight: FontWeight.w800,
+                            )),
+                          const SizedBox(height: 6),
+                          Text(cadence,
+                            style: GoogleFonts.inter(
+                              color: Colors.white.withValues(alpha: 0.65),
+                              fontSize: 11, fontWeight: FontWeight.w500,
+                              height: 1.3,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.visible,
+                          ),
+                        ],
+                      ),
                     ),
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
-                ],
+                    const SizedBox(width: 10),
+                    Text(price,
+                      style: GoogleFonts.inter(
+                        color: priceColor,
+                        fontSize: 26, height: 1, letterSpacing: -1.0,
+                        fontWeight: FontWeight.w800,
+                      )),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Text(price,
-              style: GoogleFonts.inter(
-                color: priceColor,
-                fontSize: 30, height: 1, letterSpacing: -1.0,
-                fontWeight: FontWeight.w800,
-              )),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-  }
-}
-
-/// v249 — Floating savings pill rendered ABOVE the Annual card.
-/// Mirrors the Skeletal Pro reference where "3 DAY FREE TRIAL" floats
-/// above the Yearly card. We surface the live SAVE % computed by
-/// `_annualBadge()` (e.g. "SAVE 70%") so the savings number is the
-/// first thing the eye catches on this stack. Centered, red-glow pill,
-/// w900 Inter — same accent treatment as the CTA so the page reads as
-/// a single visual system.
-class _AnnualSavingsPill extends StatelessWidget {
-  final String label;
-  const _AnnualSavingsPill({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: AppColors.red,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.red.withValues(alpha: 0.55),
-              blurRadius: 14, spreadRadius: 0),
-          ],
-        ),
-        child: Text(label,
-          style: GoogleFonts.inter(
-            color: Colors.white,
-            fontSize: 12, letterSpacing: 1.8,
-            fontWeight: FontWeight.w900,
-          )),
       ),
     );
   }

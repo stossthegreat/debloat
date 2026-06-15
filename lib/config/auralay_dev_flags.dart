@@ -38,17 +38,10 @@ abstract final class AuralayDevFlags {
   /// Master switch for the in-session debug overlay (bottom-left bug icon
   /// + log strip) on every screen.
   ///
-  /// v247b — FLIPPED ON. Bro debugging the Free Flow
-  /// stuck-on-connecting bug in TestFlight needs the live panel
-  /// visible to see exactly which step hangs. The DebugPanel widget
-  /// reads kvs (phase, holding, response active, audio delta count,
-  /// turns, creator flag) + the events list each screen passes in.
-  /// The Free Flow screen already calls _log('ok'|'info'|'error', tag,
-  /// message) at every significant step, AND v247 added a [FREEFLOW]
-  /// print() trail to Console.app — flipping this flag surfaces ALL
-  /// of it on-device so bro doesn't need a Mac to read it.
+  /// v256 — FLIPPED OFF. Bro confirmed v255 fixed the character-switch
+  /// stuck-CONNECTING bug: "ok finally now it's working, now we need
+  /// to take debug off." Panel hides again for App Store submission.
   ///
-  /// Flip back to `false` before App Store submission.
   /// `final` (not `const`) so toggling it doesn't dead-code the panel.
-  static final bool showDebugOverlay = true;
+  static final bool showDebugOverlay = false;
 }
