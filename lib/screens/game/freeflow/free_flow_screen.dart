@@ -458,8 +458,19 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       //    the previous one. Reusing leaked state across personas (the
       //    second persona connected but server never responded — see
       //    debug trace). Tell the old one to die in the background.
-      // ignore: discarded_futures
-      _session.close();
+      //
+      // v246 — AWAIT the old session's close() with a short ceiling
+      // before opening a new connect. Auralay dev's bonus check:
+      // "if you don't await close(), the new connect may collide with
+      // the old one tearing down — that looks like 'stuck on
+      // connecting'." We can't await indefinitely (v216 broke that
+      // way), but a 600ms grace period lets the old WebSocket sink
+      // close cleanly while still bailing in time to keep the user-
+      // perceived connect snappy. close() is idempotent if it's
+      // already closed.
+      try {
+        await _session.close().timeout(const Duration(milliseconds: 600));
+      } catch (_) {/* old session was already dead or stalling — move on */}
       _session = RealtimeSession();
       _creator = await CreatorModeStore.isActive();
       final memoryBlock = await UserMemory.buildSystemPromptBlock(
