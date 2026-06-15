@@ -1,30 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../navigation/app_router.dart';
 import '../widgets/review_prompt_dialog.dart';
 import 'analytics_service.dart';
 
-/// Three-milestone gate for the App Store / Play Store review prompt.
+/// Single-shot store-review prompt.
 ///
-/// The dialog only fires after the user has completed all three of:
-///   1. First face scan + report (proves they got value from looksmax)
-///   2. First Game tab Free Flow session (proves they used the voice AI)
-///   3. First Eye-Contact lesson (proves they used the gaze coach)
+/// v249 — bro: "where is the pop up for leaving a review bro it's
+/// important man… we need it man." The previous gate required ALL
+/// THREE pillars (scan + Free Flow + eyes lesson) before the dialog
+/// would ever fire, so most users never saw it. Loosened to ANY ONE
+/// milestone — the dialog fires the moment a user completes their
+/// first scan OR first Free Flow OR first eyes lesson. Still one
+/// prompt per device.
 ///
-/// Once a user has used the whole product, asking for a review is
-/// honest. Asking sooner gets a brigade of 1-stars from people who
-/// haven't seen what the app is.
-///
-/// The prompt fires at most ONCE per device — when the user either
-/// taps Submit or Not now, [_kPrompted] flips and we never ask again.
-/// This avoids hostile re-prompts that get apps removed from store
-/// editorial picks.
-///
-/// Mark methods flip a SharedPref flag synchronously and are safe to
-/// call from anywhere (including session-end / dispose flows where
-/// the calling screen is about to be torn down). [maybePrompt] is the
-/// UI hook — call from the home screen's initState. When all three
-/// milestones are marked and we haven't asked yet, the dialog fires.
+/// We also fixed the post-purchase bug: the paywall pushed
+/// `context.go('/home')` BEFORE calling [maybePromptAfterPurchase],
+/// which meant the paywall's BuildContext was already unmounted by
+/// the time the 1.4s "let the wow land" delay finished. The dialog
+/// silently died. v249 grabs the root navigator context off the
+/// global [appRouter] AFTER the delay so it can't go stale.
 class ReviewPromptService {
   static const _kScanDone     = 'review.scan_done';
   static const _kFreeFlowDone = 'review.freeflow_done';
@@ -37,23 +33,25 @@ class ReviewPromptService {
   static Future<void> markFreeFlowDone() => _setFlag(_kFreeFlowDone);
   static Future<void> markEyesDone()     => _setFlag(_kEyesDone);
 
-  // ── UI hook (call from home screen initState) ──────────────────────────
+  // ── UI hook (call from home screen initState + report viewed) ─────────
 
+  /// Fire the prompt if ANY pillar has been used and we haven't asked
+  /// this device yet. Loosened from the v247 AND-gate per bro: "where
+  /// is the pop up… we need it." Safe to call from anywhere — if the
+  /// pref was already flipped or no pillar is yet ticked, it's a no-op.
   static Future<void> maybePrompt(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_kPrompted) ?? false) return;
-    final scan     = prefs.getBool(_kScanDone)     ?? false;
-    final freeflow = prefs.getBool(_kFreeFlowDone) ?? false;
-    final eyes     = prefs.getBool(_kEyesDone)     ?? false;
-    if (!(scan && freeflow && eyes)) return;
+    final any = (prefs.getBool(_kScanDone)     ?? false)
+             || (prefs.getBool(_kFreeFlowDone) ?? false)
+             || (prefs.getBool(_kEyesDone)     ?? false);
+    if (!any) return;
     if (!context.mounted) return;
-    // Brief delay so the dialog doesn't compete with first-paint
-    // animations on the screen that triggered it.
     await Future.delayed(const Duration(milliseconds: 600));
     if (!context.mounted) return;
     await prefs.setBool(_kPrompted, true);
     // ignore: discarded_futures
-    AnalyticsService.reviewPromptShown('milestones');
+    AnalyticsService.reviewPromptShown('milestone');
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -61,30 +59,46 @@ class ReviewPromptService {
     );
   }
 
-  /// Wow-moment trigger — fires after a successful Pro purchase. This
-  /// is the "I just paid for this and I'm excited" beat, which is the
-  /// HIGHEST-converting moment for a positive rating. Same one-prompt-
-  /// per-device ceiling as [maybePrompt], so a user who already saw the
-  /// triple-milestone prompt won't see this one (or vice-versa).
-  ///
-  /// Bro v7: "after a wow moment / after a conversion — pop up with 5
-  /// pressable stars, message about feedback being important, clean
-  /// beautiful very cleverly placed." We let the unlock land first
-  /// (1.4s delay so the user sees their purchased experience for a
-  /// breath) and only THEN slide the prompt in.
-  static Future<void> maybePromptAfterPurchase(BuildContext context) async {
+  /// Wow-moment trigger — fires after a successful Pro purchase. The
+  /// paywall calls this AFTER `context.go(...)`, so by the time the
+  /// 1.4s "let the destination paint" delay completes, the paywall's
+  /// BuildContext is unmounted. v249 fix: grab the root navigator
+  /// context off the global appRouter AFTER the delay so the dialog
+  /// has a live context to mount against.
+  static Future<void> maybePromptAfterPurchase(BuildContext _) async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_kPrompted) ?? false) return;
-    if (!context.mounted) return;
-    // Let the post-purchase route resolve + first paint settle so the
-    // dialog feels like a thank-you, not an interruption.
     await Future.delayed(const Duration(milliseconds: 1400));
-    if (!context.mounted) return;
+    final ctx = appRouter.routerDelegate.navigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return;
     await prefs.setBool(_kPrompted, true);
     // ignore: discarded_futures
     AnalyticsService.reviewPromptShown('post_purchase');
     await showDialog<void>(
-      context: context,
+      context: ctx,
+      barrierDismissible: false,
+      builder: (_) => const ReviewPromptDialog(),
+    );
+  }
+
+  /// Wow-moment trigger — fires after the report screen finishes
+  /// rendering the first scan score. This is THE emotional peak: the
+  /// user just saw their face graded and is leaning in. v249 — added
+  /// per bro: "good apps have it it pops up with five stars."
+  static Future<void> maybePromptAfterReport(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_kPrompted) ?? false) return;
+    if (!context.mounted) return;
+    await Future.delayed(const Duration(milliseconds: 1800));
+    final ctx = context.mounted
+        ? context
+        : appRouter.routerDelegate.navigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    await prefs.setBool(_kPrompted, true);
+    // ignore: discarded_futures
+    AnalyticsService.reviewPromptShown('post_report');
+    await showDialog<void>(
+      context: ctx,
       barrierDismissible: false,
       builder: (_) => const ReviewPromptDialog(),
     );

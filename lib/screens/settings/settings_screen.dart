@@ -77,38 +77,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               const SizedBox(height: Sp.lg),
 
-              // ── Rate us — top of the list, deep-links to App Store ─────
-              _SettingTile(
-                icon: Icons.star_rounded,
-                iconColor: AppColors.signalAmber,
-                title: 'Rate us',
-                subtitle: 'Tap to leave a review on the App Store',
-                onTap: () => _rateUs(context),
-              ),
+              // v250 — tile list redesigned to match the reference
+              // (LooksMax AI settings): single-line titles, colored
+              // icons, no subtitles, no chevrons. The action / detail
+              // each one used to spell out moves into the sheet or
+              // toast the tile fires on tap, so the list reads as
+              // tall clean rectangles like the reference image.
 
-              // ── Subscription block ──────────────────────────────────────
+              // ── Get ImHim Pro — top of the list (red crown) ───────────
               if (!kBypassPaywall)
                 _SettingTile(
                   icon: Icons.workspace_premium_rounded,
-                  title: 'ImHim Pro',
-                  subtitle: 'Weekly + annual plans — see what\'s included',
+                  iconColor: AppColors.red,
+                  title: 'Get ImHim Pro',
                   onTap: () {
                     HapticFeedback.selectionClick();
                     context.push('/paywall', extra: {'force': true});
                   },
                 ),
+
+              // ── Rate us ─────────────────────────────────────────────────
+              _SettingTile(
+                icon: Icons.star_rounded,
+                iconColor: AppColors.signalAmber,
+                title: 'Rate us',
+                onTap: () => _rateUs(context),
+              ),
+
+              // ── Restore + Manage subscription ──────────────────────────
               _SettingTile(
                 icon: Icons.restore_rounded,
                 title: 'Restore purchases',
-                subtitle: 'Recover a subscription on this device',
                 onTap: () => _restore(context),
               ),
               _SettingTile(
                 icon: Icons.credit_card_rounded,
                 title: 'Manage subscription',
-                subtitle: Platform.isIOS
-                    ? 'Cancel or switch plan in App Store settings'
-                    : 'Cancel or switch plan in Play Store settings',
                 onTap: () => _manageSubscription(context),
               ),
 
@@ -119,7 +123,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _SettingTile(
                 icon: Icons.style_outlined,
                 title: 'Glow-up style',
-                subtitle: 'Tune analysis + renders for your goal',
                 onTap: () {
                   HapticFeedback.selectionClick();
                   context.push('/onboarding/gender',
@@ -131,7 +134,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _SettingTile(
                 icon: Icons.cloud_off_outlined,
                 title: 'Revoke AI permission',
-                subtitle: 'Stop sending photos to AI providers',
                 onTap: () => _revokeAiConsent(context),
               ),
 
@@ -139,7 +141,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _SettingTile(
                 icon: Icons.mail_outline_rounded,
                 title: 'Contact support',
-                subtitle: 'info@m2mb.co.uk',
                 onTap: () => _copyEmail(context),
               ),
 
@@ -148,7 +149,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.close_rounded,
                 iconColor: AppColors.signalRed,
                 title: 'Delete my account',
-                subtitle: 'Permanently removes scans from this device',
                 destructive: true,
                 onTap: () => _confirmDelete(context),
               ),
@@ -556,11 +556,17 @@ class _SectionHeader extends StatelessWidget {
   );
 }
 
+/// v250 — settings rows redesigned to match bro's reference (LooksMax
+/// AI settings screen). Light dark-grey rounded rectangles, colored
+/// icon left, single-line title, no chevron, no subtitle by default.
+/// Follows our style: AppColors.surface palette, optional red accent
+/// on the icon, ImHim Inter typography.
+///
+/// `subtitle` is still accepted so the voice-cap tile and the email
+/// tile can carry an extra line — but the default callsite passes
+/// title only so the list reads clean and tall like the reference.
 class _SettingTile extends StatelessWidget {
   final IconData icon;
-  /// v240 — optional override for the leading icon's colour. Lets the
-  /// "Rate us" star render amber, "Delete my account" render red, etc.
-  /// Defaults to the same muted textSecondary the rest of the tiles use.
   final Color? iconColor;
   final String title;
   final String? subtitle;
@@ -582,42 +588,40 @@ class _SettingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = destructive ? AppColors.signalRed : AppColors.textPrimary;
     final resolvedIconColor = iconColor ??
-        (destructive ? AppColors.signalRed : AppColors.textSecondary);
+        (destructive ? AppColors.signalRed : AppColors.textPrimary);
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(Rd.lg),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.all(Sp.md),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           decoration: BoxDecoration(
             color: AppColors.surface1,
-            borderRadius: BorderRadius.circular(Rd.lg),
-            border: Border.all(color: AppColors.surface3),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: resolvedIconColor),
-              const SizedBox(width: Sp.md),
+              Icon(icon, size: 22, color: resolvedIconColor),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title, style: AppTypography.body.copyWith(
-                      color: color, fontSize: 15)),
+                      color: color, fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.1)),
                     if (subtitle != null) ...[
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(subtitle!, style: AppTypography.bodySmall.copyWith(
                         color: AppColors.textTertiary, fontSize: 12)),
                     ],
                   ],
                 ),
               ),
-              if (trailing != null) trailing!
-              else if (!destructive)
-                const Icon(Icons.chevron_right,
-                  size: 20, color: AppColors.textTertiary),
+              if (trailing != null) trailing!,
             ],
           ),
         ),

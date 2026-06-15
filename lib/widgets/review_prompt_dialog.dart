@@ -4,20 +4,31 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:in_app_review/in_app_review.dart';
 
 import '../services/analytics_service.dart';
-import '../theme/app_colors.dart';
 
-/// The review prompt. Fires once after the user has used all three
-/// product pillars (scan, Free Flow, eye-contact lesson). Visual
-/// language is the Mirrorly editorial card — dark surface, red rating
-/// stars, optional comment field, Not now / Submit pair.
+/// v249 — smooth two-stage iOS-style review prompt.
 ///
-/// On submit:
-///   · Rating + comment always logged to analytics (so private comments
-///     reach us even when the public store redirect is skipped).
-///   · Rating ≥ 4 → opens the App Store / Play Store write-review page
-///     so the rating becomes public.
-///   · Rating ≤ 3 → stays in-app. Honest critical feedback reaches us
-///     before it lands as a 1-star review on the public store.
+/// Bro: "look smooth as hell, drives comments, does it after aha
+/// moments." The previous dark Playfair editorial card with a comment
+/// text field felt like a long-form survey; bro's reference screens
+/// (LooksMax AI) use the compact pre-prompt pattern every high-rated
+/// iOS app uses:
+///
+///   Stage 1 — "Enjoying ImHim? Tap a star to rate it on the App
+///             Store." + a row of empty stars + "Not Now."
+///   Stage 2 — once any star is tapped: filled orange-gold stars +
+///             "Thanks for your feedback. You can also write a
+///             review." + "Write a Review" (primary) + "OK"
+///             (secondary).
+///
+/// "Write a Review" hands off to InAppReview.requestReview() which
+/// surfaces Apple's native StoreKit sheet on iOS / Google's in-app
+/// review on Android — that's the screen the reference image 3
+/// shows. Both stores resolve the app id internally; no App Store
+/// ID config needed here.
+///
+/// Visual language deliberately leaves the dark editorial Mirrorly
+/// chrome behind. iOS users recognise this floating white-card
+/// pattern as "the rate prompt", which lifts tap-through.
 class ReviewPromptDialog extends StatefulWidget {
   const ReviewPromptDialog({super.key});
 
@@ -27,53 +38,37 @@ class ReviewPromptDialog extends StatefulWidget {
 
 class _ReviewPromptDialogState extends State<ReviewPromptDialog> {
   int _rating = 0;
-  final _commentCtrl = TextEditingController();
-  bool _submitting = false;
-  String? _thanks;
+  bool _opening = false;
 
-  @override
-  void dispose() {
-    _commentCtrl.dispose();
-    super.dispose();
+  void _onStarTap(int stars) {
+    HapticFeedback.selectionClick();
+    setState(() => _rating = stars);
+    // ignore: discarded_futures
+    AnalyticsService.reviewRatingChosen(stars);
   }
 
-  Future<void> _submit() async {
-    if (_rating == 0 || _submitting) return;
-    setState(() => _submitting = true);
+  Future<void> _writeReview() async {
+    if (_opening) return;
+    setState(() => _opening = true);
     HapticFeedback.mediumImpact();
-
-    final comment = _commentCtrl.text.trim();
-    // ignore: discarded_futures
-    AnalyticsService.reviewRatingChosen(_rating);
-
-    if (_rating >= 4) {
-      // requestReview() triggers Apple's native StoreKit review sheet
-      // on iOS and Google's in-app review API on Android. Both flows
-      // resolve the app id internally — no App Store ID config needed.
-      // Apple rate-limits to 3 prompts/year but we only ask once per
-      // device, so we stay well inside the cap.
-      try {
-        final reviewer = InAppReview.instance;
-        if (await reviewer.isAvailable()) {
-          // ignore: discarded_futures
-          AnalyticsService.reviewNativeOpened();
-          await reviewer.requestReview();
-        }
-      } catch (_) {/* best effort */}
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _thanks = _rating >= 4
-          ? 'Thank you. That star matters.'
-          : 'Got it. We read every comment.';
-    });
-    await Future.delayed(const Duration(milliseconds: 1400));
+    try {
+      final reviewer = InAppReview.instance;
+      if (await reviewer.isAvailable()) {
+        // ignore: discarded_futures
+        AnalyticsService.reviewNativeOpened();
+        await reviewer.requestReview();
+      }
+    } catch (_) {/* best effort */}
     if (!mounted) return;
     Navigator.of(context).pop();
   }
 
-  void _dismiss() {
+  void _ok() {
+    HapticFeedback.selectionClick();
+    Navigator.of(context).pop();
+  }
+
+  void _notNow() {
     HapticFeedback.selectionClick();
     // ignore: discarded_futures
     AnalyticsService.reviewDismissed();
@@ -82,189 +77,163 @@ class _ReviewPromptDialogState extends State<ReviewPromptDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final tapped = _rating > 0;
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 36),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 18),
+        padding: const EdgeInsets.fromLTRB(22, 22, 22, 14),
         decoration: BoxDecoration(
-          color: AppColors.surface1,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: AppColors.red.withValues(alpha: 0.28), width: 0.8),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.red.withValues(alpha: 0.18),
-              blurRadius: 40, spreadRadius: 2,
-            ),
-          ],
+          color: const Color(0xFFEDEDED),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Logo
-            Container(
-              width: 56, height: 56,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.red.withValues(alpha: 0.45),
-                    blurRadius: 22),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Image.asset(
-                  'assets/icons/appstore.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-
-            Text('Enjoying ImHim?',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.playfairDisplay(
-                color: AppColors.textPrimary,
-                fontSize: 24, fontWeight: FontWeight.w800,
-                letterSpacing: -0.3, height: 1.15,
-              )),
-            const SizedBox(height: 8),
-            Text('Your feedback shapes the next build.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                color: AppColors.textSecondary,
-                fontSize: 14, fontWeight: FontWeight.w500,
-                height: 1.4,
-              )),
-            const SizedBox(height: 20),
-
-            // Stars
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (i) {
-                final filled = i < _rating;
-                return GestureDetector(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    setState(() => _rating = i + 1);
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Icon(
-                      filled ? Icons.star_rounded : Icons.star_outline_rounded,
-                      color: filled
-                          ? AppColors.red
-                          : AppColors.textTertiary,
-                      size: 40,
-                    ),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    'assets/icons/appstore.png',
+                    width: 44, height: 44, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox(
+                      width: 44, height: 44),
                   ),
-                );
-              }),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tapped
+                          ? 'Thanks for your feedback.'
+                          : 'Enjoying ImHim?',
+                        style: GoogleFonts.inter(
+                          color: Colors.black,
+                          fontSize: 17, fontWeight: FontWeight.w700,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        tapped
+                          ? 'You can also write a review.'
+                          : 'Tap a star to rate it on the App Store.',
+                        style: GoogleFonts.inter(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          fontSize: 13.5, fontWeight: FontWeight.w400,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
 
-            // Optional comment
-            TextField(
-              controller: _commentCtrl,
-              enabled: !_submitting,
-              maxLines: 3,
-              minLines: 2,
-              maxLength: 280,
-              cursorColor: AppColors.red,
-              style: GoogleFonts.inter(
-                color: AppColors.textPrimary,
-                fontSize: 14, fontWeight: FontWeight.w500,
-                height: 1.4,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Tell us what we can do better (optional)',
-                hintStyle: GoogleFonts.inter(
-                  color: AppColors.textTertiary,
-                  fontSize: 14, fontWeight: FontWeight.w400,
-                ),
-                filled: true,
-                fillColor: AppColors.surface2,
-                counterText: '',
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.surface3, width: 0.8),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.surface3, width: 0.8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.red.withValues(alpha: 0.6),
-                    width: 1.2),
-                ),
+            // Stars row — outline when untapped, filled gold when tapped.
+            Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(5, (i) {
+                  final filled = i < _rating;
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _opening ? null : () => _onStarTap(i + 1),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      child: Icon(
+                        filled
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
+                        size: 34,
+                        color: filled
+                          ? const Color(0xFFFFB100)
+                          : const Color(0xFF3B82F6),
+                      ),
+                    ),
+                  );
+                }),
               ),
             ),
             const SizedBox(height: 14),
 
-            if (_thanks != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(_thanks!,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    color: AppColors.red,
-                    fontSize: 13, fontWeight: FontWeight.w700,
-                    letterSpacing: 0.4,
-                  )),
+            // Action row depends on stage.
+            if (!tapped)
+              _PillButton(
+                label: 'Not Now',
+                bold: false,
+                onTap: _notNow,
               )
-            else
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: _submitting ? null : _dismiss,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 14),
-                    ),
-                    child: Text('Not now',
-                      style: GoogleFonts.inter(
-                        color: AppColors.textSecondary,
-                        fontSize: 15, fontWeight: FontWeight.w600,
-                      )),
-                  ),
-                  const Spacer(),
-                  ElevatedButton(
-                    onPressed: (_rating == 0 || _submitting) ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.red,
-                      disabledBackgroundColor: AppColors.surface3,
-                      foregroundColor: Colors.white,
-                      disabledForegroundColor: AppColors.textTertiary,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 28, vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _submitting
-                        ? const SizedBox(
-                            width: 18, height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                        : Text('Submit',
-                            style: GoogleFonts.inter(
-                              fontSize: 15, fontWeight: FontWeight.w800,
-                              letterSpacing: 0.4,
-                            )),
-                  ),
-                ],
+            else ...[
+              _PillButton(
+                label: 'Write a Review',
+                bold: true,
+                loading: _opening,
+                onTap: _writeReview,
               ),
+              const SizedBox(height: 8),
+              _PillButton(
+                label: 'OK',
+                bold: false,
+                onTap: _ok,
+              ),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// iOS-style pill button — light grey background, black text. Used
+/// for both the Not Now / OK secondary actions and the Write a Review
+/// primary action (primary uses w700, secondary uses w500).
+class _PillButton extends StatelessWidget {
+  final String label;
+  final bool bold;
+  final bool loading;
+  final VoidCallback onTap;
+  const _PillButton({
+    required this.label,
+    required this.bold,
+    required this.onTap,
+    this.loading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: loading ? null : onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            child: Center(
+              child: loading
+                ? const SizedBox(
+                    width: 18, height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.black))
+                : Text(label,
+                    style: GoogleFonts.inter(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: bold
+                        ? FontWeight.w700
+                        : FontWeight.w500,
+                    )),
+            ),
+          ),
         ),
       ),
     );

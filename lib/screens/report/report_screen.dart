@@ -187,9 +187,16 @@ class _ReportScreenState extends State<ReportScreen> {
       // Persist the scan so it lights up Progress + Advisor tabs.
       await _persistScan(result);
       // Mark the looksmax milestone for the App Store review prompt.
-      // The dialog itself fires on the next home-screen mount once all
-      // three pillars (scan + Free Flow + eye lesson) are ticked.
+      // v249 — gate loosened: ANY one milestone now fires the prompt
+      // (was: requires all three pillars). Trigger directly here on
+      // the report screen — the first scan reveal is the strongest
+      // aha moment we have, and bro shipped the loose gate so this
+      // is allowed to fire.
       await ReviewPromptService.markScanDone();
+      if (mounted) {
+        // ignore: discarded_futures
+        ReviewPromptService.maybePromptAfterReport(context);
+      }
       // Reschedule the daily nudge — after a fresh scan the state
       // moves from NO_SCAN to POST_SCAN_NO_GAME (or stays in an
       // active streak), so today's 7:30pm copy needs to update.
