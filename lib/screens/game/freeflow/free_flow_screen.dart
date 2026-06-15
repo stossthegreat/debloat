@@ -178,6 +178,12 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   Timer? _clock;
   Timer? _createTimer;   // debounced response.create after a release
   Timer? _pcmWatchdog;   // revives a stalled playback engine
+  /// v255 — timer for the in-flight _recorder.startStream call. The
+  /// outer catch reads this so the error log can say "FAILED after
+  /// Xms" rather than just "FAILED", which tells us whether the
+  /// failure was the 8s acquisition timeout or some earlier native
+  /// throw.
+  Stopwatch? _micStartSw;
 
   _Phase  _phase = _Phase.pick;
   _Vibe?  _vibe;
@@ -597,59 +603,30 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       //    stays alive; gating on _holding means she never hears herself
       //    and only gets what he actually says.
       //
-      // v254 — DISPOSE + RECREATE the AudioRecorder on session 2+.
-      //
-      // v252 awaited _recorder.stop() before startStream — drain ran
-      // for 2s on session 2 but startStream STILL hung 8s (bro's
-      // v253 trace, 22:29:45-22:29:55). The iOS AVAudioRecorder
-      // native object holds the audio engine reservation even after
-      // stop() returns; the next startStream blocks waiting for the
-      // engine to be released by the same instance that just stopped.
-      //
-      // Nuclear fix: dispose() the Dart wrapper, which releases the
-      // native object entirely, then construct a fresh AudioRecorder.
-      // The new native instance has no prior reservation to wait on
-      // and startStream lands cleanly. AudioSession is reconfigured
-      // again afterwards so the fresh recorder lands on an active
-      // session.
-      //
-      // First session skips all of this — there's no prior recorder
-      // to dispose, and the v253 trace proved session 1 works without
-      // any pre-startStream gymnastics.
+      // v255 — DEEP-INSTRUMENTED dispose + recreate the AudioRecorder
+      // on session 2+. Every step is wrapped to log its exact
+      // outcome — exception text, elapsed ms, recorder state before
+      // and after — so the next trace tells us precisely WHICH call
+      // is the one stalling. v254 was right in shape but its
+      // catch (_) blocks ate every native error, leaving us blind.
       if (_recorderEverStarted) {
-        _log('info', 'MIC', 'disposing prior recorder + recreating…');
-        // ignore: avoid_print
-        print('[FREEFLOW] disposing prior recorder + recreating…');
-        try {
-          await _recorder.stop().timeout(const Duration(seconds: 2));
-        } catch (_) {/* push on regardless */}
-        try {
-          await _recorder.dispose().timeout(const Duration(seconds: 2));
-        } catch (_) {/* push on regardless */}
-        _recorder = AudioRecorder();
-        // Give iOS a beat to fully tear down the old native object
-        // and free the audio-engine reservation before the new
-        // instance asks for it.
-        await Future.delayed(const Duration(milliseconds: 300));
-        // Reconfigure the audio session — the dispose+recreate dance
-        // can leave the AVAudioSession inactive on iOS. Force it
-        // back to play+record so the new recorder lands clean.
-        try {
-          await AudioSession.configureForPlayAndRecord()
-              .timeout(const Duration(seconds: 4));
-        } catch (_) {/* already configured — fine */}
-        _log('ok', 'MIC', 'recorder recreated · session re-armed');
-        // ignore: avoid_print
-        print('[FREEFLOW] recorder recreated · session re-armed');
+        await _disposeAndRecreateRecorder();
       } else {
         _log('info', 'MIC', 'first session — fresh recorder');
       }
 
-      // Same timeout treatment — iOS occasionally hangs on audio-session
-      // acquisition when a previous run didn't release cleanly.
-      _log('info', 'MIC', 'calling _recorder.startStream…');
+      // v255 — startStream call now timed in ms so the next debug
+      // trace shows EXACTLY how long the iOS native acquire took.
+      // If it returns in <500ms, the audio engine is healthy. If it
+      // sits at 8s every time, the engine is locked even after the
+      // dispose+recreate dance — which would tell us the lock is
+      // outside the recorder (e.g. a stuck Realtime PCM playback
+      // engine claiming the mixer) and we need to also nuke
+      // FlutterPcmSound between sessions.
+      _log('info', 'MIC', 'calling _recorder.startStream… (8s ceiling)');
       // ignore: avoid_print
       print('[FREEFLOW] calling _recorder.startStream…');
+      _micStartSw = Stopwatch()..start();
       final micStream = await _recorder.startStream(const RecordConfig(
         encoder:       AudioEncoder.pcm16bits,
         sampleRate:    24000,
@@ -658,10 +635,13 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         autoGain:      true,
         noiseSuppress: true,
       )).timeout(const Duration(seconds: 8),
-        onTimeout: () => throw 'mic acquire timeout');
-      _log('ok', 'MIC', 'startStream returned — mic acquired');
+        onTimeout: () => throw 'mic acquire timeout (8s)');
+      _micStartSw?.stop();
+      _log('ok', 'MIC',
+          'startStream returned in ${_micStartSw?.elapsedMilliseconds}ms — mic acquired');
       // ignore: avoid_print
-      print('[FREEFLOW] _recorder.startStream returned — mic acquired');
+      print('[FREEFLOW] _recorder.startStream returned in '
+            '${_micStartSw?.elapsedMilliseconds}ms — mic acquired');
       // v253 — flip the static so every subsequent _goLive runs the
       // pre-startStream drain step (which is mandatory on iOS to
       // unblock startStream when the prior _recorder.stop() is still
@@ -684,12 +664,130 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       // ignore: avoid_print
       print('[FREEFLOW] _goLive SUCCESS — phase = live · vibe=${vibe.label}');
       HapticFeedback.mediumImpact();
-    } catch (e) {
-      _log('error', 'GOLIVE', 'THREW: $e');
+    } catch (e, st) {
+      // v255 — surface the runtime type, the first stack frame, AND
+      // the elapsed ms of any in-flight mic acquisition so we know
+      // whether the throw was the 8s timeout or some earlier native
+      // PlatformException. The first stack frame tells us which line
+      // threw without dumping the whole trace into the on-device
+      // panel.
+      final type = e.runtimeType.toString();
+      final firstFrame = st.toString().split('\n').isNotEmpty
+          ? st.toString().split('\n').first.trim()
+          : '';
+      _log('error', 'GOLIVE', 'THREW [$type]: $e');
+      if (firstFrame.isNotEmpty) {
+        _log('error', 'GOLIVE', 'at: $firstFrame');
+      }
+      if (_micStartSw != null && _micStartSw!.isRunning) {
+        _micStartSw!.stop();
+        _log('error', 'GOLIVE',
+            'mic startStream was in-flight for ${_micStartSw!.elapsedMilliseconds}ms when throw fired');
+      }
+      // Also surface the live recorder state at the moment of
+      // failure — was it still recording? Was the audio engine
+      // alive? Helps distinguish "mic never acquired" from
+      // "mic acquired but disconnected mid-call".
+      try {
+        final rec = await _recorder.isRecording()
+            .timeout(const Duration(milliseconds: 500));
+        _log('error', 'GOLIVE',
+            'recorder.isRecording=$rec · pcmEngineReady=$_pcmEngineReady · '
+            'micPermGranted=$_micPermissionGranted · '
+            'recorderEverStarted=$_recorderEverStarted');
+      } catch (probeErr) {
+        _log('error', 'GOLIVE', 'recorder.isRecording probe failed: $probeErr');
+      }
       // ignore: avoid_print
-      print('[FREEFLOW] _goLive THREW: $e');
+      print('[FREEFLOW] _goLive THREW [$type]: $e\n$st');
       _fail(e.toString());
     }
+  }
+
+  /// v255 — deep-instrumented teardown for session 2+. Every awaited
+  /// step is timed in ms and its outcome (success / exception text)
+  /// gets logged. The next debug trace will tell us exactly which of
+  /// the four sub-steps (stop / dispose / 300ms wait / re-configure
+  /// AudioSession) is the one that's still hanging, and what the
+  /// underlying iOS error actually says.
+  Future<void> _disposeAndRecreateRecorder() async {
+    _log('info', 'MIC', 'session 2+ teardown — START');
+    // Probe pre-teardown state so we can compare it to post-teardown.
+    try {
+      final wasRec = await _recorder.isRecording()
+          .timeout(const Duration(milliseconds: 500));
+      _log('info', 'MIC', 'pre-teardown isRecording=$wasRec');
+    } catch (e) {
+      _log('info', 'MIC', 'pre-teardown isRecording probe threw: $e');
+    }
+
+    // Step 1: stop the old recorder.
+    final stopSw = Stopwatch()..start();
+    try {
+      await _recorder.stop().timeout(const Duration(seconds: 2));
+      stopSw.stop();
+      _log('ok', 'MIC',
+          'step1 stop: returned cleanly in ${stopSw.elapsedMilliseconds}ms');
+    } catch (e) {
+      stopSw.stop();
+      _log('error', 'MIC',
+          'step1 stop: ${e.runtimeType} after ${stopSw.elapsedMilliseconds}ms — $e');
+    }
+
+    // Step 2: dispose the native object.
+    final disSw = Stopwatch()..start();
+    try {
+      await _recorder.dispose().timeout(const Duration(seconds: 2));
+      disSw.stop();
+      _log('ok', 'MIC',
+          'step2 dispose: returned cleanly in ${disSw.elapsedMilliseconds}ms');
+    } catch (e) {
+      disSw.stop();
+      _log('error', 'MIC',
+          'step2 dispose: ${e.runtimeType} after ${disSw.elapsedMilliseconds}ms — $e');
+    }
+
+    // Step 3: new instance + 300ms grace period.
+    _recorder = AudioRecorder();
+    _log('info', 'MIC', 'step3 new AudioRecorder() · awaiting 300ms…');
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Step 4: re-arm the AudioSession.
+    //
+    // v255 ROOT CAUSE FOUND. lib/services/audio_session.dart gates
+    // configureForPlayAndRecord() behind `if (_configured) return;`
+    // — so after session 1 sets the flag, EVERY subsequent call is
+    // a no-op and the iOS AVAudioSession is never reasserted.
+    // record_darwin's startStream sees the dead session and
+    // hangs forever. The same bug was already documented on the
+    // Selene lesson screens with the OSStatus 561017449 fix in
+    // AudioSession.invalidate(). Call invalidate() FIRST so the
+    // configure call actually runs setAudioContext again.
+    AudioSession.invalidate();
+    _log('info', 'MIC', 'step4a AudioSession.invalidate() called');
+    final cfgSw = Stopwatch()..start();
+    try {
+      await AudioSession.configureForPlayAndRecord()
+          .timeout(const Duration(seconds: 4));
+      cfgSw.stop();
+      _log('ok', 'MIC',
+          'step4 audio re-arm: ok in ${cfgSw.elapsedMilliseconds}ms');
+    } catch (e) {
+      cfgSw.stop();
+      _log('error', 'MIC',
+          'step4 audio re-arm: ${e.runtimeType} after '
+          '${cfgSw.elapsedMilliseconds}ms — $e');
+    }
+
+    // Post-teardown state probe so we know the new instance is alive.
+    try {
+      final nowRec = await _recorder.isRecording()
+          .timeout(const Duration(milliseconds: 500));
+      _log('info', 'MIC', 'post-teardown isRecording=$nowRec (expect false)');
+    } catch (e) {
+      _log('error', 'MIC', 'post-teardown isRecording probe threw: $e');
+    }
+    _log('ok', 'MIC', 'session 2+ teardown — DONE');
   }
 
   // ─── PCM playback feed ───────────────────────────────────────────────
