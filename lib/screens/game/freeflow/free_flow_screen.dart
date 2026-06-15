@@ -159,8 +159,18 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   /// instance leaked old internal state into the new connection so
   /// the second persona never received responses (the 03:22 COLD
   /// trace showed connect+commit but no response.created).
+  /// v254 — _recorder is now mutable. On session 2+ the old instance
+  /// is disposed and a fresh AudioRecorder is constructed before
+  /// startStream. v252 drain (await stop) and v253 first-session
+  /// skip weren't enough — bro's v253 trace shows the drain ran for
+  /// 2 seconds on session 2 AND startStream still hung for the full
+  /// 8s timeout. Conclusion: the iOS native object holds the audio
+  /// engine even after stop returns, so the next startStream blocks
+  /// on the engine reservation. Disposing the Dart wrapper releases
+  /// the native object outright; a new AudioRecorder() builds a
+  /// fresh native object that lands cleanly on startStream.
   RealtimeSession _session = RealtimeSession();
-  final AudioRecorder   _recorder = AudioRecorder();
+  AudioRecorder _recorder = AudioRecorder();
   final AudioPlayer     _lucienPlayer = AudioPlayer();
 
   StreamSubscription<RealtimeEvent>? _eventSub;
@@ -587,40 +597,52 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       //    stays alive; gating on _holding means she never hears herself
       //    and only gets what he actually says.
       //
-      // v253 — DRAIN THE PRIOR RECORDER BEFORE startStream, but ONLY
-      // on session 2+. v252 ran the drain unconditionally and broke
-      // session 1 because _recorder.stop() on a never-started
-      // recorder is NOT a no-op on iOS — it tears down the
-      // AVAudioSession we just configured for play+record (took 2s
-      // in bro's trace) and the subsequent startStream sees a dead
-      // session and hangs.
+      // v254 — DISPOSE + RECREATE the AudioRecorder on session 2+.
       //
-      // The drain IS still needed on session 2+: every cleanup path
-      // (_resetToPicker, _restartTabSession, _freeSession upsell,
-      // dispose) calls _recorder.stop() fire-and-forget. AVAudio-
-      // Recorder is one instance per process, so the next session's
-      // startStream lands while the prior stop is mid-flight at the
-      // native layer and blocks on the AVAudioSession sharedInstance
-      // lock. Awaited stop() flushes that pending teardown; the
-      // 250ms tail gives iOS time to release the shared session
-      // before startStream grabs it again.
+      // v252 awaited _recorder.stop() before startStream — drain ran
+      // for 2s on session 2 but startStream STILL hung 8s (bro's
+      // v253 trace, 22:29:45-22:29:55). The iOS AVAudioRecorder
+      // native object holds the audio engine reservation even after
+      // stop() returns; the next startStream blocks waiting for the
+      // engine to be released by the same instance that just stopped.
       //
-      // _recorderEverStarted flips true AFTER the first successful
-      // startStream below, so on every call after session 1 the
-      // drain runs and unblocks the second + N-th startStream.
+      // Nuclear fix: dispose() the Dart wrapper, which releases the
+      // native object entirely, then construct a fresh AudioRecorder.
+      // The new native instance has no prior reservation to wait on
+      // and startStream lands cleanly. AudioSession is reconfigured
+      // again afterwards so the fresh recorder lands on an active
+      // session.
+      //
+      // First session skips all of this — there's no prior recorder
+      // to dispose, and the v253 trace proved session 1 works without
+      // any pre-startStream gymnastics.
       if (_recorderEverStarted) {
-        _log('info', 'MIC', 'draining prior recorder state…');
+        _log('info', 'MIC', 'disposing prior recorder + recreating…');
         // ignore: avoid_print
-        print('[FREEFLOW] draining prior recorder state…');
+        print('[FREEFLOW] disposing prior recorder + recreating…');
         try {
           await _recorder.stop().timeout(const Duration(seconds: 2));
-        } catch (_) {/* either already stopped or stuck — push on */}
-        await Future.delayed(const Duration(milliseconds: 250));
-        _log('ok', 'MIC', 'drain complete · starting fresh stream');
+        } catch (_) {/* push on regardless */}
+        try {
+          await _recorder.dispose().timeout(const Duration(seconds: 2));
+        } catch (_) {/* push on regardless */}
+        _recorder = AudioRecorder();
+        // Give iOS a beat to fully tear down the old native object
+        // and free the audio-engine reservation before the new
+        // instance asks for it.
+        await Future.delayed(const Duration(milliseconds: 300));
+        // Reconfigure the audio session — the dispose+recreate dance
+        // can leave the AVAudioSession inactive on iOS. Force it
+        // back to play+record so the new recorder lands clean.
+        try {
+          await AudioSession.configureForPlayAndRecord()
+              .timeout(const Duration(seconds: 4));
+        } catch (_) {/* already configured — fine */}
+        _log('ok', 'MIC', 'recorder recreated · session re-armed');
         // ignore: avoid_print
-        print('[FREEFLOW] drain complete · starting fresh stream');
+        print('[FREEFLOW] recorder recreated · session re-armed');
       } else {
-        _log('info', 'MIC', 'first session — skip drain');
+        _log('info', 'MIC', 'first session — fresh recorder');
       }
 
       // Same timeout treatment — iOS occasionally hangs on audio-session
