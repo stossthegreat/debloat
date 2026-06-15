@@ -144,6 +144,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: () => _copyEmail(context),
               ),
 
+              // ── CREATOR — password-gated Lucien-unchained switch ──────
+              // v251 — restored. v240 accidentally dropped the mount when
+              // the settings list was rebuilt; the class lived on but
+              // was never instantiated, so bro's main creator-mode entry
+              // disappeared from the UI. Bro: "where did creator mode go
+              // out of settings, that's my main feature add it back."
+              const _CreatorTile(),
+
               // ── Delete all data — destructive, sits low ────────────────
               _SettingTile(
                 icon: Icons.close_rounded,
@@ -783,22 +791,16 @@ class _CreatorTileState extends State<_CreatorTile> {
       color: Colors.transparent,
       child: InkWell(
         onTap: _active ? _lock : _promptUnlock,
-        borderRadius: BorderRadius.circular(Rd.lg),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.all(Sp.md),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           decoration: BoxDecoration(
             color: AppColors.surface1,
-            borderRadius: BorderRadius.circular(Rd.lg),
-            border: Border.all(
-              color: _active
-                  ? AppColors.red.withValues(alpha: 0.55)
-                  : AppColors.surface3,
-              width: _active ? 1.2 : 1.0,
-            ),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: _active
                 ? [BoxShadow(
-                    color: AppColors.red.withValues(alpha: 0.12),
+                    color: AppColors.red.withValues(alpha: 0.18),
                     blurRadius: 18, spreadRadius: 0)]
                 : null,
           ),
@@ -809,46 +811,30 @@ class _CreatorTileState extends State<_CreatorTile> {
                     ? Icons.local_fire_department
                     : Icons.lock_outline_rounded,
                 size: 22,
-                color: _active ? AppColors.red : AppColors.textSecondary),
-              const SizedBox(width: Sp.md),
+                color: AppColors.red),
+              const SizedBox(width: 14),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _active ? 'Lucien · Unchained' : 'Lucien · Locked',
-                      style: AppTypography.body.copyWith(
-                        color: _active ? AppColors.red : AppColors.textPrimary,
-                        fontSize: 15,
-                        fontStyle: _active ? FontStyle.italic : FontStyle.normal,
-                        fontWeight: _active ? FontWeight.w800 : FontWeight.w600,
-                      )),
-                    const SizedBox(height: 2),
-                    Text(
-                      _active
-                          ? 'Free Flow / Arena / Council in savage persona'
-                          : 'Tap to enter the password and unleash',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textTertiary, fontSize: 12)),
-                  ],
-                ),
+                child: Text(
+                  _active ? 'Creator mode · Unchained' : 'Creator mode',
+                  style: AppTypography.body.copyWith(
+                    color: _active ? AppColors.red : AppColors.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.1,
+                  )),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: _active
                       ? AppColors.red.withValues(alpha: 0.18)
                       : AppColors.surface2,
-                  border: Border.all(
-                    color: _active
-                        ? AppColors.red.withValues(alpha: 0.55)
-                        : AppColors.divider),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(_active ? 'ACTIVE' : 'LOCKED',
                   style: AppTypography.label.copyWith(
                     color: _active ? AppColors.red : AppColors.textTertiary,
-                    fontSize: 8.5, letterSpacing: 1.6,
+                    fontSize: 9, letterSpacing: 1.6,
                     fontWeight: FontWeight.w800)),
               ),
             ],
