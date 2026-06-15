@@ -35,10 +35,24 @@ class PaywallGate {
   /// fallback when RC isn't reachable. PurchaseService.isProLive()
   /// also repaints the local cache as a side-effect so subsequent
   /// synchronous reads (e.g. settings tile) agree.
+  ///
+  /// v242 FIX — the live RC check is wrapped in a 2-second timeout
+  /// because Purchases.getCustomerInfo() can hang on TestFlight /
+  /// sandbox / cold-network calls. Without this ceiling _goLive (which
+  /// awaits isPro() before the WebSocket connect) would sit forever
+  /// at _Phase.connecting and force a hard-close — exactly the
+  /// "next-character-stays-on-connecting" bug bro flagged. Auralay
+  /// doesn't have this paywall gate, which is why Auralay never hit
+  /// the same wall.
   static Future<bool> isPro() async {
     if (kBypassPaywall) return true;
-    final live = await PurchaseService.isProLive();
-    if (live != null) return live;
+    try {
+      final live = await PurchaseService.isProLive()
+          .timeout(const Duration(seconds: 2));
+      if (live != null) return live;
+    } catch (_) {
+      // Timeout / network refusal — fall through to the cached value.
+    }
     return LocalStoreService.isSubscribed();
   }
 

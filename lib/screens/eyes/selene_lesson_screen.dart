@@ -78,7 +78,14 @@ class _SeleneLessonScreenState extends State<SeleneLessonScreen>
 
   // Streaming PCM playback queue.
   final List<int> _pcmQueue = [];
-  bool _pcmEngineReady = false;
+  // v245 PROMOTED TO STATIC — was instance-level which meant every
+  // new Selene lesson re-ran FlutterPcmSound.setup(). On iOS that
+  // kills the native AVAudioEngine for the rest of the process,
+  // which then breaks Free Flow's character-switch path even though
+  // Free Flow's own _pcmEngineReady was already static. Bro got the
+  // diagnosis from the working Auralay app's dev: process-level
+  // singleton, set up ONCE, never release, just re-bind callbacks.
+  static bool _pcmEngineReady = false;
   bool _pcmStarted = false;
   int _lastFeedMs = 0;
   Timer? _pcmWatchdog;

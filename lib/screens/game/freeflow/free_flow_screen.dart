@@ -381,7 +381,15 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       _freeSession = !pro;
       _firstEverSession = !pro && !gameUsedAlready;
       _lucienUpsellShown = false;
-      _remaining = pro ? _sessionSeconds : _freeSessionSeconds;
+      // v244 — always show the full 3-minute session timer. The old
+      // pro ? _sessionSeconds : _freeSessionSeconds split made sense
+      // when free users got a 60-second grace window; v224 killed
+      // free roleplay entirely so this branch was lying to paid users
+      // whose subscription cache hadn't synced from RC yet. Bro:
+      // "the first session is still one minute, no needs to be 3."
+      // Free users still hit the paywall the moment they try to
+      // hold the orb — see _startHold().
+      _remaining = _sessionSeconds;
     });
     // ignore: discarded_futures
     AnalyticsService.freeflowSessionStarted(
@@ -389,11 +397,30 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       isFree: !pro,
     );
     try {
-      if (!await _recorder.hasPermission()) {
+      // v243 safety nets — both _recorder.hasPermission() and
+      // AudioSession.configureForPlayAndRecord() can hang on iOS when
+      // the audio system is in a stuck state (rare, but it happens
+      // when a previous session didn't release cleanly). Without a
+      // timeout, _goLive sits silently between these calls forever
+      // and the user gets the same stuck-on-connecting symptom that
+      // the v242 PaywallGate timeout already fixed for the RC path.
+      // 3s on permission (it should be instant if granted, OS-modal
+      // if not — but never 3 seconds). 4s on audio-session configure
+      // (the iOS native call should resolve in <1s under healthy
+      // conditions). Either timeout → _fail → user gets an error UI
+      // with a retry button instead of staring at "connecting".
+      final hasMic = await _recorder.hasPermission().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => throw 'mic permission timeout',
+      );
+      if (!hasMic) {
         _fail('Microphone permission denied.');
         return;
       }
-      await AudioSession.configureForPlayAndRecord();
+      await AudioSession.configureForPlayAndRecord().timeout(
+        const Duration(seconds: 4),
+        onTimeout: () => throw 'audio session timeout',
+      );
 
       // 1) Streaming playback engine — 24kHz PCM16 mono to match the
       //    Realtime API output. Set up ONCE per process and reused across
@@ -431,8 +458,19 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       //    the previous one. Reusing leaked state across personas (the
       //    second persona connected but server never responded — see
       //    debug trace). Tell the old one to die in the background.
-      // ignore: discarded_futures
-      _session.close();
+      //
+      // v246 — AWAIT the old session's close() with a short ceiling
+      // before opening a new connect. Auralay dev's bonus check:
+      // "if you don't await close(), the new connect may collide with
+      // the old one tearing down — that looks like 'stuck on
+      // connecting'." We can't await indefinitely (v216 broke that
+      // way), but a 600ms grace period lets the old WebSocket sink
+      // close cleanly while still bailing in time to keep the user-
+      // perceived connect snappy. close() is idempotent if it's
+      // already closed.
+      try {
+        await _session.close().timeout(const Duration(milliseconds: 600));
+      } catch (_) {/* old session was already dead or stalling — move on */}
       _session = RealtimeSession();
       _creator = await CreatorModeStore.isActive();
       final memoryBlock = await UserMemory.buildSystemPromptBlock(
@@ -927,7 +965,8 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     // "timer" — clock hit zero (free or pro ceiling)
     // "user"  — they tapped END & GET SCORED
     // (cap / error / bail report from their own callers)
-    final cap = _freeSession ? _freeSessionSeconds : _sessionSeconds;
+    // v244 — cap matches the timer: every session is 3 minutes.
+    final cap = _sessionSeconds;
     final reason = _remaining <= 0 ? 'timer' : 'user';
     // ignore: discarded_futures
     AnalyticsService.freeflowSessionEnded(
