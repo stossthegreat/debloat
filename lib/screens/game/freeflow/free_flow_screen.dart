@@ -389,11 +389,30 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       isFree: !pro,
     );
     try {
-      if (!await _recorder.hasPermission()) {
+      // v243 safety nets — both _recorder.hasPermission() and
+      // AudioSession.configureForPlayAndRecord() can hang on iOS when
+      // the audio system is in a stuck state (rare, but it happens
+      // when a previous session didn't release cleanly). Without a
+      // timeout, _goLive sits silently between these calls forever
+      // and the user gets the same stuck-on-connecting symptom that
+      // the v242 PaywallGate timeout already fixed for the RC path.
+      // 3s on permission (it should be instant if granted, OS-modal
+      // if not — but never 3 seconds). 4s on audio-session configure
+      // (the iOS native call should resolve in <1s under healthy
+      // conditions). Either timeout → _fail → user gets an error UI
+      // with a retry button instead of staring at "connecting".
+      final hasMic = await _recorder.hasPermission().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => throw 'mic permission timeout',
+      );
+      if (!hasMic) {
         _fail('Microphone permission denied.');
         return;
       }
-      await AudioSession.configureForPlayAndRecord();
+      await AudioSession.configureForPlayAndRecord().timeout(
+        const Duration(seconds: 4),
+        onTimeout: () => throw 'audio session timeout',
+      );
 
       // 1) Streaming playback engine — 24kHz PCM16 mono to match the
       //    Realtime API output. Set up ONCE per process and reused across
