@@ -159,18 +159,31 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   /// instance leaked old internal state into the new connection so
   /// the second persona never received responses (the 03:22 COLD
   /// trace showed connect+commit but no response.created).
-  /// v254 — _recorder is now mutable. On session 2+ the old instance
-  /// is disposed and a fresh AudioRecorder is constructed before
-  /// startStream. v252 drain (await stop) and v253 first-session
-  /// skip weren't enough — bro's v253 trace shows the drain ran for
-  /// 2 seconds on session 2 AND startStream still hung for the full
-  /// 8s timeout. Conclusion: the iOS native object holds the audio
-  /// engine even after stop returns, so the next startStream blocks
-  /// on the engine reservation. Disposing the Dart wrapper releases
-  /// the native object outright; a new AudioRecorder() builds a
-  /// fresh native object that lands cleanly on startStream.
+  /// v261 — _recorder + the live mic broadcast stream are now PROCESS-
+  /// STATIC. v255's dispose+recreate+invalidate+re-arm pattern was
+  /// shaky in production: bro's trace showed step1 stop() and step2
+  /// dispose() BOTH throwing TimeoutException because iOS never
+  /// returns from them, and the only reason startStream landed in
+  /// the test was lucky timing — iOS happened to release the audio
+  /// engine within our 300ms grace window. In production it doesn't,
+  /// and the second session hangs the full 8s ceiling every time.
+  ///
+  /// The 1M-user fix: never tear down the recorder during character
+  /// switches. Start it ONCE on the first _goLive call, expose its
+  /// stream as a broadcast stream so multiple sessions can listen +
+  /// detach, and only kill it when the user leaves the Game tab
+  /// entirely (screen dispose). Character switches just cancel the
+  /// old listener and bind a new one — startStream is NEVER called
+  /// again after the first session.
+  ///
+  /// Side benefit: the iOS "mic is active" status bar dot stays on
+  /// for the whole tab visit (correct UX — mic IS active for the
+  /// duration of a roleplay session), and we never fight iOS for
+  /// the audio engine again.
+  static AudioRecorder? _sharedRecorder;
+  static Stream<Uint8List>? _sharedMicStream;
+  static bool _sharedMicStarting = false;
   RealtimeSession _session = RealtimeSession();
-  AudioRecorder _recorder = AudioRecorder();
   final AudioPlayer     _lucienPlayer = AudioPlayer();
 
   StreamSubscription<RealtimeEvent>? _eventSub;
@@ -200,17 +213,6 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   // matches what Auralay does. Permission state doesn't change
   // mid-process so the cached "true" stays accurate.
   static bool _micPermissionGranted = false;
-  // v253 — process-wide: did THIS process ever start the recorder?
-  // Gates the v252 pre-startStream drain step. The drain is mandatory
-  // on session 2+ (the fire-and-forget _recorder.stop() from the
-  // prior session is mid-flight and blocks the new startStream), but
-  // calling _recorder.stop() on a never-started recorder is NOT a
-  // no-op on iOS — it deactivates the AVAudioSession we JUST
-  // configured for play+record, and the subsequent startStream
-  // sees an inactive session and hangs. v252's debug trace caught
-  // it: session 1 startStream stopped working entirely. Now we only
-  // drain when this flag is true.
-  static bool _recorderEverStarted = false;
   bool    _pcmStarted = false;
   int     _lastFeedMs = 0;        // when the PCM engine last asked for data
   bool    _holding = false;      // push-to-talk: mic only forwards while held
@@ -337,8 +339,21 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     _pcmWatchdog?.cancel();
     _eventSub?.cancel();
     _micSub?.cancel();
-    // ignore: discarded_futures
-    _recorder.dispose();
+    // v261 — shared mic recorder lives across character switches.
+    // Tear it down ONLY on true screen dispose (user leaves the
+    // Game tab) so the iOS "mic active" indicator goes off and
+    // the audio engine is fully released for whatever uses it next.
+    if (_sharedRecorder != null) {
+      final r = _sharedRecorder!;
+      _sharedRecorder = null;
+      _sharedMicStream = null;
+      _sharedMicStarting = false;
+      // Fire-and-forget — the user's already navigated away.
+      // ignore: discarded_futures
+      r.stop();
+      // ignore: discarded_futures
+      r.dispose();
+    }
     _lucienPlayer.dispose();
     // ignore: discarded_futures
     _session.close();
@@ -378,8 +393,9 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     _eventSub = null;
     _micSub?.cancel();
     _micSub = null;
-    // ignore: discarded_futures
-    _recorder.stop();
+    // v261 — DO NOT stop the shared recorder here. Character switches
+    // just detach the listener; the mic stream stays hot for the new
+    // session to bind to. Only dispose() (true screen exit) stops it.
     // ignore: discarded_futures
     _session.close();
 
@@ -454,29 +470,10 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       // skipping the check on second+ sessions we never hit that
       // wait. Permission state doesn't change mid-process so the
       // cached "true" is honest.
-      if (!_micPermissionGranted) {
-        _log('info', 'MIC', 'checking permission (first session)…');
-        // ignore: avoid_print
-        print('[FREEFLOW] checking mic permission (first session)…');
-        final hasMic = await _recorder.hasPermission().timeout(
-          const Duration(seconds: 3),
-          onTimeout: () => throw 'mic permission timeout',
-        );
-        _log(hasMic ? 'ok' : 'error', 'MIC',
-            'permission returned: $hasMic');
-        // ignore: avoid_print
-        print('[FREEFLOW] mic permission returned: $hasMic');
-        if (!hasMic) {
-          _fail('Microphone permission denied.');
-          return;
-        }
-        _micPermissionGranted = true;
-      } else {
-        _log('info', 'MIC', 'skip (already granted this process)');
-        // ignore: avoid_print
-        print('[FREEFLOW] skipping mic permission check '
-              '(already granted this process)');
-      }
+      // v261 — permission check + recorder construction now happen
+      // inside _ensureMicStream() (the shared lazy starter). Don't
+      // probe permission twice in the same _goLive; the shared
+      // helper does it once at first-ever call.
 
       _log('info', 'AUDIO', 'configuring AudioSession…');
       // ignore: avoid_print
@@ -598,55 +595,36 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       // ignore: avoid_print
       print('[FREEFLOW] _session.connect returned — WS open');
 
-      // 3) Stream the mic up as PCM16 — but only FORWARD chunks while the
-      //    user is holding the talk button (push-to-talk). The stream
-      //    stays alive; gating on _holding means she never hears herself
-      //    and only gets what he actually says.
+      // 3) Stream the mic up as PCM16 — but only FORWARD chunks while
+      //    the user is holding the talk button (push-to-talk). The
+      //    stream stays alive; gating on _holding means she never
+      //    hears herself and only gets what he actually says.
       //
-      // v255 — DEEP-INSTRUMENTED dispose + recreate the AudioRecorder
-      // on session 2+. Every step is wrapped to log its exact
-      // outcome — exception text, elapsed ms, recorder state before
-      // and after — so the next trace tells us precisely WHICH call
-      // is the one stalling. v254 was right in shape but its
-      // catch (_) blocks ate every native error, leaving us blind.
-      if (_recorderEverStarted) {
-        await _disposeAndRecreateRecorder();
-      } else {
-        _log('info', 'MIC', 'first session — fresh recorder');
-      }
-
-      // v255 — startStream call now timed in ms so the next debug
-      // trace shows EXACTLY how long the iOS native acquire took.
-      // If it returns in <500ms, the audio engine is healthy. If it
-      // sits at 8s every time, the engine is locked even after the
-      // dispose+recreate dance — which would tell us the lock is
-      // outside the recorder (e.g. a stuck Realtime PCM playback
-      // engine claiming the mixer) and we need to also nuke
-      // FlutterPcmSound between sessions.
-      _log('info', 'MIC', 'calling _recorder.startStream… (8s ceiling)');
-      // ignore: avoid_print
-      print('[FREEFLOW] calling _recorder.startStream…');
+      // v261 — KEEP-ALIVE MIC STREAM. v252-v255 fought iOS by
+      // disposing + recreating the AudioRecorder on every character
+      // switch; in bro's production trace `step1 stop` AND `step2
+      // dispose` BOTH threw TimeoutException, and startStream only
+      // landed in dev because of lucky timing. In production the
+      // engine reservation outlives our 300ms grace window and
+      // startStream hangs the full 8s every time.
+      //
+      // The 1M-user fix: _ensureMicStream() starts the recorder ONCE
+      // per Game-tab visit and returns a broadcast stream. Every
+      // session — including session 1 — just binds a listener on
+      // the SAME stream. No tear-down, no engine fight, no
+      // AVAudioSession dance. The recorder runs flat-out for the
+      // duration of the tab; the iOS "mic active" indicator stays
+      // on (correct UX — the mic IS active for the duration of a
+      // roleplay session). True teardown happens only in dispose()
+      // when the user leaves the Game tab entirely.
       _micStartSw = Stopwatch()..start();
-      final micStream = await _recorder.startStream(const RecordConfig(
-        encoder:       AudioEncoder.pcm16bits,
-        sampleRate:    24000,
-        numChannels:   1,
-        echoCancel:    true,
-        autoGain:      true,
-        noiseSuppress: true,
-      )).timeout(const Duration(seconds: 8),
-        onTimeout: () => throw 'mic acquire timeout (8s)');
+      final micStream = await _ensureMicStream();
       _micStartSw?.stop();
       _log('ok', 'MIC',
-          'startStream returned in ${_micStartSw?.elapsedMilliseconds}ms — mic acquired');
+          'mic stream ready in ${_micStartSw?.elapsedMilliseconds}ms');
       // ignore: avoid_print
-      print('[FREEFLOW] _recorder.startStream returned in '
-            '${_micStartSw?.elapsedMilliseconds}ms — mic acquired');
-      // v253 — flip the static so every subsequent _goLive runs the
-      // pre-startStream drain step (which is mandatory on iOS to
-      // unblock startStream when the prior _recorder.stop() is still
-      // mid-flight at the native layer).
-      _recorderEverStarted = true;
+      print('[FREEFLOW] mic stream ready in '
+            '${_micStartSw?.elapsedMilliseconds}ms');
       _micSub = micStream.listen((bytes) {
         if (_disposed || !_holding) return;
         _micChunks++;
@@ -689,14 +667,16 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       // alive? Helps distinguish "mic never acquired" from
       // "mic acquired but disconnected mid-call".
       try {
-        final rec = await _recorder.isRecording()
-            .timeout(const Duration(milliseconds: 500));
+        final rec = _sharedRecorder == null
+            ? false
+            : await _sharedRecorder!.isRecording()
+                .timeout(const Duration(milliseconds: 500));
         _log('error', 'GOLIVE',
-            'recorder.isRecording=$rec · pcmEngineReady=$_pcmEngineReady · '
+            'sharedRec.isRecording=$rec · pcmEngineReady=$_pcmEngineReady · '
             'micPermGranted=$_micPermissionGranted · '
-            'recorderEverStarted=$_recorderEverStarted');
+            'sharedMicStream=${_sharedMicStream != null}');
       } catch (probeErr) {
-        _log('error', 'GOLIVE', 'recorder.isRecording probe failed: $probeErr');
+        _log('error', 'GOLIVE', 'isRecording probe failed: $probeErr');
       }
       // ignore: avoid_print
       print('[FREEFLOW] _goLive THREW [$type]: $e\n$st');
@@ -704,90 +684,75 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     }
   }
 
-  /// v255 — deep-instrumented teardown for session 2+. Every awaited
-  /// step is timed in ms and its outcome (success / exception text)
-  /// gets logged. The next debug trace will tell us exactly which of
-  /// the four sub-steps (stop / dispose / 300ms wait / re-configure
-  /// AudioSession) is the one that's still hanging, and what the
-  /// underlying iOS error actually says.
-  Future<void> _disposeAndRecreateRecorder() async {
-    _log('info', 'MIC', 'session 2+ teardown — START');
-    // Probe pre-teardown state so we can compare it to post-teardown.
-    try {
-      final wasRec = await _recorder.isRecording()
-          .timeout(const Duration(milliseconds: 500));
-      _log('info', 'MIC', 'pre-teardown isRecording=$wasRec');
-    } catch (e) {
-      _log('info', 'MIC', 'pre-teardown isRecording probe threw: $e');
+  /// v261 — start the shared mic stream lazily ONCE per Game-tab visit
+  /// and return it as a broadcast stream so every roleplay session
+  /// (session 1, session 2, session N…) can attach a listener
+  /// without ever calling _recorder.startStream() again.
+  ///
+  /// This kills the entire dispose+recreate+invalidate+re-arm dance
+  /// from v252-v255. iOS startStream is only ever called once, on
+  /// the very first session of the tab, when the audio engine is
+  /// guaranteed to be free. Subsequent sessions just bind a
+  /// listener — zero native acquire, zero engine fight.
+  ///
+  /// Permission and AudioSession setup also fold in here so the
+  /// whole mic-pipeline init is in one atomic place.
+  Future<Stream<Uint8List>> _ensureMicStream() async {
+    if (_sharedMicStream != null) {
+      _log('info', 'MIC', 'reusing shared mic stream (session 2+)');
+      return _sharedMicStream!;
     }
-
-    // Step 1: stop the old recorder.
-    final stopSw = Stopwatch()..start();
-    try {
-      await _recorder.stop().timeout(const Duration(seconds: 2));
-      stopSw.stop();
-      _log('ok', 'MIC',
-          'step1 stop: returned cleanly in ${stopSw.elapsedMilliseconds}ms');
-    } catch (e) {
-      stopSw.stop();
-      _log('error', 'MIC',
-          'step1 stop: ${e.runtimeType} after ${stopSw.elapsedMilliseconds}ms — $e');
+    // Concurrent-start guard — if a second _goLive races in while
+    // session 1 is still starting the stream, wait for it instead
+    // of double-starting.
+    if (_sharedMicStarting) {
+      _log('info', 'MIC', 'mic start in-flight — awaiting…');
+      while (_sharedMicStarting) {
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+      if (_sharedMicStream != null) return _sharedMicStream!;
     }
-
-    // Step 2: dispose the native object.
-    final disSw = Stopwatch()..start();
+    _sharedMicStarting = true;
     try {
-      await _recorder.dispose().timeout(const Duration(seconds: 2));
-      disSw.stop();
-      _log('ok', 'MIC',
-          'step2 dispose: returned cleanly in ${disSw.elapsedMilliseconds}ms');
-    } catch (e) {
-      disSw.stop();
-      _log('error', 'MIC',
-          'step2 dispose: ${e.runtimeType} after ${disSw.elapsedMilliseconds}ms — $e');
-    }
+      _log('info', 'MIC', 'first session — constructing shared recorder');
+      _sharedRecorder = AudioRecorder();
 
-    // Step 3: new instance + 300ms grace period.
-    _recorder = AudioRecorder();
-    _log('info', 'MIC', 'step3 new AudioRecorder() · awaiting 300ms…');
-    await Future.delayed(const Duration(milliseconds: 300));
+      // Permission check (only triggers iOS dialog if not yet granted).
+      if (!_micPermissionGranted) {
+        final ok = await _sharedRecorder!.hasPermission().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => throw 'mic permission timeout',
+        );
+        if (!ok) throw 'Microphone permission denied.';
+        _micPermissionGranted = true;
+      }
 
-    // Step 4: re-arm the AudioSession.
-    //
-    // v255 ROOT CAUSE FOUND. lib/services/audio_session.dart gates
-    // configureForPlayAndRecord() behind `if (_configured) return;`
-    // — so after session 1 sets the flag, EVERY subsequent call is
-    // a no-op and the iOS AVAudioSession is never reasserted.
-    // record_darwin's startStream sees the dead session and
-    // hangs forever. The same bug was already documented on the
-    // Selene lesson screens with the OSStatus 561017449 fix in
-    // AudioSession.invalidate(). Call invalidate() FIRST so the
-    // configure call actually runs setAudioContext again.
-    AudioSession.invalidate();
-    _log('info', 'MIC', 'step4a AudioSession.invalidate() called');
-    final cfgSw = Stopwatch()..start();
-    try {
-      await AudioSession.configureForPlayAndRecord()
-          .timeout(const Duration(seconds: 4));
-      cfgSw.stop();
-      _log('ok', 'MIC',
-          'step4 audio re-arm: ok in ${cfgSw.elapsedMilliseconds}ms');
-    } catch (e) {
-      cfgSw.stop();
-      _log('error', 'MIC',
-          'step4 audio re-arm: ${e.runtimeType} after '
-          '${cfgSw.elapsedMilliseconds}ms — $e');
-    }
+      // Audio session setup (idempotent — internally short-circuits
+      // if already configured this process).
+      await AudioSession.configureForPlayAndRecord().timeout(
+        const Duration(seconds: 4),
+        onTimeout: () => throw 'audio session timeout',
+      );
 
-    // Post-teardown state probe so we know the new instance is alive.
-    try {
-      final nowRec = await _recorder.isRecording()
-          .timeout(const Duration(milliseconds: 500));
-      _log('info', 'MIC', 'post-teardown isRecording=$nowRec (expect false)');
-    } catch (e) {
-      _log('error', 'MIC', 'post-teardown isRecording probe threw: $e');
+      // Start the mic stream. This is the ONE AND ONLY startStream
+      // call across the whole Game-tab visit.
+      final raw = await _sharedRecorder!.startStream(const RecordConfig(
+        encoder:       AudioEncoder.pcm16bits,
+        sampleRate:    24000,
+        numChannels:   1,
+        echoCancel:    true,
+        autoGain:      true,
+        noiseSuppress: true,
+      )).timeout(const Duration(seconds: 8),
+        onTimeout: () => throw 'mic acquire timeout (8s)');
+      // Multi-listener broadcast so every session can attach + detach
+      // without restarting the mic.
+      _sharedMicStream = raw.asBroadcastStream();
+      _log('ok', 'MIC', 'shared mic stream started + broadcasted');
+      return _sharedMicStream!;
+    } finally {
+      _sharedMicStarting = false;
     }
-    _log('ok', 'MIC', 'session 2+ teardown — DONE');
   }
 
   // ─── PCM playback feed ───────────────────────────────────────────────
@@ -1247,8 +1212,8 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       _pcmQueue.clear();
       _session.cancelResponse();
       await _micSub?.cancel();
-      // ignore: discarded_futures
-      _recorder.stop().catchError((_) {});
+      // v261 — shared mic stream stays alive across sessions; only
+      // the listener detaches. Recorder teardown only on dispose().
       // Persist gameFreeUsed = true now that the free session is
       // truly over. Bro v6: marking used inside _startHold caused
       // multi-hold-in-same-session paywalls; the persistent flag
@@ -1273,8 +1238,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     _pcmQueue.clear();
     _session.cancelResponse();
     await _micSub?.cancel();
-    // ignore: discarded_futures
-    _recorder.stop().catchError((_) {});
+    // v261 — shared mic stream stays alive across sessions.
     setState(() => _phase = _Phase.scoring);
     try {
       final score = await VillainApi.freeflowScore(
@@ -1373,8 +1337,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   void _resetToPicker() {
     _eventSub?.cancel();
     _micSub?.cancel();
-    // ignore: discarded_futures
-    _recorder.stop();
+    // v261 — shared mic keeps streaming for next session bind.
     // ignore: discarded_futures
     _session.close();
     if (!mounted) return;
@@ -1406,9 +1369,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     _createTimer?.cancel();
     _eventSub?.cancel();
     _micSub?.cancel();
-    // Fire-and-forget teardown — see _switchCharacter for why.
-    // ignore: discarded_futures
-    _recorder.stop();
+    // v261 — shared mic keeps streaming for the next session bind.
     // ignore: discarded_futures
     _session.close();
     _pcmQueue.clear();
@@ -1472,8 +1433,8 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     // completes because we just told it to die) — that's what broke even
     // INTO YOU in build 126. Just clear the playback queue so the new
     // persona doesn't inherit tail bytes.
-    // ignore: discarded_futures
-    _recorder.stop();
+    // v261 — shared mic keeps streaming; new session just rebinds
+    // its listener via _ensureMicStream().
     // ignore: discarded_futures
     _session.close();
     _pcmQueue.clear();
