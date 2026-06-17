@@ -183,6 +183,15 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   static AudioRecorder? _sharedRecorder;
   static Stream<Uint8List>? _sharedMicStream;
   static bool _sharedMicStarting = false;
+  /// v262 — wall-clock ms of the last mic chunk we saw arrive. The
+  /// health probe uses this to detect "stream went silent" scenarios
+  /// iOS doesn't report: interruption (Siri / phone call / alarm),
+  /// route change (AirPods plug/unplug), background suspension. The
+  /// engine still says isRecording=true but no bytes are flowing.
+  /// On every reuse of the shared stream we check this — if no chunk
+  /// in the last 30s the stream is considered stale and we tear it
+  /// down and restart.
+  static int _sharedMicLastChunkMs = 0;
   RealtimeSession _session = RealtimeSession();
   final AudioPlayer     _lucienPlayer = AudioPlayer();
 
@@ -626,6 +635,12 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       print('[FREEFLOW] mic stream ready in '
             '${_micStartSw?.elapsedMilliseconds}ms');
       _micSub = micStream.listen((bytes) {
+        // v262 — every arrived chunk stamps the wall-clock so the
+        // health probe in _ensureMicStream can spot "stream went
+        // silent" scenarios (iOS interruption, route change, etc.).
+        // Stamp BEFORE the holding gate so background interruption
+        // detection works even when the user isn't actively talking.
+        _sharedMicLastChunkMs = DateTime.now().millisecondsSinceEpoch;
         if (_disposed || !_holding) return;
         _micChunks++;
         _session.sendAudioChunk(bytes);
@@ -698,8 +713,37 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   /// Permission and AudioSession setup also fold in here so the
   /// whole mic-pipeline init is in one atomic place.
   Future<Stream<Uint8List>> _ensureMicStream() async {
+    // v262 — HEALTH PROBE before reusing the cached stream. Bro:
+    // "this happened after a while it was working perfectly then
+    // suddenly stopped." Root cause is iOS silently killing the
+    // recorder for reasons outside our control: AVAudioSession
+    // interruption (Siri, phone call, alarm, notification with
+    // sound), route change (AirPods plug/unplug), or background
+    // suspension. The engine still reports isRecording=true but
+    // bytes stop flowing. Without recovery the user is stuck on a
+    // dead stream forever.
+    //
+    // Two health signals:
+    //   1. _sharedRecorder.isRecording() — the formal flag. If it
+    //      returns false or throws, the engine is dead.
+    //   2. _sharedMicLastChunkMs — the empirical signal. If the
+    //      stream was ever delivering chunks but hasn't in 30s,
+    //      it's silently dead (iOS interrupted us without throwing).
+    //
+    // Either failure tears the stream down and the next branch
+    // restarts it cleanly. To the user this looks like a normal
+    // sub-second session start — recovery is invisible.
+    if (_sharedMicStream != null && _sharedRecorder != null) {
+      if (!await _isMicStreamHealthy()) {
+        _log('warn', 'MIC',
+            'cached stream UNHEALTHY — tearing down + restarting');
+        // ignore: avoid_print
+        print('[FREEFLOW] cached mic stream unhealthy — recovering');
+        await _teardownSharedMic();
+      }
+    }
     if (_sharedMicStream != null) {
-      _log('info', 'MIC', 'reusing shared mic stream (session 2+)');
+      _log('info', 'MIC', 'reusing shared mic stream (healthy)');
       return _sharedMicStream!;
     }
     // Concurrent-start guard — if a second _goLive races in while
@@ -748,11 +792,73 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       // Multi-listener broadcast so every session can attach + detach
       // without restarting the mic.
       _sharedMicStream = raw.asBroadcastStream();
+      // Mark a fresh chunk timestamp so the next health probe doesn't
+      // immediately false-positive a stream that hasn't had time to
+      // deliver bytes yet.
+      _sharedMicLastChunkMs = DateTime.now().millisecondsSinceEpoch;
       _log('ok', 'MIC', 'shared mic stream started + broadcasted');
       return _sharedMicStream!;
     } finally {
       _sharedMicStarting = false;
     }
+  }
+
+  /// v262 — health probe for the shared mic stream. Returns false
+  /// when the engine has gone silent for reasons iOS doesn't
+  /// surface as exceptions (interruption, route change, background
+  /// suspension, OS resource pressure). Two signals:
+  ///   · isRecording() returns false or throws — the formal flag.
+  ///   · No chunk delivered in the last 30s — the empirical flag.
+  ///     Catches the "isRecording lies" case where iOS reports the
+  ///     stream is healthy but it stopped delivering bytes.
+  Future<bool> _isMicStreamHealthy() async {
+    if (_sharedRecorder == null) return false;
+    try {
+      final rec = await _sharedRecorder!.isRecording()
+          .timeout(const Duration(milliseconds: 500));
+      if (!rec) {
+        _log('warn', 'MIC', 'health: isRecording=false → unhealthy');
+        return false;
+      }
+    } catch (e) {
+      _log('warn', 'MIC', 'health: isRecording threw $e → unhealthy');
+      return false;
+    }
+    // Chunk-flow signal — but only meaningful if we've EVER seen a
+    // chunk (the stream might be brand new, having just started).
+    if (_sharedMicLastChunkMs > 0) {
+      final ageMs = DateTime.now().millisecondsSinceEpoch
+                  - _sharedMicLastChunkMs;
+      if (ageMs > 30000) {
+        _log('warn', 'MIC',
+            'health: last chunk ${ageMs}ms ago → silent stream → unhealthy');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// v262 — fire-and-forget teardown of the shared recorder + stream.
+  /// Used by the health-probe path when the cached stream is dead;
+  /// the subsequent _ensureMicStream() call recreates from scratch.
+  Future<void> _teardownSharedMic() async {
+    final r = _sharedRecorder;
+    _sharedRecorder = null;
+    _sharedMicStream = null;
+    _sharedMicLastChunkMs = 0;
+    if (r == null) return;
+    try {
+      await r.stop().timeout(const Duration(seconds: 2));
+    } catch (_) {/* push on */}
+    try {
+      await r.dispose().timeout(const Duration(seconds: 2));
+    } catch (_) {/* push on */}
+    // Invalidate AudioSession so the next configureForPlayAndRecord
+    // actually re-arms it. Same fix landed for session 2+ in v255.
+    AudioSession.invalidate();
+    // Brief grace so iOS finishes releasing the engine before
+    // _ensureMicStream constructs a new AudioRecorder.
+    await Future.delayed(const Duration(milliseconds: 200));
   }
 
   // ─── PCM playback feed ───────────────────────────────────────────────
