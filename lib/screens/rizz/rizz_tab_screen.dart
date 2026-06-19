@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/analytics_service.dart';
 import '../../services/paywall_gate.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/common/imhim_wordmark.dart';
 import '../../widgets/common/mirrorly_components.dart';
 
 /// RIZZ tab — three red cards, three flood-gate states.
@@ -123,16 +124,19 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 32),
           children: [
-            // Bro v5: "take rizz title and subtitle off — add settings
-            // top right of screen like looks tab." Settings cog sits
-            // in a thin top row; the cards begin immediately under.
-            // v7 graft: streak flame + progress chart icon riding the
-            // same row to the LEFT of the cog so the user can jump to
-            // Progress and feel their streak from anywhere in the app.
+            // v265 — ImHim masthead matched to the Looks tab. Bro:
+            // "add the imhim header onto the rizz tab exactly same
+            // one as the looks tab." Same Inter-w900 wordmark at 34pt,
+            // same italic brand subhead "Looks get attention. Game
+            // keeps it.", same right-side chip stack (streak +
+            // progress + cog). The Rizz tab now reads as one app
+            // instead of a separate utility surface.
             Padding(
               padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  const ImHimWordmark(fontSize: 34),
                   const Spacer(),
                   if (_dayStreak > 0) ...[
                     _RizzStreakBadge(days: _dayStreak),
@@ -146,7 +150,20 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 64),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: Text(
+                'Looks get attention. Game keeps it.',
+                style: GoogleFonts.inter(
+                  color: AppColors.textSecondary,
+                  fontSize: 15, height: 1.35,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
