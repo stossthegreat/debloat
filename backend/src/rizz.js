@@ -114,6 +114,22 @@ BANNED PHRASES — these scream 50-year-old corporate dating coach:
 - "I think you're amazing" / "you seem amazing"
 - ANY sentence that EXPLAINS WHY before giving the line
 
+BANNED CLICHE OPENERS — these are dead Reddit/Tinder pickup lines. If
+you find yourself reaching for any of these, STOP and generate
+something specific to the chat or profile instead:
+- "Are you a magician?"  (every variant)
+- "Did it hurt when you fell from heaven?"
+- "Are you French? Eiffel for you"  (every Eiffel-pun variant)
+- "Are you a parking ticket?" / "fine"
+- "Are you Google?" / "are you wifi?" / "are you a library card?"
+- "Do you have a map?" / "I keep getting lost in your eyes"
+- "Are you from Tennessee?" / "the only ten I see"
+- "Do you believe in love at first sight?"
+- ANY "are you a [noun]? + corny pun" formula
+- ANY line that reads as a screenshot a 22-year-old would send
+  to her group chat with the caption "kill me." Test EVERY
+  line against that filter before returning it.
+
 HARD RAILS — charm vs creep
 - No body-part compliments as openers ("nice eyes", "great smile" — out).
   Charm reads her ENERGY, not her body parts.
@@ -349,10 +365,29 @@ function parseReplies(raw) {
 // return whatever the second attempt produced.
 const RIZZ_BANNED_RX = /\b(crypt(ic|o)|puzzle|code(s)?|decod(e|ing)|deciph(er|ering)|mysteri(ous|es|y)|mystic|secret(s|ly)?|encrypt(ed|ion)?|riddle(s)?|parallel\s+universe|in\s+code|in\s+a\s+code|in\s+tongues|hidden\s+message)\b/i;
 
+// v270 — cliche-opener detector. Rizz AI / Plug AI / Wing AI all get
+// dragged in their reviews for serving these tired 2014-Reddit
+// openers: "are you a magician", "did it hurt when you fell from
+// heaven", "are you french / eiffel for you", "are you a parking
+// ticket / fine", "are you google", "do you have a map / lost in
+// your eyes". The system prompt now bans them explicitly, but
+// gpt-4o-mini occasionally relapses (these lines are heavily
+// represented in pre-training). The regex catches the relapses
+// and triggers the same retry-once-on-violation pass we run for
+// the mystical/cryptic ban above.
+//
+// Note: these are banned from AUTO-GENERATION only. The CHEESY
+// category of the on-device arsenal (lib/data/rizz_lines.dart)
+// still ships some of these as ironic legends ("do you have a
+// map?", "i'm not a photographer but i can picture us together")
+// — those are user-driven pulls, not model output, and bro
+// explicitly kept them as classics worth landing with a smile.
+const RIZZ_CLICHE_RX = /\b(are\s+you\s+a\s+magician|did\s+it\s+hurt\s+(when\s+)?you\s+fell\s+(from\s+heaven)?|eiffel\s+(for\s+you)?|are\s+you\s+(a\s+)?(parking\s+ticket|fine\s+because|google|campfire|library\s+card|wifi)|fine\s+lookin'?\s+like\s+that|do\s+you\s+have\s+a\s+map|lost\s+in\s+your\s+eyes|are\s+you\s+from\s+tennessee|believe\s+in\s+love\s+at\s+first\s+sight|sit\s+on\s+a\s+pile\s+of\s+sugar|knees\s+from\s+heaven)\b/i;
+
 function repliesContainBannedWord(replies) {
   if (!Array.isArray(replies)) return false;
   return replies.some(r => r && typeof r.text === 'string'
-    && RIZZ_BANNED_RX.test(r.text));
+    && (RIZZ_BANNED_RX.test(r.text) || RIZZ_CLICHE_RX.test(r.text)));
 }
 
 export async function rizzReply({ her, vibe, ctx, scenario, previous, imageBase64, mySide } = {}) {
@@ -442,17 +477,23 @@ export async function rizzReply({ her, vibe, ctx, scenario, previous, imageBase6
 
   let replies = await runOnce();
 
-  // Post-filter — if any reply contains a banned word, retry ONCE
-  // with a harder reminder pinned to the end of the system prompt.
+  // Post-filter — if any reply contains a banned word OR cliche
+  // opener, retry ONCE with a harder reminder pinned to the end
+  // of the system prompt.
   if (repliesContainBannedWord(replies)) {
-    console.warn('[rizz] banned word detected in first pass — regenerating');
-    const harder = 'REMINDER: Your previous attempt used one of the '
-      + 'BANNED words (cryptic, puzzle, code, decode, decipher, '
+    console.warn('[rizz] banned/cliche detected in first pass — regenerating');
+    const harder = 'REMINDER: Your previous attempt used either a '
+      + 'BANNED word (cryptic, puzzle, code, decode, decipher, '
       + 'mysterious, mystery, secret, encrypted, riddle, parallel '
-      + 'universe, in code, in tongues, hidden message). Write '
-      + 'fresh replies WITHOUT any of those words. The chat is a '
-      + 'normal chat. wbu = "what about you", wyd = "what you '
-      + 'doing" — they are PLAIN ENGLISH abbreviations, not codes.';
+      + 'universe, in code, in tongues, hidden message) OR a '
+      + 'BANNED CLICHE OPENER (are you a magician / did it hurt '
+      + 'when you fell / eiffel for you / are you a parking ticket '
+      + '/ are you Google / do you have a map / "are you a [noun]?" '
+      + 'pun formula). Write fresh replies WITHOUT any of those. '
+      + 'The chat is a normal chat. wbu = "what about you", wyd = '
+      + '"what you doing" — they are PLAIN ENGLISH abbreviations, '
+      + 'not codes. Each line MUST pass the GROUP CHAT TEST: would '
+      + 'her friends react with "respond NOW" or "block him"?';
     replies = await runOnce(harder);
   }
 
@@ -542,6 +583,16 @@ BANNED PHRASES — these scream 50-year-old corporate dating coach:
 - "I was wondering if you'd like to"
 - "Hi/Hey [name]," (no formal greetings)
 - Any sentence that explains WHY before giving the line
+
+BANNED CLICHE OPENERS — these are dead Reddit/Tinder pickup lines:
+- "Are you a magician?" / "did it hurt when you fell from heaven?"
+- "Are you French? Eiffel for you" (every Eiffel-pun variant)
+- "Are you a parking ticket? / fine" / "are you Google?" / "wifi?"
+- "Do you have a map? / lost in your eyes"
+- "Are you from Tennessee?" / "do you believe in love at first sight"
+- ANY "are you a [noun]? + corny pun" formula
+- Test EVERY line in quotes against the GROUP CHAT TEST below; if
+  her friends would react with "kill me" or "block him", REWRITE.
 
 HARD RAILS — charm vs creep
 - No body-part compliments as openers
@@ -674,16 +725,21 @@ export async function rizzChat({ messages, imageBase64 } = {}) {
   let reply = await runOnce();
 
   // Same post-filter as rizzReply — regenerate once if any banned
-  // word slipped through the prompt rule.
-  if (RIZZ_BANNED_RX.test(reply)) {
-    console.warn('[rizz/chat] banned word detected in first pass — regenerating');
-    const harder = 'REMINDER: Your previous attempt used one of the '
-      + 'BANNED words (cryptic, puzzle, code, decode, decipher, '
+  // word OR cliche opener slipped through the prompt rule.
+  if (RIZZ_BANNED_RX.test(reply) || RIZZ_CLICHE_RX.test(reply)) {
+    console.warn('[rizz/chat] banned/cliche detected in first pass — regenerating');
+    const harder = 'REMINDER: Your previous attempt used either a '
+      + 'BANNED word (cryptic, puzzle, code, decode, decipher, '
       + 'mysterious, mystery, secret, encrypted, riddle, parallel '
-      + 'universe, in code, in tongues, hidden message). Write a '
-      + 'fresh reply WITHOUT any of those words. The chat is a '
-      + 'normal chat. wbu = "what about you", wyd = "what you '
-      + 'doing" — they are PLAIN ENGLISH abbreviations, not codes.';
+      + 'universe, in code, in tongues, hidden message) OR a '
+      + 'BANNED CLICHE OPENER (are you a magician / did it hurt '
+      + 'when you fell / eiffel for you / are you a parking ticket '
+      + '/ are you Google / do you have a map). Write a fresh '
+      + 'reply WITHOUT any of those. The chat is a normal chat. '
+      + 'wbu = "what about you", wyd = "what you doing" — they '
+      + 'are PLAIN ENGLISH abbreviations, not codes. The line you '
+      + 'generate must pass the GROUP CHAT TEST: would her friends '
+      + 'react with "respond NOW" or "block him"?';
     reply = await runOnce(harder);
   }
 
