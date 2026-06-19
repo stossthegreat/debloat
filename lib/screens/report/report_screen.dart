@@ -937,6 +937,12 @@ class _ReportScreenState extends State<ReportScreen> {
             correctionsCount: correctionsCount,
             microProofs:      microProofs,
             locked:           true,
+            // v263 — onboarding scan reveal blanks the potential
+            // number with "?". Current score visible (proves the
+            // app analyzed the face); projected number hidden
+            // (proves there's a payoff worth unlocking for).
+            // Curiosity gap drives conversion.
+            hideProjected:    true,
             onLockedTap:      () => openPaywall('glowup_after_tap'),
           ),
           const SizedBox(height: Sp.md),
@@ -944,8 +950,11 @@ class _ReportScreenState extends State<ReportScreen> {
           // ONE big CTA under the before/after. Bro v6: "just have one
           // under the before after and one on the after" — that's the
           // tap-on-after-image + this single button. Nothing else.
+          // v263 — CTA copy no longer reveals +X POINTS. The "?" on
+          // the projected score IS the unlock — surfacing the
+          // delta defeats the curiosity gap.
           _UnlockCta(
-            label: 'UNLOCK TO SEE HOW YOU GLOW UP  ·  +$potential POINTS',
+            label: 'UNLOCK TO SEE YOUR POTENTIAL',
             onTap: () => openPaywall('glowup_unlock_main'),
           ),
           const SizedBox(height: Sp.xl),

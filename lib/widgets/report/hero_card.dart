@@ -54,6 +54,15 @@ class HeroCard extends StatefulWidget {
   final bool locked;
   final VoidCallback? onLockedTap;
 
+  /// v263 — when true, the projected score number is replaced with a
+  /// teasing "?" glyph in the same green Playfair display style.
+  /// Used by the onboarding scan reveal (`_buildLockedTeaser`) so
+  /// non-pro users see what they could become but not by how much,
+  /// drawing the curiosity gap that converts. The PROJECTED label
+  /// underneath stays visible — the label tells them what's hidden;
+  /// the number is the unlock payoff.
+  final bool hideProjected;
+
   const HeroCard({
     super.key,
     required this.currentScore,
@@ -67,6 +76,7 @@ class HeroCard extends StatefulWidget {
     this.isGenerating = false,
     this.locked = false,
     this.onLockedTap,
+    this.hideProjected = false,
   });
 
   @override
@@ -114,6 +124,7 @@ class _HeroCardState extends State<HeroCard>
             controller: _counter,
             currentScore: widget.currentScore,
             projectedScore: widget.projectedScore,
+            hideProjected: widget.hideProjected,
           ),
 
           const SizedBox(height: 10),
@@ -472,11 +483,16 @@ class _ScoreTransition extends StatelessWidget {
   final AnimationController controller;
   final int currentScore;
   final int projectedScore;
+  /// v263 — when true, render "?" instead of the projected number so
+  /// the onboarding teaser hides the payoff. Same green Playfair
+  /// style; the curiosity gap is the conversion driver.
+  final bool hideProjected;
 
   const _ScoreTransition({
     required this.controller,
     required this.currentScore,
     required this.projectedScore,
+    this.hideProjected = false,
   });
 
   @override
@@ -522,7 +538,10 @@ class _ScoreTransition extends StatelessWidget {
                 opacity: revealT,
                 child: Transform.scale(
                   scale: 0.9 + revealT * 0.1,
-                  child: Text('$projectedScore',
+                  // v263 — hideProjected swaps the number for "?" so
+                  // the onboarding teaser holds the payoff back. Same
+                  // green Playfair sizing so the layout doesn't shift.
+                  child: Text(hideProjected ? '?' : '$projectedScore',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.playfairDisplay(
                       fontSize: 82, height: 1.0, letterSpacing: -2.4,
