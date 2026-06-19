@@ -32,7 +32,6 @@
 ///   · INAPPROPRIATE COMPLIMENT — too-specific to be generic
 ///   · VULNERABLE FLEX          — admits a "weakness" that's a flex
 ///   · DOMESTIC PROJECTION      — pictures a future together
-///   · FUTURE FRAME             — assumes the date / relationship is on
 ///   · FRAME CHECK              — assumes the outcome; high agency
 ///   · PUSH-PULL                — playful disqualifier that hooks
 ///   · MISINTERPRETATION        — willfully misreads her flirty
@@ -44,9 +43,6 @@
 ///   · PROXIMITY                — hints at meeting in real life
 ///   · REFRAME                  — flips her energy to your advantage
 ///   · TEASE                    — playful jab, light needle
-///   · POSSESSIVE               — claims her without asking (v264, cocky)
-///   · DOWN BAD                 — admits obsession without losing frame
-///   · INTIMATE FUTURE          — pictures the bedroom / aftermath
 class RizzLine {
   /// Raw single-line text. Null for sequence entries — those compute
   /// [text] lazily from [parts] joined with " — ".
@@ -95,82 +91,62 @@ class RizzCategory {
 abstract final class RizzArsenal {
   static const categories = <RizzCategory>[
     // ── OPENERS ─────────────────────────────────────────────────────────
-    // v264 — massive overhaul. Bro's partner clocked the old set as
-    // "dry, no rizz, no life." The corporate interview-survey lines
-    // ("two truths one lie", "what's something i'd never guess",
-    // "permission to be slightly inappropriate requested") and the
-    // safe-vulnerable filler ("warning: i overshare by the second
-    // date") got cut. Survivors stay: the ones that pass the
-    // screenshot-to-group-chat test (her aura is unforgivable,
-    // psychological warfare, main character syndrome, six months
-    // then write songs). New lines lean COCKY/DOMINANT — short,
-    // sharp, slightly-dangerous, screenshot-worthy. Possessive
-    // future-frame ("delete the app, you're mine now") and down-bad
-    // confessions that hold frame ("down bad, unrecoverable") are
-    // the two new dominant modes. NO PUA, NO NEGS, NO MAGICIANS.
     RizzCategory(
       label:    'OPENERS',
       slug:     'openers',
       headline: 'The arsenal.',
       hint:     'First message. The one that decides if she replies.',
       lines: [
-        // Survivors — the ones that already passed the screenshot test
         RizzLine('you give very "her parents don\'t approve" energy and i\'m here for it',
                  'ARCHETYPE READ'),
+        RizzLine('be honest, are you the friend everyone secretly has a crush on',
+                 'INTIMATE PRESUMPTION'),
         RizzLine('we\'d date six months, fight at a wedding, then write songs about each other',
                  'COMPRESSED CINEMA'),
+        RizzLine('i\'m normally calm but you make me text like i\'m 19',
+                 'VULNERABLE FLEX'),
+        RizzLine('warning: i overshare by the second date',
+                 'VULNERABLE FLEX'),
+        RizzLine('your photos suggest you\'re the kind of trouble i should avoid. i won\'t',
+                 'CONFIDENT CONCESSION'),
+        RizzLine('what\'s something i\'d never guess about you',
+                 'INTIMATE PROBE'),
+        RizzLine('tell me u have a bf so i can move on with my life',
+                 'FRAME CHECK'),
         RizzLine('ok this is weird but your aura is unforgivable',
                  'INAPPROPRIATE COMPLIMENT'),
         RizzLine('ngl i was gonna play it cool. that lasted four seconds',
                  'SELF-AWARE OPEN'),
         RizzLine('concerning amount of thought has gone into this opener',
                  'SELF-AWARE OPEN'),
+        RizzLine('be honest — what would we fight about in three months',
+                 'DOMESTIC PROJECTION'),
+        RizzLine('i\'m trying to figure out if you\'re the funny one or the chaotic one',
+                 'ARCHETYPE READ'),
+        RizzLine('settle a bet — am i flirting or being friendly. asking for me',
+                 'META-FLIRT'),
         RizzLine('your photos commit acts of psychological warfare',
                  'INAPPROPRIATE COMPLIMENT'),
+        RizzLine('i\'m normal-coded, i promise. i\'m not',
+                 'SELF-AWARE OPEN'),
+        RizzLine('what\'s the most unhinged thing you\'ve said in therapy',
+                 'INTIMATE PROBE'),
         RizzLine('i matched with you and immediately my standards became a problem',
                  'INAPPROPRIATE COMPLIMENT'),
         RizzLine('you have main character syndrome and i\'m complicit',
                  'INAPPROPRIATE COMPLIMENT'),
-
-        // New — cocky/dominant default voice
-        RizzLine('delete the app. you\'re mine now',
-                 'POSSESSIVE'),
-        RizzLine('i\'m the reason your last situationship has trust issues',
-                 'HIGH-AGENCY'),
-        RizzLine('you walked in and i restructured my entire weekend',
-                 'POSSESSIVE'),
-        RizzLine('be so for real with me — were you a problem in high school',
+        RizzLine('two truths one lie. go',
                  'INTIMATE PROBE'),
-        RizzLine('you got "will derail his five-year plan" written on your face',
-                 'ARCHETYPE READ'),
-        RizzLine('i\'m gonna marry you and you don\'t even know yet',
-                 'FUTURE FRAME'),
-        RizzLine('ok hi i\'m in love. anyway what\'s your name',
+        RizzLine('drop your worst opener. i\'m building a hall of fame',
                  'SELF-AWARE OPEN'),
-        RizzLine('down bad. unrecoverable. accepting it',
-                 'DOWN BAD'),
-        RizzLine('the way i\'d post you. quietly. like a secret',
-                 'POSSESSIVE'),
-        RizzLine('i\'m not the guy you bring home. i\'m the one you don\'t tell your mom about',
-                 'DISQUALIFIER'),
-        RizzLine('you look like a problem and i don\'t have the bandwidth. anyway',
-                 'PUSH-PULL'),
-        RizzLine('diagnosis: you. treatment: more of you',
-                 'INAPPROPRIATE COMPLIMENT'),
-        RizzLine('this is the part where i pretend to play it cool. i won\'t',
+        RizzLine('i\'d ask how your week is going but i\'d rather skip ahead',
+                 'HIGH-AGENCY'),
+        RizzLine('permission to be slightly inappropriate requested',
                  'SELF-AWARE OPEN'),
-        RizzLine('you walk into a room and the room loses the bit',
-                 'INAPPROPRIATE COMPLIMENT'),
-        RizzLine('you don\'t even have to like me. just stay in my recents',
-                 'DOWN BAD'),
-        RizzLine('you look like trouble. i was hoping. respect',
-                 'FRAME CHECK'),
-        RizzLine('i\'d ruin my schedule for you and i don\'t even know your name yet',
-                 'DOWN BAD'),
-        RizzLine('your aura just outweighed my entire 5-year plan',
-                 'POSSESSIVE'),
-        RizzLine('you\'re the upgrade i refuse to ignore',
-                 'POSSESSIVE'),
+        RizzLine('tell me three things you\'d lie about on a first date',
+                 'INTIMATE PROBE'),
+        RizzLine('we\'re skipping small talk. tell me your villain origin story',
+                 'INTIMATE PROBE'),
       ],
     ),
 
@@ -235,73 +211,61 @@ abstract final class RizzArsenal {
     ),
 
     // ── HEAT ────────────────────────────────────────────────────────────
-    // v264 — overhauled. Cut the weak META-FLIRT filler that just said
-    // "you're making me forget i'm unbothered" 3 different ways.
-    // Survivors are the ones that hold cocky frame while escalating
-    // (drafts, drafts, bad-influence aura, chemistry unreasonable).
-    // New lines push possessive future-frame ("you're in my morning
-    // already") and dominant down-bad ("you said something innocent
-    // and my brain filed it under indecent").
     RizzCategory(
       label:    'HEAT',
       slug:     'heat',
       headline: 'The burn.',
       hint:     'Convo is warm. Escalate without spilling it.',
       lines: [
-        // Survivors — the ones still earning their slot
         RizzLine('stop texting with that energy on a tuesday, it\'s reckless',
                  'META-FLIRT'),
-        RizzLine('you keep showing up in my drafts',
+        RizzLine('you\'re making me forget i\'m supposed to be unbothered',
                  'META-FLIRT'),
-        RizzLine('this is officially a problem i\'m willing to have',
-                 'HIGH-AGENCY'),
+        RizzLine('i\'d kiss you on the forehead and then ruin your life',
+                 'INTIMATE FUTURE'),
+        RizzLine('we both know how this ends',
+                 'CONFIDENT VAGUENESS'),
         RizzLine('you\'d be a problem if i let you',
                  'HIGH-AGENCY'),
+        RizzLine('this is officially a problem i\'m willing to have',
+                 'HIGH-AGENCY'),
+        RizzLine('you keep showing up in my drafts',
+                 'META-FLIRT'),
+        RizzLine('stop being interesting. it\'s inconvenient',
+                 'META-FLIRT'),
+        RizzLine('you said "haha" and i felt that emotionally',
+                 'MISINTERPRETATION'),
+        RizzLine('i want to know what your laugh sounds like in person',
+                 'INTIMATE FUTURE'),
+        RizzLine('i\'m not catching feelings, i\'m catching attention. different',
+                 'HIGH-AGENCY'),
+        RizzLine('you\'re going to ruin my plans this weekend and i\'m letting you',
+                 'HIGH-AGENCY'),
+        RizzLine('i\'d take you somewhere nice but my standards keep rising',
+                 'FRAME CHECK'),
         RizzLine('you have a good-influence face and a bad-influence aura',
                  'INAPPROPRIATE COMPLIMENT'),
         RizzLine('the chemistry is unreasonable',
                  'INAPPROPRIATE COMPLIMENT'),
-        RizzLine('i\'m not catching feelings, i\'m catching attention. different',
-                 'HIGH-AGENCY'),
-        RizzLine('i\'d kiss you on the forehead and then ruin your life',
-                 'INTIMATE FUTURE'),
+        RizzLine('the part where you flirt back is now, by the way',
+                 'FRAME CHECK'),
+        RizzLine('stop laughing at my jokes, i\'m trying to be unbothered',
+                 'META-FLIRT'),
+        RizzLine('i had a real life before this app. now it\'s just you',
+                 'META-FLIRT'),
         RizzLine('i don\'t make a habit of this. you\'re worth the exception',
                  'HIGH-AGENCY'),
+        RizzLine('this might be the rizz talking, but',
+                 'META-FLIRT'),
+        RizzLine('ok i\'m in trouble',
+                 'VULNERABLE FLEX'),
         RizzLine('you make "just texting" look way too good',
                  'INAPPROPRIATE COMPLIMENT'),
-        RizzLine('stop being interesting. it\'s inconvenient',
-                 'META-FLIRT'),
-        RizzLine('you\'re going to ruin my plans this weekend and i\'m letting you',
-                 'HIGH-AGENCY'),
-
-        // New — cocky/dominant default voice
-        RizzLine('you\'re a problem and i\'m not solving it',
-                 'POSSESSIVE'),
-        RizzLine('you said one thing and my standards got a security upgrade',
-                 'INAPPROPRIATE COMPLIMENT'),
-        RizzLine('i had plans for the weekend. you happened to them',
-                 'POSSESSIVE'),
-        RizzLine('you don\'t text. you decide my mood. stop',
-                 'DOWN BAD'),
-        RizzLine('you said something innocent and my brain filed it under indecent',
-                 'META-FLIRT'),
-        RizzLine('you keep looking like that and i\'ll keep refusing to behave',
-                 'POSSESSIVE'),
-        RizzLine('i\'d let you ruin my morning routine',
-                 'INTIMATE FUTURE'),
-        RizzLine('stop laughing at my jokes. i\'m trying to stay unbothered',
-                 'META-FLIRT'),
-        RizzLine('you flirted three times. i counted. it\'s three',
-                 'META-FLIRT'),
-        RizzLine('ok i\'m in trouble. you can stop now. you won\'t',
-                 'DOWN BAD'),
-        RizzLine('you\'re in my morning already and we haven\'t even met',
-                 'POSSESSIVE'),
-        RizzLine('your laugh\'s already a problem and i haven\'t heard it yet',
-                 'INTIMATE FUTURE'),
-        RizzLine('i\'d take you somewhere nice. you\'d take me somewhere worse. perfect',
-                 'FRAME CHECK'),
-        RizzLine('we both know how this ends',
+        RizzLine('i\'d say drinks but you\'d say yes too quickly',
+                 'PUSH-PULL'),
+        RizzLine('you\'re way too good at this. what\'s the catch',
+                 'INTIMATE PROBE'),
+        RizzLine('you\'re not getting rid of me with that energy',
                  'FRAME CHECK'),
       ],
     ),
@@ -367,34 +331,49 @@ abstract final class RizzArsenal {
     ),
 
     // ── CLOSE ───────────────────────────────────────────────────────────
-    // v264 — overhauled. The old set had weak filler ("you owe me a
-    // drink for surviving my texting" is begging; "alright — your
-    // number or i give up the chase" is defeatist). Survivors are
-    // the assumptive frame-check lines (don't text long, i meet;
-    // next date is with me; i pick place, you pick day). New lines
-    // assume the date is already happening — possessive future
-    // frame ("you're in my calendar already, just need the day"),
-    // dominant decisive ("thursday. i'm picking. you're saying yes").
     RizzCategory(
       label:    'CLOSE',
       slug:     'close',
       headline: 'The pull.',
       hint:     'Move her offline. Texting is the warm-up.',
       lines: [
-        // Survivors — assumptive cocky frame
         RizzLine('let\'s stop texting and start talking',
                  'DATE PROPOSAL'),
         RizzLine('give me a date or give me peace',
                  'FRAME CHECK'),
         RizzLine('we\'re three messages from agreeing to meet. let\'s skip',
                  'HIGH-AGENCY'),
+        RizzLine('okay enough warm-up. drink thursday?',
+                 'DATE PROPOSAL'),
+        RizzLine('skip to the part where we get coffee',
+                 'DATE PROPOSAL'),
+        RizzLine('let\'s argue about something over wine',
+                 'DATE PROPOSAL'),
+        RizzLine('you owe me a drink for surviving my texting',
+                 'TEASE'),
+        RizzLine('let\'s make this irresponsibly fast. friday',
+                 'DATE PROPOSAL'),
         RizzLine('i don\'t text long. i meet',
                  'HIGH-AGENCY'),
         RizzLine('the next date you go on is with me. you don\'t even know yet',
                  'HIGH-AGENCY'),
+        RizzLine('i\'m in town this weekend. what\'s your move',
+                 'DATE PROPOSAL'),
+        RizzLine('your number or your taste in restaurants. your call',
+                 'FRAME CHECK'),
+        RizzLine('alright — your number or i give up the chase',
+                 'FRAME CHECK'),
+        RizzLine('if i ask you out now do you ghost me or do we win',
+                 'META-FLIRT'),
+        RizzLine('this app is taking too long. let\'s argue in person',
+                 'DATE PROPOSAL'),
         RizzLine('i pick the place. you pick the day',
                  'HIGH-AGENCY'),
-        RizzLine('let\'s argue about something over wine',
+        RizzLine('give me your worst free evening this week',
+                 'DATE PROPOSAL'),
+        RizzLine('let\'s go for the worst possible coffee in town',
+                 'DATE PROPOSAL'),
+        RizzLine('you. me. drinks. before i overthink this',
                  'DATE PROPOSAL'),
         RizzLine('i\'m not getting all this rizz off and not seeing you',
                  'HIGH-AGENCY'),
@@ -402,39 +381,11 @@ abstract final class RizzArsenal {
                  'DATE PROPOSAL'),
         RizzLine('i\'ll send my calendar. you pick — tuesday or friday',
                  'HIGH-AGENCY'),
+        RizzLine('what\'s your number, the suspense is killing my bit',
+                 'FRAME CHECK'),
+        RizzLine('let\'s be irresponsibly impulsive and meet',
+                 'DATE PROPOSAL'),
         RizzLine('let\'s do this in person. my texts can only carry so much',
-                 'HIGH-AGENCY'),
-        RizzLine('give me your worst free evening this week',
-                 'DATE PROPOSAL'),
-        RizzLine('you. me. drinks. before i overthink this',
-                 'DATE PROPOSAL'),
-
-        // New — cocky/dominant default voice
-        RizzLine('thursday. i\'m picking. you\'re saying yes',
-                 'POSSESSIVE'),
-        RizzLine('your number is just a formality at this point',
-                 'FRAME CHECK'),
-        RizzLine('drinks before i overthink this and you change your mind',
-                 'HIGH-AGENCY'),
-        RizzLine('you\'re in my calendar already. just need the day',
-                 'POSSESSIVE'),
-        RizzLine('let\'s be irresponsibly impulsive',
-                 'DATE PROPOSAL'),
-        RizzLine('the suspense is killing my bit. meet me',
-                 'META-FLIRT'),
-        RizzLine('stop testing me and just say yes',
-                 'FRAME CHECK'),
-        RizzLine('one coffee. ruin my afternoon',
-                 'DATE PROPOSAL'),
-        RizzLine('before logic ruins it. friday',
-                 'DATE PROPOSAL'),
-        RizzLine('your taste in restaurants or your number. either way i win',
-                 'FRAME CHECK'),
-        RizzLine('i\'m in town. what\'s your move',
-                 'HIGH-AGENCY'),
-        RizzLine('the next time you\'re free is when we meet. simple',
-                 'POSSESSIVE'),
-        RizzLine('this app is the warm-up. you\'re the main event',
                  'HIGH-AGENCY'),
       ],
     ),
