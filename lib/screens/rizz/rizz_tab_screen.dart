@@ -150,7 +150,13 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 36),
+            // v275 — gap to first card pushed 36 → 80 per bro:
+            // "push these three cards down a bit." With the subhead
+            // gone (v274) the wordmark was floating alone right
+            // above the first card; the new gap puts the cards in
+            // the lower 2/3 of the screen where the thumb naturally
+            // sits.
+            const SizedBox(height: 80),
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
