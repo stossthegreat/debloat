@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ImHim — Delete Your Account</title>
-<meta name="description" content="Delete your ImHim (formerly Mirrorly) account and account data. Operated by M2MB.">
+<meta name="description" content="Delete your ImHim (formerly Mirrorly) account and account data.">
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
@@ -57,7 +57,7 @@
 <body>
 <main>
 <header>
-  <div class="eyebrow">ImHim by M2MB · Account Deletion</div>
+  <div class="eyebrow">ImHim · Account Deletion</div>
   <h1>Delete your ImHim account &amp; data</h1>
   <p style="color:#888; font-size:13px; margin-top: 8px;">
     Last updated: 20 June 2026
@@ -65,7 +65,7 @@
 </header>
 
 <div class="callout">
-  <p style="margin:0;"><strong>ImHim</strong> (Android package name <code>com.mirrorly.mirrorly</code>, previously published as &ldquo;Mirrorly&rdquo;) is operated by <strong>M2MB</strong>. This page explains how to delete your ImHim account and the data ImHim has processed about you.</p>
+  <p style="margin:0;"><strong>ImHim</strong> (Android package name <code>com.mirrorly.mirrorly</code>, previously published as &ldquo;Mirrorly&rdquo;). This page explains how to delete your ImHim account and the data ImHim has processed about you.</p>
 </div>
 
 <h2>About ImHim accounts</h2>
@@ -74,7 +74,7 @@
 <ul>
   <li><strong>On your device</strong> — your scan JPEGs, scores, preferences, streak progress, rizz memory, and any saved Mirror renders are stored locally in the ImHim app container.</li>
   <li><strong>On your Google Play / Apple App Store account</strong> — your subscription status, billing history, and renewal preferences.</li>
-  <li><strong>Transiently on M2MB&rsquo;s backend</strong> — when you tap a feature that fires an AI request (a scan, a Mirror render, a rizz reply, a roleplay turn), photo bytes or audio bytes pass through M2MB&rsquo;s backend in-memory to the AI provider (OpenAI / Replicate) and back. M2MB does not persist those bytes; only timestamps and HTTP status codes are retained for 30 days for diagnostics, then auto-expired.</li>
+  <li><strong>Transiently on the ImHim backend</strong> — when you tap a feature that fires an AI request (a scan, a Mirror render, a rizz reply, a roleplay turn), photo bytes or audio bytes pass through the ImHim backend in-memory to the AI provider (OpenAI / Replicate) and back. Those bytes are not persisted; only timestamps and HTTP status codes are retained for 30 days for diagnostics, then auto-expired.</li>
 </ul>
 
 <h2>How to delete your ImHim account and data — in-app (recommended)</h2>
@@ -93,10 +93,10 @@
   <li>Every cached AI-render URL.</li>
   <li>Every locally-stored consent flag and setting.</li>
 </ul>
-<p>The deletion is immediate and irreversible. There is nothing held on M2MB&rsquo;s backend that needs separate deletion because nothing was ever persisted there.</p>
+<p>The deletion is immediate and irreversible. There is nothing held server-side that needs separate deletion because nothing was ever persisted there.</p>
 
 <h2>Cancelling your subscription</h2>
-<p>Deleting your ImHim account in-app does <strong>not</strong> cancel your active Google Play (or Apple App Store) subscription. Billing is managed by Google / Apple, not by M2MB. To cancel:</p>
+<p>Deleting your ImHim account in-app does <strong>not</strong> cancel your active Google Play (or Apple App Store) subscription. Billing is managed by Google / Apple directly. To cancel:</p>
 <ul>
   <li><strong>Android:</strong> Google Play &rarr; Profile &rarr; Payments &amp; subscriptions &rarr; Subscriptions &rarr; ImHim &rarr; Cancel subscription.</li>
   <li><strong>iOS:</strong> Settings app &rarr; Apple ID (your name) &rarr; Subscriptions &rarr; ImHim &rarr; Cancel subscription.</li>
@@ -104,10 +104,10 @@
 <p>You may cancel either before or after deleting your in-app data. Cancellation takes effect at the end of the current billing period; partial-period refunds are handled by Google or Apple at their discretion.</p>
 
 <h2>If you have already uninstalled ImHim</h2>
-<p>Uninstalling the app removes the on-device data automatically. There is no remaining M2MB-side account to delete because M2MB never held one. If you still want a written confirmation that nothing remains, email the address below.</p>
+<p>Uninstalling the app removes the on-device data automatically. There is no remaining server-side account to delete because the app never held one. If you still want a written confirmation that nothing remains, email the address below.</p>
 
-<h2>Contact M2MB for additional requests</h2>
-<p>If you are outside the EU/UK and want to email a deletion request anyway, or if you are inside the EU/UK and want to exercise your GDPR Article 17 right of erasure in writing, contact M2MB at:</p>
+<h2>Contact for additional requests</h2>
+<p>If you are outside the EU/UK and want to email a deletion request anyway, or if you are inside the EU/UK and want to exercise your GDPR Article 17 right of erasure in writing, contact us at:</p>
 <p><strong>Email:</strong> <a href="mailto:info@m2mb.co.uk">info@m2mb.co.uk</a></p>
 <p>Include the following so we can confirm there is nothing to delete:</p>
 <ul>
@@ -115,13 +115,13 @@
   <li>The Google Play account email (or Apple ID) you used to purchase, if applicable.</li>
   <li>The country store you used (so we know which Google Play / App Store region your purchase lives in).</li>
 </ul>
-<p>We will respond within 30 days confirming what has been deleted (in practice, nothing M2MB-side because we do not persist your data; we will confirm that fact in writing).</p>
+<p>We will respond within 30 days confirming what has been deleted (in practice, nothing server-side because the app does not persist your data; we will confirm that fact in writing).</p>
 
-<h2>About M2MB</h2>
-<p>ImHim is developed and operated by <strong>M2MB</strong>, registered in the United Kingdom. Contact email <a href="mailto:info@m2mb.co.uk">info@m2mb.co.uk</a>. Our privacy policy is at <a href="privacy.html">privacy.html</a> and our terms of use are at <a href="terms.html">terms.html</a>.</p>
+<h2>More about ImHim</h2>
+<p>Our privacy policy is at <a href="privacy.html">privacy.html</a> and our terms of use are at <a href="terms.html">terms.html</a>.</p>
 
 <footer>
-  &copy; 2026 M2MB. ImHim (formerly Mirrorly) and the ImHim word mark are trademarks of M2MB.
+  &copy; 2026 ImHim &middot; formerly Mirrorly.
 </footer>
 </main>
 </body>
