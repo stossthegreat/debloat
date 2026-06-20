@@ -56,13 +56,6 @@ class RizzReplyScreen extends StatefulWidget {
 
 class _RizzReplyScreenState extends State<RizzReplyScreen> {
   final _herCtrl = TextEditingController();
-  /// v269 — free-text CONTEXT field. Rizz AI's #1 wished feature
-  /// (per the App Store review research): users want to type
-  /// "she's my coworker, we matched on Hinge, last date was 5
-  /// days ago" alongside the screenshot so the model has the
-  /// story behind the chat. Backend already accepts `ctx` — we
-  /// were just never collecting it from the UI.
-  final _ctxCtrl = TextEditingController();
   bool _generating = false;
   Uint8List? _screenshotBytes;
   List<RizzReply>? _replies;
@@ -78,12 +71,10 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
   /// moment the request fires so subsequent re-rolls don't keep
   /// the bias unless the user re-selects.
   String _scenario = '';
-  /// v268 — which side of the chat-bubble layout belongs to the user.
-  /// Default `auto` lets the backend infer from layout / vocabulary,
-  /// matching the legacy behaviour. The user can override with one
-  /// tap when the model gets it backwards — kills Wing AI's #1
-  /// complaint at zero added cost.
-  BubbleSide _mySide = BubbleSide.auto;
+  // v276 — _mySide removed with the toggle. Service still accepts
+  // BubbleSide on generate() but we never set it from this screen
+  // anymore; the param defaults to BubbleSide.auto so the legacy
+  // "model infers" behaviour is what every call uses.
 
   @override
   void initState() {
@@ -111,7 +102,6 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
   @override
   void dispose() {
     _herCtrl.dispose();
-    _ctxCtrl.dispose();
     super.dispose();
   }
 
@@ -206,8 +196,6 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
         vibe:             _tone,
         scenario:         scenarioForCall,
         previous:         previousForCall,
-        mySide:           _mySide,
-        context:          _ctxCtrl.text.trim(),
       // 55s ceiling — vision adds ~1-2s vs text path; this gives the
       // service-level 50s some headroom before the spinner clears.
       ).timeout(const Duration(seconds: 55));
@@ -448,36 +436,14 @@ class _RizzReplyScreenState extends State<RizzReplyScreen> {
             const SizedBox(height: 18),
           ],
 
-          // v268 — bubble-side override. Only renders when we have a
-          // screenshot in hand. AUTO is the default; tapping LEFT or
-          // RIGHT immediately re-fires _generate with the explicit
-          // side hint so the user can recover from a backwards
-          // inference in one tap. Wing AI's #1 complaint dies here.
-          if (_screenshotBytes != null) ...[
-            _BubbleSideToggle(
-              current: _mySide,
-              disabled: _generating,
-              onChange: (side) async {
-                if (side == _mySide) return;
-                HapticFeedback.selectionClick();
-                setState(() => _mySide = side);
-                await _generate();
-              },
-            ),
-            const SizedBox(height: 12),
-            // v269 — free-text CONTEXT field. Rizz AI's #1 wished
-            // feature (per App Store review research). The user
-            // types "she's my coworker, we matched on Hinge, last
-            // date was 5 days ago" and the backend uses it as the
-            // backstory behind the chat. Optional — empty by
-            // default, doesn't affect anything if left blank.
-            _ContextField(
-              controller: _ctxCtrl,
-              disabled:   _generating,
-              onSubmit:   _generate,
-            ),
-            const SizedBox(height: 12),
-          ],
+          // v276 — bubble-side toggle (v268) + free-text context
+          // field (v269) both removed per bro. Side-hint signal
+          // wasn't moving the model reliably in production and the
+          // context box added clutter on a screen that's supposed
+          // to be one tap upload → instant replies. Service-side
+          // BubbleSide enum + ctx param stay (zero callers now,
+          // but harmless and avoids ripple-editing the service
+          // surface).
 
           // Full screenshot preview (or typed-text card if no image).
           if (_screenshotBytes != null)
@@ -1687,196 +1653,6 @@ class _BrandHeartbeatDotState extends State<_BrandHeartbeatDot>
           ),
         );
       },
-    );
-  }
-}
-
-/// v268 — three-pill toggle that lets the user mark which side of
-/// the chat-bubble layout is theirs. Default `AUTO` matches the
-/// pre-v268 behaviour (model infers from layout). Tapping `← LEFT`
-/// or `RIGHT →` injects an explicit hint into the next /rizz/reply
-/// call, killing Wing AI's #1 complaint ("can't tell who's talking
-/// in screenshots") at zero added cost.
-///
-/// Sits between the situation chips and the screenshot preview so
-/// the user can see the toggle BEFORE the screenshot, clock the
-/// orientation, and switch sides if the model got it backwards.
-/// Re-fires _generate on every change — replies refresh in-place
-/// with the correct seat.
-class _BubbleSideToggle extends StatelessWidget {
-  final BubbleSide current;
-  final bool disabled;
-  final ValueChanged<BubbleSide> onChange;
-  const _BubbleSideToggle({
-    required this.current,
-    required this.disabled,
-    required this.onChange,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('WHICH SIDE IS YOU?',
-            style: GoogleFonts.inter(
-              color: AppColors.textTertiary,
-              fontSize: 10, letterSpacing: 2.6,
-              fontWeight: FontWeight.w800,
-            )),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: _SideChip(
-                label:    'AUTO',
-                selected: current == BubbleSide.auto,
-                disabled: disabled,
-                onTap:    () => onChange(BubbleSide.auto),
-              )),
-              const SizedBox(width: 8),
-              Expanded(child: _SideChip(
-                label:    '← I\'M LEFT',
-                selected: current == BubbleSide.left,
-                disabled: disabled,
-                onTap:    () => onChange(BubbleSide.left),
-              )),
-              const SizedBox(width: 8),
-              Expanded(child: _SideChip(
-                label:    'I\'M RIGHT →',
-                selected: current == BubbleSide.right,
-                disabled: disabled,
-                onTap:    () => onChange(BubbleSide.right),
-              )),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SideChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final bool disabled;
-  final VoidCallback onTap;
-  const _SideChip({
-    required this.label,
-    required this.selected,
-    required this.disabled,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final fill   = selected ? AppColors.red.withValues(alpha: 0.18)
-                            : AppColors.surface1;
-    final border = selected ? AppColors.red
-                            : AppColors.surface3;
-    final fg     = selected ? Colors.white
-                            : (disabled ? AppColors.textTertiary
-                                        : AppColors.textSecondary);
-    return Material(
-      color: fill,
-      borderRadius: BorderRadius.circular(99),
-      child: InkWell(
-        onTap: disabled ? null : onTap,
-        borderRadius: BorderRadius.circular(99),
-        child: Container(
-          height: 38,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(99),
-            border: Border.all(
-              color: border, width: selected ? 1.2 : 0.6),
-          ),
-          child: Text(label,
-            style: GoogleFonts.inter(
-              color: fg,
-              fontSize: 11.5, letterSpacing: 1.2,
-              fontWeight: FontWeight.w800,
-            )),
-        ),
-      ),
-    );
-  }
-}
-
-
-/// v269 — free-text CONTEXT field. Sits between the bubble-side
-/// toggle and the screenshot preview. Optional input; empty by
-/// default. When the user types into it, [onSubmit] re-fires
-/// _generate so replies refresh with the new backstory. Matches
-/// the chip-style aesthetics of the rest of the screen (rounded
-/// pill, surface1 fill, subtle red focus border).
-class _ContextField extends StatelessWidget {
-  final TextEditingController controller;
-  final bool disabled;
-  final Future<void> Function() onSubmit;
-  const _ContextField({
-    required this.controller,
-    required this.disabled,
-    required this.onSubmit,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('ADD CONTEXT (OPTIONAL)',
-            style: GoogleFonts.inter(
-              color: AppColors.textTertiary,
-              fontSize: 10, letterSpacing: 2.6,
-              fontWeight: FontWeight.w800,
-            )),
-          const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surface1,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: AppColors.surface3, width: 0.6),
-            ),
-            child: TextField(
-              controller: controller,
-              enabled: !disabled,
-              minLines: 1,
-              maxLines: 3,
-              maxLength: 240,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) async => await onSubmit(),
-              cursorColor: AppColors.red,
-              style: GoogleFonts.inter(
-                color: AppColors.textPrimary,
-                fontSize: 13.5, height: 1.4,
-                fontWeight: FontWeight.w500,
-              ),
-              decoration: InputDecoration(
-                hintText: 'e.g. she\'s my coworker · matched on '
-                          'Hinge last week · last date was 5 days '
-                          'ago and went well',
-                hintStyle: GoogleFonts.inter(
-                  color: AppColors.textTertiary,
-                  fontSize: 13, height: 1.35,
-                  fontWeight: FontWeight.w400,
-                ),
-                contentPadding: const EdgeInsets.fromLTRB(
-                    14, 12, 14, 12),
-                counterText: '',
-                border:        InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                isDense:       true,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
