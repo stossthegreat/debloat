@@ -75,6 +75,11 @@ class DailyNudgeService {
             presentAlert: true,
             presentBadge: true,
             presentSound: true,
+            // v280 — set the app-icon badge count to 1 so the iOS
+            // launcher shows a red dot with "1" until the user opens
+            // the app. Cleared by NotificationService.clearIconBadge
+            // from the foreground lifecycle hook in main.dart.
+            badgeNumber: 1,
           ),
           android: AndroidNotificationDetails(
             'daily_nudge',

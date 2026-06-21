@@ -240,7 +240,11 @@ class NotificationService {
       channelDescription: 'Daily nudge to log your protocol before midnight.',
       importance: Importance.high, priority: Priority.high,
     ),
-    iOS: DarwinNotificationDetails(),
+    // v280 — badgeNumber: 1 makes iOS render the red unread-count
+    // dot on the app icon when this notification fires. Cleared on
+    // app foreground via the lifecycle hook in main.dart. Retention
+    // play: the red dot is the strongest re-open prompt iOS offers.
+    iOS: DarwinNotificationDetails(badgeNumber: 1),
   );
 
   static NotificationDetails _rescanDetails() => const NotificationDetails(
@@ -249,7 +253,7 @@ class NotificationService {
       channelDescription: 'Milestone prompts to rescan and check your deltas.',
       importance: Importance.defaultImportance, priority: Priority.defaultPriority,
     ),
-    iOS: DarwinNotificationDetails(),
+    iOS: DarwinNotificationDetails(badgeNumber: 1),
   );
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -359,6 +363,31 @@ class NotificationService {
           'Daily nudge to run an Eyes / Game drill and keep the streak alive.',
       importance: Importance.high, priority: Priority.high,
     ),
-    iOS: DarwinNotificationDetails(),
+    iOS: DarwinNotificationDetails(badgeNumber: 1),
   );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  //  BADGE — clear the red unread-count dot on app icon
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// v280 — clear the iOS app-icon badge (the red number). Called from
+  /// the lifecycle observer in main.dart whenever the app foregrounds,
+  /// so the user opening the app counts as "I saw the notification".
+  ///
+  /// Implementation: removeAllDeliveredNotifications also resets the
+  /// application icon badge on iOS — that's the documented side-effect.
+  /// On Android the per-icon dot is system-managed and clears
+  /// automatically when the notification is tapped or dismissed; no
+  /// code path needed.
+  static Future<void> clearIconBadge() async {
+    if (!_initialized) return;
+    try {
+      await _plugin
+          .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin>()
+          ?.removeAllDeliveredNotifications();
+    } catch (e) {
+      debugPrint('clearIconBadge failed: $e');
+    }
+  }
 }

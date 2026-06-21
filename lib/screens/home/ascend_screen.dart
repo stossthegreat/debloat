@@ -1,41 +1,80 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../models/scan_record.dart' show ScanRecord, ScanFixSummary;
+import '../../models/protocol.dart';
+import '../../models/scan_record.dart' show ScanRecord;
+import '../../services/ascension_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/mirrorly_components.dart';
 
-/// ASCEND — the home tab. One screen, one daily ritual.
+/// v281 — ASCENSION home tab.
+///
+/// Total rebuild. The previous AscendScreen MEASURED progress (three
+/// pillar score cards, percentages, deltas). Bro:
+///
+///   > Your current Progress screen measures.
+///   > A retention screen motivates.
+///   > Those are completely different jobs.
+///
+/// New job: answer one question — "Who do I become if I finish?" —
+/// and surface the fear of not finishing alongside the status of
+/// who they're becoming.
+///
+/// Seven sections, in order:
+///   1. HERO — massive flame ring, DAY N / 60, identity rank inside,
+///      days-remaining + tagline below.
+///   2. COST OF QUITTING — rotating fear-card. Day-anchored copy so
+///      it cycles instead of going stale.
+///   3. TODAY'S ASCENSION — 5 daily MISSIONS (not tasks). 4/5 COMPLETE
+///      header, each tick visibly feeds the flame.
+///   4. RANK PROGRESSION — Observer → Initiate → Contender →
+///      Dangerous → Magnetic → ImHim. Status ladder, not stats.
+///   5. ASCENSION RECORD — timeline of milestones. "This becomes
+///      their story."
+///   6. STREAK — huge flame number. Users protect streaks, not scores.
+///   7. FINAL FORM — Day-60 unlock card, locked + blurred. Anticipation
+///      IS the retention.
 class AscendScreen extends StatelessWidget {
-  /// Switch the bottom-nav to a specific tab.
+  /// Switch the bottom-nav to a specific tab. 1=Looks, 2=Game, 3=Rizz.
   final ValueChanged<int> onJumpToTab;
 
-  /// Latest scan, if any. Drives whether the Potential card unlocks.
+  /// Active 60-day protocol, if any. Drives Day-N, streak,
+  /// completedToday, and rank progression.
+  final Protocol? protocol;
+
+  /// Latest scan in history (used for the Ascension Record timeline).
   final ScanRecord? latest;
 
+  /// All scans the user has logged (chronological → reverse-chronological
+  /// in the timeline). Empty list when fresh-install.
+  final List<ScanRecord> allScans;
+
+  /// Composite day-streak from home_screen — the bigger of the protocol
+  /// streak and the triple-pillar streak. Used in the streak panel.
   final int dayStreak;
-  final int looksScore;
-  final int auraScore;
-  final int gameScore;
-  /// True if a scan / protocol check-in lands today.
+
+  /// Did the user complete their protocol check-in today?
   final bool looksDoneToday;
-  /// True if a gaze lesson completed today.
+
+  /// Did the user complete a gaze drill today? (Eyes tab.)
   final bool auraDoneToday;
-  /// True if a Free Flow session completed today.
+
+  /// Did the user complete a Free Flow / roleplay session today?
   final bool gameDoneToday;
 
   const AscendScreen({
     super.key,
     required this.onJumpToTab,
+    this.protocol,
     this.latest,
+    this.allScans = const [],
     this.dayStreak = 0,
-    this.looksScore = 0,
-    this.auraScore = 0,
-    this.gameScore = 0,
     this.looksDoneToday = false,
     this.auraDoneToday = false,
     this.gameDoneToday = false,
@@ -43,23 +82,26 @@ class AscendScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasScan = latest != null;
+    final day            = AscensionService.dayFor(protocol);
+    final daysLeft       = AscensionService.daysRemainingFor(protocol);
+    final rank           = AscensionService.rankFor(day);
+    final missions       = _buildMissions();
+    final missionsDone   = missions.where((m) => m.done).length;
+    final costLine       = AscensionService.costOfQuittingLine(day);
+    final milestones     = _buildMilestones();
+    final finalUnlocked  = AscensionService.finalFormUnlockedFor(protocol);
+    final longestStreak  = protocol?.longestStreak ?? dayStreak;
+
     return Scaffold(
       backgroundColor: AppColors.base,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.only(bottom: Sp.xl),
           children: [
-            // ── Masthead — streak chip is now an ACTION, top right,
-            //    next to settings. Tappable → opens the streaks sheet.
             MirrorlyMasthead(
-              title: 'ImHim',
-              subtitle: 'Ascend',
+              title: 'ASCENSION',
+              subtitle: rank.label,
               actions: [
-                _StreakAction(
-                  days: dayStreak,
-                  onTap: () => _showStreaks(context),
-                ),
                 MastheadAction(
                   icon: Icons.tune,
                   onTap: () => context.push('/settings'),
@@ -67,839 +109,528 @@ class AscendScreen extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: Sp.md),
+            const SizedBox(height: Sp.lg),
 
-            // ── Three pillar score cards. A touch bigger than before
-            //    (they're the hero). LOOKS / AURA / GAME, each /10,
-            //    zero until the user uses that pillar.
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-              child: Row(
-                children: [
-                  Expanded(child: _PillarScore(
-                    label: 'LOOKS',
-                    score: looksScore,
-                    color: AppColors.red,
-                  )),
-                  const SizedBox(width: 10),
-                  Expanded(child: _PillarScore(
-                    label: 'AURA',
-                    score: auraScore,
-                    color: AppColors.accent,
-                  )),
-                  const SizedBox(width: 10),
-                  Expanded(child: _PillarScore(
-                    label: 'GAME',
-                    score: gameScore,
-                    color: AppColors.signalAmber,
-                  )),
-                ],
-              ),
-            ),
+            // ── 1 — HERO. Big flame ring, day count, rank inside.
+            _FlameHero(
+              day:       day,
+              total:     AscensionService.totalDays,
+              rank:      rank,
+              daysLeft:  daysLeft,
+            ).animate().fadeIn(duration: 480.ms)
+              .scale(begin: const Offset(0.92, 0.92),
+                end: const Offset(1, 1), curve: Curves.easeOutBack),
 
-            // ── POTENTIAL CARD — AI-projected gains from the latest
-            //    scan. Appears only after a scan + a non-empty fix
-            //    list. The headline is the sum of per-fix `points`
-            //    the backend prompt returned (12-22 range typical);
-            //    each row names the specific fix the AI surfaced so
-            //    the user sees what they're committing to, not just
-            //    an aggregate number. Tap routes to the Looks tab
-            //    where each fix can be added to the streak.
-            if (hasScan &&
-                latest!.fixHeadlines.isNotEmpty &&
-                latest!.projectedDelta > 0) ...[
-              const SizedBox(height: Sp.md),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-                child: _PotentialCard(
-                  delta:  latest!.projectedDelta,
-                  fixes:  latest!.fixHeadlines,
-                  onTap:  () => onJumpToTab(1),
-                ),
-              ).animate().fadeIn(delay: 90.ms, duration: 400.ms),
+            const SizedBox(height: Sp.xl),
+
+            // ── 2 — COST OF QUITTING. Rotating fear card.
+            if (costLine.isNotEmpty) ...[
+              _CostOfQuittingCard(line: costLine)
+                .animate().fadeIn(delay: 240.ms, duration: 400.ms),
+              const SizedBox(height: Sp.lg),
             ],
 
-            const SizedBox(height: Sp.md),
+            // ── 3 — TODAY'S ASCENSION. Five missions, status header.
+            _MissionsPanel(
+              missions: missions,
+              done:     missionsDone,
+            ).animate().fadeIn(delay: 320.ms, duration: 400.ms),
 
-            // ── Today's Ascension — 3 missions with a hitting tagline.
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-              child: _TodaysAscension(
-                onJumpToTab: onJumpToTab,
-                hasScan: hasScan,
-                looksDone: looksDoneToday,
-                auraDone:  auraDoneToday,
-                gameDone:  gameDoneToday,
-              ),
-            ).animate().fadeIn(delay: 120.ms, duration: 400.ms),
+            const SizedBox(height: Sp.lg),
+
+            // ── 4 — RANK PROGRESSION. The identity ladder.
+            _RankProgression(currentDay: day)
+              .animate().fadeIn(delay: 400.ms, duration: 400.ms),
+
+            const SizedBox(height: Sp.lg),
+
+            // ── 5 — ASCENSION RECORD. Timeline of milestones.
+            _RecordTimeline(milestones: milestones)
+              .animate().fadeIn(delay: 480.ms, duration: 400.ms),
+
+            const SizedBox(height: Sp.lg),
+
+            // ── 6 — STREAK. Huge flame number.
+            _StreakPanel(
+              current: dayStreak,
+              longest: longestStreak,
+            ).animate().fadeIn(delay: 560.ms, duration: 400.ms),
+
+            const SizedBox(height: Sp.lg),
+
+            // ── 7 — FINAL FORM. Locked premium reward.
+            _FinalFormCard(
+              unlocked: finalUnlocked,
+              daysLeft: daysLeft,
+            ).animate().fadeIn(delay: 640.ms, duration: 400.ms),
+
+            const SizedBox(height: Sp.xl),
           ],
         ),
       ),
     );
   }
 
-  void _showStreaks(BuildContext context) {
-    HapticFeedback.selectionClick();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.base,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+  // ── Mission builder ──────────────────────────────────────────────────────
+  //
+  // 5 missions, in priority order. Bro's spec verbatim, mapped onto
+  // the data we already have on this screen.
+  //
+  //   1. Complete protocol  ← looksDoneToday
+  //   2. Complete Arena rep ← gameDoneToday (Free Flow session today)
+  //   3. Submit scan         ← scan today (only required ~1/wk; we
+  //                             show it green when there's a scan
+  //                             from today, red dot otherwise)
+  //   4. Complete challenge ← auraDoneToday (gaze drill — "challenge"
+  //                             is the cleanest verb for that pillar)
+  //   5. Open app tomorrow  ← always undone today; flips done the
+  //                             moment they open the app on the
+  //                             NEXT calendar day. Acts as the
+  //                             return-tomorrow contract.
+  List<AscendMission> _buildMissions() {
+    final scanToday = _hasScanFromToday();
+    return [
+      AscendMission(
+        title: 'Complete today\'s protocol',
+        hint:  looksDoneToday ? 'logged' : 'log day ${protocol?.currentDay ?? 1}',
+        done:  looksDoneToday,
+        onTap: () => onJumpToTab(0),
       ),
-      builder: (_) => _StreaksSheet(
-        looks: looksScore,
-        aura:  auraScore,
-        game:  gameScore,
-        days:  dayStreak,
+      AscendMission(
+        title: 'Run a roleplay rep',
+        hint:  gameDoneToday ? 'session in the can' : 'one Free Flow round',
+        done:  gameDoneToday,
+        onTap: () => onJumpToTab(1),
       ),
-    );
+      AscendMission(
+        title: 'Submit scan',
+        hint:  scanToday ? 'logged today' : 'weekly — keep the delta honest',
+        done:  scanToday,
+        onTap: () => onJumpToTab(0),
+      ),
+      AscendMission(
+        title: 'Complete a challenge',
+        hint:  auraDoneToday ? 'cleared' : 'eye-contact drill or rizz exchange',
+        done:  auraDoneToday,
+        onTap: () => onJumpToTab(2),
+      ),
+      const AscendMission(
+        title: 'Return tomorrow',
+        hint:  'the contract — every day, no exceptions',
+        done:  false,
+      ),
+    ];
+  }
+
+  bool _hasScanFromToday() {
+    if (latest == null) return false;
+    final now = DateTime.now();
+    final t   = latest!.takenAt;
+    return t.year == now.year && t.month == now.month && t.day == now.day;
+  }
+
+  // ── Milestone builder ────────────────────────────────────────────────────
+  //
+  // Real records, derived from existing data. Bro: "This becomes
+  // their story." For v1 we surface:
+  //   - Protocol start ("DAY 1 — You committed.")
+  //   - Each completed scan ("DAY N — Rescan logged.")
+  //   - Streak milestones (3, 7, 14, 30 day flags)
+  //   - Today's day count (always last entry, "DAY N — Today.")
+  // Sorted reverse-chronological so the latest action is at the top
+  // of the visible list.
+  List<AscendMilestone> _buildMilestones() {
+    final out = <AscendMilestone>[];
+    final p   = protocol;
+    if (p != null) {
+      out.add(AscendMilestone(
+        day:    1,
+        title:  'You committed',
+        detail: 'Day 1 of the ${p.lengthDays}-day ascension.',
+      ));
+      // Streak flags
+      for (final mark in const [3, 7, 14, 21, 30, 45, 60]) {
+        if (p.effectiveStreak >= mark) {
+          out.add(AscendMilestone(
+            day:    mark,
+            title:  '$mark-day streak',
+            detail: 'You showed up $mark days in a row.',
+          ));
+        }
+      }
+    }
+    // Scan history — newest at the top of this loop; we'll sort below.
+    for (final s in allScans.take(8)) {
+      final dayAt = p == null
+          ? 1
+          : (s.takenAt.difference(p.startedAt).inDays + 1).clamp(1, 999);
+      out.add(AscendMilestone(
+        day:    dayAt,
+        title:  'Scan logged',
+        detail: 'Score ${s.score} · ${_humanDate(s.takenAt)}',
+      ));
+    }
+    out.sort((a, b) => b.day.compareTo(a.day));
+    return out;
+  }
+
+  static String _humanDate(DateTime t) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${t.day} ${months[t.month - 1]}';
   }
 }
 
-// ─── Streak action (top-right of masthead) ────────────────────────
-// Compact pill: flame + day count, tap-to-open the streaks sheet.
+// ═══════════════════════════════════════════════════════════════════════════
+//  SECTION 1 — FLAME HERO
+// ═══════════════════════════════════════════════════════════════════════════
 
-class _StreakAction extends StatelessWidget {
-  final int days;
-  final VoidCallback onTap;
-  const _StreakAction({required this.days, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final live = days > 0;
-    final color = live ? AppColors.red : AppColors.textTertiary;
-    return InkWell(
-      onTap: () { HapticFeedback.selectionClick(); onTap(); },
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: AppColors.surface1,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withOpacity(0.50), width: 1),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.local_fire_department_rounded, size: 16, color: color),
-            const SizedBox(width: 6),
-            Text(
-              '$days',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.2,
-                height: 1.0,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Pillar score card (a touch bigger than before) ──────────────
-
-class _PillarScore extends StatelessWidget {
-  final String label;
-  final int score;
-  final Color color;
-  const _PillarScore({
-    required this.label,
-    required this.score,
-    required this.color,
+/// Big flame + ring. Day-N / total-N inside, identity rank label
+/// directly under, days-remaining + rank tagline beneath that.
+class _FlameHero extends StatefulWidget {
+  final int day;
+  final int total;
+  final AscendRank rank;
+  final int daysLeft;
+  const _FlameHero({
+    required this.day,
+    required this.total,
+    required this.rank,
+    required this.daysLeft,
   });
-
   @override
-  Widget build(BuildContext context) {
-    final live = score > 0;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(Rd.lg),
-        border: Border.all(
-            color: live ? color.withOpacity(0.55) : AppColors.surface3,
-            width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: AppTypography.label.copyWith(
-              color: color,
-              fontSize: 11,
-              letterSpacing: 1.8,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 10),
-          RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: '$score',
-                  style: GoogleFonts.playfairDisplay(
-                    fontSize: 34,
-                    fontWeight: FontWeight.w800,
-                    fontStyle: FontStyle.italic,
-                    color: live ? color : AppColors.textPrimary,
-                    height: 1.0,
-                    letterSpacing: -0.8,
-                  ),
-                ),
-                TextSpan(
-                  text: ' / 10',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textTertiary,
-                    height: 1.0,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+  State<_FlameHero> createState() => _FlameHeroState();
+}
+
+class _FlameHeroState extends State<_FlameHero>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat(reverse: true);
   }
-}
-
-// ─── Today's Ascension — 3 missions + hitting tagline + pulsing CTA
-
-class _TodaysAscension extends StatelessWidget {
-  final ValueChanged<int> onJumpToTab;
-  final bool hasScan;
-  final bool looksDone;
-  final bool auraDone;
-  final bool gameDone;
-  const _TodaysAscension({
-    required this.onJumpToTab,
-    required this.hasScan,
-    required this.looksDone,
-    required this.auraDone,
-    required this.gameDone,
-  });
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(Sp.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(Rd.xl),
-        border: Border.all(color: AppColors.surface3, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'TODAY\'S ASCENSION',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                    letterSpacing: 1.6,
-                  ),
-                ),
-              ),
-              Builder(
-                builder: (_) {
-                  final done =
-                      (looksDone ? 1 : 0) + (auraDone ? 1 : 0) + (gameDone ? 1 : 0);
-                  return Text(
-                    '$done / 3',
-                    style: AppTypography.label.copyWith(
-                      color: done == 3 ? AppColors.signalGreen : AppColors.textTertiary,
-                      fontSize: 10,
-                      letterSpacing: 1.4,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Looks. Aura. Game. Become unavoidable.',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontStyle: FontStyle.italic,
-              fontWeight: FontWeight.w600,
-              color: AppColors.red,
-              letterSpacing: 0.1,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: Sp.md),
-          // ── LOOKS mission — pre-scan it's literally "scan your face."
-          //    Once the user has a scan, swap to the real mog routine.
-          _MissionRow(
-            color: AppColors.red,
-            icon: hasScan
-                ? Icons.face_retouching_natural_outlined
-                : Icons.center_focus_strong_rounded,
-            category: 'LOOKS',
-            title: hasScan ? 'Mog Streak' : 'Scan your face',
-            minutes: hasScan ? 3 : 1,
-            done: looksDone,
-            onTap: () {
-              if (hasScan) {
-                onJumpToTab(1);
-              } else {
-                // Route straight to the scan flow — same handler the
-                // Looks tab "Begin Face Scan" CTA uses.
-                context.push('/scan');
-              }
-            },
-          ),
-          // AURA mission temporarily hidden — eye-contact tab is
-          // commented out in home_screen.dart while the app refocuses
-          // on LOOKS + GAME + RIZZ. Re-enable here when the tab
-          // returns.
-          // const _MissionDivider(),
-          // _MissionRow(
-          //   color: AppColors.accent,
-          //   icon: Icons.remove_red_eye_outlined,
-          //   category: 'AURA',
-          //   title: 'Eye Contact Drill',
-          //   minutes: 5,
-          //   done: auraDone,
-          //   onTap: () => onJumpToTab(2),
-          // ),
-          const _MissionDivider(),
-          _MissionRow(
-            color: AppColors.signalAmber,
-            icon: Icons.chat_bubble_outline_rounded,
-            category: 'GAME',
-            title: 'Free Flow',
-            minutes: 3,
-            done: gameDone,
-            // Game is now tab index 2 (Aura's old slot removed).
-            onTap: () => onJumpToTab(2),
-          ),
-          const _MissionDivider(),
-          _MissionRow(
-            color: AppColors.red,
-            icon: Icons.bolt_rounded,
-            category: 'RIZZ',
-            title: 'Reply Generator',
-            minutes: 2,
-            done: false,
-            // Rizz is the new pillar — tab index 3.
-            onTap: () => onJumpToTab(3),
-          ),
-        ],
-      ),
-    );
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
   }
-}
-
-class _MissionDivider extends StatelessWidget {
-  const _MissionDivider();
-  @override
-  Widget build(BuildContext context) =>
-      Container(height: 1, color: AppColors.surface3,
-          margin: const EdgeInsets.symmetric(vertical: 2));
-}
-
-class _MissionRow extends StatelessWidget {
-  final Color color;
-  final IconData icon;
-  final String category;
-  final String title;
-  final int minutes;
-  final VoidCallback onTap;
-  /// True if this pillar already has a completion logged today.
-  /// Swaps the chase arrow for a green check and the row reads as
-  /// done. Tap still works so the user can run another rep.
-  final bool done;
-  const _MissionRow({
-    required this.color,
-    required this.icon,
-    required this.category,
-    required this.title,
-    required this.minutes,
-    required this.onTap,
-    this.done = false,
-  });
-
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () { HapticFeedback.selectionClick(); onTap(); },
-      borderRadius: BorderRadius.circular(Rd.md),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(
-          children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: color.withOpacity(0.45), width: 1),
-              ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    category,
-                    style: AppTypography.label.copyWith(
-                      color: color,
-                      fontSize: 10,
-                      letterSpacing: 1.8,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    title,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.2,
-                      height: 1.1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '$minutes MIN',
-              style: AppTypography.label.copyWith(
-                color: AppColors.textTertiary,
-                fontSize: 9.5,
-                letterSpacing: 1.4,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: 10),
-            // Done-today swaps the pulsing chase arrow for a static
-            // green check. Lets the user see at a glance which of the
-            // three pillars they\'ve already touched today.
-            if (done)
-              Container(
-                width: 30, height: 30,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.signalGreen.withOpacity(0.16),
-                  border: Border.all(color: AppColors.signalGreen, width: 1.4),
-                ),
-                child: const Icon(Icons.check_rounded,
-                    color: AppColors.signalGreen, size: 16),
-              )
-            else
-            Container(
-              width: 30, height: 30,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: color, width: 1.6),
-              ),
-              child: Icon(Icons.arrow_forward_rounded, color: color, size: 15),
-            ).animate(onPlay: (c) => c.repeat(reverse: true))
-              .scale(
-                begin: const Offset(1.0, 1.0),
-                end: const Offset(1.10, 1.10),
-                duration: 1100.ms,
-                curve: Curves.easeInOut,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Streaks sheet — the "sick streaks" awards modal ─────────────
-// Tap the streak pill in the masthead → this comes up. Lists every
-// named streak the user can earn: pillar streaks (Mog / Aura /
-// Charisma) plus combo streaks (Untouchable, Predator, Elite).
-// Designed to feel like trophies — the user wants them.
-
-class _StreaksSheet extends StatelessWidget {
-  final int looks;
-  final int aura;
-  final int game;
-  final int days;
-  const _StreaksSheet({
-    required this.looks,
-    required this.aura,
-    required this.game,
-    required this.days,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.82,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 8),
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.surface3,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: Sp.md),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'STREAKS',
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.red,
-                      fontSize: 11,
-                      letterSpacing: 3.0,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Earn them all. Become untouchable.',
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 22,
-                      fontStyle: FontStyle.italic,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.4,
-                      height: 1.15,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: Sp.md),
-            Flexible(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                    Sp.lg, 0, Sp.lg, Sp.lg),
-                children: [
-                  _StreakAward(
-                    icon: Icons.face_retouching_natural_outlined,
-                    color: AppColors.red,
-                    name: 'MOG STREAK',
-                    body: 'Scan + Looks routine every day.',
-                    progress: looks,
-                    target: 7,
-                  ),
-                  const SizedBox(height: 10),
-                  _StreakAward(
-                    icon: Icons.remove_red_eye_outlined,
-                    color: AppColors.accent,
-                    name: 'AURA STREAK',
-                    body: 'One Eye Contact drill every day.',
-                    progress: aura,
-                    target: 7,
-                  ),
-                  const SizedBox(height: 10),
-                  _StreakAward(
-                    icon: Icons.chat_bubble_outline_rounded,
-                    color: AppColors.signalAmber,
-                    name: 'CHARISMA STREAK',
-                    body: 'One Free Flow conversation every day.',
-                    progress: game,
-                    target: 7,
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'COMBO STREAKS',
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.textTertiary,
-                      fontSize: 10,
-                      letterSpacing: 2.4,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _StreakAward(
-                    icon: Icons.bolt_rounded,
-                    color: AppColors.red,
-                    name: 'UNTOUCHABLE',
-                    body: 'All three pillars, seven days running.',
-                    progress: days,
-                    target: 7,
-                  ),
-                  const SizedBox(height: 10),
-                  _StreakAward(
-                    icon: Icons.workspace_premium_rounded,
-                    color: AppColors.textPrimary,
-                    name: 'PREDATOR',
-                    body: 'Thirty days. No skips.',
-                    progress: days,
-                    target: 30,
-                  ),
-                  const SizedBox(height: 10),
-                  _StreakAward(
-                    icon: Icons.diamond_outlined,
-                    color: AppColors.textPrimary,
-                    name: 'ELITE',
-                    body: 'A hundred days. Cult status.',
-                    progress: days,
-                    target: 100,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StreakAward extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String name;
-  final String body;
-  final int progress;
-  final int target;
-  const _StreakAward({
-    required this.icon,
-    required this.color,
-    required this.name,
-    required this.body,
-    required this.progress,
-    required this.target,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final earned = progress >= target;
-    final ratio  = target == 0 ? 0.0
-                                : (progress / target).clamp(0.0, 1.0);
-    return Container(
-      padding: const EdgeInsets.all(Sp.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(Rd.lg),
-        border: Border.all(
-            color: earned ? color : AppColors.surface3,
-            width: earned ? 1.4 : 1),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42, height: 42,
-            decoration: BoxDecoration(
-              color: color.withOpacity(earned ? 0.20 : 0.08),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                  color: color.withOpacity(earned ? 0.85 : 0.35),
-                  width: 1),
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    final progress = (widget.day / widget.total).clamp(0.0, 1.0);
+    return Column(
+      children: [
+        AspectRatio(
+          aspectRatio: 1,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48),
+            child: AnimatedBuilder(
+              animation: _pulse,
+              builder: (_, __) {
+                final t = Curves.easeInOut.transform(_pulse.value);
+                return Stack(
+                  alignment: Alignment.center,
                   children: [
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: AppTypography.label.copyWith(
-                          color: AppColors.textPrimary,
-                          fontSize: 12.5,
-                          letterSpacing: 1.6,
-                          fontWeight: FontWeight.w900,
+                    // Outer pulse ring
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.red.withValues(alpha: 0.30 + 0.20 * t),
+                            blurRadius: 60 + 24 * t,
+                            spreadRadius: 4 + 4 * t,
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Progress ring
+                    CustomPaint(
+                      size: Size.infinite,
+                      painter: _ProgressRingPainter(progress: progress),
+                    ),
+                    // Inner flame disc
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              AppColors.red,
+                              AppColors.red.withValues(alpha: 0.65),
+                              const Color(0xFF3A0A0E),
+                            ],
+                            stops: const [0.0, 0.55, 1.0],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.red.withValues(alpha: 0.55),
+                              blurRadius: 40 + 12 * t,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('DAY',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                  fontSize: 14, letterSpacing: 4,
+                                  fontWeight: FontWeight.w900,
+                                )),
+                              const SizedBox(height: 6),
+                              Text('${widget.day}',
+                                style: GoogleFonts.playfairDisplay(
+                                  color: Colors.white,
+                                  fontSize: 96, height: 1,
+                                  letterSpacing: -3,
+                                  fontWeight: FontWeight.w900,
+                                  fontStyle: FontStyle.italic,
+                                )),
+                              const SizedBox(height: 2),
+                              Text('/ ${widget.total}',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white.withValues(alpha: 0.75),
+                                  fontSize: 14, letterSpacing: 2,
+                                  fontWeight: FontWeight.w700,
+                                )),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                    Text(
-                      earned ? 'EARNED' : '$progress / $target',
-                      style: AppTypography.label.copyWith(
-                        color: earned ? color : AppColors.textTertiary,
-                        fontSize: 10.5,
-                        letterSpacing: 1.6,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
                   ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  body,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(
-                    value: ratio,
-                    minHeight: 3,
-                    backgroundColor: AppColors.surface3,
-                    valueColor: AlwaysStoppedAnimation(color),
-                  ),
-                ),
-              ],
+                );
+              },
             ),
           ),
-        ],
+        ),
+        const SizedBox(height: Sp.md),
+        Text(widget.rank.label,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            color: AppColors.red,
+            fontSize: 14, letterSpacing: 4,
+            fontWeight: FontWeight.w900,
+          )),
+        const SizedBox(height: 4),
+        Text(
+          widget.daysLeft == 0
+            ? 'You did it. Day 60.'
+            : '${widget.daysLeft} day${widget.daysLeft == 1 ? "" : "s"} remaining',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            color: AppColors.textSecondary,
+            fontSize: 13, letterSpacing: 1.4,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: Sp.md),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Text(
+            widget.rank.tagline,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.playfairDisplay(
+              color: AppColors.textPrimary,
+              fontSize: 18, height: 1.35,
+              letterSpacing: -0.4,
+              fontStyle: FontStyle.italic,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProgressRingPainter extends CustomPainter {
+  final double progress;
+  _ProgressRingPainter({required this.progress});
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2 - 4;
+    final track = Paint()
+      ..color = AppColors.surface3.withValues(alpha: 0.55)
+      ..strokeWidth = 6
+      ..style = PaintingStyle.stroke;
+    canvas.drawCircle(center, radius, track);
+
+    final fill = Paint()
+      ..shader = const SweepGradient(
+        colors: [Color(0xFFE8222A), Color(0xFFFF7A45), Color(0xFFE8222A)],
+      ).createShader(Rect.fromCircle(center: center, radius: radius))
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    final sweep = (2 * math.pi) * progress;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      sweep,
+      false,
+      fill,
+    );
+  }
+  @override
+  bool shouldRepaint(covariant _ProgressRingPainter old) =>
+      old.progress != progress;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SECTION 2 — COST OF QUITTING
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _CostOfQuittingCard extends StatelessWidget {
+  final String line;
+  const _CostOfQuittingCard({required this.line});
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+        decoration: BoxDecoration(
+          color: AppColors.surface1,
+          borderRadius: BorderRadius.circular(Rd.lg),
+          border: Border(
+            left: BorderSide(color: AppColors.red, width: 3),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('THE COST OF QUITTING',
+              style: GoogleFonts.inter(
+                color: AppColors.red,
+                fontSize: 10, letterSpacing: 2.8,
+                fontWeight: FontWeight.w900,
+              )),
+            const SizedBox(height: 10),
+            Text(line,
+              style: GoogleFonts.inter(
+                color: AppColors.textPrimary,
+                fontSize: 14, height: 1.55,
+                fontWeight: FontWeight.w500,
+              )),
+          ],
+        ),
       ),
     );
   }
 }
 
-// ── POTENTIAL CARD ─────────────────────────────────────────────────
-// Post-scan card: "+N to LOOKS" + a stacked list of the AI-
-// recommended fixes with their projected per-fix points. Tap routes
-// to the Looks tab where each fix has its own ADD TO STREAK button.
+// ═══════════════════════════════════════════════════════════════════════════
+//  SECTION 3 — TODAY'S ASCENSION (missions)
+// ═══════════════════════════════════════════════════════════════════════════
 
-class _PotentialCard extends StatelessWidget {
-  final int delta;
-  final List<ScanFixSummary> fixes;
-  final VoidCallback onTap;
-  const _PotentialCard({
-    required this.delta,
-    required this.fixes,
-    required this.onTap,
-  });
-
+class _MissionsPanel extends StatelessWidget {
+  final List<AscendMission> missions;
+  final int done;
+  const _MissionsPanel({required this.missions, required this.done});
   @override
   Widget build(BuildContext context) {
-    // Top 3 fixes by points — the rest get hidden behind a "+N more"
-    // chip so the card never grows past a screenful even when the
-    // backend returns 5+ fixes.
-    final ranked = [...fixes]..sort((a, b) => b.points.compareTo(a.points));
-    final shown = ranked.take(3).toList();
-    final extra = ranked.length - shown.length;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface1,
+          borderRadius: BorderRadius.circular(Rd.lg),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('TODAY\'S ASCENSION',
+                  style: GoogleFonts.inter(
+                    color: AppColors.red,
+                    fontSize: 11, letterSpacing: 2.8,
+                    fontWeight: FontWeight.w900,
+                  )),
+                const Spacer(),
+                Text('$done / ${missions.length} COMPLETE',
+                  style: GoogleFonts.inter(
+                    color: AppColors.textSecondary,
+                    fontSize: 11, letterSpacing: 1.8,
+                    fontWeight: FontWeight.w800,
+                  )),
+              ],
+            ),
+            const SizedBox(height: 14),
+            for (var i = 0; i < missions.length; i++) ...[
+              _MissionRow(mission: missions[i]),
+              if (i != missions.length - 1)
+                Divider(
+                  height: 1, thickness: 0.6,
+                  color: AppColors.surface3.withValues(alpha: 0.55),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
 
+class _MissionRow extends StatelessWidget {
+  final AscendMission mission;
+  const _MissionRow({required this.mission});
+  @override
+  Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () { HapticFeedback.selectionClick(); onTap(); },
-        borderRadius: BorderRadius.circular(Rd.xl),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(Sp.md, Sp.md, Sp.md, 14),
-          decoration: BoxDecoration(
-            color: AppColors.surface1,
-            borderRadius: BorderRadius.circular(Rd.xl),
-            border: Border.all(
-              color: AppColors.red.withValues(alpha: 0.45), width: 0.9),
-            gradient: RadialGradient(
-              center: const Alignment(-0.7, -0.8),
-              radius: 1.3,
-              colors: [
-                AppColors.red.withValues(alpha: 0.16),
-                Colors.transparent,
-              ],
-              stops: const [0.0, 1.0],
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        onTap: mission.onTap == null ? null : () {
+          HapticFeedback.selectionClick();
+          mission.onTap!();
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('YOUR POTENTIAL',
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.red, letterSpacing: 2.6,
-                      fontSize: 10, fontWeight: FontWeight.w900)),
-                  const Spacer(),
-                  Text('+$delta',
-                    style: GoogleFonts.playfairDisplay(
-                      color: AppColors.red,
-                      fontSize: 32,
-                      fontStyle: FontStyle.italic,
-                      fontWeight: FontWeight.w900,
-                      height: 1.0,
-                      letterSpacing: -1.2,
-                    )),
-                  const SizedBox(width: 4),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: Text('LOOKS',
-                      style: AppTypography.label.copyWith(
-                        color: AppColors.textTertiary,
-                        fontSize: 9, letterSpacing: 1.8,
-                        fontWeight: FontWeight.w800)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Text('Real moves your AI surfaced. Time-bound.',
-                style: GoogleFonts.inter(
-                  color: AppColors.textSecondary,
-                  fontSize: 12.5, fontStyle: FontStyle.italic,
-                  height: 1.4,
-                )),
-              const SizedBox(height: 14),
-              for (var i = 0; i < shown.length; i++) ...[
-                _PotentialRow(fix: shown[i]),
-                if (i != shown.length - 1)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Container(height: 0.6, color: AppColors.divider),
-                  ),
-              ],
-              if (extra > 0) ...[
-                const SizedBox(height: 10),
-                Text('+ $extra more',
-                  style: AppTypography.label.copyWith(
-                    color: AppColors.textTertiary,
-                    fontSize: 10, letterSpacing: 1.8,
-                    fontWeight: FontWeight.w800)),
-              ],
-              const SizedBox(height: 14),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 11),
-                decoration: BoxDecoration(
-                  color: AppColors.red,
-                  borderRadius: BorderRadius.circular(Rd.lg),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+              _MissionCheck(done: mission.done),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('OPEN PROTOCOL',
-                      style: AppTypography.label.copyWith(
-                        color: Colors.black, fontSize: 11.5,
-                        letterSpacing: 2.4,
-                        fontWeight: FontWeight.w900)),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.arrow_forward_rounded,
-                        color: Colors.black, size: 16),
+                    Text(mission.title,
+                      style: GoogleFonts.inter(
+                        color: mission.done
+                          ? AppColors.textSecondary
+                          : AppColors.textPrimary,
+                        fontSize: 15, height: 1.2,
+                        fontWeight: FontWeight.w700,
+                        decoration: mission.done
+                          ? TextDecoration.lineThrough
+                          : TextDecoration.none,
+                      )),
+                    if (mission.hint.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(mission.hint,
+                        style: GoogleFonts.inter(
+                          color: AppColors.textTertiary,
+                          fontSize: 12, height: 1.3,
+                          fontWeight: FontWeight.w500,
+                        )),
+                    ],
                   ],
                 ),
               ),
+              if (mission.onTap != null && !mission.done)
+                const Icon(Icons.chevron_right,
+                  color: AppColors.textTertiary, size: 18),
             ],
           ),
         ),
@@ -908,50 +639,436 @@ class _PotentialCard extends StatelessWidget {
   }
 }
 
-class _PotentialRow extends StatelessWidget {
-  final ScanFixSummary fix;
-  const _PotentialRow({required this.fix});
+class _MissionCheck extends StatelessWidget {
+  final bool done;
+  const _MissionCheck({required this.done});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 24, height: 24,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: done ? AppColors.red : Colors.transparent,
+        border: Border.all(
+          color: done ? AppColors.red : AppColors.surface3,
+          width: 1.5,
+        ),
+      ),
+      child: done
+        ? const Icon(Icons.check_rounded, color: Colors.white, size: 15)
+        : null,
+    );
+  }
+}
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  SECTION 4 — RANK PROGRESSION
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _RankProgression extends StatelessWidget {
+  final int currentDay;
+  const _RankProgression({required this.currentDay});
+  @override
+  Widget build(BuildContext context) {
+    final ranks = AscensionService.ranks();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+        decoration: BoxDecoration(
+          color: AppColors.surface1,
+          borderRadius: BorderRadius.circular(Rd.lg),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('THE MAN YOU ARE BUILDING',
+              style: GoogleFonts.inter(
+                color: AppColors.red,
+                fontSize: 10, letterSpacing: 2.8,
+                fontWeight: FontWeight.w900,
+              )),
+            const SizedBox(height: 14),
+            for (var i = 0; i < ranks.length; i++) ...[
+              _RankRow(
+                rank:     ranks[i],
+                isPassed: currentDay > ranks[i].minDay,
+                isCurrent: currentDay >= ranks[i].minDay &&
+                           (i == ranks.length - 1 ||
+                            currentDay < ranks[i + 1].minDay),
+              ),
+              if (i != ranks.length - 1) const SizedBox(height: 12),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RankRow extends StatelessWidget {
+  final AscendRank rank;
+  final bool isPassed;
+  final bool isCurrent;
+  const _RankRow({
+    required this.rank,
+    required this.isPassed,
+    required this.isCurrent,
+  });
+  @override
+  Widget build(BuildContext context) {
+    final reached = isPassed || isCurrent;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 56,
+          child: Text('DAY ${rank.minDay}',
+            style: GoogleFonts.inter(
+              color: reached ? AppColors.red : AppColors.textTertiary,
+              fontSize: 10, letterSpacing: 1.6,
+              fontWeight: FontWeight.w900,
+            )),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          width: 10, height: 10,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isCurrent
+              ? AppColors.red
+              : (isPassed ? AppColors.red.withValues(alpha: 0.65)
+                          : Colors.transparent),
+            border: Border.all(
+              color: reached ? AppColors.red : AppColors.surface3,
+              width: 1.5,
+            ),
+            boxShadow: isCurrent
+              ? [BoxShadow(
+                  color: AppColors.red.withValues(alpha: 0.6),
+                  blurRadius: 12)]
+              : null,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Text(rank.label,
+            style: GoogleFonts.inter(
+              color: reached ? AppColors.textPrimary : AppColors.textTertiary,
+              fontSize: 16, height: 1.2,
+              letterSpacing: 1.4,
+              fontWeight: isCurrent ? FontWeight.w900 : FontWeight.w700,
+              fontStyle: isCurrent ? FontStyle.italic : FontStyle.normal,
+            )),
+        ),
+        if (isCurrent)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.red,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text('YOU',
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 9, letterSpacing: 1.6,
+                fontWeight: FontWeight.w900,
+              )),
+          ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SECTION 5 — ASCENSION RECORD (timeline)
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _RecordTimeline extends StatelessWidget {
+  final List<AscendMilestone> milestones;
+  const _RecordTimeline({required this.milestones});
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+        decoration: BoxDecoration(
+          color: AppColors.surface1,
+          borderRadius: BorderRadius.circular(Rd.lg),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('ASCENSION RECORD',
+              style: GoogleFonts.inter(
+                color: AppColors.red,
+                fontSize: 10, letterSpacing: 2.8,
+                fontWeight: FontWeight.w900,
+              )),
+            const SizedBox(height: 14),
+            if (milestones.isEmpty)
+              Text('Your record writes itself the moment you log day one.',
+                style: GoogleFonts.inter(
+                  color: AppColors.textTertiary,
+                  fontSize: 13, height: 1.5,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.w500,
+                )),
+            for (var i = 0; i < milestones.length; i++) ...[
+              _MilestoneRow(milestone: milestones[i]),
+              if (i != milestones.length - 1) const SizedBox(height: 14),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MilestoneRow extends StatelessWidget {
+  final AscendMilestone milestone;
+  const _MilestoneRow({required this.milestone});
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        SizedBox(
+          width: 56,
+          child: Text('DAY ${milestone.day}',
+            style: GoogleFonts.inter(
+              color: AppColors.red,
+              fontSize: 10, letterSpacing: 1.6,
+              fontWeight: FontWeight.w900,
+            )),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          width: 8, height: 8,
+          margin: const EdgeInsets.only(top: 4),
+          decoration: const BoxDecoration(
+            color: AppColors.red,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(fix.title,
-                style: AppTypography.h1.copyWith(
+              Text(milestone.title,
+                style: GoogleFonts.inter(
                   color: AppColors.textPrimary,
-                  fontSize: 14.5, letterSpacing: -0.2, height: 1.25),
-                maxLines: 2, overflow: TextOverflow.ellipsis),
-              if (fix.timeline.trim().isNotEmpty) ...[
+                  fontSize: 14, height: 1.3,
+                  fontWeight: FontWeight.w700,
+                )),
+              if (milestone.detail.isNotEmpty) ...[
                 const SizedBox(height: 2),
-                Text(fix.timeline,
-                  style: AppTypography.label.copyWith(
-                    color: AppColors.textTertiary, fontSize: 10,
-                    letterSpacing: 1.6, fontWeight: FontWeight.w700)),
+                Text(milestone.detail,
+                  style: GoogleFonts.inter(
+                    color: AppColors.textTertiary,
+                    fontSize: 12, height: 1.35,
+                    fontWeight: FontWeight.w500,
+                  )),
               ],
             ],
           ),
         ),
-        const SizedBox(width: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-          decoration: BoxDecoration(
-            color: AppColors.red.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: AppColors.red.withValues(alpha: 0.55), width: 0.7),
-          ),
-          child: Text('+${fix.points}',
-            style: GoogleFonts.playfairDisplay(
-              color: AppColors.red, fontSize: 16,
-              fontWeight: FontWeight.w900,
-              fontStyle: FontStyle.italic,
-              letterSpacing: -0.4, height: 1.0)),
-        ),
       ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SECTION 6 — STREAK
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _StreakPanel extends StatelessWidget {
+  final int current;
+  final int longest;
+  const _StreakPanel({required this.current, required this.longest});
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+        decoration: BoxDecoration(
+          color: AppColors.surface1,
+          borderRadius: BorderRadius.circular(Rd.lg),
+          border: Border.all(
+            color: AppColors.red.withValues(alpha: 0.22), width: 0.8),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 64, height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.red,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.red.withValues(alpha: 0.5),
+                    blurRadius: 24, spreadRadius: 2),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.local_fire_department_rounded,
+                color: Colors.white, size: 36),
+            ),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text('$current',
+                        style: GoogleFonts.playfairDisplay(
+                          color: Colors.white,
+                          fontSize: 56, height: 1,
+                          letterSpacing: -2,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
+                        )),
+                      const SizedBox(width: 10),
+                      Text(current == 1 ? 'DAY' : 'DAYS',
+                        style: GoogleFonts.inter(
+                          color: AppColors.textSecondary,
+                          fontSize: 13, letterSpacing: 2.4,
+                          fontWeight: FontWeight.w800,
+                        )),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text('Longest run: $longest',
+                    style: GoogleFonts.inter(
+                      color: AppColors.textTertiary,
+                      fontSize: 12, letterSpacing: 0.6,
+                      fontWeight: FontWeight.w600,
+                    )),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SECTION 7 — FINAL FORM (locked or unlocked at day 60)
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _FinalFormCard extends StatelessWidget {
+  final bool unlocked;
+  final int daysLeft;
+  const _FinalFormCard({required this.unlocked, required this.daysLeft});
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
+        decoration: BoxDecoration(
+          color: AppColors.surface1,
+          borderRadius: BorderRadius.circular(Rd.lg),
+          border: Border.all(
+            color: unlocked
+              ? AppColors.red
+              : AppColors.red.withValues(alpha: 0.35),
+            width: unlocked ? 1.6 : 0.8,
+          ),
+          boxShadow: unlocked
+            ? [BoxShadow(
+                color: AppColors.red.withValues(alpha: 0.25),
+                blurRadius: 36, spreadRadius: 0)]
+            : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  unlocked ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
+                  color: AppColors.red, size: 16),
+                const SizedBox(width: 8),
+                Text(unlocked ? 'UNLOCKED · DAY 60' : 'LOCKED · DAY 60',
+                  style: GoogleFonts.inter(
+                    color: AppColors.red,
+                    fontSize: 10, letterSpacing: 2.8,
+                    fontWeight: FontWeight.w900,
+                  )),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text('IMHIM CERTIFIED',
+              style: GoogleFonts.playfairDisplay(
+                color: AppColors.textPrimary,
+                fontSize: 28, height: 1.1,
+                letterSpacing: -0.8,
+                fontWeight: FontWeight.w900,
+                fontStyle: FontStyle.italic,
+              )),
+            const SizedBox(height: 14),
+            Text(
+              unlocked
+                ? 'You did it. The certificate below carries '
+                  'your final form, your before-and-after, your '
+                  'voice-score arc, and your share card.'
+                : 'Reach Day 60 to unlock:',
+              style: GoogleFonts.inter(
+                color: AppColors.textSecondary,
+                fontSize: 13.5, height: 1.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 12),
+            for (final line in const [
+              'Final transformation card',
+              'Final face comparison',
+              'Final voice / game report',
+              'Final attraction score',
+              'Share certificate',
+            ]) Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Icon(Icons.check_rounded,
+                    color: unlocked
+                      ? AppColors.red
+                      : AppColors.red.withValues(alpha: 0.45),
+                    size: 14),
+                  const SizedBox(width: 8),
+                  Text(line,
+                    style: GoogleFonts.inter(
+                      color: unlocked
+                        ? AppColors.textPrimary
+                        : AppColors.textTertiary,
+                      fontSize: 13, height: 1.4,
+                      fontWeight: FontWeight.w600,
+                    )),
+                ],
+              ),
+            ),
+            if (!unlocked) ...[
+              const SizedBox(height: 8),
+              Text('$daysLeft day${daysLeft == 1 ? "" : "s"} to go.',
+                style: GoogleFonts.inter(
+                  color: AppColors.red,
+                  fontSize: 12, letterSpacing: 1.8,
+                  fontWeight: FontWeight.w900,
+                )),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

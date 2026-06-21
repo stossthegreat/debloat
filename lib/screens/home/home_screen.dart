@@ -45,6 +45,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late int _tab;
   ScanRecord? _latest;
+  /// v281 — full scan history surfaced to the Ascend tab's
+  /// timeline. Loaded alongside latestScan() so the home tab only
+  /// runs one read for both fields.
+  List<ScanRecord> _scans = const [];
   Protocol?   _protocol;
   /// Every active protocol the user has committed to, keyed by axis.
   /// Bro\'s multi-commit model — SKIN, JAW, DEBLOAT, HAIR can all be
@@ -77,12 +81,14 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Three tabs now: LOOKS / GAME / RIZZ. ASCEND folded in (the
-    // streak badge moved onto the Looks masthead). Any legacy deep
-    // link with a higher index falls back to LOOKS so older app-
-    // shortcuts don't crash the app.
+    // v281 — FOUR tabs: LOOKS / GAME / RIZZ / ASCEND. Ascend
+    // restored from the v281 retention rebuild — the daily-ritual
+    // flame + missions + rank surface lives at index 3 so existing
+    // index references (initialTab=1 from report → Game, etc.)
+    // keep working. Legacy deep links with index > 3 fall back to
+    // LOOKS so older shortcuts don't crash.
     final t = widget.initialTab ?? 0;
-    _tab = (t >= 0 && t < 3) ? t : 0;
+    _tab = (t >= 0 && t < 4) ? t : 0;
     _reload();
     // Fire the App Store review prompt if the user has now used
     // all three pillars (scan + Free Flow + eye-contact lesson).
@@ -94,6 +100,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _reload() async {
     final latest     = await LocalStoreService.latestScan();
+    // v281 — also load the full scan history for the Ascend tab
+    // timeline. loadScans() returns reverse-chronological (latest
+    // first) — same order the timeline renders.
+    final allScans   = await LocalStoreService.loadScans();
     final all        = await ProtocolService.loadAllActive();
     // Pick a representative active protocol for the legacy _protocol
     // field (used by the masthead streak chip + the Today\'s Ascension
@@ -149,6 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     setState(() {
       _latest          = latest;
+      _scans           = allScans;
       _protocol        = protocol;
       _activeProtocols = all;
       _loading         = false;
@@ -217,11 +228,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const GameTabScreen(),
                 const RizzTabScreen(),
-                // EYES / AURA + ASCEND temporarily commented out.
-                // Both screens stay in tree; restoring is a one-line
-                // re-add here + uncommenting the nav item below.
-                // const EyesTabScreen(),
-                // AscendScreen(...),
+                // v281 — ASCEND restored as tab index 3. Pulls
+                // the protocol + scan history + per-pillar
+                // completion booleans from this screen's state so
+                // it never has to spin up its own service layer.
+                AscendScreen(
+                  onJumpToTab:      _switchTab,
+                  protocol:         _protocol,
+                  latest:           _latest,
+                  allScans:         _scans,
+                  dayStreak:        _dayStreak,
+                  looksDoneToday:   _looksDoneToday,
+                  auraDoneToday:    _auraDoneToday,
+                  gameDoneToday:    _gameDoneToday,
+                ),
               ],
             ),
       bottomNavigationBar: _NavBar(
@@ -1242,10 +1262,15 @@ class _NavBar extends StatelessWidget {
     // moved to the Looks masthead). AURA stays commented — easy
     // restore later by adding the entry back here + un-commenting
     // the EyesTabScreen line in the IndexedStack.
+    // v281 — Ascend (the daily flame + missions retention surface)
+    // added as a 4th tab. Kept at index 3 (last position) so the
+    // pre-existing index map (Looks=0, Game=1, Rizz=2) stays
+    // valid for every legacy caller of initialTab + onJumpToTab.
     final items = const <({String label, IconData icon, bool italic})>[
-      (label: 'Looks', icon: Icons.face_retouching_natural_outlined, italic: true),
-      (label: 'Game',  icon: Icons.chat_bubble_outline_rounded,       italic: true),
-      (label: 'Rizz',  icon: Icons.bolt_rounded,                      italic: true),
+      (label: 'Looks',  icon: Icons.face_retouching_natural_outlined, italic: true),
+      (label: 'Game',   icon: Icons.chat_bubble_outline_rounded,       italic: true),
+      (label: 'Rizz',   icon: Icons.bolt_rounded,                      italic: true),
+      (label: 'Ascend', icon: Icons.local_fire_department_rounded,     italic: true),
     ];
     return Container(
       decoration: BoxDecoration(
