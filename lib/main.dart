@@ -145,6 +145,13 @@ class _MirrorAppState extends State<MirrorApp> with WidgetsBindingObserver {
       case AppLifecycleState.resumed:
         // ignore: discarded_futures
         AnalyticsService.appResumed();
+        // v280 — clear the iOS app-icon badge (red unread-count dot)
+        // as soon as the user foregrounds the app. Opening the app
+        // IS the "I saw the notification" signal; leaving the dot
+        // on after the open looks broken and stops being a useful
+        // retention trigger for the NEXT notification.
+        // ignore: discarded_futures
+        NotificationService.clearIconBadge();
         break;
       case AppLifecycleState.detached:
       case AppLifecycleState.inactive:
