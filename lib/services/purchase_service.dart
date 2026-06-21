@@ -159,6 +159,13 @@ class PurchaseService {
       Package? weekly;
       Package? annual;
       Package? rescue;
+      // v284 — pass 2 holding bucket. Anything that doesn't match a
+      // canonical slot on the first pass lands here so we can claim
+      // it as weekly if the matcher missed (bro's iOS weekly product
+      // was set up after annual and the SKU id didn't contain the
+      // word "weekly", so the strict matcher rejected it). Annual is
+      // assumed working — that's the one bro confirmed live.
+      final leftovers = <Package>[];
 
       // v279 — Monthly dropped (v238). Weekly is the entry tier
       // ($6.99/wk), Annual ($139.99/yr) is the lock-in (v279).
@@ -175,16 +182,28 @@ class PurchaseService {
             || pkgId.contains('rescue')
             || prodId.contains('rescue');
 
+        // v284 — broadened from `weekly` only to also catch `week`,
+        // `7day`, `7d`, and the canonical $rc_weekly slot. Same
+        // lenient policy annual already enjoys via the `yearly`
+        // alias. Bro's TestFlight weekly SKU was approved but the
+        // strict matcher rejected it — broadening fixes it without
+        // changing the dashboard config.
         final isWeekly = !isRescue && (
                pkgId == r'$rc_weekly'
             || pkgId == 'weekly'
-            || prodId.contains('weekly'));
+            || pkgId.contains('week')
+            || prodId.contains('week')
+            || prodId.contains('7day')
+            || prodId.contains('7d'));
 
         final isAnnual = !isRescue && !isWeekly && (
                pkgId == r'$rc_annual'
             || pkgId == 'annual' || pkgId == 'yearly'
+            || pkgId.contains('annual')
+            || pkgId.contains('year')
             || prodId.contains('annual')
-            || prodId.contains('yearly'));
+            || prodId.contains('yearly')
+            || prodId.contains('year'));
 
         if (isRescue && rescue == null) {
           rescue = pkg;
@@ -192,7 +211,20 @@ class PurchaseService {
           weekly = pkg;
         } else if (isAnnual && annual == null) {
           annual = pkg;
+        } else if (!isRescue) {
+          leftovers.add(pkg);
         }
+      }
+
+      // v284 — last-resort fallback. If the dashboard registered the
+      // weekly product under a custom name the strict matcher missed
+      // (e.g. `mirrorly_starter` or `pro_intro`), claim the first
+      // remaining non-rescue, non-annual subscription as weekly. The
+      // priceString the SDK returns is still the real StoreKit /
+      // Play Billing price, so we ship the user the right number —
+      // we just stop showing "—" for a SKU bro already has live.
+      if (weekly == null && leftovers.isNotEmpty) {
+        weekly = leftovers.first;
       }
 
       _cached = PurchaseOfferings(

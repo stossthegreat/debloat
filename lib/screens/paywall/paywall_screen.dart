@@ -153,12 +153,12 @@ class _PaywallScreenState extends State<PaywallScreen> {
   /// Example: weekly $6.99 × 52 = $363.48, annual $139.99 →
   /// ($363.48 − $139.99) / $363.48 = 61.5% → "SAVE 62%".
   ///
-  /// Fallback when RC offerings haven't loaded yet: "SAVE 70%" —
+  /// Fallback when RC offerings haven't loaded yet: "SAVE 62%" —
   /// the structural savings between the published Weekly $6.99 and
-  /// Annual $139.99 SKUs we configured. Apple-safe because the
-  /// actual amounts the user pays still come from StoreKit. Never
-  /// shows "BEST VALUE" anymore — bro: "I told you add the
-  /// percentage they save."
+  /// Annual $139.99 SKUs we configured (52 × 6.99 = 363.48 → 139.99
+  /// → 61.5 % → rounded 62 %). Apple-safe because the actual amounts
+  /// the user pays still come from StoreKit. Never shows "BEST
+  /// VALUE" anymore — bro: "I told you add the percentage they save."
   String _annualBadge() {
     final weekly = _offerings.weekly?.storeProduct.price;
     final annual = _offerings.annual?.storeProduct.price;
