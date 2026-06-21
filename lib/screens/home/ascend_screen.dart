@@ -62,9 +62,6 @@ class AscendScreen extends StatelessWidget {
   /// Did the user complete their protocol check-in today?
   final bool looksDoneToday;
 
-  /// Did the user complete a gaze drill today? (Eyes tab.)
-  final bool auraDoneToday;
-
   /// Did the user complete a Free Flow / roleplay session today?
   final bool gameDoneToday;
 
@@ -76,7 +73,6 @@ class AscendScreen extends StatelessWidget {
     this.allScans = const [],
     this.dayStreak = 0,
     this.looksDoneToday = false,
-    this.auraDoneToday = false,
     this.gameDoneToday = false,
   });
 
@@ -173,20 +169,20 @@ class AscendScreen extends StatelessWidget {
 
   // ── Mission builder ──────────────────────────────────────────────────────
   //
-  // 5 missions, in priority order. Bro's spec verbatim, mapped onto
-  // the data we already have on this screen.
+  // 4 missions, in priority order. Each one is tied to a feature that
+  // ACTUALLY ships in the current app — no aspirational pillars, no
+  // dead references. v286 — dropped the "Complete a challenge" row
+  // that pointed at the folded Eyes tab (gaze drills no longer exist
+  // as a surface).
   //
-  //   1. Complete protocol  ← looksDoneToday
-  //   2. Complete Arena rep ← gameDoneToday (Free Flow session today)
-  //   3. Submit scan         ← scan today (only required ~1/wk; we
-  //                             show it green when there's a scan
-  //                             from today, red dot otherwise)
-  //   4. Complete challenge ← auraDoneToday (gaze drill — "challenge"
-  //                             is the cleanest verb for that pillar)
-  //   5. Open app tomorrow  ← always undone today; flips done the
-  //                             moment they open the app on the
-  //                             NEXT calendar day. Acts as the
-  //                             return-tomorrow contract.
+  //   1. Complete protocol  ← looksDoneToday (protocol_screen check-in)
+  //   2. Free Flow round    ← gameDoneToday  (free_flow_screen)
+  //   3. Submit scan        ← scan today    (latest scan dated today;
+  //                           only required ~1/wk, green-ticks when
+  //                           there's a scan today, otherwise neutral)
+  //   4. Return tomorrow    ← always undone today; the contract that
+  //                           flips green the moment the app is opened
+  //                           on the next calendar day.
   List<AscendMission> _buildMissions() {
     final scanToday = _hasScanFromToday();
     return [
@@ -197,8 +193,8 @@ class AscendScreen extends StatelessWidget {
         onTap: () => onJumpToTab(0),
       ),
       AscendMission(
-        title: 'Run a roleplay rep',
-        hint:  gameDoneToday ? 'session in the can' : 'one Free Flow round',
+        title: 'Free Flow round with Lucien',
+        hint:  gameDoneToday ? 'session in the can' : 'open Game · Free Flow',
         done:  gameDoneToday,
         onTap: () => onJumpToTab(1),
       ),
@@ -207,12 +203,6 @@ class AscendScreen extends StatelessWidget {
         hint:  scanToday ? 'logged today' : 'weekly — keep the delta honest',
         done:  scanToday,
         onTap: () => onJumpToTab(0),
-      ),
-      AscendMission(
-        title: 'Complete a challenge',
-        hint:  auraDoneToday ? 'cleared' : 'eye-contact drill or rizz exchange',
-        done:  auraDoneToday,
-        onTap: () => onJumpToTab(2),
       ),
       const AscendMission(
         title: 'Return tomorrow',

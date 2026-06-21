@@ -237,7 +237,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   allScans:         _scans,
                   dayStreak:        _dayStreak,
                   looksDoneToday:   _looksDoneToday,
-                  auraDoneToday:    _auraDoneToday,
                   gameDoneToday:    _gameDoneToday,
                 ),
               ],
