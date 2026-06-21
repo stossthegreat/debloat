@@ -2,6 +2,11 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/scan_record.dart';
 
+/// v279 — active Pro subscription type. Lives here (not in
+/// PurchaseService) so LocalStoreService can read it for cap-window
+/// decisions without creating a circular import.
+enum ProTier { none, weekly, annual }
+
 /// Single source of truth for everything persisted on-device.
 ///
 /// Retention depends on this layer being stable — the progress chart, the
@@ -63,10 +68,20 @@ class LocalStoreService {
   //     (= 6 sessions × 3 min, ~1 per day)
   //   · Unlimited AI chat rizz (text is cheap, no cap)
   //   · Per-session voice cap of 3 min (free_flow_screen.dart enforces)
+  // v279 — Pro cap numbers tuned for Month-1 cash flow (Apple's
+  // ~33-45 day payout lag means OpenAI / Replicate get paid before
+  // we do). Voice 18 → 15 saves ~$0.15/wk per heavy user. Screenshots
+  // 15 → 30 costs ~$0.045/wk extra but reads as abundance on the
+  // App Store screenshots. Net Month-1 burn drops ~$1,500 at 5K
+  // Pro converts. See UNIT_ECONOMICS.md Scenario B.
+  //
+  // Annual subscribers get the SAME per-period numbers but on a
+  // 30-day rolling window instead of 7 days. Same yearly total,
+  // smoother consumption for committed users.
   static const int  kScansPerWeek        = 2;
   static const int  kRendersPerWeek      = 3;
-  static const int  kScreenshotsPerWeek  = 15;
-  static const int  kVoiceMinutesPerWeek = 18;
+  static const int  kScreenshotsPerWeek  = 30;
+  static const int  kVoiceMinutesPerWeek = 15;
 
   static const _kScanWeekBucket        = 'caps.scan.week_bucket.v1';
   static const _kScanWeekCount         = 'caps.scan.week_count.v1';
@@ -372,7 +387,27 @@ class LocalStoreService {
     await prefs.setBool(_kRizzScreenshotFreeUsed, true);
   }
 
-  // ── Per-user rolling weekly cap window ─────────────────────────────────
+  // ── Cached subscription tier ───────────────────────────────────────────
+  /// v279 — last known ProTier, written by PurchaseService whenever a
+  /// RevenueCat customer-info refresh resolves. Read by the cap
+  /// helpers below to pick the right reset window (weekly = 7 days,
+  /// annual = 30 days). Synchronous-friendly so the cap surface
+  /// doesn't have to await a network round-trip every check.
+  static const _kCachedTier = 'sub.tier.v1';
+  static Future<void> setCachedTier(ProTier tier) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kCachedTier, tier.name);
+  }
+  static Future<ProTier> cachedTier() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(_kCachedTier);
+    return ProTier.values.firstWhere(
+      (t) => t.name == stored,
+      orElse: () => ProTier.none,
+    );
+  }
+
+  // ── Per-user rolling cap window ────────────────────────────────────────
   /// v278 — REPLACES the ISO-style _weekBucket that reset every Monday
   /// across all users. The Monday reset was exploitable: a user could
   /// subscribe Sunday 11pm, burn the full 18-min voice cap, then get
@@ -380,7 +415,13 @@ class LocalStoreService {
   /// 18 minutes — 36 minutes of OpenAI Realtime time on one week's
   /// payment. Bro: "roleplay is the one place I can bleed."
   ///
-  /// The fix: each user gets their OWN 7-day window anchored to the
+  /// v279 — plan-aware window. Weekly subscribers reset every 7 days
+  /// from anchor; annual subscribers reset every 30 days. Annual gets
+  /// the same per-period cap numbers (15 voice min etc.) so they bank
+  /// roughly 4× the per-window allowance — the trade-off for paying
+  /// $139.99 up front instead of weekly.
+  ///
+  /// The fix: each user gets their OWN window anchored to the
   /// first time they ever hit a capped feature. Subscribe Monday →
   /// reset every Monday. Subscribe Thursday → reset every Thursday.
   /// Subscribe at 11pm Sunday → reset at 11pm Sunday seven days
@@ -393,7 +434,8 @@ class LocalStoreService {
   /// numbers for now (separate decision; if bro picks new annual
   /// numbers later we add a plan-aware window helper).
   static const _kCapAnchorMs = 'caps.anchor_ms.v1';
-  static const int _kWeekMs = 7 * 24 * 60 * 60 * 1000;
+  static const int _kWeekMs   = 7  * 24 * 60 * 60 * 1000;
+  static const int _kMonthMs  = 30 * 24 * 60 * 60 * 1000;
 
   /// Read-or-stamp the cap anchor. The very first time ANY cap is
   /// touched, the anchor is set to now and persisted; every call
@@ -408,23 +450,32 @@ class LocalStoreService {
     return anchor;
   }
 
-  /// Rolling 7-day bucket index. Bucket 0 = first 7 days after
-  /// anchor, bucket 1 = days 7-14, etc. Same number = same window,
-  /// new number = reset.
-  static int _rollingBucket(int anchorMs) {
+  /// v279 — window length for the current Pro tier. Annual subs reset
+  /// every 30 days, everyone else (weekly + free) every 7. Reads the
+  /// cached tier so this stays synchronous.
+  static Future<int> _windowMs(SharedPreferences prefs) async {
+    final tier = await cachedTier();
+    return tier == ProTier.annual ? _kMonthMs : _kWeekMs;
+  }
+
+  /// Rolling bucket index. Bucket 0 = first window-length after the
+  /// anchor, bucket 1 = next window, etc. Window length is plan-
+  /// aware (7 days for weekly, 30 days for annual).
+  static int _rollingBucket(int anchorMs, int windowMs) {
     final elapsedMs = DateTime.now().millisecondsSinceEpoch - anchorMs;
-    return elapsedMs ~/ _kWeekMs;
+    return elapsedMs ~/ windowMs;
   }
 
   /// Wall-clock timestamp when the NEXT bucket starts. Used by the
-  /// settings voice-cap tile to render "Capped — resets Mon 27 Jun"
-  /// instead of the broken "resets Monday" hardcoded copy.
+  /// settings voice-cap tile to render "Resets 27 Jun" instead of
+  /// the broken "resets Monday" hardcoded copy.
   static Future<DateTime> nextCapResetAt() async {
     final prefs = await SharedPreferences.getInstance();
     final anchor = await _capAnchor(prefs);
-    final bucket = _rollingBucket(anchor);
+    final window = await _windowMs(prefs);
+    final bucket = _rollingBucket(anchor, window);
     return DateTime.fromMillisecondsSinceEpoch(
-      anchor + (bucket + 1) * _kWeekMs,
+      anchor + (bucket + 1) * window,
     );
   }
 
@@ -433,7 +484,7 @@ class LocalStoreService {
   /// resets to zero on the user's own 7-day rollover.
   static Future<int> scansThisWeek() async {
     final prefs = await SharedPreferences.getInstance();
-    final bucket = _rollingBucket(await _capAnchor(prefs));
+    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
     final stored = prefs.getInt(_kScanWeekBucket) ?? 0;
     if (stored != bucket) return 0;
     return prefs.getInt(_kScanWeekCount) ?? 0;
@@ -443,7 +494,7 @@ class LocalStoreService {
   /// user's 7-day window rolled over since the last write.
   static Future<void> markScanUsed() async {
     final prefs = await SharedPreferences.getInstance();
-    final bucket = _rollingBucket(await _capAnchor(prefs));
+    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
     final stored = prefs.getInt(_kScanWeekBucket) ?? 0;
     final count  = stored == bucket
         ? (prefs.getInt(_kScanWeekCount) ?? 0) + 1
@@ -460,7 +511,7 @@ class LocalStoreService {
   /// pro user has consumed THIS window.
   static Future<int> mirrorRendersThisWeek() async {
     final prefs = await SharedPreferences.getInstance();
-    final bucket = _rollingBucket(await _capAnchor(prefs));
+    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
     final stored = prefs.getInt(_kRenderWeekBucket) ?? 0;
     if (stored != bucket) return 0;
     return prefs.getInt(_kRenderWeekCount) ?? 0;
@@ -468,7 +519,7 @@ class LocalStoreService {
 
   static Future<void> markMirrorRenderUsed() async {
     final prefs = await SharedPreferences.getInstance();
-    final bucket = _rollingBucket(await _capAnchor(prefs));
+    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
     final stored = prefs.getInt(_kRenderWeekBucket) ?? 0;
     final count  = stored == bucket
         ? (prefs.getInt(_kRenderWeekCount) ?? 0) + 1
@@ -482,7 +533,7 @@ class LocalStoreService {
   /// 7-day window from the user's own anchor.
   static Future<int> screenshotRizzThisWeek() async {
     final prefs = await SharedPreferences.getInstance();
-    final bucket = _rollingBucket(await _capAnchor(prefs));
+    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
     final stored = prefs.getInt(_kScreenshotWeekBucket) ?? 0;
     if (stored != bucket) return 0;
     return prefs.getInt(_kScreenshotWeekCount) ?? 0;
@@ -490,7 +541,7 @@ class LocalStoreService {
 
   static Future<void> markScreenshotRizzUsed() async {
     final prefs = await SharedPreferences.getInstance();
-    final bucket = _rollingBucket(await _capAnchor(prefs));
+    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
     final stored = prefs.getInt(_kScreenshotWeekBucket) ?? 0;
     final count  = stored == bucket
         ? (prefs.getInt(_kScreenshotWeekCount) ?? 0) + 1
@@ -512,7 +563,7 @@ class LocalStoreService {
   /// double-dip cost ~$1.60+ per week per exploiter.
   static Future<int> voiceMsThisWeek() async {
     final prefs = await SharedPreferences.getInstance();
-    final bucket = _rollingBucket(await _capAnchor(prefs));
+    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
     final stored = prefs.getInt(_kVoiceWeekBucket) ?? 0;
     if (stored != bucket) return 0;
     return prefs.getInt(_kVoiceWeekMs) ?? 0;
@@ -524,7 +575,7 @@ class LocalStoreService {
   static Future<void> addVoiceMs(int deltaMs) async {
     if (deltaMs <= 0) return;
     final prefs = await SharedPreferences.getInstance();
-    final bucket = _rollingBucket(await _capAnchor(prefs));
+    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
     final stored = prefs.getInt(_kVoiceWeekBucket) ?? 0;
     final base = stored == bucket
         ? (prefs.getInt(_kVoiceWeekMs) ?? 0)

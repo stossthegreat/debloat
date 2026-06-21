@@ -472,6 +472,12 @@ class _VoiceCapTileState extends State<_VoiceCapTile> {
   int _usedMs = 0;
   bool _pro   = false;
   bool _loaded = false;
+  /// v279 — wall-clock date when the user's rolling cap window
+  /// next resets. Surfaced in the tile copy so over-cap users see
+  /// "resets 27 Jun" instead of the broken "resets Monday" — the
+  /// actual day depends on the user's purchase anchor and plan
+  /// (weekly = 7 days from anchor, annual = 30 days).
+  DateTime? _resetAt;
 
   @override
   void initState() {
@@ -482,17 +488,32 @@ class _VoiceCapTileState extends State<_VoiceCapTile> {
   Future<void> _load() async {
     final ms  = await LocalStoreService.voiceMsThisWeek();
     final pro = await LocalStoreService.isSubscribed();
+    final at  = await LocalStoreService.nextCapResetAt();
     if (!mounted) return;
     setState(() {
       _usedMs = ms;
       _pro    = pro;
       _loaded = true;
+      _resetAt = at;
     });
     // ignore: discarded_futures
     AnalyticsService.settingsVoiceCapViewed(
       usedMs: ms,
       capMs:  LocalStoreService.kVoiceMinutesPerWeek * 60 * 1000,
     );
+  }
+
+  /// v279 — "27 Jun" / "5 Jul" style short date for the cap tile copy.
+  /// Falls back to "soon" when the reset hasn't been computed yet
+  /// (first frame race; never user-visible in practice).
+  String _resetCopy() {
+    final at = _resetAt;
+    if (at == null) return 'soon';
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${at.day} ${months[at.month - 1]}';
   }
 
   String _fmt(int totalMs) {
@@ -517,7 +538,7 @@ class _VoiceCapTileState extends State<_VoiceCapTile> {
           ? 'Loading…'
           : _pro
               ? (overCap
-                  ? 'Capped — resets Monday'
+                  ? 'Capped — resets ${_resetCopy()}'
                   : '${_fmt(remainingMs)} left of '
                     '${LocalStoreService.kVoiceMinutesPerWeek}:00')
               : 'Pro unlocks ${LocalStoreService.kVoiceMinutesPerWeek}'

@@ -26,12 +26,13 @@ app.get('/health', (_req, res) => {
 // ── Vision analysis: GPT-4o takes image(s) + CV measurements → returns brief + advice
 app.post('/analyse', async (req, res) => {
   try {
-    const { imageBase64, extraImagesBase64, geometry } = req.body;
+    const { imageBase64, extraImagesBase64, geometry, isPro } = req.body;
     if (!imageBase64) return res.status(400).json({ error: 'imageBase64 required' });
     const report = await analyse({
       imageBase64,
       extraImages: Array.isArray(extraImagesBase64) ? extraImagesBase64 : [],
       geometry,
+      isPro: isPro === true,   // v279 — Pro → gpt-4o, free → gpt-4o-mini
     });
     res.json(report);
   } catch (err) {
@@ -66,17 +67,17 @@ app.post('/maximize', async (req, res) => {
 app.post('/scan', async (req, res) => {
   const t0 = Date.now();
   try {
-    const { imageBase64, extraImagesBase64, geometry } = req.body;
+    const { imageBase64, extraImagesBase64, geometry, isPro } = req.body;
     if (!imageBase64) return res.status(400).json({ error: 'imageBase64 required' });
 
     const extras = Array.isArray(extraImagesBase64) ? extraImagesBase64 : [];
-    console.log(`[/scan] start — imageBytes=${Math.round(imageBase64.length * 0.75)} extras=${extras.length}`);
+    console.log(`[/scan] start — imageBytes=${Math.round(imageBase64.length * 0.75)} extras=${extras.length} pro=${isPro === true}`);
 
-    // ── Stage 1: analyse (GPT-4o Vision) — REQUIRED ────────────────────────
+    // ── Stage 1: analyse (gpt-4o for Pro, gpt-4o-mini for free) ──────────
     const tAnalyse = Date.now();
     let report;
     try {
-      report = await analyse({ imageBase64, extraImages: extras, geometry });
+      report = await analyse({ imageBase64, extraImages: extras, geometry, isPro: isPro === true });
     } catch (err) {
       console.error(`[/scan] analyse FAILED after ${Date.now() - tAnalyse}ms:`, err);
       return res.status(500).json({

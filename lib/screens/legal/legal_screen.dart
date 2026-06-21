@@ -183,7 +183,7 @@ LegalDoc get termsDoc => LegalDoc(
       'ImHim offers auto-renewing subscriptions:\n\n'
       '• ImHim Pro Weekly — \$6.99 USD per week (or local '
       'equivalent), billed weekly until cancelled.\n'
-      '• ImHim Pro Annual — \$109.99 USD per year (or local '
+      '• ImHim Pro Annual — \$139.99 USD per year (or local '
       'equivalent), billed annually until cancelled.\n\n'
       'Subscription terms:\n\n'
       '• Payment is charged to your $_appleOrGoogleId at '

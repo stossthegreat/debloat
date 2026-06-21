@@ -27,7 +27,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
  * Never compliments. Every observation cites a specific number. Rules things
  * OUT as aggressively as it rules things IN.
  */
-export async function analyse({ imageBase64, extraImages = [], geometry }) {
+export async function analyse({ imageBase64, extraImages = [], geometry, isPro = false }) {
   const g = geometry ?? {};
 
   // Pre-compute the category shortlist BEFORE the GPT call.
@@ -228,7 +228,13 @@ Keep it devastating. Cite every measurement. Never soften. Rule out what won't s
   }
 
   const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
+    // v279 — Pro users get gpt-4o (deeper, more specific honest-looks
+    // read). Free users get gpt-4o-mini (~$0.003/call vs ~$0.02 with
+    // 4o, saves $1.7K per 100K free signups). Quality drop on mini
+    // is noticeable on subtle skin / compositional reads but plenty
+    // for the free-tier conversion teaser. Bro: "scan for free is
+    // mini but paid is full model like now."
+    model: isPro ? 'gpt-4o' : 'gpt-4o-mini',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content },

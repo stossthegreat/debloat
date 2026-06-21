@@ -56,9 +56,16 @@ class MirrorApiService {
     // null the backend falls back to its legacy default behaviour
     // so users who never picked aren't broken.
     final gender = await LocalStoreService.userGender();
+    // v279 — Pro flag drives the scan model choice on the backend.
+    // Pro users get gpt-4o (deep honest-looks read), free users get
+    // gpt-4o-mini (~10× cheaper). Read from the local cache (which
+    // PurchaseService keeps in sync with RevenueCat); avoids a
+    // network round-trip in the scan path.
+    final isPro = await LocalStoreService.isSubscribed();
     final payload = <String, dynamic>{
       'imageBase64': base64Encode(imageBytes),
       'geometry':    _geometryToJson(geometry),
+      'isPro':       isPro,
       if (gender != null) 'gender': gender,
     };
     if (extraImages.isNotEmpty) {
@@ -110,9 +117,16 @@ class MirrorApiService {
     List<Uint8List> extraImages = const [],
   }) async {
     final gender = await LocalStoreService.userGender();
+    // v279 — Pro flag drives the scan model choice on the backend.
+    // Pro users get gpt-4o (deep honest-looks read), free users get
+    // gpt-4o-mini (~10× cheaper). Read from the local cache (which
+    // PurchaseService keeps in sync with RevenueCat); avoids a
+    // network round-trip in the scan path.
+    final isPro = await LocalStoreService.isSubscribed();
     final payload = <String, dynamic>{
       'imageBase64': base64Encode(imageBytes),
       'geometry':    _geometryToJson(geometry),
+      'isPro':       isPro,
       if (gender != null) 'gender': gender,
     };
     if (extraImages.isNotEmpty) {

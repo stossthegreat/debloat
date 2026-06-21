@@ -150,24 +150,24 @@ class _PaywallScreenState extends State<PaywallScreen> {
   /// store prices. Reads whatever currency the store returns
   /// (£, $, €, ¥…) so the badge is always honest in the user's locale.
   ///
-  /// Example: weekly $6.99 × 52 = $363.48, annual $109.99 →
-  /// ($363.48 − $109.99) / $363.48 = 69.7% → "SAVE 70%".
+  /// Example: weekly $6.99 × 52 = $363.48, annual $139.99 →
+  /// ($363.48 − $139.99) / $363.48 = 61.5% → "SAVE 62%".
   ///
   /// Fallback when RC offerings haven't loaded yet: "SAVE 70%" —
   /// the structural savings between the published Weekly $6.99 and
-  /// Annual $109.99 SKUs we configured. Apple-safe because the
+  /// Annual $139.99 SKUs we configured. Apple-safe because the
   /// actual amounts the user pays still come from StoreKit. Never
   /// shows "BEST VALUE" anymore — bro: "I told you add the
   /// percentage they save."
   String _annualBadge() {
     final weekly = _offerings.weekly?.storeProduct.price;
     final annual = _offerings.annual?.storeProduct.price;
-    if (weekly == null || annual == null) return 'SAVE 70%';
-    if (weekly <= 0 || annual <= 0)        return 'SAVE 70%';
+    if (weekly == null || annual == null) return 'SAVE 62%';
+    if (weekly <= 0 || annual <= 0)        return 'SAVE 62%';
     final weeklyTotal = weekly * 52;
-    if (annual >= weeklyTotal)             return 'SAVE 70%';
+    if (annual >= weeklyTotal)             return 'SAVE 62%';
     final pct = ((weeklyTotal - annual) / weeklyTotal * 100).round();
-    if (pct < 5)                           return 'SAVE 70%';
+    if (pct < 5)                           return 'SAVE 62%';
     return 'SAVE $pct%';
   }
 
@@ -1049,7 +1049,7 @@ class _Point extends StatelessWidget {
 /// Layout (per bro's IMG_1350 feedback):
 ///   ┌────────────────────────────────────┐
 ///   │  TITLE                  [SAVE X%]  │  ← badge above price
-///   │  Billed yearly ·         $109.99   │
+///   │  Billed yearly ·         $139.99   │
 ///   │  $9.17/mo equivalent               │
 ///   │  Auto-renews until cancelled       │
 ///   └────────────────────────────────────┘

@@ -45,7 +45,7 @@ class PurchaseConfig {
   /// annual.
   ///
   ///   mirrorly_pro_weekly    →  Weekly subscription ($6.99/wk)
-  ///   mirrorly_pro_yearly    →  Annual subscription ($109.99/yr,
+  ///   mirrorly_pro_yearly    →  Annual subscription ($139.99/yr,
   ///                             Play Console registered the yearly
   ///                             base plan as `mirrorly_pro_yearly`,
   ///                             not `_annual`)

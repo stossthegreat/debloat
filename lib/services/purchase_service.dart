@@ -6,7 +6,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../config/purchase_config.dart';
 import 'analytics_service.dart';
-import 'local_store_service.dart';
+import 'local_store_service.dart' show LocalStoreService, ProTier;
 
 /// Single front-door for all billing operations.
 ///
@@ -160,8 +160,8 @@ class PurchaseService {
       Package? annual;
       Package? rescue;
 
-      // v238 — Monthly dropped from the matcher. Weekly is the new
-      // entry tier ($6.99/wk), Annual ($109.99/yr) is the lock-in.
+      // v279 — Monthly dropped (v238). Weekly is the entry tier
+      // ($6.99/wk), Annual ($139.99/yr) is the lock-in (v279).
       // Match by canonical RC slot first ($rc_weekly / $rc_annual +
       // the custom `rescue` slot), with fallback to bare strings and
       // underlying store-product ids so a misnamed dashboard package
@@ -316,6 +316,38 @@ class PurchaseService {
   /// effect repaints the local cache so subsequent synchronous reads
   /// agree.
   ///
+  /// v279 — currently-active subscription tier. Used by the cap logic
+  /// so annual subscribers get a 30-day rolling reset window while
+  /// weekly subscribers get the standard 7-day window. Cached locally
+  /// after each RevenueCat hit so cap reads stay synchronous.
+  static Future<ProTier> liveTier() async {
+    if (!_initialized) return ProTier.none;
+    try {
+      final info = await Purchases.getCustomerInfo()
+          .timeout(const Duration(seconds: 2));
+      // The `activeSubscriptions` set contains store product
+      // identifiers — match by canonical RC slot name first, then by
+      // contains() on the legacy `mirrorly_pro_yearly` / similar.
+      for (final sub in info.activeSubscriptions) {
+        final lower = sub.toLowerCase();
+        if (lower.contains('annual') ||
+            lower.contains('yearly') ||
+            lower.contains('year')) {
+          await LocalStoreService.setCachedTier(ProTier.annual);
+          return ProTier.annual;
+        }
+        if (lower.contains('weekly') || lower.contains('week')) {
+          await LocalStoreService.setCachedTier(ProTier.weekly);
+          return ProTier.weekly;
+        }
+      }
+      await LocalStoreService.setCachedTier(ProTier.none);
+      return ProTier.none;
+    } catch (_) {
+      return ProTier.none;
+    }
+  }
+
   /// Returns null when RC isn't initialised or the call failed — the
   /// caller falls back to the cached flag in that case.
   static Future<bool?> isProLive() async {
@@ -325,6 +357,27 @@ class PurchaseService {
       final isPro = info.entitlements.all[PurchaseConfig.proEntitlementId]
           ?.isActive ?? false;
       await LocalStoreService.setSubscribed(isPro);
+      // v279 — also detect tier (weekly vs annual) and cache it so
+      // the cap window helpers can read it synchronously without
+      // hitting RC. Both calls share the same RC payload so it's a
+      // single network round-trip.
+      ProTier tier = ProTier.none;
+      if (isPro) {
+        for (final sub in info.activeSubscriptions) {
+          final lower = sub.toLowerCase();
+          if (lower.contains('annual') ||
+              lower.contains('yearly') ||
+              lower.contains('year')) {
+            tier = ProTier.annual;
+            break;
+          }
+          if (lower.contains('weekly') || lower.contains('week')) {
+            tier = ProTier.weekly;
+            break;
+          }
+        }
+      }
+      await LocalStoreService.setCachedTier(tier);
       return isPro;
     } catch (_) {
       return null;
