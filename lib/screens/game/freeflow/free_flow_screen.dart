@@ -1056,7 +1056,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     PaywallGate.isPro().then((pro) async {
       if (!mounted) return;
       if (pro) {
-        // Pro path — monthly minute cap.
+        // Pro path — rolling weekly minute cap.
         if (await LocalStoreService.voiceCapReached()) {
           if (!mounted) return;
           // ignore: discarded_futures
@@ -1162,8 +1162,8 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     // surface as push-to-talk. A returning free user (one who has
     // already burnt their one 60-second free session) gets routed
     // to the paywall the moment they tap LUCIEN — STEP IN, same
-    // as if they'd held the orb. Pro users with their monthly
-    // 40-minute voice cap exhausted also get bounced. First-ever
+    // as if they'd held the orb. Pro users with their weekly
+    // voice-minute cap exhausted also get bounced. First-ever
     // free session users (the in-memory _firstEverSession flag)
     // sail through; the session itself burns the free pass at
     // _endAndScore.
@@ -1288,11 +1288,11 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         t.cancel();
         return;
       }
-      // Per-tick voice-time accrual for the monthly Pro cap. Fire and
-      // forget — addVoiceMs is internally idempotent against month
-      // rollover. Tracked even for free users in case they later
-      // upgrade mid-month (their early minutes don't carry over —
-      // bucket auto-resets — so it's still fair).
+      // Per-tick voice-time accrual for the rolling weekly Pro
+      // cap. Fire and forget — addVoiceMs is internally idempotent
+      // against window rollover. Tracked even for free users in
+      // case they later upgrade mid-window (their early minutes
+      // don't carry over — bucket auto-resets — so it's still fair).
       // ignore: discarded_futures
       LocalStoreService.addVoiceMs(1000);
       setState(() => _remaining--);
@@ -1300,8 +1300,9 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         t.cancel();
         _endAndScore();
       }
-      // Hard stop the moment the user hits their monthly minutes —
-      // route to paywall instead of letting the clock burn through.
+      // Hard stop the moment the user hits their weekly-window
+      // minutes — route to paywall instead of letting the clock
+      // burn through.
       // ignore: discarded_futures
       LocalStoreService.voiceCapReached().then((capped) {
         if (capped && mounted && _phase == _Phase.live) {

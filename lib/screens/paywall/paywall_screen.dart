@@ -47,8 +47,7 @@ class PaywallScreen extends StatefulWidget {
   State<PaywallScreen> createState() => _PaywallScreenState();
 }
 
-// v238 — _Tier.monthly dropped, _Tier.weekly added. Bro: "we strip
-// monthly, go weekly + annual only." Rescue stays on Android.
+// Two paid tiers + the Android rescue one-time IAP.
 enum _Tier { weekly, annual, rescue }
 
 class _PaywallScreenState extends State<PaywallScreen> {
@@ -121,30 +120,12 @@ class _PaywallScreenState extends State<PaywallScreen> {
     return _placeholderDash;
   }
 
-  /// Monthly equivalent for the annual plan — computed from the real
-  /// annual price divided by 12 in the SAME currency the store returned.
-  /// If store returned £89.99, this is £7.50 etc.
-  String _perMonthForAnnual() {
-    final annual = _offerings.annual;
-    if (annual != null) {
-      final p = annual.storeProduct;
-      final perMonth = p.price / 12.0;
-      return _formatPrice(perMonth, p.currencyCode, p.priceString);
-    }
-    // No Annual Package loaded → dash. Real per-month derived from
-    // the actual store price once RC delivers it.
-    return _placeholderDash;
-  }
-
-  /// Format with the same currency symbol the store used — we steal
-  /// the non-digit prefix off `priceString` so we match whatever the
-  /// user's locale shows (£, $, €, ₹, kr, etc.) without having to keep
-  /// a currency table.
-  String _formatPrice(double amount, String currencyCode, String example) {
-    final symbolMatch = RegExp(r'^[^\d,\.\-]+').firstMatch(example);
-    final symbol = symbolMatch?.group(0) ?? (currencyCode.isNotEmpty ? '$currencyCode ' : '');
-    return '$symbol${amount.toStringAsFixed(2)}';
-  }
+  // v288 — _perMonthForAnnual + _formatPrice removed. Bro: "delete
+  // all trades [traces] of fuking monthly." We no longer surface a
+  // per-month equivalent anywhere — the annual card just reads
+  // "Billed yearly" and the disclosure copy quotes the actual
+  // annual charge only. Nothing in the paywall computes monthly
+  // equivalents now.
 
   /// v258 — dynamic annual-vs-weekly savings %, derived from the LIVE
   /// store prices. Reads whatever currency the store returns
@@ -452,7 +433,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     _PriceCardLandscape(
                       title: 'ANNUAL',
                       price: _priceFor(_Tier.annual),
-                      cadence: 'Billed yearly · ${_perMonthForAnnual()}/mo equivalent\nAuto-renews until cancelled',
+                      cadence: 'Billed yearly\nAuto-renews until cancelled',
                       priceBadge: _annualBadge(),
                       selected: _selected == _Tier.annual,
                       onTap: () {
@@ -645,7 +626,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
   /// Short above-the-fold summary required by the Google Play
   /// Subscriptions Policy. Must clearly state, in one line:
   ///   - the exact price
-  ///   - how often the user will be charged (monthly vs yearly)
+  ///   - how often the user will be charged (weekly vs yearly)
   ///   - that the subscription auto-renews
   ///   - that a ImHim Pro subscription is required to use the
   ///     scan / advisor features
@@ -660,10 +641,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
                'renders, streaks, AI roleplay, and all rizz features.';
         break;
       case _Tier.annual:
-        text = '$price billed once per year (${_perMonthForAnnual()}/'
-               'mo equivalent). Auto-renews yearly until cancelled. '
-               'ImHim Pro subscription required for scans, AI '
-               'renders, streaks, AI roleplay, and all rizz features.';
+        text = '$price billed once per year. Auto-renews yearly '
+               'until cancelled. ImHim Pro subscription required '
+               'for scans, AI renders, streaks, AI roleplay, and '
+               'all rizz features.';
         break;
       case _Tier.rescue:
         text = '$price one-time charge. NOT a subscription. '
@@ -688,7 +669,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
   /// cancellation path, links to Terms + Privacy.
   Widget _disclosure() {
     final price  = _priceFor(_selected);
-    final perMo  = _perMonthForAnnual();
     // App Store guideline 2.3.10 — the iOS binary may not contain
     // user-facing references to other platforms' billing systems.
     // Swap "App Store / Apple ID" on iOS, "Google Play" on Android.
@@ -711,12 +691,12 @@ class _PaywallScreenState extends State<PaywallScreen> {
         break;
       case _Tier.annual:
         text = 'ImHim Pro — annual subscription. Your payment of '
-               '$price (equivalent to $perMo per month) will be '
-               'charged to your $storeAccount at confirmation of '
-               'purchase. The subscription automatically renews each '
-               'year for $price unless you cancel at least 24 hours '
-               'before the end of the current period. Your account '
-               'will be charged for renewal within 24 hours of the '
+               '$price will be charged to your $storeAccount at '
+               'confirmation of purchase. The subscription '
+               'automatically renews each year for $price unless '
+               'you cancel at least 24 hours before the end of the '
+               'current period. Your account will be charged for '
+               'renewal within 24 hours of the '
                'period ending. You can manage or cancel your '
                'subscription any time in your account settings. '
                'Uninstalling the app does NOT cancel the subscription.';
@@ -1054,8 +1034,7 @@ class _Point extends StatelessWidget {
 /// Layout (per bro's IMG_1350 feedback):
 ///   ┌────────────────────────────────────┐
 ///   │  TITLE                  [SAVE X%]  │  ← badge above price
-///   │  Billed yearly ·         $139.99   │
-///   │  $9.17/mo equivalent               │
+///   │  Billed yearly                     │
 ///   │  Auto-renews until cancelled       │
 ///   └────────────────────────────────────┘
 ///

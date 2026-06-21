@@ -55,8 +55,8 @@ class LocalStoreService {
   static const _kScanFreeUsed = 'scan.free.used.v1';
 
   // ── Usage caps (paywall flood gates) ──────────────────────────────────
-  // v238 — converted from mixed weekly/monthly buckets to all-weekly so
-  // the entitlements match the Weekly + Annual SKU pair. Both Weekly
+  // All caps live on a per-user rolling weekly window so the
+  // entitlements match the Weekly + Annual SKU pair. Both Weekly
   // and Annual subscribers see the SAME per-week caps (annual just
   // pays once for a year of weekly access at a discount).
   //
@@ -85,10 +85,10 @@ class LocalStoreService {
 
   static const _kScanWeekBucket        = 'caps.scan.week_bucket.v1';
   static const _kScanWeekCount         = 'caps.scan.week_count.v1';
-  // v238 — voice + render + screenshot caps moved from monthly to
-  // weekly buckets. Legacy month-bucket keys stay defined below so the
-  // existing read paths keep returning sensible values for old data,
-  // but the new gates use the week-bucket keys exclusively.
+  // Voice + render + screenshot caps live in weekly buckets.
+  // Legacy month-bucket keys stay defined below so the existing
+  // read paths keep returning sensible values for old data, but
+  // the new gates use the week-bucket keys exclusively.
   static const _kVoiceWeekBucket       = 'caps.voice.week_bucket.v1';
   static const _kVoiceWeekMs           = 'caps.voice.week_ms.v1';
   static const _kRenderWeekBucket      = 'caps.render.week_bucket.v1';

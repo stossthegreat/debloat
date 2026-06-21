@@ -11,7 +11,7 @@
 ///    Paste them into the two consts below.
 /// 4. In RevenueCat: Products → Add each App Store / Play product by
 ///    the exact identifier strings in [PurchaseConfig.productIds].
-/// 5. Entitlements → Create `pro` → attach both the monthly and the
+/// 5. Entitlements → Create `pro` → attach both the weekly and the
 ///    annual subscription products to it. (The 20-credit pack does
 ///    NOT entitle `pro` — it's a consumable credit grant, handled
 ///    separately.)
@@ -32,17 +32,12 @@ class PurchaseConfig {
   static const androidApiKey = 'goog_cdoFAjjiwMkzsxNjPBwoKalEwkF';
 
   /// The entitlement identifier that grants Mirrorly Pro. Configured
-  /// in RevenueCat dashboard → Entitlements. Both monthly and annual
+  /// in RevenueCat dashboard → Entitlements. Both weekly and annual
   /// subscriptions attach to this entitlement.
   static const proEntitlementId = 'pro';
 
   /// Product identifiers — MUST match exactly what's in App Store
   /// Connect and Google Play Console.
-  ///
-  /// v238 — Weekly UNPARKED. Monthly kept in the productIds tuple as a
-  /// commented stub (in case bro reverses) but dropped from the
-  /// loadOfferings matcher so the live paywall only surfaces weekly +
-  /// annual.
   ///
   ///   mirrorly_pro_weekly    →  Weekly subscription ($6.99/wk)
   ///   mirrorly_pro_yearly    →  Annual subscription ($139.99/yr,
@@ -52,8 +47,6 @@ class PurchaseConfig {
   ///   mirrorly_pro_rescue    →  Rescue one-time IAP (Android only;
   ///                             iOS rescue product is not yet
   ///                             approved on App Store Connect)
-  ///
-  /// PARKED in v238: monthly: 'mirrorly_pro_monthly'
   static const productIds = (
     weekly:  'mirrorly_pro_weekly',
     yearly:  'mirrorly_pro_yearly',
@@ -61,13 +54,11 @@ class PurchaseConfig {
   );
 
   /// RevenueCat package identifiers inside the current Offering.
-  /// RevenueCat has built-in slot names ($rc_weekly, $rc_annual)
+  /// RevenueCat has built-in slot names (\$rc_weekly, \$rc_annual)
   /// for the two subscriptions — those are what we attach products
   /// to in the dashboard. The rescue one-time IAP is a custom
   /// package slot named `rescue` (see RC dashboard: the Play Store
   /// row shows `mirrorly_pro_rescue:rescue`).
-  ///
-  /// PARKED in v238: monthlyPackage: '\$rc_monthly'
   static const offering = (
     weeklyPackage:  '\$rc_weekly',
     annualPackage:  '\$rc_annual',

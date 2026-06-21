@@ -167,8 +167,8 @@ class PurchaseService {
       // assumed working — that's the one bro confirmed live.
       final leftovers = <Package>[];
 
-      // v279 — Monthly dropped (v238). Weekly is the entry tier
-      // ($6.99/wk), Annual ($139.99/yr) is the lock-in (v279).
+      // Two paid tiers + the Android rescue IAP. Weekly is the
+      // entry tier ($6.99/wk), Annual ($139.99/yr) is the lock-in.
       // Match by canonical RC slot first ($rc_weekly / $rc_annual +
       // the custom `rescue` slot), with fallback to bare strings and
       // underlying store-product ids so a misnamed dashboard package
@@ -465,9 +465,6 @@ enum PurchaseOutcome { success, cancelled, error, noPriorPurchases, notConfigure
 ///   weekly / annual subscriptions + the rescue one-time IAP.
 /// Nulls = package isn't in the current offering yet; the paywall
 /// shows a dash for that slot until RC delivers it.
-///
-/// v238 — Monthly field replaced with Weekly per bro's call to drop
-/// the monthly tier across the niche.
 class PurchaseOfferings {
   final Package? weekly;
   final Package? annual;

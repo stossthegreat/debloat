@@ -456,9 +456,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 // ── Components ────────────────────────────────────────────────────────────────
 
 /// USAGE → Voice cap tile. Reads voiceMsThisWeek on build, renders the
-/// remaining minutes against the 40-min monthly Pro ceiling. Tile is
-/// always visible — for free users it surfaces the unused 40-minute
-/// budget Pro unlocks (and routes to /paywall on tap so it doubles as
+/// remaining minutes against the per-week Pro ceiling. Tile is
+/// always visible — for free users it surfaces the budget Pro
+/// unlocks (and routes to /paywall on tap so it doubles as
 /// a soft upsell). Pro users get the live "X min left" readout so they
 /// never wonder how much roleplay time they've spent.
 class _VoiceCapTile extends StatefulWidget {

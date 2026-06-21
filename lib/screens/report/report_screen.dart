@@ -546,7 +546,7 @@ class _ReportScreenState extends State<ReportScreen> {
         _localMaximizedUrl = url;
         _generatingHero    = false;
       });
-      // Pro user just used one of their 10 monthly renders.
+      // Pro user just used one of their rolling-weekly renders.
       await LocalStoreService.markMirrorRenderUsed();
     } catch (_) {
       if (!mounted) return;
