@@ -146,6 +146,8 @@ class ProtocolService {
       targetAxis: axis,
       summary:    template.summary,
       dailyTasks: template.dailyTasks,
+      donts:      template.donts,
+      successMetrics: template.successMetrics,
       milestones: template.milestones,
       completedDays: const {},
     );
@@ -334,55 +336,76 @@ class ProtocolService {
 
 const _jaw = _Template(
   title: 'Sharpen the Jaw',
-  summary: 'Sixty days of oral posture, masseter work, neck load, and a '
-           'body-comp pull. Fat pad retracts, masseter thickens, platysma '
-           'frames the mandible. Visible shift by day 45 on most builds.',
+  summary: 'Maximise jawline visibility and lower-face aesthetics.',
+  // v283 — bro's locked DO spec. Each item is a habit, not an
+  // essay. timeBand groups the daily flow in the protocol screen
+  // (all-day posture vs evening reps vs night sleep vs weekly
+  // photo log).
   dailyTasks: [
     DailyTask(
-      title: 'Mewing — full-tongue posture',
-      detail: 'Whole tongue flat on the palate, teeth light-touching, lips '
-              'sealed, nasal breath. Three phone reminders through the day.',
-      duration: 'ongoing', category: TaskCategory.habit,
+      title: 'Tongue posture (mewing)',
+      detail: 'Whole tongue flat on the palate, all day.',
+      duration: 'all day', category: TaskCategory.habit,
       timeBand: TimeBand.ongoing),
     DailyTask(
-      title: 'Ice-water face dunk',
-      detail: 'Bowl, ice, water. Face to the hairline, 30 s. Vasoconstricts '
-              'the lower third and drops overnight fluid in the masseter.',
-      duration: '30 s', category: TaskCategory.skin,
-      timeBand: TimeBand.am),
+      title: 'Lips sealed at rest',
+      detail: 'Teeth light-touching, lips together.',
+      duration: 'all day', category: TaskCategory.habit,
+      timeBand: TimeBand.ongoing),
     DailyTask(
-      title: 'Falim gum — masseter load',
-      detail: 'Turkish sugar-free. 30 min chewing. Real masseter hypertrophy '
-              'over 8 weeks — mastic gum is the upgrade option. Stop at any '
-              'TMJ click.',
-      duration: '30 min', category: TaskCategory.exercise,
+      title: 'Nose-breathing only',
+      detail: 'Mouth closed unless you\'re speaking or eating.',
+      duration: 'all day', category: TaskCategory.habit,
+      timeBand: TimeBand.ongoing),
+    DailyTask(
+      title: 'Upright neck posture',
+      detail: 'Ears over shoulders, chin level. No forward-head slouch.',
+      duration: 'all day', category: TaskCategory.habit,
+      timeBand: TimeBand.ongoing),
+    DailyTask(
+      title: 'Stay hydrated',
+      detail: '3 L+ water spread across the day.',
+      duration: 'all day', category: TaskCategory.nutrition,
+      timeBand: TimeBand.ongoing),
+    DailyTask(
+      title: 'Chew gum consistently',
+      detail: 'Sugar-free. 20-30 min in the day for masseter load.',
+      duration: '20-30 min', category: TaskCategory.exercise,
       timeBand: TimeBand.midday),
     DailyTask(
-      title: 'Masseter isometrics',
-      detail: '3 × 30 s controlled clench, 60 s rest. Activates the muscle '
-              'without grinding wear. Stop if you feel joint click.',
-      duration: '6 min', category: TaskCategory.exercise,
+      title: 'Chin tucks',
+      detail: '3 × 15 against a wall. Trains neck retraction.',
+      duration: '3 min', category: TaskCategory.exercise,
       timeBand: TimeBand.pm),
     DailyTask(
-      title: 'Neck-maxx — chin tucks + curls',
-      detail: '3 × 15 chin tucks against a wall, then 3 × 10 neck curls with '
-              'a small plate on the forehead if you have one. Thickens the '
-              'bracket around the jaw.',
-      duration: '8 min', category: TaskCategory.exercise,
-      timeBand: TimeBand.pm),
-    DailyTask(
-      title: 'Back-sleep, head neutral',
-      detail: 'On the back, pillow supporting the neck — jaw stays forward '
-              'overnight instead of collapsing sideways. Side-sleep '
-              'compresses the masseter asymmetrically.',
-      duration: 'all night', category: TaskCategory.habit,
-      timeBand: TimeBand.night),
-    DailyTask(
-      title: 'Lean-maxx — body fat under 14 %',
-      detail: 'Face fat pad responds first. 0.5 lb/week cut above 16 %, '
-              'protein 1 g/lb, 10 k steps. Jaw gains compound with leanness.',
-      duration: 'daily', category: TaskCategory.nutrition,
+      title: 'Stay lean',
+      detail: 'Sub-14% body fat is where the jaw shows. 0.5 lb/wk cut, '
+              '1 g/lb protein, 10k steps.',
+      duration: 'ongoing', category: TaskCategory.nutrition,
       timeBand: TimeBand.ongoing),
+    DailyTask(
+      title: 'Follow the Debloat Protocol',
+      detail: 'Pair this with Debloat — water, sleep, low-sodium.',
+      duration: 'pair', category: TaskCategory.habit,
+      timeBand: TimeBand.ongoing),
+    DailyTask(
+      title: 'Side-profile photo',
+      detail: 'Weekly — same lighting, same angle. The delta is the proof.',
+      duration: '1 min', category: TaskCategory.habit,
+      timeBand: TimeBand.ongoing),
+  ],
+  donts: [
+    'Mouth-breathe unnecessarily',
+    'Slouch constantly',
+    'Allow chronic forward-head posture',
+    'Ignore body-fat levels',
+    'Expect bone structure to change overnight',
+  ],
+  successMetrics: [
+    'Sharper jawline appearance',
+    'Better side profile',
+    'Improved lower-face definition',
+    'Better facial posture',
   ],
 );
 
@@ -532,103 +555,172 @@ const _chin = _Template(
 
 const _skin = _Template(
   title: 'Glass Skin',
-  summary: 'The highest-evidence axis in the whole stack. SPF, a retinoid, '
-           'and barrier care take 80 % of the faces you see online. Sixty '
-           'days is the first real rescan; six months is transformation.',
+  summary: 'Clear, even, glowing. Sun, retinoid, and barrier care take '
+           '80 % of the faces you see online. Sixty days is the first '
+           'real rescan.',
   dailyTasks: [
+    // ── MORNING ──
     DailyTask(
-      title: 'SPF 50 — non-negotiable',
-      detail: 'Korean or Japanese formulation (Beauty of Joseon, Anessa) over '
-              'a light moisturiser. Daily, even indoors. UV is 80 % of '
+      title: 'Gentle cleanser',
+      detail: 'Cool water, fragrance-free wash. Don\'t strip the barrier.',
+      duration: '1 min', category: TaskCategory.skin,
+      timeBand: TimeBand.am),
+    DailyTask(
+      title: 'Vitamin C serum',
+      detail: '10-15 % L-ascorbic. Brightens + stacks with SPF for real '
+              'UV defence.',
+      duration: '1 min', category: TaskCategory.skin,
+      timeBand: TimeBand.am),
+    DailyTask(
+      title: 'SPF 50 — every day',
+      detail: 'Korean or Japanese formula. Non-negotiable. UV is 80 % of '
               'facial ageing.',
-      duration: '2 min', category: TaskCategory.skin,
-      timeBand: TimeBand.am),
-    DailyTask(
-      title: 'Vitamin C — 10-15 % L-ascorbic',
-      detail: 'Morning antioxidant under SPF. Brightens, protects, stacks '
-              'with sunscreen for real photo-damage defence.',
       duration: '1 min', category: TaskCategory.skin,
       timeBand: TimeBand.am),
+    // ── EVENING ──
     DailyTask(
-      title: 'Water + AM sun — the glow stack',
-      detail: '2 L through the day, 10 min direct morning sun. Vitamin D + '
-              'flush is the "came back from a week away" face.',
-      duration: 'ongoing', category: TaskCategory.habit,
-      timeBand: TimeBand.midday),
-    DailyTask(
-      title: 'Skincycle — retinoid nights',
-      detail: 'Night 1 exfoliate (BHA). Night 2 retinoid (tretinoin 0.025 % '
-              '2×/wk titrating up — clinician for the Rx). Nights 3-4 recover '
-              '(ceramide moisturiser). Rotates to spare the barrier.',
-      duration: '4 min', category: TaskCategory.skin,
+      title: 'Double cleanse',
+      detail: 'Oil-based first, then gentle wash. Lifts SPF + sebum without '
+              'tearing the barrier.',
+      duration: '3 min', category: TaskCategory.skin,
       timeBand: TimeBand.pm),
     DailyTask(
-      title: 'Niacinamide 10 % — pores + oil',
-      detail: 'After serum, before moisturiser. Tightens pore appearance, '
-              'controls sebum. Pairs cleanly with retinoid nights.',
+      title: 'Retinoid — 3 nights a week',
+      detail: 'Tretinoin 0.025 % or adapalene. The gold standard for '
+              'texture, tone, and long-term glow. Clinician for the Rx.',
       duration: '1 min', category: TaskCategory.skin,
       timeBand: TimeBand.pm),
     DailyTask(
-      title: 'Pillowcase — flip or change 2×/week',
-      detail: 'Bacteria + sebum drive the one-sided acne pattern most people '
-              'have. Free intervention, real effect.',
+      title: 'Moisturise — ceramide barrier',
+      detail: 'CeraVe, La Roche-Posay. Locks the retinoid in, repairs '
+              'overnight.',
+      duration: '1 min', category: TaskCategory.skin,
+      timeBand: TimeBand.pm),
+    // ── NIGHT ──
+    DailyTask(
+      title: 'Clean pillowcase — flip 2×/week',
+      detail: 'Bacteria + sebum drive one-sided acne. Free fix, real effect.',
       duration: '1 min', category: TaskCategory.habit,
       timeBand: TimeBand.night),
     DailyTask(
+      title: 'Sleep 8 hours',
+      detail: 'Cortisol baseline IS facial baseline. Lights out, cool room.',
+      duration: '8 h', category: TaskCategory.habit,
+      timeBand: TimeBand.night),
+    // ── ALL DAY ──
+    DailyTask(
       title: 'Hands off the face',
-      detail: 'Touching, propping, picking. 90 % of adult inflammatory acne '
-              'is mechanical — catch yourself.',
-      duration: 'ongoing', category: TaskCategory.habit,
+      detail: 'Touching, propping, picking. 90 % of adult acne is mechanical.',
+      duration: 'all day', category: TaskCategory.habit,
       timeBand: TimeBand.ongoing),
+    DailyTask(
+      title: 'Hydrate — 3 L water',
+      detail: 'Spread across the day. Skin elasticity tracks hydration.',
+      duration: 'all day', category: TaskCategory.nutrition,
+      timeBand: TimeBand.ongoing),
+    DailyTask(
+      title: 'Protein + omega-3',
+      detail: '1 g/lb protein, oily fish 2×/wk. Barrier and tone repair '
+              'from the inside.',
+      duration: 'daily', category: TaskCategory.nutrition,
+      timeBand: TimeBand.ongoing),
+  ],
+  donts: [
+    'Pick or pop spots',
+    'Skip SPF on cloudy days',
+    'Over-exfoliate (no daily acids)',
+    'Sleep in dirty pillowcases or makeup',
+    'Stack five new products at once',
+  ],
+  successMetrics: [
+    'Even, clear tone',
+    'Smaller-looking pores',
+    'Reduced active breakouts',
+    'Visibly glowing skin',
   ],
 );
 
 const _hair = _Template(
   title: 'Crown',
-  summary: 'Density, line, and style — three separate game-pieces. '
-           'Microneedling + topical + shampoo hold the line; the creator-'
-           'matched cut in The Mirror handles the frame. Pharma paths are '
-           'named but clinician-gated.',
+  summary: 'Density, line, frame. Topicals hold the line, diet feeds the '
+           'follicle, the right cut multiplies what you have. Sixty days '
+           'is a real density check.',
   dailyTasks: [
+    // ── MORNING ──
     DailyTask(
       title: 'Dermaroll scalp — 0.5 mm daily',
       detail: 'Clean device, clean scalp. Micro-injury triggers collagen + '
-              'improves topical absorption. Alternative: 1.5 mm once weekly. '
-              'Not both.',
+              'boosts topical absorption.',
       duration: '5 min', category: TaskCategory.grooming,
       timeBand: TimeBand.am),
     DailyTask(
-      title: 'Minoxidil — topical or oral',
-      detail: 'Community standard for density. Topical 5 % 1 ml 2×/day is '
-              'OTC; oral micro-dose 1.25–2.5 mg is clinician-prescribed. '
-              'Book the appointment.',
+      title: 'Minoxidil — topical 5 % or oral',
+      detail: 'Community standard for density. Topical 1 ml 2×/day OTC; '
+              'oral micro-dose is clinician-prescribed.',
       duration: '1 min', category: TaskCategory.grooming,
       timeBand: TimeBand.am),
     DailyTask(
-      title: 'Rosemary oil — the natural path',
-      detail: 'One study showed parity with 2 % minoxidil over 6 months. '
-              '5 drops into scalp, leave 1 h, rinse. Lower-risk alternative.',
-      duration: '5 min + rinse', category: TaskCategory.grooming,
-      timeBand: TimeBand.midday),
+      title: 'Rosemary oil — natural alt',
+      detail: 'Lower-risk option. 5 drops, scalp massage, leave 1 h, rinse. '
+              'Pick this OR minoxidil, not both.',
+      duration: '3 min', category: TaskCategory.grooming,
+      timeBand: TimeBand.am),
+    // ── EVENING ──
     DailyTask(
       title: 'Ketoconazole shampoo — 2×/week',
       detail: 'Nizoral or equivalent. DHT at the scalp + anti-inflammatory. '
-              'Lather 5 min, rinse. Pairs cleanly with topical minoxidil.',
+              'Lather 5 min, rinse.',
       duration: '5 min', category: TaskCategory.grooming,
       timeBand: TimeBand.pm),
     DailyTask(
-      title: 'Creator-cut match — run in The Mirror',
-      detail: 'Ten named cuts ranked for your face shape — edgar, curtains, '
-              'low taper, textured fringe. Render on your face before you '
-              'sit in the chair.',
+      title: 'Run the cut tool — pick your frame',
+      detail: 'Render named cuts on your face shape before the barber chair. '
+              'The right frame mogs.',
       duration: '3 min', category: TaskCategory.grooming,
       timeBand: TimeBand.pm),
+    // ── NIGHT ──
     DailyTask(
-      title: 'Protein + iron — the hair diet',
-      detail: '1 g/lb protein, iron from red meat or liver 2×/wk. '
-              'Deficiency stalls every topical you stack.',
-      duration: 'daily', category: TaskCategory.nutrition,
+      title: 'Silk or satin pillowcase',
+      detail: 'Reduces friction breakage and morning hairline drag.',
+      duration: '—', category: TaskCategory.habit,
+      timeBand: TimeBand.night),
+    DailyTask(
+      title: 'Sleep 8 hours',
+      detail: 'Growth hormone is highest in deep sleep. Follicles repair '
+              'overnight.',
+      duration: '8 h', category: TaskCategory.habit,
+      timeBand: TimeBand.night),
+    // ── ALL DAY ──
+    DailyTask(
+      title: 'Protein — 1 g per lb',
+      detail: 'Hair is protein. Under-eat protein and every topical stalls.',
+      duration: 'across meals', category: TaskCategory.nutrition,
       timeBand: TimeBand.ongoing),
+    DailyTask(
+      title: 'Iron + zinc — red meat 2×/wk',
+      detail: 'Deficiency drives shedding faster than DHT. Liver, beef, '
+              'pumpkin seeds.',
+      duration: 'weekly', category: TaskCategory.nutrition,
+      timeBand: TimeBand.ongoing),
+    DailyTask(
+      title: 'Manage stress + cortisol',
+      detail: 'Telogen effluvium is stress-driven shed. Walk, breathe, '
+              'sunlight, sleep.',
+      duration: 'all day', category: TaskCategory.habit,
+      timeBand: TimeBand.ongoing),
+  ],
+  donts: [
+    'Hot showers on the scalp',
+    'Tight hats and beanies all day',
+    'Skip protein and iron',
+    'Ignore early signs of thinning',
+    'Stack five products at once',
+  ],
+  successMetrics: [
+    'Visible density gain',
+    'Cleaner, stronger hairline',
+    'Less shed in the shower',
+    'A frame that mogs',
   ],
 );
 
@@ -676,53 +768,86 @@ const _posture = _Template(
 const _debloat = _Template(
   title: 'Depuff',
   summary: 'Water retention reads as softness, weakness, and age. '
-           'Vasoconstriction + lymph drainage + sodium audit drops the '
-           'whole face one visual grade in 14 days. The fastest-moving '
-           'axis in the stack.',
+           'Vasoconstriction + lymph + sodium audit drops the whole '
+           'face one visual grade in two weeks.',
   dailyTasks: [
+    // ── MORNING ──
     DailyTask(
       title: 'Ice-water face dunk — 30 s',
       detail: 'Bowl + ice + water, face to the hairline. Vasoconstriction '
-              'drops overnight fluid. The 30 seconds that set the whole day.',
+              'drops overnight fluid. The 30 seconds that set the day.',
       duration: '30 s', category: TaskCategory.skin,
       timeBand: TimeBand.am),
     DailyTask(
-      title: 'Gua sha — 8 min lymph',
-      detail: 'Facial oil, stone. Upward + outward strokes: jaw → ear, cheek '
-              '→ temple, brow → hairline. Lymph clears, face sharpens.',
-      duration: '8 min', category: TaskCategory.skin,
+      title: 'Gua sha — lymph drain',
+      detail: 'Facial oil, stone. Upward + outward strokes: jaw → ear, '
+              'cheek → temple, brow → hairline.',
+      duration: '5 min', category: TaskCategory.skin,
       timeBand: TimeBand.am),
+    // ── MIDDAY ──
     DailyTask(
       title: 'Sodium audit — under 2 g/day',
-      detail: 'Restaurants, sauces, and bread hide 80 % of it. Read labels '
-              'for 14 days. Most faces lose a full grade of puff.',
-      duration: 'ongoing', category: TaskCategory.nutrition,
+      detail: 'Restaurants, sauces, bread hide 80 % of it. Read labels '
+              'for 14 days.',
+      duration: 'all day', category: TaskCategory.nutrition,
       timeBand: TimeBand.midday),
     DailyTask(
-      title: 'Hydrate — 3 L through the day',
-      detail: 'Counter-intuitive: dehydration is what drives retention. '
-              '3 L signals the body to flush, not hold.',
-      duration: 'ongoing', category: TaskCategory.nutrition,
+      title: 'Hydrate — 3 L water',
+      detail: 'Counter-intuitive: dehydration drives retention. 3 L signals '
+              'the body to flush.',
+      duration: 'all day', category: TaskCategory.nutrition,
       timeBand: TimeBand.midday),
+    // ── EVENING ──
     DailyTask(
       title: 'Cold shower — 2 min finish',
-      detail: 'Last 2 min of your shower, cold. Whole-body vasoconstriction, '
-              'inflammation drop, tonic skin shift.',
+      detail: 'Last 2 min cold. Whole-body vasoconstriction, inflammation '
+              'drops, tonic skin shift.',
       duration: '2 min', category: TaskCategory.habit,
       timeBand: TimeBand.pm),
     DailyTask(
       title: 'Cut alcohol + dairy — 14 days',
-      detail: 'Both are inflammatory for most people. Remove for two weeks, '
-              'rescan, reintroduce one at a time. Your face will tell you '
-              'which one matters for you.',
+      detail: 'Both inflammatory for most. Drop for two weeks, rescan, '
+              'reintroduce one at a time.',
       duration: '14 days', category: TaskCategory.nutrition,
       timeBand: TimeBand.pm),
+    // ── NIGHT ──
     DailyTask(
       title: 'Back-sleep, head elevated 15°',
-      detail: 'Small wedge under the pillow. Face drains into the neck at '
-              'night instead of pooling in cheeks and under-eyes.',
+      detail: 'Small wedge under the pillow. Face drains into the neck '
+              'instead of pooling in cheeks and under-eyes.',
       duration: 'all night', category: TaskCategory.habit,
       timeBand: TimeBand.night),
+    DailyTask(
+      title: 'No late-night salt',
+      detail: 'Last meal low-sodium. Your morning face starts at dinner.',
+      duration: 'all night', category: TaskCategory.nutrition,
+      timeBand: TimeBand.night),
+    // ── ALL DAY ──
+    DailyTask(
+      title: 'Nose-breathing only',
+      detail: 'Mouth-breathing pools fluid in the lower face. Lips sealed, '
+              'breathe through the nose.',
+      duration: 'all day', category: TaskCategory.habit,
+      timeBand: TimeBand.ongoing),
+    DailyTask(
+      title: 'Walk 10k steps',
+      detail: 'Circulation and lymph are pumped by movement. Sitting all '
+              'day puffs the face.',
+      duration: 'all day', category: TaskCategory.habit,
+      timeBand: TimeBand.ongoing),
+  ],
+  donts: [
+    'Salty restaurant meals + sauces',
+    'Late-night sodium or alcohol',
+    'Side-sleep face-down',
+    'Skip water for coffee',
+    'Stress + caffeine binges',
+  ],
+  successMetrics: [
+    'Visibly sharper cheekbones',
+    'Less morning puff',
+    'Tighter jaw outline',
+    'Whole face one grade sharper',
   ],
 );
 
@@ -787,6 +912,11 @@ class _Template {
   final String title;
   final String summary;
   final List<DailyTask> dailyTasks;
+  /// v283 — what to AVOID. Empty for legacy axes (Hunter Eyes,
+  /// Symmetry, Chin, Posture, Foundations) that pre-date the spec.
+  final List<String> donts;
+  /// v283 — what success looks like at day 60. Empty for legacy.
+  final List<String> successMetrics;
   List<ProtocolMilestone> get milestones => const [
     ProtocolMilestone(day: 7,  title: 'Week 1',    action: 'First photo log entry. No rescan — you\'re still warming up.'),
     ProtocolMilestone(day: 14, title: 'Check-in',  action: 'Re-scan. Compare to baseline. Small deltas expected.'),
@@ -795,5 +925,7 @@ class _Template {
   ];
   const _Template({
     required this.title, required this.summary, required this.dailyTasks,
+    this.donts = const [],
+    this.successMetrics = const [],
   });
 }

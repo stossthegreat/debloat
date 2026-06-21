@@ -10,6 +10,15 @@ class Protocol {
   final String targetAxis;         // "Jaw definition"
   final String summary;            // One-paragraph description
   final List<DailyTask> dailyTasks;       // recurring — done per day
+  /// v283 — what to AVOID. Rendered as a separate "Don't" block on
+  /// the protocol screen so the user sees the rules of the game,
+  /// not just the moves. Empty list = no don'ts surfaced (legacy
+  /// axes that pre-date the v283 spec).
+  final List<String> donts;
+  /// v283 — what success looks like after 60 days. Rendered as a
+  /// green-check list on the protocol screen — the "you'll feel
+  /// this" payoff that anchors the daily grind in a visible outcome.
+  final List<String> successMetrics;
   final List<ProtocolMilestone> milestones;
   final Set<int> completedDays;    // day indices marked done
 
@@ -37,6 +46,8 @@ class Protocol {
     required this.dailyTasks,
     required this.milestones,
     required this.completedDays,
+    this.donts = const [],
+    this.successMetrics = const [],
     this.lastCheckIn,
     this.currentStreak = 0,
     this.longestStreak = 0,
@@ -175,6 +186,7 @@ class Protocol {
   }) => Protocol(
     id: id, startedAt: startedAt, lengthDays: lengthDays, title: title,
     targetAxis: targetAxis, summary: summary, dailyTasks: dailyTasks,
+    donts: donts, successMetrics: successMetrics,
     milestones: milestones,
     completedDays: completedDays ?? this.completedDays,
     lastCheckIn:   lastCheckIn   ?? this.lastCheckIn,
@@ -191,6 +203,8 @@ class Protocol {
     'targetAxis':     targetAxis,
     'summary':        summary,
     'dailyTasks':     dailyTasks.map((t) => t.toJson()).toList(),
+    'donts':          donts,
+    'successMetrics': successMetrics,
     'milestones':     milestones.map((m) => m.toJson()).toList(),
     'completedDays':  completedDays.toList(),
     'lastCheckIn':    lastCheckIn?.toIso8601String(),
@@ -209,6 +223,8 @@ class Protocol {
     dailyTasks:  ((j['dailyTasks'] as List?) ?? [])
                      .map((e) => DailyTask.fromJson(e as Map<String, dynamic>))
                      .toList(),
+    donts:          List<String>.from((j['donts'] as List?) ?? const []),
+    successMetrics: List<String>.from((j['successMetrics'] as List?) ?? const []),
     milestones:  ((j['milestones'] as List?) ?? [])
                      .map((e) => ProtocolMilestone.fromJson(e as Map<String, dynamic>))
                      .toList(),

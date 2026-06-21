@@ -372,19 +372,23 @@ class _ProtocolScreenState extends State<ProtocolScreen> {
 
             const SizedBox(height: Sp.md),
 
-            // Title block
+            // v283 — hero block: program label, title, goal in one breathing
+            // unit. Clean, white-text-on-black, no heavy borders.
             Text('PROTOCOL · DAY ${p.currentDay} / ${p.lengthDays}',
               style: AppTypography.label.copyWith(
-                color: AppColors.textTertiary, letterSpacing: 2.8, fontSize: 9)),
-            const SizedBox(height: 6),
+                color: AppColors.red, letterSpacing: 2.8, fontSize: 9,
+                fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
             Text(p.title,
-              style: AppTypography.h1.copyWith(fontSize: 36, letterSpacing: -1.0)),
-            const SizedBox(height: 4),
-            Text('Targeting ${p.targetAxis.toLowerCase()}.',
-              style: AppTypography.h1Italic.copyWith(
-                fontSize: 15, color: AppColors.textSecondary)),
+              style: AppTypography.h1.copyWith(
+                fontSize: 38, letterSpacing: -1.2, height: 1.05)),
+            const SizedBox(height: 6),
+            Text(p.summary,
+              style: AppTypography.body.copyWith(
+                color: AppColors.textSecondary,
+                fontSize: 14, height: 1.55)),
 
-            const SizedBox(height: Sp.xl),
+            const SizedBox(height: Sp.lg),
 
             // Progress
             _ProgressBlock(protocol: p)
@@ -398,9 +402,9 @@ class _ProtocolScreenState extends State<ProtocolScreen> {
 
             const SizedBox(height: Sp.xl),
 
-            Text('TODAY',
-              style: AppTypography.label.copyWith(
-                color: AppColors.textPrimary, letterSpacing: 2.5, fontSize: 10)),
+            // v283 — DOs section header. Strong, clean, no flame icons.
+            _SectionTitle(label: 'DO', accent: AppColors.signalGreen),
+            const SizedBox(height: Sp.sm),
 
             // Group tasks by time-of-day so the daily flow reads as a schedule
             // (morning → midday → evening → night → all-day habits) rather
@@ -413,30 +417,43 @@ class _ProtocolScreenState extends State<ProtocolScreen> {
               if (p.dailyTasks.any((t) => t.timeBand == band)) ...[
                 const SizedBox(height: Sp.md),
                 _TimeBandHeader(band: band),
-                const SizedBox(height: Sp.sm),
+                const SizedBox(height: 10),
                 for (var i = 0; i < p.dailyTasks.length; i++)
                   if (p.dailyTasks[i].timeBand == band) ...[
-                    _TaskCard(task: p.dailyTasks[i], delay: 160 + i * 60),
-                    const SizedBox(height: Sp.sm),
+                    _TaskCard(task: p.dailyTasks[i], delay: 160 + i * 40),
+                    const SizedBox(height: 8),
                   ],
               ],
 
-            const SizedBox(height: Sp.xl),
+            // v283 — DON'T block. Only renders when the template ships one.
+            if (p.donts.isNotEmpty) ...[
+              const SizedBox(height: Sp.xl),
+              _SectionTitle(label: "DON'T", accent: AppColors.red),
+              const SizedBox(height: Sp.sm),
+              _DontBlock(items: p.donts)
+                .animate().fadeIn(delay: 200.ms, duration: 400.ms),
+            ],
+
+            // v283 — Success Metrics block. The "you'll feel this at day 60"
+            // payoff. Renders only when populated.
+            if (p.successMetrics.isNotEmpty) ...[
+              const SizedBox(height: Sp.xl),
+              _SectionTitle(label: 'SUCCESS METRICS',
+                accent: AppColors.signalGreen),
+              const SizedBox(height: Sp.sm),
+              _SuccessBlock(items: p.successMetrics)
+                .animate().fadeIn(delay: 240.ms, duration: 400.ms),
+            ],
 
             if (p.milestones.isNotEmpty) ...[
-              Text('MILESTONES',
-                style: AppTypography.label.copyWith(
-                  color: AppColors.textPrimary, letterSpacing: 2.5, fontSize: 10)),
+              const SizedBox(height: Sp.xl),
+              _SectionTitle(label: 'MILESTONES', accent: AppColors.accent),
               const SizedBox(height: Sp.sm),
               for (final m in p.milestones)
                 _MilestoneRow(milestone: m, currentDay: p.currentDay),
             ],
 
-            const SizedBox(height: Sp.xl),
-            Text(p.summary,
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textTertiary, fontSize: 12.5, height: 1.6,
-                fontStyle: FontStyle.italic)),
+            const SizedBox(height: Sp.lg),
           ],
         ),
 
@@ -582,6 +599,10 @@ class _DayDot extends StatelessWidget {
   }
 }
 
+/// v283 — clean DO card. Thin coloured left-bar replaces the heavy circle
+/// icon so the type-set reads first. Elevated surface (not surface1) keeps
+/// the card lighter than the page background so the schedule feels lifted,
+/// not dingy.
 class _TaskCard extends StatelessWidget {
   final DailyTask task;
   final int delay;
@@ -589,55 +610,77 @@ class _TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = _catColor(task.category);
     return Container(
-      padding: const EdgeInsets.all(Sp.md),
       decoration: BoxDecoration(
-        color: AppColors.surface1,
+        color: AppColors.surfaceElevated,
         borderRadius: BorderRadius.circular(Rd.lg),
-        border: Border.all(color: AppColors.divider),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36, height: 36, margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              color: _catColor(task.category).withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: _catColor(task.category).withValues(alpha: 0.5), width: 0.8),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Left accent bar — colour codes the category without an icon
+            // taking up half the card.
+            Container(
+              width: 3,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(Rd.lg),
+                  bottomLeft: Radius.circular(Rd.lg),
+                ),
+              ),
             ),
-            child: Icon(_catIcon(task.category),
-              size: 15, color: _catColor(task.category)),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: Text(task.title,
-                        style: AppTypography.h3.copyWith(fontSize: 14.5)),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(task.title,
+                            style: AppTypography.h3.copyWith(
+                              fontSize: 14.5,
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w700)),
+                        ),
+                        if (task.duration != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(task.duration!.toUpperCase(),
+                              style: AppTypography.label.copyWith(
+                                color: color, fontSize: 8.5,
+                                letterSpacing: 1.4,
+                                fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ],
                     ),
-                    if (task.duration != null)
-                      Text(task.duration!,
-                        style: AppTypography.label.copyWith(
-                          color: _catColor(task.category),
-                          fontSize: 9, letterSpacing: 1.8)),
+                    const SizedBox(height: 4),
+                    Text(task.detail,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5, height: 1.45)),
                   ],
                 ),
-                const SizedBox(height: 3),
-                Text(task.detail,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary, fontSize: 12.5, height: 1.5)),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ).animate().fadeIn(
-      delay: Duration(milliseconds: delay), duration: 350.ms);
+      delay: Duration(milliseconds: delay), duration: 320.ms);
   }
 
   Color _catColor(TaskCategory c) {
@@ -649,15 +692,134 @@ class _TaskCard extends StatelessWidget {
       case TaskCategory.grooming:  return AppColors.signalAmber;
     }
   }
+}
 
-  IconData _catIcon(TaskCategory c) {
-    switch (c) {
-      case TaskCategory.habit:     return Icons.all_inclusive;
-      case TaskCategory.exercise:  return Icons.fitness_center;
-      case TaskCategory.skin:      return Icons.water_drop_outlined;
-      case TaskCategory.nutrition: return Icons.restaurant;
-      case TaskCategory.grooming:  return Icons.content_cut;
-    }
+/// v283 — section heading with a coloured caps label. Used for DO / DON'T
+/// / SUCCESS METRICS / MILESTONES blocks so the page reads as a structured
+/// brief, not a flat checklist.
+class _SectionTitle extends StatelessWidget {
+  final String label;
+  final Color accent;
+  const _SectionTitle({required this.label, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 14, height: 2,
+          decoration: BoxDecoration(
+            color: accent,
+            borderRadius: BorderRadius.circular(1)),
+        ),
+        const SizedBox(width: 10),
+        Text(label,
+          style: AppTypography.label.copyWith(
+            color: accent, letterSpacing: 3.2, fontSize: 10.5,
+            fontWeight: FontWeight.w800)),
+      ],
+    );
+  }
+}
+
+/// v283 — DON'T block. Single elevated card with red × markers. Frames
+/// the rules of the game so the user sees what to avoid alongside the
+/// daily DOs.
+class _DontBlock extends StatelessWidget {
+  final List<String> items;
+  const _DontBlock({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(Rd.lg),
+        border: Border.all(
+          color: AppColors.red.withValues(alpha: 0.25), width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 18, height: 18, margin: const EdgeInsets.only(top: 1),
+                  decoration: BoxDecoration(
+                    color: AppColors.red.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.close_rounded,
+                    size: 12, color: AppColors.red),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(items[i],
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.textPrimary,
+                      fontSize: 14, height: 1.4,
+                      fontWeight: FontWeight.w500)),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// v283 — Success Metric block. Green check list. The "what success
+/// looks like" anchor that gives the daily grind a visible outcome.
+class _SuccessBlock extends StatelessWidget {
+  final List<String> items;
+  const _SuccessBlock({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(Rd.lg),
+        border: Border.all(
+          color: AppColors.signalGreen.withValues(alpha: 0.28), width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 18, height: 18, margin: const EdgeInsets.only(top: 1),
+                  decoration: BoxDecoration(
+                    color: AppColors.signalGreen.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.check_rounded,
+                    size: 12, color: AppColors.signalGreen),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(items[i],
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.textPrimary,
+                      fontSize: 14, height: 1.4,
+                      fontWeight: FontWeight.w500)),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 
