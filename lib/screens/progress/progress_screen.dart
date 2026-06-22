@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/dev_flags.dart';
@@ -14,6 +15,7 @@ import '../../providers/auralay_app_provider.dart';
 import '../../services/analytics_service.dart';
 import '../../services/gaze/gaze_progress_store.dart';
 import '../../services/local_store_service.dart';
+import '../../services/milestone_photo_store.dart';
 import '../../services/presence/presence_progress_store.dart';
 import '../../services/ascension_service.dart';
 import '../../services/protocol_service.dart';
@@ -1446,51 +1448,91 @@ class _ProgressCloseButton extends StatelessWidget {
   }
 }
 
-/// v292 — milestone photo strip. Three slots — DAY 1 / DAY 30 /
-/// DAY 60 — each rendered as a 4:5 portrait tile with the captured
-/// face from the matching scan (or a "TAKE" CTA if no scan landed
-/// inside that window yet). Bro: "this one feature can make this
-/// app massive — imagine people seeing a completely different
-/// looking person from day 1 to day 60."
+/// v294 — milestone photo strip, redesigned to bro's note: vertical
+/// stack (one frame per row) with a giant Playfair day numeral
+/// above each, and the TAKE button captures a quick photo in-place
+/// instead of routing the user through the full /scan flow.
 ///
-/// Day-N is anchored to the user's FIRST scan (chronologically
-/// earliest in history), so the strip works whether or not the
-/// active protocol has been loaded into the Progress screen
-/// constructor — the photo gallery lives off the on-device scan
-/// history, not the protocol object.
-class _MilestonePhotoStrip extends StatelessWidget {
+/// Slot order top → bottom:
+///   DAY 1   — auto-fills from the first scan's capturedImagePath
+///             so a fresh user already sees Day 1 the moment their
+///             first scan lands. User-saved photo (if any) takes
+///             precedence over the scan photo.
+///   DAY 30  — empty until the user shoots one; once captured,
+///             tile reads as "30 days in. Locked in."
+///   DAY 60  — same, final form.
+///
+/// User-captured photos persist via [MilestonePhotoStore] under
+/// the app's documents directory + a SharedPreferences pointer per
+/// slot, so a re-capture overwrites the slot cleanly.
+class _MilestonePhotoStrip extends StatefulWidget {
   final List<ScanRecord> scans;
   const _MilestonePhotoStrip({required this.scans});
 
-  /// Returns the first scan that landed inside the protocol-day
-  /// window [from..to] when anchored to [anchor]. Null when the
-  /// window is still empty so the tile can render a TAKE CTA.
-  ScanRecord? _findInWindow({
-    required DateTime anchor,
-    required int from,
-    required int to,
-    required List<ScanRecord> sorted,
-  }) {
-    for (final s in sorted) {
-      final dayAt = s.takenAt.difference(anchor).inDays + 1;
-      if (dayAt >= from && dayAt <= to) return s;
+  @override
+  State<_MilestonePhotoStrip> createState() => _MilestonePhotoStripState();
+}
+
+class _MilestonePhotoStripState extends State<_MilestonePhotoStrip> {
+  /// Manually-captured paths keyed by slot day (1 / 30 / 60).
+  /// Loaded once on init + refreshed after a successful capture.
+  Map<int, String?> _savedPaths = const {1: null, 30: null, 60: null};
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshSavedPaths();
+  }
+
+  Future<void> _refreshSavedPaths() async {
+    final p = await MilestonePhotoStore.loadAll();
+    if (!mounted) return;
+    setState(() => _savedPaths = p);
+  }
+
+  /// Open the system camera through image_picker, hand the returned
+  /// file to MilestonePhotoStore for durable storage, refresh the
+  /// strip. Gracefully no-ops on cancel or permission denial — the
+  /// user just stays on the empty slot.
+  Future<void> _captureForSlot(int day) async {
+    HapticFeedback.mediumImpact();
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.front,
+        imageQuality: 92,
+      );
+      if (picked == null) return;
+      final saved = await MilestonePhotoStore.saveCapturedFile(
+        day, File(picked.path));
+      if (saved == null || !mounted) return;
+      await _refreshSavedPaths();
+      HapticFeedback.heavyImpact();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Couldn't open camera: ${e.toString().split('\n').first}"),
+        backgroundColor: AppColors.surface2,
+        behavior: SnackBarBehavior.floating,
+      ));
     }
-    return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    final sorted = [...scans]
+    final sorted = [...widget.scans]
       ..sort((a, b) => a.takenAt.compareTo(b.takenAt));
-    // No scans at all → no anchor, nothing to render. The user is
-    // pre-Day-1 and the Looks tab will route them to /scan anyway.
-    if (sorted.isEmpty) return const SizedBox.shrink();
-    final anchor = sorted.first.takenAt;
-    final day1   = sorted.first;
-    final day30  = _findInWindow(
-      anchor: anchor, from: 25, to: 35, sorted: sorted);
-    final day60  = _findInWindow(
-      anchor: anchor, from: 55, to: 65, sorted: sorted);
+    final firstScanPath = sorted.isEmpty
+        ? null
+        : sorted.first.capturedImagePath;
+
+    // Resolved per-slot path: user capture wins, then a scan-photo
+    // fallback for DAY 1 (since the onboarding scan IS effectively
+    // the user's Day-1 photo).
+    final day1Path  = _savedPaths[1]  ?? firstScanPath;
+    final day30Path = _savedPaths[30];
+    final day60Path = _savedPaths[60];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1504,145 +1546,200 @@ class _MilestonePhotoStrip extends StatelessWidget {
           style: AppTypography.bodySmall.copyWith(
             color: AppColors.textSecondary,
             fontStyle: FontStyle.italic, fontSize: 12.5)),
-        const SizedBox(height: Sp.md),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _MilestoneTile(
-              label: 'DAY 1',  scan: day1, accent: AppColors.textTertiary)),
-            const SizedBox(width: 10),
-            Expanded(child: _MilestoneTile(
-              label: 'DAY 30', scan: day30, accent: AppColors.accent)),
-            const SizedBox(width: 10),
-            Expanded(child: _MilestoneTile(
-              label: 'DAY 60', scan: day60, accent: AppColors.red)),
-          ],
+        const SizedBox(height: Sp.lg),
+        _MilestoneRow(
+          dayLabel:   1,
+          accent:     AppColors.textSecondary,
+          imagePath:  day1Path,
+          onTake:     () => _captureForSlot(1),
+        ),
+        const SizedBox(height: Sp.xl),
+        _MilestoneRow(
+          dayLabel:   30,
+          accent:     AppColors.accent,
+          imagePath:  day30Path,
+          onTake:     () => _captureForSlot(30),
+        ),
+        const SizedBox(height: Sp.xl),
+        _MilestoneRow(
+          dayLabel:   60,
+          accent:     AppColors.red,
+          imagePath:  day60Path,
+          onTake:     () => _captureForSlot(60),
         ),
       ],
     );
   }
 }
 
-/// One tile inside [_MilestonePhotoStrip]. Two visual states:
-///  PHOTO  — captured face image cropped to a 4:5 portrait, label
-///           underneath, score chip pinned bottom-left.
-///  EMPTY  — surface2 placeholder with a face glyph + dashed
-///           border + "TAKE" pill that routes to /scan so the
-///           user can fill the slot.
-class _MilestoneTile extends StatelessWidget {
-  final String label;
-  final ScanRecord? scan;
+/// One milestone row — a giant Playfair "DAY N" label on top, a
+/// large photo (or empty TAKE state) underneath. Wide rectangle
+/// (4:3-ish landscape) so the user reads the frame as the receipt
+/// rather than a thumbnail. Tap-to-replace via the same camera
+/// capture flow.
+class _MilestoneRow extends StatelessWidget {
+  final int dayLabel;
   final Color accent;
-  const _MilestoneTile({
-    required this.label,
-    required this.scan,
+  final String? imagePath;
+  final VoidCallback onTake;
+  const _MilestoneRow({
+    required this.dayLabel,
     required this.accent,
+    required this.imagePath,
+    required this.onTake,
   });
 
   @override
   Widget build(BuildContext context) {
-    final hasScan  = scan != null;
-    final path     = scan?.capturedImagePath;
-    final file     = path == null ? null : File(path);
-    final hasImage = hasScan && file != null && file.existsSync();
+    final file = imagePath == null ? null : File(imagePath!);
+    final hasImage = file != null && file.existsSync();
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AspectRatio(
-          aspectRatio: 4 / 5,
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.surface2,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: hasScan
-                  ? accent.withValues(alpha: 0.55)
-                  : AppColors.divider,
-                width: hasScan ? 1.4 : 0.8),
+        // Giant day numeral above the frame — italic Playfair, in
+        // the slot's accent colour so the eye reads three distinct
+        // milestones at a glance when scrolling.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text('DAY',
+              style: AppTypography.label.copyWith(
+                color: accent,
+                fontSize: 14, letterSpacing: 4.0,
+                fontWeight: FontWeight.w900,
+              )),
+            const SizedBox(width: 10),
+            Text('$dayLabel',
+              style: AppTypography.display.copyWith(
+                color: accent,
+                fontSize: 56, height: 1,
+                letterSpacing: -2.0,
+                fontStyle: FontStyle.italic,
+                fontWeight: FontWeight.w900,
+              )),
+            const Spacer(),
+            if (hasImage)
+              // Subtle "retake" affordance once a photo exists. Same
+              // capture flow — the saver overwrites the slot.
+              _RetakePill(accent: accent, onTap: onTake),
+          ],
+        ),
+        const SizedBox(height: Sp.sm),
+        // The frame itself — large, wide, tap-to-take when empty.
+        Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(Rd.lg),
+          child: InkWell(
+            onTap: hasImage ? null : onTake,
+            borderRadius: BorderRadius.circular(Rd.lg),
+            child: AspectRatio(
+              aspectRatio: 4 / 3,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface2,
+                  borderRadius: BorderRadius.circular(Rd.lg),
+                  border: Border.all(
+                    color: hasImage
+                      ? accent.withValues(alpha: 0.55)
+                      : accent.withValues(alpha: 0.30),
+                    width: hasImage ? 1.4 : 1.0),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: hasImage
+                    ? Image.file(file, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _placeholder())
+                    : _emptyState(accent),
+              ),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: hasImage
-                ? Stack(
-                    children: [
-                      Positioned.fill(
-                        child: Image.file(file, fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _placeholder()),
-                      ),
-                      // Score chip — pinned to the bottom-left so
-                      // every tile reads as a labeled receipt.
-                      Positioned(
-                        left: 6, bottom: 6,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.62),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text('${scan!.score}',
-                            style: AppTypography.label.copyWith(
-                              color: accent,
-                              fontSize: 9.5, letterSpacing: 1.0,
-                              fontWeight: FontWeight.w900,
-                            )),
-                        ),
-                      ),
-                    ],
-                  )
-                : Center(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          context.push('/scan');
-                        },
-                        borderRadius: BorderRadius.circular(99),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: accent.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(99),
-                            border: Border.all(
-                              color: accent.withValues(alpha: 0.5),
-                              width: 0.8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.add_a_photo_outlined,
-                                color: accent, size: 12),
-                              const SizedBox(width: 5),
-                              Text('TAKE',
-                                style: AppTypography.label.copyWith(
-                                  color: accent,
-                                  fontSize: 9, letterSpacing: 2.0,
-                                  fontWeight: FontWeight.w900,
-                                )),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
           ),
         ),
-        const SizedBox(height: 8),
-        Text(label,
-          style: AppTypography.label.copyWith(
-            color: hasScan ? accent : AppColors.textTertiary,
-            fontSize: 10, letterSpacing: 2.2,
-            fontWeight: FontWeight.w900,
-          )),
       ],
     );
   }
+
+  Widget _emptyState(Color accent) => Container(
+        color: AppColors.surface2,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_a_photo_outlined,
+              size: 36, color: accent),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 18, vertical: 9),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(
+                  color: accent.withValues(alpha: 0.6), width: 1.0),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('TAKE PHOTO',
+                    style: AppTypography.label.copyWith(
+                      color: accent,
+                      fontSize: 11, letterSpacing: 2.4,
+                      fontWeight: FontWeight.w900,
+                    )),
+                  const SizedBox(width: 6),
+                  Icon(Icons.camera_alt_rounded,
+                    color: accent, size: 14),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _placeholder() => Container(
         color: AppColors.surface2,
         alignment: Alignment.center,
         child: Icon(Icons.face_retouching_natural_outlined,
-          size: 28, color: AppColors.textTertiary.withValues(alpha: 0.6)),
+          size: 36, color: AppColors.textTertiary.withValues(alpha: 0.6)),
       );
+}
+
+class _RetakePill extends StatelessWidget {
+  final Color accent;
+  final VoidCallback onTap;
+  const _RetakePill({required this.accent, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(99),
+      child: InkWell(
+        onTap: () { HapticFeedback.selectionClick(); onTap(); },
+        borderRadius: BorderRadius.circular(99),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppColors.surface2,
+            borderRadius: BorderRadius.circular(99),
+            border: Border.all(
+              color: accent.withValues(alpha: 0.55), width: 0.8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.refresh_rounded, color: accent, size: 13),
+              const SizedBox(width: 5),
+              Text('RETAKE',
+                style: AppTypography.label.copyWith(
+                  color: accent,
+                  fontSize: 9.5, letterSpacing: 2.0,
+                  fontWeight: FontWeight.w900,
+                )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
