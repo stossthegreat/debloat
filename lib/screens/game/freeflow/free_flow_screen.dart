@@ -2015,43 +2015,59 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
                 const _LucienNudgeBubble(),
                 const SizedBox(height: 6),
               ],
-              Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-                child: InkWell(
-                  onTap: _phase == _Phase.live ? _lucienStepIn : null,
+              // v293 — Lucien Step-In gated on _clockStarted. Bro:
+              // "as a rule that button activates after the big button
+              // is pressed only. That way it can only ever be in
+              // their time." A Pro user could otherwise tap Lucien
+              // immediately on session entry and burn voice minutes
+              // without ever holding the orb. The gate pegs Lucien
+              // to actual engagement — first hold of the session
+              // (which is also when the clock starts) flips the
+              // button live. Resets on session end / new persona.
+              Builder(builder: (_) {
+                final lucienReady = _phase == _Phase.live && _clockStarted;
+                return Material(
+                  color: Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 22, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: _phase == _Phase.live
-                          ? AppColors.accent
-                          : AppColors.surface3,
-                      borderRadius: BorderRadius.circular(12),
-                      // Soft accent glow ONLY when the nudge is up so
-                      // the button itself becomes the obvious target.
-                      boxShadow: (_firstEverSession
-                              && _hadFirstSheReply
-                              && !_lucienNudgeDismissed
-                              && _phase == _Phase.live)
-                          ? [BoxShadow(
-                              color: AppColors.accent.withValues(alpha: 0.55),
-                              blurRadius: 24, spreadRadius: 1)]
-                          : null,
-                    ),
-                    child: Text('LUCIEN — STEP IN',
+                  child: InkWell(
+                    onTap: lucienReady ? _lucienStepIn : null,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 22, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: lucienReady
+                            ? AppColors.accent
+                            : AppColors.surface3,
+                        borderRadius: BorderRadius.circular(12),
+                        // Soft accent glow ONLY when the nudge is up
+                        // so the button itself becomes the obvious
+                        // target.
+                        boxShadow: (_firstEverSession
+                                && _hadFirstSheReply
+                                && !_lucienNudgeDismissed
+                                && lucienReady)
+                            ? [BoxShadow(
+                                color: AppColors.accent.withValues(alpha: 0.55),
+                                blurRadius: 24, spreadRadius: 1)]
+                            : null,
+                      ),
+                      child: Text(
+                        lucienReady
+                            ? 'LUCIEN — STEP IN'
+                            : 'HOLD TO TALK FIRST',
                         style: AppTypography.label.copyWith(
-                          color: _phase == _Phase.live
+                          color: lucienReady
                               ? Colors.white
                               : AppColors.textTertiary,
                           fontSize: 12,
                           letterSpacing: 2.6,
                           fontWeight: FontWeight.w900,
                         )),
+                    ),
                   ),
-                ),
-              ),
+                );
+              }),
               const SizedBox(height: 12),
               Material(
                 color: Colors.transparent,
