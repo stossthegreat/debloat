@@ -384,6 +384,12 @@ const RIZZ_BANNED_RX = /\b(crypt(ic|o)|puzzle|code(s)?|decod(e|ing)|deciph(er|er
 // explicitly kept them as classics worth landing with a smile.
 const RIZZ_CLICHE_RX = /\b(are\s+you\s+a\s+magician|did\s+it\s+hurt\s+(when\s+)?you\s+fell\s+(from\s+heaven)?|eiffel\s+(for\s+you)?|are\s+you\s+(a\s+)?(parking\s+ticket|fine\s+because|google|campfire|library\s+card|wifi)|fine\s+lookin'?\s+like\s+that|do\s+you\s+have\s+a\s+map|lost\s+in\s+your\s+eyes|are\s+you\s+from\s+tennessee|believe\s+in\s+love\s+at\s+first\s+sight|sit\s+on\s+a\s+pile\s+of\s+sugar|knees\s+from\s+heaven)\b/i;
 
+// v296 — vision-refusal regex. gpt-4o-mini sometimes drops "I can't
+// view images" even when the latest user turn HAS an image attached
+// as content[1]. Detect every variant we've seen so the chat regen
+// pass can re-run with a stronger instruction.
+const RIZZ_VISION_REFUSAL_RX = /\b(i'?m\s+unable\s+to\s+view|i\s+cannot\s+(view|see|analy[sz]e)\s+(this\s+)?image|i\s+can'?t\s+(view|see|analy[sz]e)\s+(this\s+)?image|unable\s+to\s+(view|analy[sz]e|process)\s+images?\s+directly|i\s+don'?t\s+have\s+the\s+ability\s+to\s+(view|see)\s+images?|as\s+an\s+ai,?\s+i\s+(cannot|can'?t)\s+(view|see)\s+images?|describe\s+the\s+(content\s+of\s+the\s+|image\s+)|provide\s+(relevant\s+)?text\s+from\s+it)/i;
+
 function repliesContainBannedWord(replies) {
   if (!Array.isArray(replies)) return false;
   return replies.some(r => r && typeof r.text === 'string'
@@ -608,6 +614,18 @@ BANNED CLICHE OPENERS — these are dead Reddit/Tinder pickup lines:
 - "Are you a parking ticket? / fine" / "are you Google?" / "wifi?"
 - "Do you have a map? / lost in your eyes"
 - "Are you from Tennessee?" / "do you believe in love at first sight"
+
+VISION CAPABILITY — non-negotiable
+When the user attaches an image (profile screenshot, chat screenshot,
+selfie of her, anything) you HAVE FULL VISION. You CAN see it.
+You read it directly. You DO NOT say "I'm unable to view images,"
+"I can't view or analyze images," "I cannot see images," or any
+variation — those phrases are BANNED. If an image is attached to the
+latest user turn, your reply MUST treat it as analysed content and
+deliver the section breakdown the wrapper asks for. If the user
+didn't add wrapper text but an image is attached, still analyse it:
+classify (PROFILE / CHAT / PHOTO) and deliver the matching section
+breakdown with three lines in quotes by default.
 - ANY "are you a [noun]? + corny pun" formula
 - Test EVERY line in quotes against the GROUP CHAT TEST below; if
   her friends would react with "kill me" or "block him", REWRITE.
@@ -742,10 +760,28 @@ export async function rizzChat({ messages, imageBase64 } = {}) {
 
   let reply = await runOnce();
 
+  // v296 — vision-refusal regen. When the user attached an image
+  // and the model still wrote "I'm unable to view images directly"
+  // (gpt-4o-mini does this occasionally even with content[1] image
+  // attached), force a regen with explicit "the image IS attached,
+  // analyse it" instruction.
+  if (hasVision && RIZZ_VISION_REFUSAL_RX.test(reply)) {
+    console.warn('[rizz/chat] vision refusal detected in first pass — regenerating');
+    const visionForce = 'CRITICAL: The latest user turn HAS an '
+      + 'image attached as content[1] of type image_url. YOU CAN '
+      + 'SEE IT. Your previous attempt said you cannot view images '
+      + '— that is BANNED. Look at the attached image, classify it '
+      + '(PROFILE / CHAT / PHOTO), and deliver the matching section '
+      + 'breakdown with three quoted reply lines. Never claim you '
+      + 'cannot see images. If the user typed no message alongside '
+      + 'the image, default to the PROFILE classifier behaviour.';
+    reply = await runOnce(visionForce);
+  }
+
   // Same post-filter as rizzReply — regenerate once if any banned
   // word OR cliche opener slipped through the prompt rule.
   if (RIZZ_BANNED_RX.test(reply) || RIZZ_CLICHE_RX.test(reply)) {
-    console.warn('[rizz/chat] banned/cliche detected in first pass — regenerating');
+    console.warn('[rizz/chat] banned/cliche detected — regenerating');
     const harder = 'REMINDER: Your previous attempt used either a '
       + 'BANNED word (cryptic, puzzle, code, decode, decipher, '
       + 'mysterious, mystery, secret, encrypted, riddle, parallel '

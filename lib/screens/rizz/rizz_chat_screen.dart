@@ -185,7 +185,15 @@ class _RizzChatScreenState extends State<RizzChatScreen> {
     // screenshots ("it only explains once").
     final hadImageBefore = _msgs.any((m) =>
         m.role == 'user' && m.image != null);
-    final iterating = hadImageBefore;
+    // v296 — only iterate when NO new image arrived. A fresh image
+    // upload always re-fires the full coach wrapper so the model
+    // analyses what the user just dropped instead of refusing it
+    // ("I can't view images directly") — the iteration wrapper
+    // tells the model not to re-break-down, which gpt-4o-mini was
+    // interpreting as "don't look at this new image either." Now
+    // text-only follow-ups keep iterating (short, one-line replies),
+    // but every new image lands on the full classifier path.
+    final iterating = hadImageBefore && image == null;
     setState(() {
       _msgs.add(_RizzMsg('user', msg.isEmpty ? '(screenshot)' : msg,
           image: image));
