@@ -7,8 +7,10 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/protocol.dart';
-import '../../models/scan_record.dart' show ScanRecord;
+import '../../models/scan_record.dart' show GameScoreEntry, ScanRecord;
 import '../../services/ascension_service.dart';
+import '../../services/local_store_service.dart';
+import '../../services/share_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/imhim_wordmark.dart';
@@ -271,10 +273,12 @@ class _AscendScreenState extends State<AscendScreen> {
 
             const SizedBox(height: Sp.lg),
 
-            // ── 8 — FINAL FORM. Locked premium reward.
+            // ── 8 — FINAL FORM. Locked premium reward / unlocked
+            // certificate generator.
             _FinalFormCard(
-              unlocked: finalUnlocked,
-              daysLeft: daysLeft,
+              unlocked:    finalUnlocked,
+              daysLeft:    daysLeft,
+              onGenerate:  finalUnlocked ? _generateCertificate : null,
             ).animate().fadeIn(delay: 680.ms, duration: 400.ms),
 
             const SizedBox(height: Sp.xl),
@@ -388,6 +392,73 @@ class _AscendScreenState extends State<AscendScreen> {
       if (dayAt >= from && dayAt <= to) return true;
     }
     return false;
+  }
+
+  /// v291 — Generate the IMHIM CERTIFIED Day-60 share card.
+  /// Collects:
+  ///   - BEFORE photo: first scan in history (chronological)
+  ///   - AFTER photo:  last scan in history (the Day-60-window scan)
+  ///   - IMHIM SCORE arc: composite computed at Day-1 conditions
+  ///     (first scan's looks, first game score, consistency = 0)
+  ///     vs the current composite
+  ///   - LOOKS arc:  first scan score → latest scan score
+  ///   - GAME arc:   first GameScoreEntry → best to-date
+  ///   - CONSISTENCY arc: 0 → current consistency
+  /// All data comes from existing on-device stores so the card can
+  /// generate offline. Falls back to safe defaults if any history
+  /// is missing so the user can always share something.
+  Future<void> _generateCertificate() async {
+    if (!mounted) return;
+    final scans = [...widget.allScans]
+      ..sort((a, b) => a.takenAt.compareTo(b.takenAt));
+    final firstScan = scans.isNotEmpty ? scans.first : null;
+    final lastScan  = scans.isNotEmpty ? scans.last  : null;
+
+    // Game history (chronological). First and best — first reads as
+    // the user's starting point, best is what they shipped.
+    final gameScores = await LocalStoreService.loadGameScores();
+    final gameSorted = [...gameScores]
+      ..sort((a, b) => a.takenAt.compareTo(b.takenAt));
+    final int gameStart = gameSorted.isEmpty ? 0 : gameSorted.first.score;
+    final int gameEnd   = gameSorted.isEmpty
+        ? 0
+        : gameSorted.map((g) => g.score).reduce((a, b) => a > b ? a : b);
+
+    // Looks (out of 100) — direct off the scan record.
+    final int looksStart = firstScan?.score ?? 0;
+    final int looksEnd   = lastScan?.score  ?? 0;
+
+    // Consistency arc — 0 on Day 1 always; current today.
+    final int consistencyEnd = AscensionService.consistencyFor(widget.protocol);
+    const int consistencyStart = 0;
+
+    // IMHIM SCORE arc — same formula AscensionService runs in the
+    // hero so the certificate reads as continuous with the live tab.
+    final int imhimStart = AscensionService.imhimScoreFromComponents(
+      looks:       looksStart,
+      game:        gameStart,
+      consistency: consistencyStart,
+    );
+    final int imhimEnd = AscensionService.imhimScoreFromComponents(
+      looks:       looksEnd,
+      game:        gameEnd,
+      consistency: consistencyEnd,
+    );
+
+    if (!mounted) return;
+    await ShareService.shareCertificate(
+      context:          context,
+      beforePhotoPath:  firstScan?.capturedImagePath,
+      afterPhotoPath:   lastScan?.capturedImagePath,
+      imhimStart:       imhimStart,
+      imhimEnd:         imhimEnd,
+      looksStart:       looksStart,
+      looksEnd:         looksEnd,
+      gameStart:        gameStart,
+      gameEnd:          gameEnd,
+      consistencyStart: consistencyStart,
+      consistencyEnd:   consistencyEnd,
+    );
   }
 
   // ── Milestone builder ────────────────────────────────────────────────────
@@ -1483,7 +1554,18 @@ class _StreakPanel extends StatelessWidget {
 class _FinalFormCard extends StatelessWidget {
   final bool unlocked;
   final int daysLeft;
-  const _FinalFormCard({required this.unlocked, required this.daysLeft});
+  /// v291 — invoked when the user taps GENERATE CERTIFICATE on the
+  /// unlocked card. The State subclass owns the data collection
+  /// (first/last scan, looks/game arcs, IMHIM start/end) and the
+  /// ShareService call. Null when locked so the build path can
+  /// hide the CTA entirely.
+  final Future<void> Function()? onGenerate;
+  const _FinalFormCard({
+    required this.unlocked,
+    required this.daysLeft,
+    this.onGenerate,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -1501,8 +1583,8 @@ class _FinalFormCard extends StatelessWidget {
           ),
           boxShadow: unlocked
             ? [BoxShadow(
-                color: AppColors.red.withValues(alpha: 0.25),
-                blurRadius: 36, spreadRadius: 0)]
+                color: AppColors.red.withValues(alpha: 0.30),
+                blurRadius: 42, spreadRadius: 0)]
             : null,
         ),
         child: Column(
@@ -1534,9 +1616,10 @@ class _FinalFormCard extends StatelessWidget {
             const SizedBox(height: 14),
             Text(
               unlocked
-                ? 'You did it. The certificate below carries '
-                  'your final form, your before-and-after, your '
-                  'voice-score arc, and your share card.'
+                ? 'You finished the protocol. Generate the receipt — '
+                  'real before / after photos, the IMHIM SCORE arc, '
+                  'and the Looks + Game lift, on one card people will '
+                  'screenshot.'
                 : 'Reach Day 60 to unlock:',
               style: GoogleFonts.inter(
                 color: AppColors.textSecondary,
@@ -1546,11 +1629,11 @@ class _FinalFormCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             for (final line in const [
-              'Final transformation card',
-              'Final face comparison',
-              'Final voice / game report',
-              'Final attraction score',
-              'Share certificate',
+              'Before / after face pair',
+              'IMHIM SCORE arc — start to Day 60',
+              'Looks + Game arcs with deltas',
+              'Consistency receipt',
+              'Shareable certificate card',
             ]) Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
@@ -1580,6 +1663,46 @@ class _FinalFormCard extends StatelessWidget {
                   fontSize: 12, letterSpacing: 1.8,
                   fontWeight: FontWeight.w900,
                 )),
+            ],
+            if (unlocked && onGenerate != null) ...[
+              const SizedBox(height: 18),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () { HapticFeedback.mediumImpact(); onGenerate!(); },
+                  borderRadius: BorderRadius.circular(99),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22, vertical: 13),
+                    decoration: BoxDecoration(
+                      color: AppColors.red,
+                      borderRadius: BorderRadius.circular(99),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.red.withValues(alpha: 0.5),
+                          blurRadius: 22, spreadRadius: 0),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.workspace_premium_rounded,
+                          color: Colors.white, size: 18),
+                        const SizedBox(width: 10),
+                        Text('GENERATE CERTIFICATE',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 12, letterSpacing: 2.4,
+                            fontWeight: FontWeight.w900,
+                          )),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.arrow_forward_rounded,
+                          color: Colors.white, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ],
         ),

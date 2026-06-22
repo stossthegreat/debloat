@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../theme/app_colors.dart';
 import '../widgets/common/share_card.dart';
+import '../widgets/share/certificate_share_card.dart';
 import '../widgets/share/eye_strip_share_card.dart';
 import '../widgets/share/progress_share_card.dart';
 import '../widgets/share/score_share_card.dart';
@@ -363,6 +364,94 @@ class ShareService {
         await _shareBytes(
           bytes,
           'imhim-progress-${DateTime.now().millisecondsSinceEpoch}.png',
+          text ?? defaultText,
+          origin: origin,
+        );
+        return;
+      }
+    } catch (e) {
+      errorMsg = 'Share failed: ${e.toString().split('\n').first}';
+    }
+
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(errorMsg),
+        backgroundColor: AppColors.surface2,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  /// Render + share the v291 IMHIM CERTIFIED Day-60 card. Unlocked
+  /// by [_FinalFormCard] in the Ascend tab once the user clears the
+  /// 60-day protocol. Same off-screen render pipeline as
+  /// [shareProgress] / [shareScore] so the share-sheet behaviour is
+  /// identical across cards.
+  static Future<void> shareCertificate({
+    required BuildContext context,
+    String? beforePhotoPath,
+    String? afterPhotoPath,
+    required int imhimStart,
+    required int imhimEnd,
+    required int looksStart,
+    required int looksEnd,
+    required int gameStart,
+    required int gameEnd,
+    required int consistencyStart,
+    required int consistencyEnd,
+    String verdict = '60 days. Locked in.',
+    String? text,
+  }) async {
+    HapticFeedback.lightImpact();
+
+    if (context.mounted) {
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.black54,
+        builder: (_) => const _RenderingOverlay(),
+      );
+    }
+
+    final mq = MediaQuery.of(context);
+    final origin = Rect.fromLTWH(
+      mq.size.width / 2 - 1, mq.padding.top + 8, 2, 2);
+
+    String errorMsg = 'Share failed';
+    try {
+      if (!context.mounted) return;
+      final card = CertificateShareCard(
+        beforePhotoPath:   beforePhotoPath,
+        afterPhotoPath:    afterPhotoPath,
+        imhimStart:        imhimStart,
+        imhimEnd:          imhimEnd,
+        looksStart:        looksStart,
+        looksEnd:          looksEnd,
+        gameStart:         gameStart,
+        gameEnd:           gameEnd,
+        consistencyStart:  consistencyStart,
+        consistencyEnd:    consistencyEnd,
+        verdict:           verdict,
+      );
+      final bytes = await _captureOffscreen(
+        context:     context,
+        widget:      card,
+        logicalSize: _auralayCardSize(context),
+        pixelRatio:  2.0,
+      );
+      if (bytes == null) {
+        errorMsg = "Couldn't render the certificate — try again";
+      } else {
+        if (context.mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+        HapticFeedback.heavyImpact();
+        final defaultText =
+          '60 days. ImHim Certified. ${imhimStart} → ${imhimEnd}.';
+        await _shareBytes(
+          bytes,
+          'imhim-certified-${DateTime.now().millisecondsSinceEpoch}.png',
           text ?? defaultText,
           origin: origin,
         );
