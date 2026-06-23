@@ -19,7 +19,7 @@ import '../services/analytics_route_observer.dart';
 // ── Auralay graft (Eyes + Game tabs) ───────────────────────────────────────
 import '../screens/debug/diagnostic_screen.dart';
 import '../screens/eyes/selene_lesson_screen.dart';
-import '../screens/game/lines/lines_screen.dart';
+import '../screens/game/pickup_line/pickup_line_screen.dart';
 import '../screens/game/rizz/rizz_reply_screen.dart';
 import '../screens/rizz/rizz_chat_screen.dart';
 import '../screens/rizz/rizz_tab_screen.dart' show RizzCardAction;
@@ -78,7 +78,7 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(path: '/scan',     builder: (_, __) => const ScanScreen()),
-    GoRoute(path: '/lines',    builder: (_, __) => const LinesScreen()),
+    GoRoute(path: '/lines',    builder: (_, __) => const PickupLineScreen()),
     GoRoute(
       path: '/rizz',
       builder: (_, state) {

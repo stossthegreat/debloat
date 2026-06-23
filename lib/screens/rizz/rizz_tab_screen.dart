@@ -178,11 +178,11 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
               child: _RizzCard(
-                icon:     Icons.chat_bubble_outline_rounded,
-                title:    'Gimme a pickup line',
+                icon:     Icons.bolt_rounded,
+                title:    'Pickup line',
                 subtitle: showLinesLock
-                    ? 'Pro only — unlock the arsenal'
-                    : 'Curated arsenal of killer rizz',
+                    ? 'Pro only — one banger at a time'
+                    : 'One at a time. Regenerate. Done.',
                 onTap:    _tapLines,
                 locked:   showLinesLock,
               ),

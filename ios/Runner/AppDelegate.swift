@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -73,6 +74,24 @@ import UIKit
             // read, the timestamp key is cleared so the same
             // screenshot isn't replayed on the next cold start.
             result(pullPendingShare())
+
+        case "clearAppBadge":
+            // v298 — wipe the iOS app-icon red badge. The
+            // flutter_local_notifications 17.x plugin doesn't expose
+            // a badge setter, so cancelling delivered notifications
+            // (which the Dart side already does) left the icon
+            // showing "1" forever. This sets it back to 0 directly
+            // via UNUserNotificationCenter (iOS 16+) with a fallback
+            // to the deprecated applicationIconBadgeNumber API for
+            // older devices.
+            if #available(iOS 16.0, *) {
+                UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
+            } else {
+                DispatchQueue.main.async {
+                    UIApplication.shared.applicationIconBadgeNumber = 0
+                }
+            }
+            result(nil)
 
         default:
             result(FlutterMethodNotImplemented)

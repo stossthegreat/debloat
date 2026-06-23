@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -374,14 +375,20 @@ class NotificationService {
   /// the lifecycle observer in main.dart whenever the app foregrounds,
   /// so the user opening the app counts as "I saw the notification".
   ///
-  /// flutter_local_notifications 17.x doesn't expose a single-call
-  /// removeAllDelivered; we walk active notifications and cancel each
-  /// by id. That clears the delivered tray + per-notification badge
-  /// contribution without touching pending schedules (pending and
-  /// delivered ids never overlap on iOS — once a notif fires it leaves
-  /// the pending queue). On Android the per-icon dot is system-managed
-  /// and clears automatically when the user opens / dismisses; no code
-  /// path needed.
+  /// v298 — the v280 implementation only walked active notifications +
+  /// called cancel(id). That clears the delivered tray but does NOT
+  /// reset the iOS `applicationIconBadgeNumber` — flutter_local_
+  /// notifications 17.x has no badge setter. Result: badge stayed at
+  /// "1" forever after the first notification fired. Now we ALSO
+  /// invoke a native AppDelegate MethodChannel ("clearAppBadge")
+  /// that calls UNUserNotificationCenter.setBadgeCount(0). Channel
+  /// name + handler live in ios/Runner/AppDelegate.swift.
+  ///
+  /// On Android the per-icon dot is system-managed and clears
+  /// automatically when the user opens / dismisses; no code path
+  /// needed there.
+  static const _kBadgeChannel = MethodChannel('com.mirrorly.app/share_intake');
+
   static Future<void> clearIconBadge() async {
     if (!_initialized) return;
     try {
@@ -391,7 +398,17 @@ class NotificationService {
         if (id != null) await _plugin.cancel(id);
       }
     } catch (e) {
-      debugPrint('clearIconBadge failed: $e');
+      debugPrint('clearIconBadge cancel-active failed: $e');
+    }
+    try {
+      // Hard reset via native — the only way to clear the badge
+      // number on iOS without flutter_local_notifications native
+      // support. No-op on Android (the channel only handles this
+      // on the iOS side; Android handler returns
+      // FlutterMethodNotImplemented, which we swallow).
+      await _kBadgeChannel.invokeMethod<void>('clearAppBadge');
+    } catch (e) {
+      debugPrint('clearIconBadge native failed: $e');
     }
   }
 }

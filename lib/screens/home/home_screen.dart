@@ -10,6 +10,7 @@ import '../../models/protocol.dart';
 import '../../models/scan_record.dart';
 import '../../services/analytics_service.dart';
 import '../../services/local_store_service.dart';
+import '../../services/notification_service.dart';
 import '../../services/protocol_service.dart';
 import '../../services/review_prompt_service.dart';
 import '../../theme/app_colors.dart';
@@ -207,18 +208,27 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _tab = i);
     // Tab-switch analytics — paired with the router observer's
     // screen_view event so we can rebuild the LOOKS / GAME / RIZZ
-    // funnel without having to dedupe screen_views by source.
-    const tabNames = ['looks', 'game', 'rizz'];
+    // / ASCEND funnel without having to dedupe screen_views by
+    // source.
+    const tabNames = ['looks', 'game', 'rizz', 'ascend'];
     if (i >= 0 && i < tabNames.length) {
       // ignore: discarded_futures
       AnalyticsService.tabOpened(tabNames[i]);
     }
     // Re-read scan + pillar prefs whenever the user returns to the
-    // Ascend tab — keeps LOOKS / AURA / GAME live the moment they
-    // finish a lesson elsewhere in the app.
+    // Looks tab — keeps the masthead live the moment they finish a
+    // lesson elsewhere in the app.
     if (i == 0) {
       // ignore: discarded_futures
       _reload();
+    }
+    // v298 — opening Ascend is the canonical "I saw the
+    // notification" moment. Clear the iOS app-icon badge in
+    // addition to the lifecycle-resume clear so users who tap
+    // Ascend mid-session don't keep staring at the red dot.
+    if (i == 3) {
+      // ignore: discarded_futures
+      NotificationService.clearIconBadge();
     }
   }
 
@@ -263,6 +273,12 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: _NavBar(
         index: _tab,
         onTap: _switchTab,
+        // v298 — pending dot on Ascend tab when the user has an
+        // open daily action. Right now the canonical "do this"
+        // signal is whether today's protocol is still un-logged;
+        // tapping the tab routes them to the missions panel where
+        // they clear it.
+        ascendPending: !_looksDoneToday,
       ),
     );
   }
@@ -1265,7 +1281,16 @@ class _StreakChip extends StatelessWidget {
 class _NavBar extends StatelessWidget {
   final int index;
   final ValueChanged<int> onTap;
-  const _NavBar({required this.index, required this.onTap});
+  /// v298 — when true, paints a small red dot over the Ascend tab
+  /// icon (index 3) so the user knows there's an unhandled action
+  /// inside. Suppressed while the Ascend tab is the active tab —
+  /// the dot has done its job once they're there.
+  final bool ascendPending;
+  const _NavBar({
+    required this.index,
+    required this.onTap,
+    this.ascendPending = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1307,11 +1332,33 @@ class _NavBar extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(items[i].icon,
-                          size: 20,
-                          color: i == index
-                              ? AppColors.red
-                              : AppColors.textTertiary),
+                        // v298 — Stack so a red dot can ride over
+                        // the Ascend tab icon when ascendPending is
+                        // true and the user isn't already on that
+                        // tab. Other icons render normally.
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Icon(items[i].icon,
+                              size: 20,
+                              color: i == index
+                                  ? AppColors.red
+                                  : AppColors.textTertiary),
+                            if (i == 3 && ascendPending && i != index)
+                              Positioned(
+                                right: -5, top: -3,
+                                child: Container(
+                                  width: 9, height: 9,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.red,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.surface1, width: 1.4),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                         const SizedBox(height: 3),
                         // GAME renders italic Playfair to match how the
                         // Auralay tab used to brand Lucien — the editorial
