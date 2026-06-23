@@ -1459,27 +1459,20 @@ class _NavBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = active ? Colors.white : AppColors.textSecondary;
+    // v306 — red fill on the active pill dropped per bro's note;
+    // active state is now just the icon + label going red, no
+    // block highlight. New size + new block tap-target retained
+    // so anywhere on the rectangle still routes.
+    final fg = active ? AppColors.red : AppColors.textSecondary;
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+        child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: active ? AppColors.red : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: AppColors.red.withValues(alpha: 0.45),
-                      blurRadius: 18, spreadRadius: 0),
-                  ]
-                : null,
-          ),
+          decoration: const BoxDecoration(),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
