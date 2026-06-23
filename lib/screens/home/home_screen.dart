@@ -1389,6 +1389,11 @@ class _NavBar extends StatelessWidget {
       (label: 'Rizz',   icon: Icons.bolt_rounded,                      italic: true),
       (label: 'Ascend', icon: Icons.local_fire_department_rounded,     italic: true),
     ];
+    // v303 — bottom nav rebuilt in the Skeletal-PT pattern bro
+    // pointed at: each tab is its own block, the ACTIVE block fills
+    // with the brand red and stays filled, inactive tabs render
+    // flat. Bigger icons + bigger labels, and the whole block is
+    // the tap target (no more tiny icon-only hit area).
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface1,
@@ -1398,69 +1403,109 @@ class _NavBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
           child: Row(
             children: [
               for (var i = 0; i < items.length; i++)
                 Expanded(
-                  child: InkWell(
-                    onTap: () => onTap(i),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // v298 — Stack so a red dot can ride over
-                        // the Ascend tab icon when ascendPending is
-                        // true and the user isn't already on that
-                        // tab. Other icons render normally.
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Icon(items[i].icon,
-                              size: 20,
-                              color: i == index
-                                  ? AppColors.red
-                                  : AppColors.textTertiary),
-                            if (i == 3 && ascendPending && i != index)
-                              Positioned(
-                                right: -5, top: -3,
-                                child: Container(
-                                  width: 9, height: 9,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.red,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.surface1, width: 1.4),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                        // GAME renders italic Playfair to match how the
-                        // Auralay tab used to brand Lucien — the editorial
-                        // serif italic against the all-caps tracked sans.
-                        Text(
-                          items[i].italic
-                              ? items[i].label    // mixed case for italic serif
-                              : items[i].label.toUpperCase(),
-                          style: (items[i].italic
-                                  ? AppTypography.h1.copyWith(
-                                      fontStyle: FontStyle.italic,
-                                      fontWeight: FontWeight.w700)
-                                  : AppTypography.label)
-                              .copyWith(
-                                color: i == index
-                                    ? AppColors.red
-                                    : AppColors.textTertiary,
-                                fontSize: items[i].italic ? 11 : 8.5,
-                                letterSpacing: items[i].italic ? -0.2 : 1.8,
-                                height: 1,
-                              ),
-                        ),
-                      ],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _NavBlock(
+                      label: items[i].label,
+                      icon: items[i].icon,
+                      active: i == index,
+                      showPendingDot:
+                          i == 3 && ascendPending && i != index,
+                      onTap: () => onTap(i),
                     ),
                   ),
                 ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// v303 — Bottom-nav block. Active tab fills with brand red and
+/// stays filled; inactive tabs render flat. Whole block is the tap
+/// target so the user can land anywhere on the rectangle. Big
+/// icon (24pt) + big label (12pt italic Playfair) so the chrome
+/// reads as confident, not crowded.
+///
+/// `showPendingDot` rides a small red dot at the top-right of the
+/// icon when this tab has an outstanding action (currently only
+/// the Ascend tab uses it). Suppressed on the active tab — the dot
+/// has served its purpose once the user is there.
+class _NavBlock extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool active;
+  final bool showPendingDot;
+  final VoidCallback onTap;
+  const _NavBlock({
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.showPendingDot,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = active ? Colors.white : AppColors.textSecondary;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: active ? AppColors.red : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: AppColors.red.withValues(alpha: 0.45),
+                      blurRadius: 18, spreadRadius: 0),
+                  ]
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(icon, size: 24, color: fg),
+                  if (showPendingDot)
+                    Positioned(
+                      right: -5, top: -3,
+                      child: Container(
+                        width: 9, height: 9,
+                        decoration: BoxDecoration(
+                          color: AppColors.red,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.surface1, width: 1.4),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(label,
+                style: AppTypography.h1.copyWith(
+                  color: fg,
+                  fontSize: 13, height: 1,
+                  letterSpacing: -0.2,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.w800,
+                )),
             ],
           ),
         ),
