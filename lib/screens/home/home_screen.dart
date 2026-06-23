@@ -81,6 +81,10 @@ class _HomeScreenState extends State<HomeScreen> {
   /// `rizz_reply_screen` whenever a generation lands successfully.
   /// Drives the Rizz row of the Ascend tab's pillar missions panel.
   bool _rizzDoneToday  = false;
+  /// v301 — Pickup-line daily flag. Written by `pickup_line_screen`
+  /// the moment the user copies a line. Drives the DROP A LINE
+  /// daily mission row on the Ascend tab.
+  bool _pickupLineDoneToday = false;
 
   static int _todayYmd() {
     final n = DateTime.now();
@@ -142,6 +146,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final gameOk   = (prefs.getInt('game_done_ymd')  ?? 0) == today;
     // v289 — read the Rizz daily flag stamped by rizz_reply_screen.
     final rizzOk   = (prefs.getInt('rizz_done_ymd')  ?? 0) == today;
+    // v301 — pickup-line daily flag from pickup_line_screen._copy.
+    final pickupOk = (prefs.getInt('pickup_line_done_ymd') ?? 0) == today;
     final allThree = looksOk && auraOk && gameOk;
     int tripleStreak = prefs.getInt('triple_streak_count') ?? 0;
     final lastTripleYmd = prefs.getInt('triple_streak_last_ymd') ?? 0;
@@ -200,6 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _auraDoneToday  = auraOk;
       _gameDoneToday  = gameOk;
       _rizzDoneToday  = rizzOk;
+      _pickupLineDoneToday = pickupOk;
     });
   }
 
@@ -257,16 +264,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 // completion booleans from this screen's state so
                 // it never has to spin up its own service layer.
                 AscendScreen(
-                  onJumpToTab:      _switchTab,
-                  protocol:         _protocol,
-                  latest:           _latest,
-                  allScans:         _scans,
-                  dayStreak:        _dayStreak,
-                  looksDoneToday:   _looksDoneToday,
-                  gameDoneToday:    _gameDoneToday,
-                  rizzDoneToday:    _rizzDoneToday,
-                  looksScore100:    _looksScore100,
-                  gameScore100:     _gameScore100,
+                  onJumpToTab:          _switchTab,
+                  protocol:             _protocol,
+                  latest:               _latest,
+                  allScans:             _scans,
+                  dayStreak:            _dayStreak,
+                  looksDoneToday:       _looksDoneToday,
+                  gameDoneToday:        _gameDoneToday,
+                  rizzDoneToday:        _rizzDoneToday,
+                  pickupLineDoneToday:  _pickupLineDoneToday,
+                  looksScore100:        _looksScore100,
+                  gameScore100:         _gameScore100,
                 ),
               ],
             ),

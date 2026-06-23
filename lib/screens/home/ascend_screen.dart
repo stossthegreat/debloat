@@ -70,6 +70,9 @@ class AscendScreen extends StatefulWidget {
   /// v289 — Did the user generate a rizz reply today?
   final bool rizzDoneToday;
 
+  /// v301 — Did the user copy a pickup line today?
+  final bool pickupLineDoneToday;
+
   /// v289 — latest Looks pillar score, 0-100 raw scale. Feeds the
   /// IMHIM-score formula.
   final int looksScore100;
@@ -88,6 +91,7 @@ class AscendScreen extends StatefulWidget {
     this.looksDoneToday = false,
     this.gameDoneToday = false,
     this.rizzDoneToday = false,
+    this.pickupLineDoneToday = false,
     this.looksScore100 = 0,
     this.gameScore100 = 0,
   });
@@ -279,62 +283,58 @@ class _AscendScreenState extends State<AscendScreen> {
     );
   }
 
-  // ── Mission builder — v289 pillar-mapped ────────────────────────────────
+  // ── Mission builder — v301 daily-feasible only ──────────────────────────
   //
-  // Consultant: "The tasks feel disconnected. They need to represent
-  // the three pillars." Each row now belongs to one of the four
-  // tabs so the whole hub reads as one journey, not four orphaned
-  // surfaces.
+  // Bro: "with the streaks have you used factual things they have
+  // to do? They only got 5 sessions a week for roleplay so it
+  // can't be everyday. We should only get them to scan once a
+  // week. The ones we can use is analyse rizz in rizz chat and
+  // drop a pickup line or complete a protocol."
   //
-  //   LOOKS   ← looksDoneToday (protocol_screen check-in)
-  //   GAME    ← gameDoneToday  (Free Flow round)
-  //   RIZZ    ← rizzDoneToday  (rizz_reply_screen generation)
-  //   GROWTH  ← weekly scan    (latest scan dated today; soft until
-  //                             the user is in a scan window)
+  // Weekly-capped actions (Free Flow = 5/wk, Scan = 2/wk) are no
+  // longer in the daily missions panel — a user can't legitimately
+  // tick them every day. The Scan window prompts already live in
+  // the milestone strip on the Progress tab; Free Flow lives in
+  // the Game tab. Daily missions are the three actions a user
+  // can ACTUALLY do every day without burning a weekly bucket:
+  //
+  //   PROTOCOL · looksDoneToday       (protocol_screen check-in)
+  //   PICKUP   · pickupLineDoneToday  (pickup_line_screen._copy)
+  //   READ     · rizzDoneToday        (rizz_reply_screen generate)
+  //
+  // Copy reframed in leveling-up voice — every line reads as a
+  // rep banked toward becoming Him, not a chore to clear. Bro:
+  // "we're trying to make them HIM in everything we tell them to
+  // do. Feels like they're leveling up."
   List<AscendMission> _buildMissions() {
-    final scanToday = _hasScanFromToday();
     final w = widget;
+    final day = w.protocol?.currentDay ?? 1;
     return [
       AscendMission(
-        title: 'LOOKS · Complete today\'s protocol',
+        title: 'PROTOCOL · LOG DAY $day',
         hint:  w.looksDoneToday
-            ? 'logged'
-            : 'log day ${w.protocol?.currentDay ?? 1}',
+            ? 'banked. another day deeper.'
+            : 'today\'s reps. the work that compounds.',
         done:  w.looksDoneToday,
         onTap: () => w.onJumpToTab(0),
       ),
       AscendMission(
-        title: 'GAME · Free Flow round with Lucien',
-        hint:  w.gameDoneToday
-            ? 'session in the can'
-            : 'open Game · Free Flow',
-        done:  w.gameDoneToday,
-        onTap: () => w.onJumpToTab(1),
-      ),
-      AscendMission(
-        title: 'RIZZ · Use Rizz analysis',
-        hint:  w.rizzDoneToday
-            ? 'generated today'
-            : 'drop a screenshot, run a reply',
-        done:  w.rizzDoneToday,
+        title: 'PICKUP · DROP A LINE',
+        hint:  w.pickupLineDoneToday
+            ? 'used a banger today.'
+            : 'one line. screenshot-worthy. copy it.',
+        done:  w.pickupLineDoneToday,
         onTap: () => w.onJumpToTab(2),
       ),
       AscendMission(
-        title: 'GROWTH · Submit scan',
-        hint:  scanToday
-            ? 'logged today'
-            : 'weekly — keep the delta honest',
-        done:  scanToday,
-        onTap: () => w.onJumpToTab(0),
+        title: 'READ · GET THE TAKE',
+        hint:  w.rizzDoneToday
+            ? 'chat read. moves locked in.'
+            : 'paste a chat or ask the rizz coach.',
+        done:  w.rizzDoneToday,
+        onTap: () => w.onJumpToTab(2),
       ),
     ];
-  }
-
-  bool _hasScanFromToday() {
-    if (widget.latest == null) return false;
-    final now = DateTime.now();
-    final t   = widget.latest!.takenAt;
-    return t.year == now.year && t.month == now.month && t.day == now.day;
   }
 
   /// v290 — which scan milestone (if any) is currently in window

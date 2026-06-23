@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../data/rizz_lines.dart';
 import '../../../services/paywall_gate.dart';
@@ -108,6 +109,18 @@ class _PickupLineScreenState extends State<PickupLineScreen> {
     if (line == null) return;
     HapticFeedback.mediumImpact();
     await Clipboard.setData(ClipboardData(text: line.text));
+    // v301 — stamp the pickup-line daily flag the moment the user
+    // actually copies a line. Drives the Ascend tab's "DROP A
+    // LINE" daily mission tick. Same shape as looks_done_ymd /
+    // rizz_done_ymd / game_done_ymd.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      await prefs.setInt(
+        'pickup_line_done_ymd',
+        now.year * 10000 + now.month * 100 + now.day,
+      );
+    } catch (_) {/* best-effort */}
     if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
