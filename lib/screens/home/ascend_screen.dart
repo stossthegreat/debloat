@@ -283,32 +283,38 @@ class _AscendScreenState extends State<AscendScreen> {
     );
   }
 
-  // ── Mission builder — v301 daily-feasible only ──────────────────────────
+  // ── Mission builder — v308 all-five always visible ──────────────────────
   //
-  // Bro: "with the streaks have you used factual things they have
-  // to do? They only got 5 sessions a week for roleplay so it
-  // can't be everyday. We should only get them to scan once a
-  // week. The ones we can use is analyse rizz in rizz chat and
-  // drop a pickup line or complete a protocol."
+  // Bro: "on the first day streak you put no roleplay?? wtf is
+  // wrong with you, scan and roleplay need to be on the fucking
+  // list first day."
   //
-  // Weekly-capped actions (Free Flow = 5/wk, Scan = 2/wk) are no
-  // longer in the daily missions panel — a user can't legitimately
-  // tick them every day. The Scan window prompts already live in
-  // the milestone strip on the Progress tab; Free Flow lives in
-  // the Game tab. Daily missions are the three actions a user
-  // can ACTUALLY do every day without burning a weekly bucket:
+  // v301 dropped Free Flow + Scan from the missions panel because
+  // they're weekly-capped. Wrong call — on Day 1 every user MUST
+  // see the full action set to commit to the app, and even on
+  // later days the weekly cap is enforced in the destination tab,
+  // not by hiding the row from the daily panel.
   //
-  //   PROTOCOL · looksDoneToday       (protocol_screen check-in)
-  //   PICKUP   · pickupLineDoneToday  (pickup_line_screen._copy)
-  //   READ     · rizzDoneToday        (rizz_reply_screen generate)
+  // All FIVE missions render every day:
   //
-  // Copy reframed in leveling-up voice — every line reads as a
-  // rep banked toward becoming Him, not a chore to clear. Bro:
-  // "we're trying to make them HIM in everything we tell them to
-  // do. Feels like they're leveling up."
+  //   PROTOCOL · looksDoneToday        (protocol_screen check-in)
+  //   ROLEPLAY · gameDoneToday         (Free Flow Lucien round)
+  //   SCAN     · _scanLoggedToday      (latest scan dated today)
+  //   PICKUP   · pickupLineDoneToday   (pickup_line_screen._copy)
+  //   READ     · rizzDoneToday         (rizz_reply_screen generate)
+  //
+  // Each row's done-flag is per-day so a user can tick it once
+  // each calendar day. Cap exhaustion ("0 / 5 Free Flows left
+  // this week") is surfaced inside the Game / Looks tabs at the
+  // moment they tap through — the missions panel doesn't
+  // pre-judge whether the cap is available.
+  //
+  // Copy stays in the leveling-up voice. Every line reads as a
+  // rep banked toward becoming Him.
   List<AscendMission> _buildMissions() {
     final w = widget;
     final day = w.protocol?.currentDay ?? 1;
+    final scanToday = _scanLoggedToday();
     return [
       AscendMission(
         title: 'PROTOCOL · LOG DAY $day',
@@ -316,6 +322,22 @@ class _AscendScreenState extends State<AscendScreen> {
             ? 'banked. another day deeper.'
             : 'today\'s reps. the work that compounds.',
         done:  w.looksDoneToday,
+        onTap: () => w.onJumpToTab(0),
+      ),
+      AscendMission(
+        title: 'ROLEPLAY · SPAR WITH LUCIEN',
+        hint:  w.gameDoneToday
+            ? 'round in the can. that\'s how reps build.'
+            : 'one round. the man you\'re becoming talks like him first.',
+        done:  w.gameDoneToday,
+        onTap: () => w.onJumpToTab(1),
+      ),
+      AscendMission(
+        title: 'SCAN · MARK THE FACE',
+        hint:  scanToday
+            ? 'baseline locked in for today.'
+            : 'no honest mirror, no honest delta. capture it.',
+        done:  scanToday,
         onTap: () => w.onJumpToTab(0),
       ),
       AscendMission(
@@ -335,6 +357,17 @@ class _AscendScreenState extends State<AscendScreen> {
         onTap: () => w.onJumpToTab(2),
       ),
     ];
+  }
+
+  /// True if the latest scan in widget.allScans landed today.
+  /// Same shape the v301-deleted _hasScanFromToday had — restored
+  /// because the SCAN mission needs to know if today's already
+  /// banked.
+  bool _scanLoggedToday() {
+    if (widget.latest == null) return false;
+    final now = DateTime.now();
+    final t   = widget.latest!.takenAt;
+    return t.year == now.year && t.month == now.month && t.day == now.day;
   }
 
   /// v290 — which scan milestone (if any) is currently in window
