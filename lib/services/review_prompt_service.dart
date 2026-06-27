@@ -104,6 +104,30 @@ class ReviewPromptService {
     );
   }
 
+  /// Wow-moment trigger — fires on the first Game result, the moment
+  /// Lucien drops his score + verdict card. The second aha moment after
+  /// the scan reveal. One-prompt-per-device still holds: whichever aha
+  /// moment the user reaches first claims the single prompt, so a user
+  /// who already rated after their scan won't be re-asked here.
+  static Future<void> maybePromptAfterGame(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_kPrompted) ?? false) return;
+    if (!context.mounted) return;
+    await Future.delayed(const Duration(milliseconds: 1800));
+    final ctx = context.mounted
+        ? context
+        : appRouter.routerDelegate.navigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    await prefs.setBool(_kPrompted, true);
+    // ignore: discarded_futures
+    AnalyticsService.reviewPromptShown('post_game');
+    await showDialog<void>(
+      context: ctx,
+      barrierDismissible: false,
+      builder: (_) => const ReviewPromptDialog(),
+    );
+  }
+
   static Future<void> _setFlag(String key) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key, true);

@@ -1420,6 +1420,11 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         _result = score;
         _phase = _Phase.scored;
       });
+      // First Game result is an aha moment — prompt for a review here the
+      // same way the first scan reveal does. One-per-device guard inside
+      // means it only fires if the scan reveal hasn't already claimed it.
+      // ignore: discarded_futures
+      ReviewPromptService.maybePromptAfterGame(context);
       if (score.audioBytes != null && score.audioBytes!.isNotEmpty) {
         try {
           await _lucienPlayer
