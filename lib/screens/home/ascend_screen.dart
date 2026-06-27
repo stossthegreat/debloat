@@ -46,6 +46,11 @@ class AscendScreen extends StatefulWidget {
   /// Switch the bottom-nav to a specific tab. 1=Looks, 2=Game, 3=Rizz.
   final ValueChanged<int> onJumpToTab;
 
+  /// Pull-to-refresh hook — re-reads the home-screen state (scores,
+  /// streak, mission flags) so Ascend updates without a tab switch.
+  /// Same gesture the Looks tab uses.
+  final Future<void> Function()? onRefresh;
+
   /// Active 60-day protocol, if any. Drives Day-N, streak,
   /// completedToday, and rank progression.
   final Protocol? protocol;
@@ -84,6 +89,7 @@ class AscendScreen extends StatefulWidget {
   const AscendScreen({
     super.key,
     required this.onJumpToTab,
+    this.onRefresh,
     this.protocol,
     this.latest,
     this.allScans = const [],
@@ -155,9 +161,17 @@ class _AscendScreenState extends State<AscendScreen> {
     return Scaffold(
       backgroundColor: AppColors.base,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: Sp.xl),
-          children: [
+        child: RefreshIndicator(
+          color: AppColors.red,
+          backgroundColor: AppColors.surface1,
+          onRefresh: () async {
+            await widget.onRefresh?.call();
+            await _loadDeltaAndSnapshot();
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: Sp.xl),
+            children: [
             // v292 — masthead matches Looks / Rizz: wordmark, then
             // the streak flame (gated > 0 like the other tabs so a
             // brand-new user doesn't see a dead "0 day" chip),
@@ -278,6 +292,7 @@ class _AscendScreenState extends State<AscendScreen> {
 
             const SizedBox(height: Sp.xl),
           ],
+        ),
         ),
       ),
     );

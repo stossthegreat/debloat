@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -20,11 +22,12 @@ import '../services/analytics_service.dart';
 ///             review." + "Write a Review" (primary) + "OK"
 ///             (secondary).
 ///
-/// "Write a Review" hands off to InAppReview.requestReview() which
-/// surfaces Apple's native StoreKit sheet on iOS / Google's in-app
-/// review on Android — that's the screen the reference image 3
-/// shows. Both stores resolve the app id internally; no App Store
-/// ID config needed here.
+/// "Write a Review" opens the live store listing — on iOS it deep-links
+/// to the App Store review section via openStoreListing(appStoreId), the
+/// same path Settings → Rate us uses; on Android it tries the native
+/// Play in-app review and falls back to the Play Store listing. (The old
+/// requestReview()-only path was rate-limited by Apple and often did
+/// nothing in TestFlight, so the button appeared to just close.)
 ///
 /// Visual language deliberately leaves the dark editorial Mirrorly
 /// chrome behind. iOS users recognise this floating white-card
@@ -51,12 +54,26 @@ class _ReviewPromptDialogState extends State<ReviewPromptDialog> {
     if (_opening) return;
     setState(() => _opening = true);
     HapticFeedback.mediumImpact();
+    // ignore: discarded_futures
+    AnalyticsService.reviewNativeOpened();
     try {
       final reviewer = InAppReview.instance;
-      if (await reviewer.isAvailable()) {
-        // ignore: discarded_futures
-        AnalyticsService.reviewNativeOpened();
-        await reviewer.requestReview();
+      // Mirror Settings → Rate us so "Write a Review" actually lands the
+      // user on the store's review section. The old path called
+      // requestReview() on both platforms — but Apple rate-limits that
+      // sheet and shows NOTHING in TestFlight / after it has fired once,
+      // which is why the button just closed the dialog.
+      if (Platform.isIOS) {
+        // iOS — deep-link straight to the App Store listing (review tab).
+        await reviewer.openStoreListing(appStoreId: '6762532788');
+      } else {
+        // Android — native Play in-app review when available, else the
+        // Play Store listing (bundle id resolved automatically).
+        if (await reviewer.isAvailable()) {
+          await reviewer.requestReview();
+        } else {
+          await reviewer.openStoreListing();
+        }
       }
     } catch (_) {/* best effort */}
     if (!mounted) return;

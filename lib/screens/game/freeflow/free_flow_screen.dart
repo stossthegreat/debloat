@@ -1420,6 +1420,11 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
         _result = score;
         _phase = _Phase.scored;
       });
+      // First Game result is an aha moment — prompt for a review here the
+      // same way the first scan reveal does. One-per-device guard inside
+      // means it only fires if the scan reveal hasn't already claimed it.
+      // ignore: discarded_futures
+      ReviewPromptService.maybePromptAfterGame(context);
       if (score.audioBytes != null && score.audioBytes!.isNotEmpty) {
         try {
           await _lucienPlayer
@@ -1626,8 +1631,15 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   Widget _buildPicker() {
     return Stack(
       children: [
-        CustomScrollView(
-          slivers: [
+        RefreshIndicator(
+          color: AppColors.accent,
+          backgroundColor: AppColors.surface1,
+          // Pull-to-refresh on the Game tab → tear the session down and
+          // return to a clean picker. Same gesture the Looks tab uses.
+          onRefresh: () async { _resetToPicker(); },
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 10, 14, 8),
@@ -1690,6 +1702,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
               ),
             ),
           ],
+        ),
         ),
       ],
     );

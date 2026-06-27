@@ -274,6 +274,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // it never has to spin up its own service layer.
                 AscendScreen(
                   onJumpToTab:          _switchTab,
+                  onRefresh:            _reload,
                   protocol:             _protocol,
                   latest:               _latest,
                   allScans:             _scans,
