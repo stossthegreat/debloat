@@ -1631,8 +1631,15 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   Widget _buildPicker() {
     return Stack(
       children: [
-        CustomScrollView(
-          slivers: [
+        RefreshIndicator(
+          color: AppColors.accent,
+          backgroundColor: AppColors.surface1,
+          // Pull-to-refresh on the Game tab → tear the session down and
+          // return to a clean picker. Same gesture the Looks tab uses.
+          onRefresh: () async { _resetToPicker(); },
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 10, 14, 8),
@@ -1695,6 +1702,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
               ),
             ),
           ],
+        ),
         ),
       ],
     );
