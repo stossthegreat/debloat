@@ -131,7 +131,8 @@ class _AscendScreenState extends State<AscendScreen> {
     final score = AscensionService.imhimScoreFromComponents(
       looks:       widget.looksScore100,
       game:        widget.gameScore100,
-      consistency: AscensionService.consistencyFor(widget.protocol),
+      consistency: AscensionService.consistencyFor(
+          widget.protocol, streak: widget.dayStreak),
     );
     final delta = await AscensionService.weeklyDeltaFor(score);
     await AscensionService.snapshotTodayScore(score);
@@ -148,7 +149,8 @@ class _AscendScreenState extends State<AscendScreen> {
     final day            = AscensionService.dayFor(p);
     final daysLeft       = AscensionService.daysRemainingFor(p);
     final rank           = AscensionService.rankFor(day);
-    final consistency    = AscensionService.consistencyFor(p);
+    final consistency    = AscensionService.consistencyFor(
+        p, streak: widget.dayStreak);
     final imhimScore     = AscensionService.imhimScoreFromComponents(
       looks:       widget.looksScore100,
       game:        widget.gameScore100,
@@ -473,8 +475,10 @@ class _AscendScreenState extends State<AscendScreen> {
     final int looksStart = firstScan?.score ?? 0;
     final int looksEnd   = lastScan?.score  ?? 0;
 
-    // Consistency arc — 0 on Day 1 always; current today.
-    final int consistencyEnd = AscensionService.consistencyFor(widget.protocol);
+    // Consistency arc — 0 on Day 1 always; current today (protocol ratio
+    // or the daily-streak proxy, whichever is higher).
+    final int consistencyEnd = AscensionService.consistencyFor(
+        widget.protocol, streak: widget.dayStreak);
     const int consistencyStart = 0;
 
     // IMHIM SCORE arc — same formula AscensionService runs in the

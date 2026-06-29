@@ -18,6 +18,7 @@ import '../../services/local_store_service.dart';
 import '../../services/presence/presence_progress_store.dart';
 import '../../services/ascension_service.dart';
 import '../../services/protocol_service.dart';
+import '../../services/streak_service.dart';
 import '../../services/share_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
@@ -279,7 +280,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
     int? imhimDelta;
     try {
       final protocol = await ProtocolService.loadActive();
-      final consistency = AscensionService.consistencyFor(protocol);
+      final streak = await StreakService.current();
+      final consistency =
+          AscensionService.consistencyFor(protocol, streak: streak);
       final imhim = AscensionService.imhimScoreFromComponents(
         looks: aestheticNow ?? 0,
         game:  voiceNow     ?? 0,
@@ -1596,7 +1599,8 @@ class _ProgressImhimHeroState extends State<_ProgressImhimHero> {
     final game  = widget.gameScores.isEmpty
         ? 0
         : widget.gameScores.map((g) => g.score).reduce(math.max);
-    final consistency = AscensionService.consistencyFor(p);
+    final streak = await StreakService.current();
+    final consistency = AscensionService.consistencyFor(p, streak: streak);
     final imhim = AscensionService.imhimScoreFromComponents(
       looks: looks, game: game, consistency: consistency);
     final delta = await AscensionService.weeklyDeltaFor(imhim);

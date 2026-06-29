@@ -294,14 +294,31 @@ class AscensionService {
     return raw.round().clamp(0, 100);
   }
 
-  /// Consistency component derived from the active protocol. Returns
-  /// 0 when no protocol is running — the user can't be consistent at
-  /// nothing. Clamped to [0, 100].
-  static int consistencyFor(Protocol? p) {
-    if (p == null) return 0;
-    final day = p.currentDay.clamp(1, totalDays);
-    final pct = (p.completedDays.length / day) * 100;
-    return pct.round().clamp(0, 100);
+  /// Consistency component (0..100). Two pieces of evidence that the
+  /// user shows up, and we take the better of them:
+  ///   • the protocol's logged-days ratio, when a 60-day protocol is
+  ///     running;
+  ///   • a daily-streak proxy otherwise.
+  /// The streak proxy stops a brand-new (no-protocol) user — who is
+  /// clearly active — from reading 0 consistency and dragging their
+  /// IMHIM SCORE down to looks+game only. Pass the live StreakService
+  /// streak via [streak]; omit it for the legacy protocol-only read.
+  static int consistencyFor(Protocol? p, {int streak = 0}) {
+    int protocolPct = 0;
+    if (p != null) {
+      final day = p.currentDay.clamp(1, totalDays);
+      protocolPct = ((p.completedDays.length / day) * 100).round().clamp(0, 100);
+    }
+    final streakPct = consistencyFromStreak(streak);
+    return protocolPct > streakPct ? protocolPct : streakPct;
+  }
+
+  /// Map a daily streak to a consistency %. Showing up at all earns a
+  /// floor so the score isn't punishing on day one; a ~12-day streak
+  /// reads as fully consistent.
+  static int consistencyFromStreak(int streak) {
+    if (streak <= 0) return 0;
+    return (40 + streak * 5).clamp(0, 100);
   }
 
   /// Snapshot the current IMHIM score against TODAY so the weekly
