@@ -13,6 +13,7 @@ import '../../models/scan_record.dart';
 import '../../models/technique.dart';
 import '../../providers/auralay_app_provider.dart';
 import '../../services/analytics_service.dart';
+import '../../services/face_asset_service.dart';
 import '../../services/gaze/gaze_progress_store.dart';
 import '../../services/local_store_service.dart';
 import '../../services/presence/presence_progress_store.dart';
@@ -1762,8 +1763,6 @@ class _ProgressFaceTile extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    final file = imagePath == null ? null : File(imagePath!);
-    final hasImage = file != null && file.existsSync();
     return Column(
       children: [
         AspectRatio(
@@ -1776,10 +1775,20 @@ class _ProgressFaceTile extends StatelessWidget {
                 color: accent.withValues(alpha: 0.55), width: 1.4),
             ),
             clipBehavior: Clip.antiAlias,
-            child: hasImage
-                ? Image.file(file, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _placeholder())
-                : _placeholder(),
+            // Resolve through FaceAssetService so the photo survives the
+            // iOS container-UUID drift after an app update (the stored
+            // absolute path goes stale; the file is still there under the
+            // current docs dir). Was Image.file(rawPath) → vanished on
+            // update.
+            child: FutureBuilder<String?>(
+              future: FaceAssetService.resolvePath(imagePath),
+              builder: (_, snap) {
+                final p = snap.data;
+                if (p == null) return _placeholder();
+                return Image.file(File(p), fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _placeholder());
+              },
+            ),
           ),
         ),
         const SizedBox(height: 8),

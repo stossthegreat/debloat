@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'face_asset_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/share_card.dart';
 import '../widgets/share/certificate_share_card.dart';
@@ -325,18 +326,19 @@ class ShareService {
       );
     }
 
-    // Warm the image cache so the BEFORE/NOW photos paint in the single
-    // off-screen layout pass (the capture pipeline doesn't await async
-    // image decode). Best-effort — a missing file just falls back to
-    // the card's placeholder tile.
-    if (beforePhotoPath != null && context.mounted) {
+    // Resolve through the container-UUID rescue (the raw stored path
+    // goes stale after an app update), then warm the cache so the
+    // BEFORE/NOW photos paint in the single off-screen layout pass.
+    final beforeResolved = await FaceAssetService.resolvePath(beforePhotoPath);
+    final nowResolved    = await FaceAssetService.resolvePath(nowPhotoPath);
+    if (beforeResolved != null && context.mounted) {
       try {
-        await precacheImage(FileImage(File(beforePhotoPath)), context);
+        await precacheImage(FileImage(File(beforeResolved)), context);
       } catch (_) {}
     }
-    if (nowPhotoPath != null && context.mounted) {
+    if (nowResolved != null && context.mounted) {
       try {
-        await precacheImage(FileImage(File(nowPhotoPath)), context);
+        await precacheImage(FileImage(File(nowResolved)), context);
       } catch (_) {}
     }
 
@@ -361,8 +363,8 @@ class ShareService {
         imhimNow:       imhimNow,
         imhimDelta:     imhimDelta,
         verdict:        verdict,
-        beforePhotoPath: beforePhotoPath,
-        nowPhotoPath:    nowPhotoPath,
+        beforePhotoPath: beforeResolved,
+        nowPhotoPath:    nowResolved,
       );
       final bytes = await _captureOffscreen(
         context:     context,
@@ -434,17 +436,19 @@ class ShareService {
       );
     }
 
-    // Warm the cache so the full-bleed BEFORE/NOW faces paint in the
-    // single off-screen layout pass. Best-effort — a pruned file just
-    // falls back to the card's placeholder.
-    if (beforePhotoPath != null && context.mounted) {
+    // Resolve through the container-UUID rescue (raw path goes stale
+    // after an app update), then warm the cache so the full-bleed
+    // BEFORE/NOW faces paint in the single off-screen layout pass.
+    final beforeResolved = await FaceAssetService.resolvePath(beforePhotoPath);
+    final afterResolved  = await FaceAssetService.resolvePath(afterPhotoPath);
+    if (beforeResolved != null && context.mounted) {
       try {
-        await precacheImage(FileImage(File(beforePhotoPath)), context);
+        await precacheImage(FileImage(File(beforeResolved)), context);
       } catch (_) {}
     }
-    if (afterPhotoPath != null && context.mounted) {
+    if (afterResolved != null && context.mounted) {
       try {
-        await precacheImage(FileImage(File(afterPhotoPath)), context);
+        await precacheImage(FileImage(File(afterResolved)), context);
       } catch (_) {}
     }
 
@@ -456,8 +460,8 @@ class ShareService {
     try {
       if (!context.mounted) return;
       final card = CertificateShareCard(
-        beforePhotoPath:   beforePhotoPath,
-        afterPhotoPath:    afterPhotoPath,
+        beforePhotoPath:   beforeResolved,
+        afterPhotoPath:    afterResolved,
         imhimStart:        imhimStart,
         imhimEnd:          imhimEnd,
         looksStart:        looksStart,

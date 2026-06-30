@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'local_store_service.dart';
+import 'protocol_service.dart';
 
 /// THE DAILY STREAK — single source of truth for the flame the user
 /// protects.
@@ -84,11 +85,27 @@ class StreakService {
         _kActiveDays, kept.map((e) => e.toString()).toList());
 
     final set = kept.toSet();
-    final current = _runEndingAt(set, today, yesterday);
+    final activityRun = _runEndingAt(set, today, yesterday);
 
-    int longest = prefs.getInt(_kLongest) ?? 0;
+    // The PROTOCOL is the everyday anchor — it's the one action designed
+    // for daily use (scans + roleplay are weekly-capped, so they can't
+    // carry a daily streak on their own). Its own check-in streak (with
+    // the freeze budget) is the streak the product is built around, so we
+    // take the better of the activity-day run and the protocol streak. A
+    // daily protocol logger always sees their real number.
+    int protocolStreak = 0, protocolLongest = 0;
+    try {
+      final p = await ProtocolService.loadActive();
+      protocolStreak  = p?.effectiveStreak ?? 0;
+      protocolLongest = p?.longestStreak  ?? 0;
+    } catch (_) {}
+
+    final current = activityRun > protocolStreak ? activityRun : protocolStreak;
+
+    final longest = prefs.getInt(_kLongest) ?? 0;
     final maxRun = _longestRun(set);
-    final best = [longest, current, maxRun].reduce((a, b) => a > b ? a : b);
+    final best = [longest, current, maxRun, protocolLongest]
+        .reduce((a, b) => a > b ? a : b);
     if (best != longest) await prefs.setInt(_kLongest, best);
 
     return (current, best);

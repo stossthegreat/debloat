@@ -67,6 +67,28 @@ class FaceAssetService {
     return false;
   }
 
+  /// Resolve a stored scan-image path to one that EXISTS on disk right
+  /// now, applying the same iOS container-UUID rescue as
+  /// [loadScanImageBytes]. Returns null if neither the stored absolute
+  /// path nor the basename-in-current-docs fallback resolves, so callers
+  /// can render a placeholder. Use this before any direct
+  /// `Image.file(...)` of a scan photo: the raw stored path goes stale
+  /// after an app update / restore when the container UUID changes —
+  /// which is exactly why before/now photos "vanish" after updating.
+  static Future<String?> resolvePath(String? path) async {
+    if (path == null || path.isEmpty) return null;
+    try {
+      if (await File(path).exists()) return path;
+      final filename = path.split('/').last;
+      if (filename.isNotEmpty && filename != path) {
+        final dir = await getApplicationDocumentsDirectory();
+        final rescued = '${dir.path}/mirrorly/scans/$filename';
+        if (await File(rescued).exists()) return rescued;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   static Future<void> deleteScanImage(String path) async {
     try {
       final file = File(path);
