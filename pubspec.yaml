@@ -1,7 +1,7 @@
 name: mirror
 description: "ImHim — Look sharp. Speak sharp. Own every room."
 publish_to: 'none'
-version: 1.2.1+318
+version: 1.2.1+319
 
 environment:
   sdk: ^3.8.0
@@ -130,6 +130,12 @@ flutter:
     # per assets/marketing/README.md and they auto-bundle on next
     # build — no pubspec edit needed.
     - assets/marketing/
+    # Onboarding intro-reel visuals (screens 4-7). Declared as a
+    # directory so the build never breaks before the JPEGs land; the
+    # reel's Image.asset errorBuilder shows a clean placeholder until
+    # then. Drop looks/game/messages/future.jpg per
+    # assets/onboarding/README.md — they auto-bundle on next build.
+    - assets/onboarding/
     # Character renders — Lucien + roleplay women + gaze partners +
     # free-flow hero + scan split. Declared as directories so the
     # build never breaks before the JPEGs land. Every tab uses
