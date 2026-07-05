@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 
@@ -83,17 +82,30 @@ class _ReportScreenState extends State<ReportScreen> {
   bool   _generatingHero = false;
   String _localMaximizedUrl = '';
 
-  // The loading screen is now a cinematic word-by-word reveal (same
-  // engine + cadence as the onboarding reel) — see [_ScanRevealLoader].
-  // It parks on the emotional payoff line and only hands off to the
-  // report once BOTH the reveal has landed its payoff AND the analysis
-  // is back. _revealDone is that gate: without it, the report would
-  // pop the instant analysis returned and cut the reveal off mid-word.
-  bool _revealDone = false;
+  // Loading copy honest to what's actually running. Bro: "the nano
+  // banana after image is still getting in the way — why you making
+  // us wait twice." We DO NOT call /maximize on this screen anymore
+  // (the hero render is on-demand via the GENERATE button), so the
+  // copy no longer mentions "maximized composite" — that string was
+  // tricking users into thinking they were waiting for the Replicate
+  // job that never fires here.
+  static const _loadingCopy = [
+    'Reading skin micro-texture',
+    'Comparing structural archetypes',
+    'Locking identity anchors',
+    'Compiling the honest read',
+  ];
+  int  _copyIdx       = 0;
+  bool _slowResponse  = false; // flips true after 30s — shows
+                               // the "taking longer than usual"
+                               // band so the user knows the screen
+                               // isn\'t frozen.
 
   @override
   void initState() {
     super.initState();
+    _rotateCopy();
+    _watchForSlowResponse();
     _resolvePro();
     _run();
   }
@@ -104,6 +116,29 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() {
       _isPro = pro;
       _proResolved = true;
+    });
+  }
+
+  void _rotateCopy() {
+    // 1.4s rotation feels quicker / more elite than the old 2s. Long
+    // enough to read, fast enough to feel like real progress.
+    Future.delayed(const Duration(milliseconds: 1400), () {
+      if (!mounted || _analysis != null) return;
+      setState(() => _copyIdx = (_copyIdx + 1) % _loadingCopy.length);
+      _rotateCopy();
+    });
+  }
+
+  /// After 30s of waiting, surface a "slow response" band so the user
+  /// knows the screen isn't frozen. Bro: "no reason why it should ever
+  /// take more than 20-30 seconds" — 30s here matches that ceiling.
+  void _watchForSlowResponse() {
+    // Bro v6: "should be quicker and elite loading and it should say
+    // still working even after 20-30 seconds." 20s feels alive vs the
+    // old 30s — by 20s the user is already wondering if it's frozen.
+    Future.delayed(const Duration(seconds: 20), () {
+      if (!mounted || _analysis != null || _error != null) return;
+      setState(() => _slowResponse = true);
     });
   }
 
@@ -276,11 +311,11 @@ class _ReportScreenState extends State<ReportScreen> {
     return Scaffold(
       backgroundColor: AppColors.base,
       body: SafeArea(
-        child: (_analysis != null && _revealDone)
-            ? (_proResolved && !_isPro
+        child: _analysis == null
+            ? _buildLoading()
+            : (_proResolved && !_isPro
                 ? _buildLockedTeaser(_analysis!)
-                : _buildReport(_analysis!))
-            : _buildLoading(),
+                : _buildReport(_analysis!)),
       ),
     );
   }
@@ -320,18 +355,99 @@ class _ReportScreenState extends State<ReportScreen> {
       );
     }
 
-    // Cinematic reveal — same word-by-word engine + cadence as the
-    // onboarding reel. It plays the scripted beats once (never loops),
-    // shows the real loading progress as the percentage climbing, and
-    // parks on the emotional payoff line until the analysis lands. The
-    // `ready` flag flips the moment the report is back; the loader then
-    // drives the percentage to 100 and calls `onComplete`, which lifts
-    // the `_revealDone` gate and swaps in the report.
-    return _ScanRevealLoader(
-      ready: _analysis != null,
-      onComplete: () {
-        if (mounted) setState(() => _revealDone = true);
-      },
+    // Loading state. Bro: "the way it loads people don\'t actually
+    // know if it\'s really loading." Bigger spinner, step counter
+    // ("3 of 5"), an honest "this can take up to a minute" line so
+    // the user knows we\'re working not stuck, and the actual step
+    // text rotates every 2s as before.
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 60, height: 60,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              color: AppColors.accent,
+              backgroundColor: AppColors.surface2,
+            ),
+          ),
+          const SizedBox(height: 28),
+          Text(
+            'STEP ${_copyIdx + 1} OF ${_loadingCopy.length}',
+            style: AppTypography.label.copyWith(
+              color: AppColors.accent,
+              letterSpacing: 3.0, fontSize: 10,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: Text(_loadingCopy[_copyIdx].toUpperCase(),
+              key: ValueKey(_copyIdx),
+              textAlign: TextAlign.center,
+              style: AppTypography.label.copyWith(
+                color: AppColors.textPrimary,
+                letterSpacing: 2.2,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              )),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Reading your face — mesh, geometry, archetype, skin '
+            'texture. The honest read usually lands in 10-20 seconds.',
+            textAlign: TextAlign.center,
+            style: AppTypography.body.copyWith(
+              fontSize: 12,
+              height: 1.45,
+              color: AppColors.textTertiary,
+            ),
+          ),
+          // Slow-response notice — after 60s, surface a small amber
+          // band that just says "this is taking longer than usual,
+          // keep waiting." No retry button (bro: "don\'t put retry
+          // on the scan rendering loading screen, just tell them
+          // to keep waiting"). Letting users hammer retry on a slow
+          // backend only piles up more work for the same queue.
+          if (_slowResponse) ...[
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.signalAmber.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.signalAmber.withValues(alpha: 0.45),
+                  width: 0.8),
+              ),
+              child: Column(
+                children: [
+                  Text('STILL WORKING',
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.signalAmber,
+                      letterSpacing: 3.2, fontSize: 10.5,
+                      fontWeight: FontWeight.w900,
+                    )),
+                  const SizedBox(height: 6),
+                  Text(
+                    'The honest read is heavy — bones, skin, eyes, '
+                    'archetype. Almost there.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.body.copyWith(
+                      fontSize: 11.5,
+                      height: 1.4,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ).animate().fadeIn(duration: 400.ms),
     );
   }
 
@@ -1882,322 +1998,3 @@ class _LockedSection extends StatelessWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────
-// SCAN REVEAL LOADER
-//
-// The loading screen shown between the scan and the first (free) result.
-// It reuses the onboarding reel's word-by-word reveal engine + exact
-// cadence, but instead of story beats it plays a short, hard-hitting
-// script — each block pinned to a rising percentage that doubles as the
-// real loading progress. It parks on the emotional payoff line and hands
-// off to the report only once the analysis is actually back.
-//
-// Timing / behaviour:
-//   • Plays the beats ONCE at onboarding speed (never loops).
-//   • The big percentage animates up to each block's target as the copy
-//     reveals; it only hits 100% when the analysis has landed.
-//   • If the analysis returns before the reveal reaches the payoff, the
-//     reveal fast-forwards to the payoff line (so a fast read still lands
-//     the emotional close instead of flashing past it).
-//   • If the analysis is slow, the reveal parks on the payoff line at
-//     ~91% until it lands, then finishes to 100%.
-// ─────────────────────────────────────────────────────────────────────
-class _ScanRevealLoader extends StatefulWidget {
-  /// True once the analysis is back — flips the reveal toward 100% + close.
-  final bool ready;
-
-  /// Fired once the payoff line has landed AND [ready] is true. The parent
-  /// lifts its `_revealDone` gate here and swaps in the report.
-  final VoidCallback onComplete;
-
-  const _ScanRevealLoader({required this.ready, required this.onComplete});
-
-  @override
-  State<_ScanRevealLoader> createState() => _ScanRevealLoaderState();
-}
-
-class _ScanRevealLoaderState extends State<_ScanRevealLoader> {
-  int _idx = 0;
-  bool _finished = false;
-  bool _slow = false;
-  Timer? _t;
-  Timer? _slowTimer;
-
-  // Same cadence as the onboarding reel.
-  static const _wordMs     = 130;
-  static const _wordFade   = 320;
-  static const _holdMs     = 620;
-  static const _gapMs      = 260;
-  static const _payoffHold = 900; // beat on the payoff line before hand-off
-
-  bool get _onPayoff => _idx >= _revealLines.length - 1;
-
-  @override
-  void initState() {
-    super.initState();
-    _queueNext();
-    // If the read drags, whisper "still working" under the payoff so the
-    // user knows the screen isn't frozen — no retry, no alarm.
-    _slowTimer = Timer(const Duration(seconds: 22), () {
-      if (mounted && !_finished) setState(() => _slow = true);
-    });
-  }
-
-  @override
-  void didUpdateWidget(covariant _ScanRevealLoader old) {
-    super.didUpdateWidget(old);
-    // The analysis just landed. Rebuild so the percentage tween re-targets
-    // 100 when we're on the payoff, and let the parked payoff-check finish.
-    if (!old.ready && widget.ready && mounted) setState(() {});
-  }
-
-  void _queueNext() {
-    if (_onPayoff) {
-      _armPayoff();
-      return;
-    }
-    final line = _revealLines[_idx];
-    final ms = (line.words.length - 1) * _wordMs +
-        _wordFade + _holdMs + (line.bigBreath ? _gapMs : 0);
-    _t?.cancel();
-    _t = Timer(Duration(milliseconds: ms), () {
-      if (!mounted) return;
-      setState(() {
-        // Read is already back → jump straight to the payoff line so the
-        // emotional close always lands. Otherwise advance one beat.
-        _idx = widget.ready ? _revealLines.length - 1 : _idx + 1;
-      });
-      _queueNext();
-    });
-  }
-
-  void _armPayoff() {
-    _t?.cancel();
-    _t = Timer(const Duration(milliseconds: _payoffHold), _checkComplete);
-  }
-
-  void _checkComplete() {
-    if (!mounted || _finished) return;
-    if (widget.ready) {
-      _finished = true;
-      _slowTimer?.cancel();
-      // Let the percentage visibly top out at 100 (and the payoff line
-      // breathe) before handing off to the report.
-      _t = Timer(const Duration(milliseconds: 750), () {
-        if (mounted) widget.onComplete();
-      });
-    } else {
-      // Park on the payoff line until the analysis lands.
-      _t = Timer(const Duration(milliseconds: 500), _checkComplete);
-    }
-  }
-
-  @override
-  void dispose() {
-    _t?.cancel();
-    _slowTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final line = _revealLines[_idx];
-    final target =
-        (_onPayoff && widget.ready) ? 100.0 : line.pct.toDouble();
-
-    return Container(
-      color: Colors.black,
-      padding: const EdgeInsets.symmetric(horizontal: 30),
-      child: Column(
-        children: [
-          const Spacer(flex: 3),
-
-          // Big climbing percentage — the real loading progress.
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: target),
-            duration: const Duration(milliseconds: 900),
-            curve: Curves.easeInOut,
-            builder: (_, v, __) => Column(
-              children: [
-                Text('${v.round()}%',
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontSize: 58,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1.5,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  )),
-                const SizedBox(height: 14),
-                // Slim progress rail underneath the number.
-                SizedBox(
-                  width: 168,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: (v / 100).clamp(0.0, 1.0),
-                      minHeight: 3,
-                      backgroundColor: Colors.white.withValues(alpha: 0.10),
-                      valueColor:
-                          AlwaysStoppedAnimation(AppColors.red),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const Spacer(flex: 2),
-
-          // The reveal line — words fade + rise in sequence, one at a time.
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            transitionBuilder: (child, anim) =>
-                FadeTransition(opacity: anim, child: child),
-            child: _RevealSentence(
-              key: ValueKey(_idx),
-              line: line,
-              wordMs: _wordMs,
-              wordFade: _wordFade,
-            ),
-          ),
-
-          const Spacer(flex: 3),
-
-          // Quiet "still working" reassurance if the read drags.
-          SizedBox(
-            height: 20,
-            child: AnimatedOpacity(
-              opacity: (_slow && !_finished) ? 1 : 0,
-              duration: const Duration(milliseconds: 400),
-              child: Text('STILL WORKING · ALMOST THERE',
-                style: GoogleFonts.inter(
-                  color: Colors.white.withValues(alpha: 0.38),
-                  fontSize: 10,
-                  letterSpacing: 3,
-                  fontWeight: FontWeight.w800,
-                )),
-            ),
-          ),
-          const SizedBox(height: 28),
-        ],
-      ),
-    );
-  }
-}
-
-/// One reveal line — words fade + rise left-to-right (onboarding engine).
-class _RevealSentence extends StatelessWidget {
-  final _RLine line;
-  final int wordMs;
-  final int wordFade;
-  const _RevealSentence({
-    super.key,
-    required this.line,
-    required this.wordMs,
-    required this.wordFade,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 10,
-      runSpacing: 6,
-      children: [
-        for (var i = 0; i < line.words.length; i++)
-          _RWord(
-            text: line.words[i],
-            color: line.redIndices.contains(i) ? AppColors.red : Colors.white,
-            size: line.size,
-            delayMs: i * wordMs,
-            fadeMs: wordFade,
-          ),
-      ],
-    );
-  }
-}
-
-class _RWord extends StatelessWidget {
-  final String text;
-  final Color color;
-  final double size;
-  final int delayMs;
-  final int fadeMs;
-  const _RWord({
-    required this.text,
-    required this.color,
-    required this.size,
-    required this.delayMs,
-    required this.fadeMs,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(text,
-      textAlign: TextAlign.center,
-      style: GoogleFonts.playfairDisplay(
-        color: color,
-        fontSize: size,
-        height: 1.12,
-        letterSpacing: -0.6,
-        fontStyle: FontStyle.italic,
-        fontWeight: FontWeight.w700,
-      ),
-    )
-        .animate()
-        .fadeIn(
-          duration: Duration(milliseconds: fadeMs),
-          delay: Duration(milliseconds: delayMs),
-          curve: Curves.easeOutCubic,
-        )
-        .slideY(
-          begin: 0.22, end: 0,
-          duration: Duration(milliseconds: fadeMs),
-          delay: Duration(milliseconds: delayMs),
-          curve: Curves.easeOutCubic,
-        );
-  }
-}
-
-/// A reveal line + the percentage pinned to its block.
-class _RLine {
-  final List<String> words;
-  final int pct;
-  final double size;
-  final List<int> redIndices;
-  final bool bigBreath;
-  const _RLine(
-    this.words, {
-    required this.pct,
-    this.size = 32,
-    this.redIndices = const [],
-    this.bigBreath = false,
-  });
-}
-
-// The reveal script. Each block is pinned to a rising percentage; the
-// final block is the payoff — it holds until the analysis lands, then
-// the percentage tops out at 100 and the report swaps in. No "Analysis
-// complete" — the last thing they read is the emotional close.
-const _revealLines = <_RLine>[
-  // ── 18%
-  _RLine(['You', 'were', 'never', 'invisible.'], pct: 18, size: 35),
-  _RLine(['You', 'just', 'never', 'knew', 'what', 'to', 'fix.'],
-      pct: 18, size: 29, redIndices: [6], bigBreath: true),
-
-  // ── 42%
-  _RLine(['Imagine', 'if', 'she', 'noticed', 'you', 'first.'],
-      pct: 42, size: 32, redIndices: [5], bigBreath: true),
-
-  // ── 67%
-  _RLine(['Imagine', 'never', 'asking…'], pct: 67, size: 35),
-  _RLine(['"What', 'do', 'I', 'say?"'], pct: 67, size: 35),
-  _RLine(['Again.'], pct: 67, size: 46, redIndices: [0], bigBreath: true),
-
-  // ── 91% → payoff (holds here until the read lands, then 100%)
-  _RLine(['Time', 'to', 'build', 'the', 'man…'], pct: 91, size: 35),
-  _RLine(['You', 'should', 'have', 'been', 'all', 'along.'],
-      pct: 91, size: 33, redIndices: [4, 5], bigBreath: true),
-];
