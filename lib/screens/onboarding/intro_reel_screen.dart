@@ -8,13 +8,25 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/app_colors.dart';
 
-/// Cinematic onboarding reel — the original engine: black surface, italic
-/// Playfair serif, red accents. Words reveal left-to-right inside each
-/// line (130ms/word), the line holds ~620ms, then the next line drops in.
-/// One line on screen at a time — never stacked. No images.
+/// Cinematic onboarding reel. Black surface, italic Playfair serif,
+/// red accents. Words reveal left-to-right inside each sentence
+/// (140ms per word) — sentence holds for ~600ms — next sentence drops.
+/// Reads like a movie cold-open. Total runtime ≈ 14s, then the CTA.
 ///
-/// Progress dashes track the 8 story beats (screens); the finale reveals
-/// BEGIN.
+/// Script (final):
+///   Every man knows that guy.
+///   The guy the room notices.
+///   The guy the room remembers.
+///   The guy the room follows.
+///   ─ beat ─
+///   Most men think it\'s luck.
+///   It\'s not.
+///   ─ beat ─
+///   LOOKS get attention.
+///   GAME decides.
+///   ─ beat ─
+///   Mirrorly gives you both. 🔥❤️
+///   [BEGIN]
 class IntroReelScreen extends StatefulWidget {
   /// Route to advance to when the user taps BEGIN or SKIP.
   final String next;
@@ -30,11 +42,8 @@ class _IntroReelScreenState extends State<IntroReelScreen> {
 
   static const _wordMs   = 130;   // gap between word reveals
   static const _wordFade = 320;   // each word fades in over this long
-  static const _holdMs   = 620;   // line sits for this long after last word
-  static const _gapMs    = 260;   // extra breath when [_Line.bigBreath]
-
-  // Number of story beats — drives the progress dashes.
-  static const _screenCount = 8;
+  static const _holdMs   = 620;   // sentence sits for this long after last word
+  static const _gapMs    = 220;   // visual pause when [_Line.bigBreath] is true
 
   @override
   void initState() {
@@ -46,6 +55,7 @@ class _IntroReelScreenState extends State<IntroReelScreen> {
   void _queueNext() {
     if (_i >= _lines.length - 1) return;
     final line = _lines[_i];
+    // Total runtime for this line = all word reveals + last word fade in + hold.
     final words = line.words.length;
     final lifetimeMs = (words - 1) * _wordMs + _wordFade + _holdMs
         + (line.bigBreath ? _gapMs : 0);
@@ -77,30 +87,14 @@ class _IntroReelScreenState extends State<IntroReelScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Faint red halo behind the copy.
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: const Alignment(0, -0.2),
-                    radius: 1.1,
-                    colors: [
-                      AppColors.red.withValues(alpha: 0.10),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // SKIP — top right.
+            // SKIP — top right, calm grey.
             Positioned(
-              top: 8, right: 14,
+              top: 14, right: 18,
               child: GestureDetector(
                 onTap: _go,
                 behavior: HitTestBehavior.opaque,
                 child: Padding(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
                   child: Text('SKIP',
                     style: GoogleFonts.inter(
                       color: AppColors.textTertiary,
@@ -111,55 +105,55 @@ class _IntroReelScreenState extends State<IntroReelScreen> {
               ),
             ),
 
-            // Centred line — words reveal in sequence, one line at a time.
+            // Centred sentence — words reveal in sequence.
             Center(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30),
+                padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
+                  duration: const Duration(milliseconds: 280),
                   switchInCurve:  Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, anim) =>
-                      FadeTransition(opacity: anim, child: child),
+                  transitionBuilder: (child, anim) {
+                    return FadeTransition(opacity: anim, child: child);
+                  },
                   child: _SentenceView(
                     key:      ValueKey(_i),
                     line:     line,
                     wordMs:   _wordMs,
                     wordFade: _wordFade,
+                    iconsRow: line.icons,
                   ),
                 ),
               ),
             ),
 
-            // BEGIN — only on the last line.
+            // BEGIN CTA — appears only on the last line.
             if (isLast)
               Positioned(
                 bottom: 56, left: 28, right: 28,
                 child: _BeginButton(onTap: _go)
                     .animate()
-                    .fadeIn(duration: 400.ms, delay: 900.ms)
+                    .fadeIn(duration: 400.ms, delay: 1100.ms)
                     .slideY(begin: 0.18, end: 0, duration: 400.ms,
-                        delay: 900.ms, curve: Curves.easeOut),
+                        delay: 1100.ms, curve: Curves.easeOut),
               ),
 
-            // Progress dashes — one per story beat (screen).
+            // Progress dashes at the bottom.
             Positioned(
               bottom: 22, left: 0, right: 0,
               child: Center(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    for (var s = 0; s < _screenCount; s++)
+                    for (var i = 0; i < _lines.length; i++)
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 2.5),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 240),
-                          width:  s == line.screen ? 16 : 5,
+                          width:  i == _i ? 14 : 4,
                           height: 3,
                           decoration: BoxDecoration(
-                            color: s <= line.screen
-                                ? AppColors.red
-                                : AppColors.surface3,
+                            color: i <= _i ? AppColors.red : AppColors.surface3,
                             borderRadius: BorderRadius.circular(3),
                           ),
                         ),
@@ -175,36 +169,85 @@ class _IntroReelScreenState extends State<IntroReelScreen> {
   }
 }
 
-/// A single line. Words fade + rise in sequence, left to right.
+/// A single sentence. Words slide in left-to-right with a small
+/// fade. Optional icon row (🔥 ❤️) renders below when supplied.
 class _SentenceView extends StatelessWidget {
   final _Line line;
   final int wordMs;
   final int wordFade;
+  final List<IconData> iconsRow;
   const _SentenceView({
     super.key,
     required this.line,
     required this.wordMs,
     required this.wordFade,
+    required this.iconsRow,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 10,
-      runSpacing: 6,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        for (var i = 0; i < line.words.length; i++)
-          _Word(
-            text:   line.words[i],
-            color:  line.colorFor(i),
-            size:   line.size,
-            italic: line.italicFor(i),
-            weight: line.weightFor(i),
-            delayMs: i * wordMs,
-            fadeMs:  wordFade,
+        if (line.eyebrow != null) ...[
+          Text(line.eyebrow!,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              color: AppColors.textTertiary,
+              fontSize: 11, letterSpacing: 3.6,
+              fontWeight: FontWeight.w800,
+            ))
+              .animate().fadeIn(duration: 320.ms),
+          const SizedBox(height: 18),
+        ],
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: line.tightSpacing ? 10 : 12,
+          runSpacing: 8,
+          children: [
+            for (var i = 0; i < line.words.length; i++)
+              _Word(
+                text:  line.words[i],
+                color: line.colorFor(i),
+                size:  line.size,
+                italic: line.italicFor(i),
+                weight: line.weightFor(i),
+                delayMs: i * wordMs,
+                fadeMs:  wordFade,
+              ),
+          ],
+        ),
+        if (iconsRow.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < iconsRow.length; i++) ...[
+                if (i > 0) const SizedBox(width: 18),
+                Icon(iconsRow[i],
+                  size: 38,
+                  color: i == 0 ? AppColors.red : Colors.white,
+                )
+                  .animate()
+                  .fadeIn(
+                    duration: 360.ms,
+                    delay: Duration(milliseconds:
+                        line.words.length * wordMs + 240 + i * 220),
+                  )
+                  .scale(
+                    begin: const Offset(0.6, 0.6),
+                    end:   const Offset(1.0, 1.0),
+                    duration: 360.ms,
+                    delay: Duration(milliseconds:
+                        line.words.length * wordMs + 240 + i * 220),
+                    curve: Curves.easeOutBack,
+                  ),
+              ],
+            ],
           ),
+        ],
       ],
     );
   }
@@ -235,8 +278,8 @@ class _Word extends StatelessWidget {
       style: GoogleFonts.playfairDisplay(
         color: color,
         fontSize: size,
-        height: 1.12,
-        letterSpacing: -0.8,
+        height: 1.05,
+        letterSpacing: -1.2,
         fontStyle: italic ? FontStyle.italic : FontStyle.normal,
         fontWeight: weight,
       ),
@@ -302,29 +345,38 @@ class _BeginButton extends StatelessWidget {
   }
 }
 
-/// One line + its styling. [words] reveal one by one. [screen] is the
-/// story-beat index (0-7) so the progress dashes track which of the 8
-/// screens we're on.
+/// One sentence + its styling. [words] is the flat list of words
+/// that reveal one by one. Per-word colour / weight overrides via
+/// [redIndices] (those render in brand red) and [boldIndices] (those
+/// render extra-heavy non-italic — used for LOOKS / GAME / Mirrorly).
 class _Line {
   final List<String> words;
-  final int screen;
+  /// Optional small-caps eyebrow above the line.
+  final String? eyebrow;
   final double size;
   final bool italic;
-  /// Word indices that render in brand red.
+  /// Word indices that render in brand red instead of white.
   final List<int> redIndices;
-  /// Word indices that render bold non-italic (LOOKS / GAME / ImHim).
+  /// Word indices that render bold non-italic (LOOKS / GAME / Mirrorly).
   final List<int> boldIndices;
-  /// Extra breath after lines that end a thought.
+  /// Trailing icons that pop after the last word — 🔥 ❤️ on the
+  /// finale line.
+  final List<IconData> icons;
+  /// True for sentences that end a thought — extra breath after them.
   final bool bigBreath;
+  /// Tighter inter-word spacing for short, punchy lines.
+  final bool tightSpacing;
 
   const _Line(
     this.words, {
-    required this.screen,
-    this.size = 32,
+    this.eyebrow,
+    this.size = 38,
     this.italic = true,
     this.redIndices  = const [],
     this.boldIndices = const [],
+    this.icons       = const [],
     this.bigBreath   = false,
+    this.tightSpacing = false,
   });
 
   Color colorFor(int i) =>
@@ -334,85 +386,73 @@ class _Line {
       boldIndices.contains(i) ? false : italic;
 
   FontWeight weightFor(int i) =>
-      boldIndices.contains(i) ? FontWeight.w900 : FontWeight.w700;
+      boldIndices.contains(i) ? FontWeight.w900 : FontWeight.w800;
 }
 
-// Sizes tuned per line so every sentence fits clean: short punchy lines
-// run big, longer sentences step down so they never overflow.
 const _lines = <_Line>[
-  // ── SCREEN 1 · THE PAIN
-  _Line(['Every', 'man', 'knows', 'that', 'feeling…'],
-      screen: 0, size: 36),
-  _Line(['Watching', 'another', 'guy', 'become', 'the', 'man', 'you',
-      'always', 'wanted', 'to', 'be.'],
-      screen: 0, size: 27, bigBreath: true),
+  // 1. The hook.
+  _Line(
+    ['Every', 'man', 'knows', 'that', 'guy.'],
+    size: 38,
+    bigBreath: true,
+  ),
 
-  // ── SCREEN 2 · THE WOUND
-  _Line(['You', 'tell', 'yourself', 'it', 'doesn\'t', 'matter…'],
-      screen: 1, size: 32),
-  _Line(['But', 'every', 'rejection', 'makes', 'you', 'question',
-      'yourself', 'a', 'little', 'more.'],
-      screen: 1, size: 27, bigBreath: true),
+  // 2-4. The triplet — what every guy wants to BE.
+  _Line(
+    ['The', 'guy', 'she', 'notices.'],
+    size: 42,
+    redIndices: [3], // "notices."
+  ),
+  _Line(
+    ['The', 'guy', 'she', 'remembers.'],
+    size: 42,
+    redIndices: [3], // "remembers."
+  ),
+  _Line(
+    ['The', 'guy', 'she', 'chooses.'],
+    size: 46,
+    redIndices: [3], // "chooses."
+    bigBreath: true,
+  ),
 
-  // ── SCREEN 3 · THE SPIRAL
-  _Line(['Eventually…'], screen: 2, size: 42),
-  _Line(['You', 'stop', 'wondering', 'why', 'she', 'didn\'t', 'choose',
-      'you…'],
-      screen: 2, size: 29),
-  _Line(['…and', 'start', 'believing', 'nobody', 'ever', 'will.'],
-      screen: 2, size: 31, redIndices: [3, 4, 5], bigBreath: true),
+  // 5-6. The reframe — luck vs trained.
+  _Line(
+    ['Most', 'men', 'think', 'it\'s', 'luck.'],
+    size: 36,
+  ),
+  _Line(
+    ['It\'s', 'not.'],
+    size: 56,
+    redIndices: [0, 1],
+    bigBreath: true,
+  ),
 
-  // ── SCREEN 4 · THE REVEAL
-  _Line(['What', 'if', 'you\'ve', 'been', 'fighting', 'with', 'half',
-      'the', 'system?'],
-      screen: 3, size: 28),
-  _Line(['👤', 'Looks', 'get', 'you', 'noticed.'],
-      screen: 3, size: 34, boldIndices: [1]),
-  _Line(['💬', 'Game', 'gets', 'you', 'chosen.'],
-      screen: 3, size: 34, redIndices: [1], boldIndices: [1]),
-  _Line(['Master', 'both…', 'and', 'everything', 'changes.'],
-      screen: 3, size: 32, redIndices: [3, 4], bigBreath: true),
+  // 7-8. The product — LOOKS + GAME.
+  _Line(
+    ['LOOKS', 'get', 'attention.'],
+    size: 50,
+    boldIndices: [0],          // LOOKS bold non-italic
+    tightSpacing: true,
+  ),
+  _Line(
+    ['GAME', 'decides.'],
+    size: 50,
+    boldIndices: [0],          // GAME bold non-italic
+    redIndices:  [0],          // GAME in brand red
+    tightSpacing: true,
+    bigBreath: true,
+  ),
 
-  // ── SCREEN 5 · LOOKS
-  _Line(['Imagine', 'walking', 'into', 'a', 'room…'],
-      screen: 4, size: 34),
-  _Line(['…and', 'being', 'the', 'guy', 'everyone', 'notices.'],
-      screen: 4, size: 31),
-  _Line(['See', 'your', 'future', 'glow-up.'],
-      screen: 4, size: 35),
-  _Line(['Know', 'exactly', 'what', 'to', 'improve.'],
-      screen: 4, size: 32),
-  _Line(['Then', 'become', 'him.'],
-      screen: 4, size: 44, redIndices: [2], bigBreath: true),
-
-  // ── SCREEN 6 · GAME
-  _Line(['Imagine', 'never', 'freezing', 'again.'],
-      screen: 5, size: 36),
-  _Line(['Walk', 'over.'], screen: 5, size: 44),
-  _Line(['Start', 'the', 'conversation.'], screen: 5, size: 38),
-  _Line(['Flirt', 'naturally.'], screen: 5, size: 44),
-  _Line(['Lead', 'with', 'confidence.'], screen: 5, size: 38),
-  _Line(['Until', 'the', 'man', 'you', 'always', 'wanted', 'to', 'be…',
-      'becomes', 'who', 'you', 'are.'],
-      screen: 5, size: 26, bigBreath: true),
-
-  // ── SCREEN 7 · BECOME HIM
-  _Line(['Imagine', 'becoming', 'unforgettable.'],
-      screen: 6, size: 37),
-  _Line(['The', 'guy', 'she', 'notices.'],
-      screen: 6, size: 35, redIndices: [3]),
-  _Line(['The', 'guy', 'she', 'remembers.'],
-      screen: 6, size: 35, redIndices: [3]),
-  _Line(['The', 'guy', 'she', 'chooses.'],
-      screen: 6, size: 40, redIndices: [3], bigBreath: true),
-
-  // ── SCREEN 8 · CLOSE
-  _Line(['The', 'next', 'time', 'someone', 'asks…'],
-      screen: 7, size: 32),
-  _Line(['"How', 'did', 'you', 'change', 'so', 'much?"'],
-      screen: 7, size: 33),
-  _Line(['You\'ll', 'know', 'the', 'answer.'],
-      screen: 7, size: 37, bigBreath: true),
-  _Line(['Welcome', 'to', 'ImHim.'],
-      screen: 7, size: 46, redIndices: [2], boldIndices: [2]),
+  // 9. The promise + icons + CTA.
+  _Line(
+    ['ImHim', 'gives', 'you', 'both.'],
+    eyebrow: 'BOTH AT ONCE',
+    size: 44,
+    boldIndices: [0],
+    redIndices:  [0],
+    icons: [
+      Icons.local_fire_department_rounded,
+      Icons.favorite_rounded,
+    ],
+  ),
 ];
