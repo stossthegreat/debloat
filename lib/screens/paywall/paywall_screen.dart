@@ -556,15 +556,17 @@ class _PhotoPanel extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       child: Center(
+        // Aspect ratio matches the cropped before/after asset (914×778)
+        // so the baked-in NOW / FIXED labels never get clipped.
         child: AspectRatio(
-          aspectRatio: 680 / 538,
+          aspectRatio: 914 / 778,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: Stack(
               fit: StackFit.expand,
               children: [
                 Image.asset(
-                  'assets/marketing/after.jpg',
+                  'assets/marketing/beforeafter.jpg',
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) =>
                       const ColoredBox(color: _tile),
