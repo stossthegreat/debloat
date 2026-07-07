@@ -1,37 +1,52 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'local_store_service.dart';
-import 'protocol_service.dart';
 
-/// THE DAILY STREAK — single source of truth for the flame the user
-/// protects.
+/// THE ASCENSION ENGINE — one source of truth for the three numbers the
+/// whole app reconciles around: the daily STREAK (the flame), the
+/// ASCENSION DAY (how far up the Observer → ImHim ladder you've climbed),
+/// and the CONSISTENCY score (how fully you're doing each day's missions).
 ///
-/// Design (v2): instead of a fragile running counter that only knew
-/// about "today", we keep an **activity-day log** — the set of calendar
-/// days on which the user did anything that counts. The streak is then
-/// the consecutive run of days ending today (or yesterday, if today is
-/// still pending). This is robust:
-///   • It is SEEDED from the user's real history (scan dates + game-rep
-///     dates) the first time it runs, so an existing user who's been
-///     active for days doesn't suddenly read 0.
-///   • It records every day a mission is completed going forward (the
-///     `*_done_ymd` flags every mission screen stamps).
-///   • A missed day breaks the run on its own — no manual reset needed.
+/// The model (locked with bro):
 ///
-/// A day counts when ANY of these happened on it:
-///   • a scan was captured            (LOOKS — also a protocol check-in)
-///   • a Free Flow / roleplay rep      (GAME)
-///   • a rizz reply was generated      (RIZZ)
-///   • a pickup line was copied        (PICKUP)
+///   • STREAK — consecutive calendar days you showed up. "Showing up" =
+///     completing AT LEAST ONE of the five daily missions. Do 1 of 5 and
+///     the flame is safe; only a full ZERO-day breaks it. There is no
+///     freeze/grace — miss a whole day and it resets. It is the same
+///     number on every masthead (Looks / Rizz / Ascend).
 ///
-/// [refresh] is safe to call from any surface load — it rebuilds the log
-/// from the live signals and returns the `(current, longest)` pair so
-/// every masthead + the Ascend panel read the same number.
+///   • ASCENSION DAY — the TOTAL number of distinct days you've ever
+///     shown up. It is earned, never free: it only climbs on days you do
+///     the work, and it NEVER goes backward (a broken streak doesn't cost
+///     you your day). Day thresholds drive the rank ladder (Observer 1,
+///     Initiate 10, Contender 20, Dangerous 30, Magnetic 45, ImHim 60).
+///     Clamped to 1..60 for display.
+///
+///   • CONSISTENCY — a rolling 7-day mission-completion rate. Each day
+///     records how many of the 5 missions you finished; consistency is
+///     the average of (done ÷ 5) over the last 7 days, ×100. Do all 5
+///     daily and it climbs to 100; half-ass 3/5 and it settles ~60 —
+///     the honest "you're only part-showing-up" signal. Missing missions
+///     never breaks the streak, it just drags this down.
+///
+/// The five daily missions (mirrors the Ascend tab exactly):
+///   1. PROTOCOL  — `looks_done_ymd` (scan / protocol check-in)
+///   2. ROLEPLAY  — `game_done_ymd`
+///   3. SCAN      — a scan captured today (derived from scan history)
+///   4. PICKUP    — `pickup_line_done_ymd`
+///   5. READ      — `rizz_done_ymd`
+///
+/// [refresh] returns just the `(streak, longest)` pair for the mastheads.
+/// [progress] returns the full [AscensionSnapshot] the Ascend tab needs.
 class StreakService {
   static const _kActiveDays = 'streak_active_days'; // List<String> of YMD
   static const _kLongest    = 'daily_streak_longest';
+  static const _kMissionLog = 'mission_daily_log';   // List<String> "ymd:count"
 
-  /// Pillar flags each mission screen stamps with today's YMD.
+  /// Total length of the ascension ladder, in earned days.
+  static const int ascensionTotalDays = 60;
+
+  /// Mission flags stamped with today's YMD by each mission screen.
   static const _doneFlags = <String>[
     'looks_done_ymd',
     'game_done_ymd',
@@ -44,32 +59,33 @@ class StreakService {
   static DateTime _fromYmd(int ymd) =>
       DateTime(ymd ~/ 10000, (ymd % 10000) ~/ 100, ymd % 100);
 
-  /// Rebuild the activity-day log from every live signal, persist it,
-  /// and return the live `(current, longest)` streak.
-  static Future<(int current, int longest)> refresh() async {
-    final prefs = await SharedPreferences.getInstance();
+  /// Rebuild the activity-day log + today's mission count from every
+  /// live signal and persist both. Returns the active-day set and how
+  /// many of the five missions are done today. Shared by [refresh] and
+  /// [progress] so both stay in lock-step.
+  static Future<(Set<int> days, int missionsToday)> _rebuild(
+      SharedPreferences prefs) async {
     final today = _todayYmd();
-    final yesterday = _ymd(DateTime.now().subtract(const Duration(days: 1)));
 
-    // Start from whatever we've already recorded.
+    // Start from whatever we've already recorded, plus each mission flag.
     final days = <int>{};
     for (final s in prefs.getStringList(_kActiveDays) ?? const <String>[]) {
       final v = int.tryParse(s);
       if (v != null) days.add(v);
     }
-
-    // Record the latest activity day stamped by each mission flag.
     for (final k in _doneFlags) {
       final v = prefs.getInt(k) ?? 0;
       if (v > 0) days.add(v);
     }
 
-    // Seed from real history so an existing user isn't starting at 0 the
-    // first time this runs. Best-effort — a read failure just means we
-    // fall back to the flags above.
+    // Seed from real history so an existing user isn't starting at 0.
+    // Track whether a scan landed TODAY for the SCAN mission.
+    bool scanToday = false;
     try {
       for (final s in await LocalStoreService.loadScans()) {
-        days.add(_ymd(s.takenAt));
+        final y = _ymd(s.takenAt);
+        days.add(y);
+        if (y == today) scanToday = true;
       }
     } catch (_) {}
     try {
@@ -78,37 +94,109 @@ class StreakService {
       }
     } catch (_) {}
 
-    // Trim to a sane window and persist.
+    // Trim active-days to a sane window and persist.
     final cutoff = _ymd(DateTime.now().subtract(const Duration(days: 200)));
     final kept = days.where((d) => d >= cutoff).toList()..sort();
     await prefs.setStringList(
         _kActiveDays, kept.map((e) => e.toString()).toList());
 
-    final set = kept.toSet();
-    final activityRun = _runEndingAt(set, today, yesterday);
+    // Today's mission count — the five Ascend missions, exactly as the
+    // tab renders them (a scan ticks both PROTOCOL/looks and SCAN).
+    final looks  = (prefs.getInt('looks_done_ymd') ?? 0) == today;
+    final game   = (prefs.getInt('game_done_ymd') ?? 0) == today;
+    final rizz   = (prefs.getInt('rizz_done_ymd') ?? 0) == today;
+    final pickup = (prefs.getInt('pickup_line_done_ymd') ?? 0) == today;
+    final missionsToday =
+        [looks, game, rizz, pickup, scanToday].where((b) => b).length;
 
-    // The PROTOCOL is the everyday anchor — it's the one action designed
-    // for daily use (scans + roleplay are weekly-capped, so they can't
-    // carry a daily streak on their own). Its own check-in streak (with
-    // the freeze budget) is the streak the product is built around, so we
-    // take the better of the activity-day run and the protocol streak. A
-    // daily protocol logger always sees their real number.
-    int protocolStreak = 0, protocolLongest = 0;
-    try {
-      final p = await ProtocolService.loadActive();
-      protocolStreak  = p?.effectiveStreak ?? 0;
-      protocolLongest = p?.longestStreak  ?? 0;
-    } catch (_) {}
+    // Upsert today's count into the mission log; trim to 60 days.
+    final logCutoff = _ymd(DateTime.now().subtract(const Duration(days: 60)));
+    final Map<int, int> log = {};
+    for (final e in prefs.getStringList(_kMissionLog) ?? const <String>[]) {
+      final parts = e.split(':');
+      if (parts.length != 2) continue;
+      final y = int.tryParse(parts[0]);
+      final c = int.tryParse(parts[1]);
+      if (y != null && c != null && y >= logCutoff) log[y] = c;
+    }
+    log[today] = missionsToday;
+    await prefs.setStringList(
+        _kMissionLog, log.entries.map((e) => '${e.key}:${e.value}').toList());
 
-    final current = activityRun > protocolStreak ? activityRun : protocolStreak;
+    return (kept.toSet(), missionsToday);
+  }
 
+  /// Streak `(current, longest)` from the active-day set. Pure activity
+  /// run — no protocol freeze/grace — so ≥1 mission holds the flame and a
+  /// full zero-day resets it, identical on every surface.
+  static Future<(int current, int longest)> _streakPair(
+      SharedPreferences prefs, Set<int> set) async {
+    final today = _todayYmd();
+    final yesterday = _ymd(DateTime.now().subtract(const Duration(days: 1)));
+    final current = _runEndingAt(set, today, yesterday);
     final longest = prefs.getInt(_kLongest) ?? 0;
     final maxRun = _longestRun(set);
-    final best = [longest, current, maxRun, protocolLongest]
-        .reduce((a, b) => a > b ? a : b);
+    final best = [longest, current, maxRun].reduce((a, b) => a > b ? a : b);
     if (best != longest) await prefs.setInt(_kLongest, best);
-
     return (current, best);
+  }
+
+  /// Rebuild the log and return the live `(current, longest)` streak.
+  /// Safe to call from any masthead load.
+  static Future<(int current, int longest)> refresh() async {
+    final prefs = await SharedPreferences.getInstance();
+    final (set, _) = await _rebuild(prefs);
+    return _streakPair(prefs, set);
+  }
+
+  /// The full ascension snapshot — streak, longest, earned ascension day,
+  /// rolling-7-day consistency, and today's mission count. One call the
+  /// Ascend tab reads so every number agrees.
+  static Future<AscensionSnapshot> progress() async {
+    final prefs = await SharedPreferences.getInstance();
+    final (set, missionsToday) = await _rebuild(prefs);
+    final (current, longest) = await _streakPair(prefs, set);
+    // Ascension day = total distinct days shown up, earned + permanent,
+    // clamped to the 1..60 ladder for display.
+    final ascensionDay = set.length.clamp(1, ascensionTotalDays);
+    final consistency = _consistency7d(prefs);
+    return AscensionSnapshot(
+      streak: current,
+      longest: longest,
+      ascensionDay: ascensionDay,
+      consistency: consistency,
+      missionsToday: missionsToday,
+    );
+  }
+
+  /// Rolling 7-day mission-completion rate (0..100). Averages
+  /// (missions done ÷ 5) over the last 7 calendar days. The window is
+  /// capped by how long the mission log has existed, so a brand-new
+  /// user isn't punished for days before they started.
+  static int _consistency7d(SharedPreferences prefs) {
+    final today = _todayYmd();
+    final Map<int, int> log = {};
+    for (final e in prefs.getStringList(_kMissionLog) ?? const <String>[]) {
+      final parts = e.split(':');
+      if (parts.length != 2) continue;
+      final y = int.tryParse(parts[0]);
+      final c = int.tryParse(parts[1]);
+      if (y != null && c != null) log[y] = c;
+    }
+    if (log.isEmpty) return 0;
+    final firstDay = log.keys.reduce((a, b) => a < b ? a : b);
+    final elapsed =
+        _fromYmd(today).difference(_fromYmd(firstDay)).inDays + 1;
+    final window = elapsed < 1 ? 1 : (elapsed > 7 ? 7 : elapsed);
+    int sum = 0;
+    var d = _fromYmd(today);
+    for (var i = 0; i < window; i++) {
+      sum += log[_ymd(d)] ?? 0;
+      d = d.subtract(const Duration(days: 1));
+    }
+    final denom = 5 * window;
+    if (denom <= 0) return 0;
+    return ((sum / denom) * 100).round().clamp(0, 100);
   }
 
   /// Consecutive run ending today, or yesterday if today is still
@@ -150,4 +238,32 @@ class StreakService {
     final (cur, _) = await refresh();
     return cur;
   }
+}
+
+/// The unified ascension state — one struct every surface reads so the
+/// streak, the earned ascension day, and the consistency score never
+/// disagree across tabs.
+class AscensionSnapshot {
+  /// Consecutive active days ending today/yesterday (the flame).
+  final int streak;
+
+  /// Longest streak ever reached.
+  final int longest;
+
+  /// Total distinct days shown up, earned + permanent, clamped 1..60.
+  final int ascensionDay;
+
+  /// Rolling 7-day mission-completion rate, 0..100.
+  final int consistency;
+
+  /// How many of the five daily missions are done today (0..5).
+  final int missionsToday;
+
+  const AscensionSnapshot({
+    required this.streak,
+    required this.longest,
+    required this.ascensionDay,
+    required this.consistency,
+    required this.missionsToday,
+  });
 }

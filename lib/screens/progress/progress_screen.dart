@@ -280,10 +280,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
     int? imhimNow;
     int? imhimDelta;
     try {
-      final protocol = await ProtocolService.loadActive();
-      final streak = await StreakService.current();
-      final consistency =
-          AscensionService.consistencyFor(protocol, streak: streak);
+      final snap = await StreakService.progress();
+      final consistency = snap.consistency;
       final imhim = AscensionService.imhimScoreFromComponents(
         looks: aestheticNow ?? 0,
         game:  voiceNow     ?? 0,
@@ -1600,8 +1598,8 @@ class _ProgressImhimHeroState extends State<_ProgressImhimHero> {
     final game  = widget.gameScores.isEmpty
         ? 0
         : widget.gameScores.map((g) => g.score).reduce(math.max);
-    final streak = await StreakService.current();
-    final consistency = AscensionService.consistencyFor(p, streak: streak);
+    final snap = await StreakService.progress();
+    final consistency = snap.consistency;
     final imhim = AscensionService.imhimScoreFromComponents(
       looks: looks, game: game, consistency: consistency);
     final delta = await AscensionService.weeklyDeltaFor(imhim);

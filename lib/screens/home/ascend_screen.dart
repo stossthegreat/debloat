@@ -69,6 +69,16 @@ class AscendScreen extends StatefulWidget {
   /// Longest daily streak the user has ever reached (StreakService).
   final int longestStreak;
 
+  /// Earned ascension day (total days shown up, 1..60) from
+  /// StreakService.progress via home_screen. Drives the DAY N/60 flame
+  /// ring, the rank ladder, and the final-form unlock.
+  final int ascensionDay;
+
+  /// Rolling 7-day mission-completion consistency (0..100) from
+  /// StreakService.progress. The 30% CONSISTENCY component of the
+  /// IMHIM score.
+  final int consistency;
+
   /// Did the user complete their protocol check-in today?
   final bool looksDoneToday;
 
@@ -98,6 +108,8 @@ class AscendScreen extends StatefulWidget {
     this.latest,
     this.allScans = const [],
     this.dayStreak = 0,
+    this.ascensionDay = 1,
+    this.consistency = 0,
     this.looksDoneToday = false,
     this.gameDoneToday = false,
     this.rizzDoneToday = false,
@@ -131,8 +143,7 @@ class _AscendScreenState extends State<AscendScreen> {
     final score = AscensionService.imhimScoreFromComponents(
       looks:       widget.looksScore100,
       game:        widget.gameScore100,
-      consistency: AscensionService.consistencyFor(
-          widget.protocol, streak: widget.dayStreak),
+      consistency: widget.consistency,
     );
     final delta = await AscensionService.weeklyDeltaFor(score);
     await AscensionService.snapshotTodayScore(score);
@@ -145,12 +156,10 @@ class _AscendScreenState extends State<AscendScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final p              = widget.protocol;
-    final day            = AscensionService.dayFor(p);
-    final daysLeft       = AscensionService.daysRemainingFor(p);
+    final day            = widget.ascensionDay;
+    final daysLeft       = AscensionService.daysRemainingFor(day);
     final rank           = AscensionService.rankFor(day);
-    final consistency    = AscensionService.consistencyFor(
-        p, streak: widget.dayStreak);
+    final consistency    = widget.consistency;
     final imhimScore     = AscensionService.imhimScoreFromComponents(
       looks:       widget.looksScore100,
       game:        widget.gameScore100,
@@ -161,7 +170,7 @@ class _AscendScreenState extends State<AscendScreen> {
     final todayMsg       = AscensionService.todayMessageFor(
       day: day, streak: widget.dayStreak);
     final milestones     = _buildMilestones();
-    final finalUnlocked  = AscensionService.finalFormUnlockedFor(p);
+    final finalUnlocked  = AscensionService.finalFormUnlockedFor(day);
     final longestStreak  = widget.longestStreak > widget.dayStreak
         ? widget.longestStreak
         : widget.dayStreak;
@@ -475,10 +484,9 @@ class _AscendScreenState extends State<AscendScreen> {
     final int looksStart = firstScan?.score ?? 0;
     final int looksEnd   = lastScan?.score  ?? 0;
 
-    // Consistency arc — 0 on Day 1 always; current today (protocol ratio
-    // or the daily-streak proxy, whichever is higher).
-    final int consistencyEnd = AscensionService.consistencyFor(
-        widget.protocol, streak: widget.dayStreak);
+    // Consistency arc — 0 on Day 1 always; current today = the live
+    // rolling-7-day consistency the tab already shows.
+    final int consistencyEnd = widget.consistency;
     const int consistencyStart = 0;
 
     // IMHIM SCORE arc — same formula AscensionService runs in the

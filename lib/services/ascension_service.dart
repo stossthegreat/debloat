@@ -1,7 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/protocol.dart';
-
 /// v281 — ASCENSION SERVICE.
 ///
 /// Pure-functional layer that maps "raw protocol day + cap usage +
@@ -97,24 +95,22 @@ class AscensionService {
   /// the case where the user is pre-protocol).
   static int get totalDays => _totalDays;
 
-  /// Day N out of 60. Falls back to day 1 when no protocol is active so
-  /// the screen always renders something meaningful.
-  static int dayFor(Protocol? p) {
-    if (p == null) return 1;
-    return p.currentDay.clamp(1, _totalDays);
+  // The ascension DAY is now the earned active-day count from
+  // StreakService (days you actually showed up), NOT the protocol's
+  // calendar day. These helpers take that already-computed day so the
+  // rank ladder, days-remaining, ring fill, and final-form unlock all
+  // read the same earned number.
+
+  static int daysRemainingFor(int day) {
+    return (_totalDays - day).clamp(0, _totalDays);
   }
 
-  static int daysRemainingFor(Protocol? p) {
-    final n = dayFor(p);
-    return (_totalDays - n).clamp(0, _totalDays);
+  static double progressFor(int day) {
+    return (day / _totalDays).clamp(0.0, 1.0);
   }
 
-  static double progressFor(Protocol? p) {
-    return dayFor(p) / _totalDays;
-  }
-
-  static bool finalFormUnlockedFor(Protocol? p) {
-    return dayFor(p) >= _totalDays;
+  static bool finalFormUnlockedFor(int day) {
+    return day >= _totalDays;
   }
 
   // ── The Cost of Quitting — rotating fear reminder ──────────────────────
@@ -294,32 +290,13 @@ class AscensionService {
     return raw.round().clamp(0, 100);
   }
 
-  /// Consistency component (0..100). Two pieces of evidence that the
-  /// user shows up, and we take the better of them:
-  ///   • the protocol's logged-days ratio, when a 60-day protocol is
-  ///     running;
-  ///   • a daily-streak proxy otherwise.
-  /// The streak proxy stops a brand-new (no-protocol) user — who is
-  /// clearly active — from reading 0 consistency and dragging their
-  /// IMHIM SCORE down to looks+game only. Pass the live StreakService
-  /// streak via [streak]; omit it for the legacy protocol-only read.
-  static int consistencyFor(Protocol? p, {int streak = 0}) {
-    int protocolPct = 0;
-    if (p != null) {
-      final day = p.currentDay.clamp(1, totalDays);
-      protocolPct = ((p.completedDays.length / day) * 100).round().clamp(0, 100);
-    }
-    final streakPct = consistencyFromStreak(streak);
-    return protocolPct > streakPct ? protocolPct : streakPct;
-  }
-
-  /// Map a daily streak to a consistency %. Showing up at all earns a
-  /// floor so the score isn't punishing on day one; a ~12-day streak
-  /// reads as fully consistent.
-  static int consistencyFromStreak(int streak) {
-    if (streak <= 0) return 0;
-    return (40 + streak * 5).clamp(0, 100);
-  }
+  // CONSISTENCY is now computed by StreakService as a rolling 7-day
+  // mission-completion rate (see StreakService.progress /
+  // AscensionSnapshot.consistency). The old protocol-ratio / streak-proxy
+  // formula was replaced so that doing 3-of-5 missions visibly drops the
+  // score while never breaking the streak — exactly the "half-showing-up"
+  // signal bro asked for. Callers read the snapshot value and feed it
+  // straight into [imhimScoreFromComponents].
 
   /// Snapshot the current IMHIM score against TODAY so the weekly
   /// delta can be computed without storing a history table. Stamps

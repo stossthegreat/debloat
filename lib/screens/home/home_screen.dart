@@ -67,6 +67,11 @@ class _HomeScreenState extends State<HomeScreen> {
   int _gameScore  = 0;
   int _dayStreak  = 0;
   int _longestStreak = 0;
+  // Earned ascension day (total days shown up, 1..60) + rolling 7-day
+  // mission-completion consistency, both from StreakService.progress so
+  // the Ascend tab's DAY N/60 and CONSISTENCY bar agree with the flame.
+  int _ascensionDay = 1;
+  int _consistency  = 0;
   // v289 — raw 0-100 versions surfaced separately because the
   // Ascend tab's IMHIM-score formula needs the original precision;
   // the /10 fields above stay around for the home-tab pillar tiles
@@ -154,7 +159,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final pickupOk = (prefs.getInt('pickup_line_done_ymd') ?? 0) == today;
     // v302 — Pro flag for the POTENTIAL lock on THE READ card.
     final pro = await PaywallGate.isPro();
-    final (curStreak, longStreak) = await StreakService.refresh();
+    // One call for the whole ascension triad — streak, earned day, and
+    // rolling-7-day consistency — so every surface reads the same
+    // numbers.
+    final snap = await StreakService.progress();
+    final curStreak  = snap.streak;
+    final longStreak = snap.longest;
 
     if (!mounted) return;
     setState(() {
@@ -184,6 +194,8 @@ class _HomeScreenState extends State<HomeScreen> {
       // masthead + the Ascend panel now read.
       _dayStreak     = curStreak;
       _longestStreak = longStreak;
+      _ascensionDay  = snap.ascensionDay;
+      _consistency   = snap.consistency;
       _looksDoneToday = looksOk;
       _auraDoneToday  = auraOk;
       _gameDoneToday  = gameOk;
@@ -256,6 +268,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   allScans:             _scans,
                   dayStreak:            _dayStreak,
                   longestStreak:        _longestStreak,
+                  ascensionDay:         _ascensionDay,
+                  consistency:          _consistency,
                   looksDoneToday:       _looksDoneToday,
                   gameDoneToday:        _gameDoneToday,
                   rizzDoneToday:        _rizzDoneToday,
