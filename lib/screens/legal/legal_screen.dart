@@ -159,6 +159,44 @@ LegalDoc get termsDoc => LegalDoc(
   subtitle: 'IMHIM · THE AGREEMENT',
   lastUpdatedLine: 'Last updated 26 May 2026.',
   sections: [
+    // TOP-OF-TERMS subscription disclosure. This carries every detail
+    // that used to sit under the paywall CTA (the plain-English
+    // summary, the full Apple 3.1.2 auto-renewal disclosure, and the
+    // per-week "what you get" entitlement list) so the paywall itself
+    // can stay clean while all the required specifics remain one tap
+    // away at the very top of Terms.
+    LegalSection('IMHIM PRO — WHAT YOU GET, PRICE & AUTO-RENEWAL',
+      'ImHim Pro is a single auto-renewing weekly subscription. This is '
+      'the full disclosure of what you pay, how billing renews, how to '
+      'cancel, and exactly what the subscription unlocks — the same '
+      'details presented at the point of purchase.\n\n'
+      'PRICE & BILLING\n\n'
+      '• ImHim Pro — \$6.99 USD per week (or the local-currency '
+      'equivalent shown on the paywall), billed weekly.\n'
+      '• Payment is charged to your $_appleOrGoogleId at confirmation '
+      'of purchase.\n'
+      '• The subscription automatically renews for one more week at the '
+      'same price unless you cancel at least 24 hours before the '
+      'current week ends.\n'
+      '• Your account is charged for the renewal within 24 hours of the '
+      'period ending.\n'
+      '• You can manage or cancel the subscription anytime in your '
+      '$_appleOrGoogleId settings. Uninstalling the app does NOT '
+      'cancel the subscription.\n\n'
+      'WHAT THE SUBSCRIPTION UNLOCKS\n\n'
+      'An active ImHim Pro subscription is required for scans, AI '
+      'renders, streaks, AI roleplay, and all rizz features. Each week '
+      'it includes:\n\n'
+      '• 2 face scans per week.\n'
+      '• 3 AI-rendered "after" images per week.\n'
+      '• 18 minutes of live AI roleplay per week.\n'
+      '• 15 screenshot rizz analyses per week.\n'
+      '• Unlimited AI chat rizz — ask anything, every day.\n'
+      '• Streaks + 60-day protocols — Skin, Jaw, Debloat, Hair.\n'
+      '• Two-score rating — geometry + honest-looks (Vision).\n\n'
+      'Cancel anytime in your $_storeName settings; access continues '
+      'until the end of the paid week. No refund is issued for the '
+      'unused portion of the current period.'),
     const LegalSection('ABOUT MIRRORLY',
       'ImHim is a self-assessment and self-training tool for '
       'cosmetic, grooming, and charisma decisions. It uses on-device '
