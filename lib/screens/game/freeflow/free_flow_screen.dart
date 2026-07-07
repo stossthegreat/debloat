@@ -149,7 +149,8 @@ const _vibes = <_Vibe>[
 
 enum _Phase { pick, connecting, live, lucien, scoring, scored, error }
 
-class _FreeFlowScreenState extends State<FreeFlowScreen> {
+class _FreeFlowScreenState extends State<FreeFlowScreen>
+    with WidgetsBindingObserver {
   /// The realtime WS session. NOT final — we recreate the instance
   /// every time _goLive runs so each persona switch gets a clean
   /// session lifecycle (server fires session.created → we send
@@ -281,10 +282,27 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   /// session ends via more than one path (timer expiry + manual
   /// end + cap reached).
   bool _lucienUpsellShown = false;
-  /// True once the user has held the orb for the first time. The
-  /// session clock only starts ticking on that first press — sitting
-  /// on the screen reading the scenario shouldn't burn seconds.
+  /// True once the user has held the orb for the first time. UI-only
+  /// now (first-time coaching bubble + Lucien step-in gating) — the
+  /// billable meter is tracked separately by [_meterArmed] so the
+  /// countdown can start the instant we're connected (see below).
   bool _clockStarted = false;
+
+  // ── Billable meter (cost guard) ────────────────────────────────────────
+  //
+  // The OpenAI Realtime socket bills the moment it's open, so the
+  // countdown must ALWAYS run while a Pro session is live — never sit
+  // stuck at full. These three track the meter independently of the
+  // first-hold UI flag:
+  //   • _meterArmed     — the 1s clock is running (idempotent guard).
+  //   • _meterStartedAt — wall-clock anchor, so charging is correct even
+  //                       if a tick is missed or the app is backgrounded.
+  //   • _chargedMs      — how much we've already billed to the weekly
+  //                       voice bucket, reconciled against wall-clock on
+  //                       session end / app-background.
+  bool _meterArmed = false;
+  DateTime? _meterStartedAt;
+  int _chargedMs = 0;
   /// Flips true the moment her FIRST reply finishes playing through
   /// the speaker. The Lucien step-in nudge bubble (the glowing red
   /// "TAP — LUCIEN WILL TAKE THE FLOOR" overlay above the step-in
@@ -305,6 +323,9 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   @override
   void initState() {
     super.initState();
+    // Watch app lifecycle so a mid-session backgrounding ends the
+    // session and kills the (billing) socket instead of leaving it open.
+    WidgetsBinding.instance.addObserver(this);
     // ignore: discarded_futures
     AnalyticsService.freeflowScreenViewed();
     // ignore: discarded_futures
@@ -332,8 +353,89 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // End on TRUE background only. `paused`/`hidden` = the user actually
+    // left (home button, app switcher, screen lock). We deliberately do
+    // NOT act on `inactive`, which also fires for transient interruptions
+    // like pulling Control Center or a notification banner — killing a
+    // live session for those would be wrong.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _endForBackground();
+    }
+  }
+
+  /// Arm the billable meter — starts the 1s countdown clock and stamps
+  /// the wall-clock anchor. Idempotent: safe to call from both go-live
+  /// (Pro sessions, so it can never sit stuck at full) and the first
+  /// hold (free sessions).
+  void _ensureMeterRunning() {
+    if (_meterArmed || _disposed) return;
+    _meterArmed = true;
+    _meterStartedAt = DateTime.now();
+    _chargedMs = 0;
+    _startClock();
+  }
+
+  /// Bill the weekly voice bucket for the exact wall-clock time used so
+  /// far, minus whatever the per-second ticks already charged. Makes the
+  /// charge correct even if ticks were missed or the app was backgrounded
+  /// between ticks. Capped at the session length so a clock glitch can
+  /// never over-charge past one session.
+  void _reconcileCharge() {
+    final start = _meterStartedAt;
+    if (start == null) return;
+    final capMs = _sessionSeconds * 1000;
+    var elapsedMs = DateTime.now().difference(start).inMilliseconds;
+    if (elapsedMs > capMs) elapsedMs = capMs;
+    final owed = elapsedMs - _chargedMs;
+    if (owed > 0) {
+      _chargedMs = elapsedMs;
+      // ignore: discarded_futures
+      LocalStoreService.addVoiceMs(owed);
+    }
+  }
+
+  /// The user left the app mid-session. Option 2 behaviour (locked with
+  /// bro): charge exactly the time they used up to this instant, kill the
+  /// OpenAI socket immediately so we stop paying the second they leave,
+  /// and end the session — no resume. Only fires while a billable session
+  /// is actually live.
+  void _endForBackground() {
+    if (_disposed) return;
+    if (_phase != _Phase.live && _phase != _Phase.lucien) return;
+    _clock?.cancel();
+    _createTimer?.cancel();
+    _pcmWatchdog?.cancel();
+    // Charge the seconds actually used before they left.
+    _reconcileCharge();
+    final usedSec = _chargedMs ~/ 1000;
+    final turns = _transcript.length;
+    // A deliberate leave forfeits a free user's one-shot pass so it
+    // can't be farmed by leave-and-reopen.
+    if (_freeSession) {
+      // ignore: discarded_futures
+      LocalStoreService.markGameFreeUsed();
+    }
+    _meterArmed = false;
+    _meterStartedAt = null;
+    _chargedMs = 0;
+    _pcmQueue.clear();
+    // ignore: discarded_futures
+    AnalyticsService.freeflowSessionEnded(
+      reason:          'backgrounded',
+      durationSec:     usedSec,
+      transcriptTurns: turns,
+    );
+    // Tears down the socket + resets to the pick screen. On resume the
+    // user starts a fresh session that draws from remaining allowance.
+    _resetToPicker();
+  }
+
+  @override
   void dispose() {
     _disposed = true;
+    WidgetsBinding.instance.removeObserver(this);
     // v181 — DO NOT mark gameFreeUsed here. The pre-v179 logic
     // burnt the free pass on any tab-switch where the user had
     // briefly held the orb, leading to "I press the orb and it
@@ -440,6 +542,10 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       _freeSession = !pro;
       _firstEverSession = !pro && !gameUsedAlready;
       _lucienUpsellShown = false;
+      // Fresh session → meter disarmed until (re)armed at connect/hold.
+      _meterArmed     = false;
+      _meterStartedAt = null;
+      _chargedMs      = 0;
       // v244 — always show the full 3-minute session timer. The old
       // pro ? _sessionSeconds : _freeSessionSeconds split made sense
       // when free users got a 60-second grace window; v224 killed
@@ -647,11 +753,14 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
 
       if (_disposed || !mounted) return;
       _log('ok', 'WS', 'connected · ${vibe.label} · creator=$_creator');
-      // Don't start the session clock here — the user hasn't pressed
-      // to talk yet. The clock kicks off the first time they hold
-      // the orb so sitting on the screen reading the scenario
-      // doesn't burn their three minutes.
       setState(() => _phase = _Phase.live);
+      // Pro sessions: arm the meter the INSTANT we're connected — the
+      // socket is billing from now, so the countdown must always run.
+      // This closes the "timer stuck at 3:00 while the AI talks" hole
+      // (seen once right after a fresh purchase). Free sessions still
+      // arm on the first hold (they get the read-the-scenario grace and
+      // hit the paywall the moment they hold anyway).
+      if (!_freeSession) _ensureMeterRunning();
       _log('ok', 'GOLIVE', 'SUCCESS — phase=live · vibe=${vibe.label}');
       // ignore: avoid_print
       print('[FREEFLOW] _goLive SUCCESS — phase = live · vibe=${vibe.label}');
@@ -1138,15 +1247,15 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       _herSpeaking = false;
       _youCaption = '';
     });
-    // First press kicks off the session clock. Subsequent holds
-    // don't restart it — the 3-minute window keeps draining as
-    // expected once the user has chosen to engage.
+    // First press flips the UI flag (first-time bubble + Lucien gating)
+    // and, for free sessions, arms the meter here. Pro sessions already
+    // armed it at connect, so _ensureMeterRunning is a no-op for them.
     if (!_clockStarted) {
       _clockStarted = true;
-      _startClock();
       // ignore: discarded_futures
       AnalyticsService.freeflowFirstHold();
     }
+    _ensureMeterRunning();
   }
 
   void _endHold() {
@@ -1325,6 +1434,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       // don't carry over — bucket auto-resets — so it's still fair).
       // ignore: discarded_futures
       LocalStoreService.addVoiceMs(1000);
+      _chargedMs += 1000;
       setState(() => _remaining--);
       if (_remaining <= 0) {
         t.cancel();
@@ -1350,6 +1460,11 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
     if (_phase == _Phase.scoring || _phase == _Phase.scored) return;
     _clock?.cancel();
     _createTimer?.cancel();
+    // Final true-up of the weekly voice charge against the wall clock,
+    // then disarm so the scored screen can't be re-charged.
+    _reconcileCharge();
+    _meterArmed = false;
+    _meterStartedAt = null;
     HapticFeedback.mediumImpact();
 
     // ── Analytics: where did this session land?  ──────────────────
@@ -1521,6 +1636,9 @@ class _FreeFlowScreenState extends State<FreeFlowScreen> {
       _result        = null;
       _remaining     = _sessionSeconds;
       _clockStarted  = false;
+      _meterArmed     = false;
+      _meterStartedAt = null;
+      _chargedMs      = 0;
     });
   }
 
