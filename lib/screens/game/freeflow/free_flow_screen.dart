@@ -753,14 +753,12 @@ class _FreeFlowScreenState extends State<FreeFlowScreen>
 
       if (_disposed || !mounted) return;
       _log('ok', 'WS', 'connected · ${vibe.label} · creator=$_creator');
+      // Don't start the session clock here — the user hasn't engaged
+      // yet. The meter kicks off the first time they HOLD the orb (record)
+      // or tap LUCIEN — STEP IN, so sitting on the screen reading the
+      // scenario never burns their time. Those two engagement points are
+      // the ONLY places the clock arms.
       setState(() => _phase = _Phase.live);
-      // Pro sessions: arm the meter the INSTANT we're connected — the
-      // socket is billing from now, so the countdown must always run.
-      // This closes the "timer stuck at 3:00 while the AI talks" hole
-      // (seen once right after a fresh purchase). Free sessions still
-      // arm on the first hold (they get the read-the-scenario grace and
-      // hit the paywall the moment they hold anyway).
-      if (!_freeSession) _ensureMeterRunning();
       _log('ok', 'GOLIVE', 'SUCCESS — phase=live · vibe=${vibe.label}');
       // ignore: avoid_print
       print('[FREEFLOW] _goLive SUCCESS — phase = live · vibe=${vibe.label}');
@@ -1335,6 +1333,11 @@ class _FreeFlowScreenState extends State<FreeFlowScreen>
       return;
     }
     HapticFeedback.heavyImpact();
+    // Engaging Lucien is a billable turn — arm the meter here too so the
+    // countdown starts on EITHER engagement point (record OR Lucien) and
+    // can never sit stuck at full while he talks. Idempotent: a no-op if
+    // a prior hold already started it.
+    _ensureMeterRunning();
     // Dismiss the nudge bubble — the user found the button, no
     // need to keep pointing at it for the rest of the session.
     if (mounted) setState(() => _lucienNudgeDismissed = true);
