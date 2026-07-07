@@ -22,7 +22,7 @@ import '../../theme/app_colors.dart';
 /// pinned at the bottom.
 ///
 /// Auto-tour behaviour (matches the mock): on open the carousel
-/// advances one panel every 4 s, plays through all five, returns to
+/// advances one panel every 6 s, plays through all five, returns to
 /// panel 1 (the photo) and then STOPS — from there the user swipes
 /// manually. Any manual touch also stops the tour immediately.
 ///
@@ -144,7 +144,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
   // panel 0 (the photo), then stop — from there it's swipe-only. Any
   // manual touch cancels the tour early (see the Listener in build()).
   void _startTour() {
-    _tourTimer = Timer.periodic(const Duration(seconds: 4), (t) {
+    _tourTimer = Timer.periodic(const Duration(seconds: 6), (t) {
       if (_interacted || !mounted) {
         t.cancel();
         return;
@@ -558,24 +558,16 @@ class _PhotoPanel extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Scores sit ABOVE the image on black — each column stacks the
-          // label over the number, the number sitting right on the photo.
+          // NUMBERS sit on the black ledge just above the image, one
+          // centered over each half (54 over current, 84 over projected).
           Row(
             children: const [
-              _ScoreHead(
-                  label: 'CURRENT',
-                  n: '54',
-                  labelColor: AppColors.textSecondary,
-                  numColor: Color(0xFFC4C4CB)),
-              _ScoreHead(
-                  label: 'PROJECTED',
-                  n: '84',
-                  labelColor: Colors.white,
-                  numColor: _neon,
-                  glow: true),
+              Expanded(child: _ScoreNum(n: '54', color: Color(0xFFC4C4CB))),
+              Expanded(
+                  child: _ScoreNum(n: '84', color: _neon, glow: true)),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           // Aspect ratio matches the cropped before/after asset (914×778)
           // so the baked-in NOW / FIXED labels never get clipped.
           Flexible(
@@ -584,11 +576,42 @@ class _PhotoPanel extends StatelessWidget {
                 aspectRatio: 914 / 778,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: Image.asset(
-                    'assets/marketing/beforeafter.jpg',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        const ColoredBox(color: _tile),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(
+                        'assets/marketing/beforeafter.jpg',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            const ColoredBox(color: _tile),
+                      ),
+                      // LABELS ride ON the image at the very top, centered
+                      // over each half, on a subtle scrim for legibility.
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.only(top: 8, bottom: 16),
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0xB3000000), Color(0x00000000)],
+                            ),
+                          ),
+                          child: Row(
+                            children: const [
+                              Expanded(
+                                  child: _ScoreLabel(
+                                      'CURRENT', Color(0xFFC4C4CB))),
+                              Expanded(
+                                  child: _ScoreLabel('PROJECTED', Colors.white)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -600,50 +623,49 @@ class _PhotoPanel extends StatelessWidget {
   }
 }
 
-class _ScoreHead extends StatelessWidget {
-  final String label, n;
-  final Color labelColor, numColor;
+/// One big score number, centered in its half. Sits on the black ledge
+/// directly above the before/after image.
+class _ScoreNum extends StatelessWidget {
+  final String n;
+  final Color color;
   final bool glow;
-  const _ScoreHead({
-    required this.label,
-    required this.n,
-    required this.labelColor,
-    required this.numColor,
-    this.glow = false,
-  });
+  const _ScoreNum({required this.n, required this.color, this.glow = false});
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              color: labelColor,
-              fontSize: 11,
-              letterSpacing: 4,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            n,
-            style: GoogleFonts.inter(
-              color: numColor,
-              fontSize: 46,
-              height: 1,
-              fontWeight: FontWeight.w900,
-              shadows: glow
-                  ? [
-                      Shadow(
-                          color: _neon.withValues(alpha: 0.6),
-                          blurRadius: 30),
-                    ]
-                  : null,
-            ),
-          ),
-        ],
+    return Text(
+      n,
+      textAlign: TextAlign.center,
+      style: GoogleFonts.inter(
+        color: color,
+        fontSize: 46,
+        height: 1,
+        fontWeight: FontWeight.w900,
+        shadows: glow
+            ? [Shadow(color: _neon.withValues(alpha: 0.6), blurRadius: 30)]
+            : null,
+      ),
+    );
+  }
+}
+
+/// One score label (CURRENT / PROJECTED), centered in its half, overlaid
+/// on the top edge of the image.
+class _ScoreLabel extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _ScoreLabel(this.label, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      textAlign: TextAlign.center,
+      style: GoogleFonts.inter(
+        color: color,
+        fontSize: 11,
+        letterSpacing: 3,
+        fontWeight: FontWeight.w700,
       ),
     );
   }
