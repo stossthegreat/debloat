@@ -123,6 +123,32 @@ class _PaywallScreenState extends State<PaywallScreen> {
         (widget.context?['afterPurchase'] as String?) ?? 'standalone');
     _loadOfferings();
     _startTour();
+    _autoUnlockIfAlreadyPro();
+  }
+
+  /// SELF-HEALING GATE. If this user ALREADY has an active subscription
+  /// (bought on an earlier build whose strict entitlement check rejected
+  /// it, or on another device), the paywall recognises it the moment it
+  /// opens and forwards as a success — no re-buy, no restore tap needed.
+  /// This rescues the doom-loop where Apple says "you're currently
+  /// subscribed" but the app never flipped the local flag. Silent no-op
+  /// for genuinely free users.
+  Future<void> _autoUnlockIfAlreadyPro() async {
+    try {
+      final live = await PurchaseService.isProLive()
+          .timeout(const Duration(seconds: 5));
+      if (live != true) return;
+      if (!mounted || _purchasing) return;
+      // isProLive already repainted the local cache to true. Forward
+      // exactly like a fresh purchase so scan-gated / unlock-in-place
+      // context is honoured.
+      await LocalStoreService.setOnboarded(true);
+      if (!mounted) return;
+      _snack('Subscription active — unlocked.');
+      _forwardOnSuccess();
+    } catch (_) {
+      // Network / timeout — stay on the paywall, normal flow applies.
+    }
   }
 
   @override
