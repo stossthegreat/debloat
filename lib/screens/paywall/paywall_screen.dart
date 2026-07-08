@@ -563,20 +563,17 @@ class _PhotoPanel extends StatelessWidget {
           children: [
             // NUMBERS sit on the black ledge directly above the image, one
             // centered over each half (54 over current, 84 over projected).
-            // Translated down to eat the font's descent so the digits
-            // literally kiss the image's top ledge (no floating gap).
-            Transform.translate(
-              offset: const Offset(0, 12),
-              child: Row(
-                children: const [
-                  Expanded(
-                      child: _ScoreNum(n: '54', color: Color(0xFFC4C4CB))),
-                  Expanded(
-                      child: _ScoreNum(n: '84', color: _neon, glow: true)),
-                ],
-              ),
+            // A tiny 3px gap keeps the digits right on the top ledge —
+            // close, but never overlapping under the image edge.
+            Row(
+              children: const [
+                Expanded(
+                    child: _ScoreNum(n: '54', color: Color(0xFFC4C4CB))),
+                Expanded(
+                    child: _ScoreNum(n: '84', color: _neon, glow: true)),
+              ],
             ),
-            const SizedBox(height: 0),
+            const SizedBox(height: 3),
             // Aspect ratio matches the cropped before/after asset (914×778)
             // so the baked-in NOW / FIXED labels never get clipped. Width-
             // constrained, so its height is fixed — no Flexible/Center gap.

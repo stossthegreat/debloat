@@ -263,7 +263,18 @@ class PurchaseService {
     AnalyticsService.purchaseStarted(pkg.identifier);
     try {
       final result = await Purchases.purchasePackage(pkg);
-      final isPro = result.entitlements.all[PurchaseConfig.proEntitlementId]?.isActive ?? false;
+      // Primary signal: the `pro` entitlement flipped active. FALLBACK:
+      // the purchase produced an active subscription even though the
+      // entitlement didn't flip — happens when a product (e.g. the
+      // weekly SKU) isn't mapped to the `pro` entitlement in the
+      // RevenueCat dashboard, or the mapping lags a beat behind the
+      // StoreKit transaction. A completed subscription purchase IS a
+      // paying user, so we must unlock either way — otherwise a real
+      // payment unlocks nothing.
+      final entActive = result.entitlements.all[PurchaseConfig.proEntitlementId]
+          ?.isActive ?? false;
+      final subActive = result.activeSubscriptions.isNotEmpty;
+      final isPro = entActive || subActive;
       // The rescue one-time IAP is a consumable in Play Console — it
       // may grant credits (and in the user's RC config, also activates
       // the `pro` entitlement) but treat any successful rescue
@@ -315,7 +326,12 @@ class PurchaseService {
     if (!_initialized) return PurchaseOutcome.notConfigured;
     try {
       final info = await Purchases.restorePurchases();
-      final isPro = info.entitlements.all[PurchaseConfig.proEntitlementId]?.isActive ?? false;
+      // Entitlement OR any active subscription — same resilience as
+      // purchase()/isProLive() so a weekly SKU that isn't mapped to the
+      // `pro` entitlement still restores.
+      final entActive = info.entitlements.all[PurchaseConfig.proEntitlementId]
+          ?.isActive ?? false;
+      final isPro = entActive || info.activeSubscriptions.isNotEmpty;
       await LocalStoreService.setSubscribed(isPro);
       AnalyticsService.restoreCompleted(isPro);
       return isPro ? PurchaseOutcome.success : PurchaseOutcome.noPriorPurchases;
@@ -331,7 +347,10 @@ class PurchaseService {
   static Future<void> _refreshEntitlementCache() async {
     try {
       final info = await Purchases.getCustomerInfo();
-      final isPro = info.entitlements.all[PurchaseConfig.proEntitlementId]?.isActive ?? false;
+      // Entitlement OR active subscription (see purchase()/isProLive()).
+      final entActive = info.entitlements.all[PurchaseConfig.proEntitlementId]
+          ?.isActive ?? false;
+      final isPro = entActive || info.activeSubscriptions.isNotEmpty;
       await LocalStoreService.setSubscribed(isPro);
     } catch (_) {
       // Network fail on launch is not fatal — the cached flag stands.
@@ -386,8 +405,13 @@ class PurchaseService {
     if (!_initialized) return null;
     try {
       final info = await Purchases.getCustomerInfo();
-      final isPro = info.entitlements.all[PurchaseConfig.proEntitlementId]
+      // Same resilience as purchase(): treat an active subscription as
+      // pro even when the `pro` entitlement hasn't flipped (weekly SKU
+      // not mapped to the entitlement, or RC lag). An active sub = a
+      // paying user, so the whole app must unlock.
+      final entActive = info.entitlements.all[PurchaseConfig.proEntitlementId]
           ?.isActive ?? false;
+      final isPro = entActive || info.activeSubscriptions.isNotEmpty;
       await LocalStoreService.setSubscribed(isPro);
       // v279 — also detect tier (weekly vs annual) and cache it so
       // the cap window helpers can read it synchronously without
