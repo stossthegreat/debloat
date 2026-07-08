@@ -46,14 +46,26 @@ class PaywallGate {
   /// the same wall.
   static Future<bool> isPro() async {
     if (kBypassPaywall) return true;
+    // CACHE FIRST. A completed purchase writes LocalStoreService
+    // .setSubscribed(true) the instant the StoreKit transaction returns,
+    // so trust that immediately — otherwise RevenueCat entitlement
+    // propagation lag (very common in sandbox / TestFlight, seen in
+    // prod too) would let isProLive() return false for a user who JUST
+    // paid and re-lock them. The cache is repainted false by isProLive()
+    // / _refreshEntitlementCache the moment RC confirms a lapse, so a
+    // cancelled sub still re-locks on the next launch/refresh.
+    if (await LocalStoreService.isSubscribed()) return true;
+    // Not cached-pro → ask RC live. Catches restore / cross-device /
+    // reinstall where the local flag was never set. isProLive() repaints
+    // the cache as a side effect so later synchronous reads agree.
     try {
       final live = await PurchaseService.isProLive()
           .timeout(const Duration(seconds: 2));
-      if (live != null) return live;
+      if (live == true) return true;
     } catch (_) {
-      // Timeout / network refusal — fall through to the cached value.
+      // Timeout / network refusal — treat as not-pro (cache already false).
     }
-    return LocalStoreService.isSubscribed();
+    return false;
   }
 
   // ── Scan gate ───────────────────────────────────────────────────────────

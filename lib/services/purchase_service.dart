@@ -270,45 +270,37 @@ class PurchaseService {
     }
     AnalyticsService.purchaseStarted(pkg.identifier);
     try {
+      // Purchases.purchasePackage ONLY returns without throwing when the
+      // StoreKit transaction actually completed — cancellation, failure,
+      // and pending-approval all throw (caught below). So a clean return
+      // here IS a paying user. We must NOT gate the unlock on the `pro`
+      // entitlement being active in THIS immediate CustomerInfo: in
+      // sandbox / TestFlight (and occasionally prod) the entitlement
+      // propagates a beat AFTER the transaction, so the strict check was
+      // failing a completed purchase and unlocking nothing. Trust the
+      // completed transaction; the ongoing isProLive()/cache reconcile
+      // the true entitlement state on every subsequent read.
       final result = await Purchases.purchasePackage(pkg);
-      // Primary signal: the `pro` entitlement flipped active. FALLBACK:
-      // the purchase produced an active subscription even though the
-      // entitlement didn't flip — happens when a product (e.g. the
-      // weekly SKU) isn't mapped to the `pro` entitlement in the
-      // RevenueCat dashboard, or the mapping lags a beat behind the
-      // StoreKit transaction. A completed subscription purchase IS a
-      // paying user, so we must unlock either way — otherwise a real
-      // payment unlocks nothing.
-      final entActive = result.entitlements.all[PurchaseConfig.proEntitlementId]
-          ?.isActive ?? false;
-      // Belt-and-suspenders: unlock on the `pro` entitlement, OR any
-      // active entitlement (covers a differently-named entitlement in
-      // the dashboard), OR any active subscription (covers no entitlement
-      // mapping at all). A completed subscription purchase must unlock.
-      final isPro = entActive ||
-          result.entitlements.active.isNotEmpty ||
-          result.activeSubscriptions.isNotEmpty;
-      // The rescue one-time IAP is a consumable in Play Console — it
-      // may grant credits (and in the user's RC config, also activates
-      // the `pro` entitlement) but treat any successful rescue
-      // purchase as a success even if the entitlement hasn't flipped
-      // yet, so the paywall doesn't surface a misleading
-      // "entitlement didn't activate" toast on a completed purchase.
+      // The rescue product is a one-time consumable, not a subscription —
+      // don't flip the "subscribed" flag for it (it grants credits only).
       final isRescue =
              pkg.identifier.toLowerCase() ==
                  PurchaseConfig.offering.rescuePackage.toLowerCase()
           || pkg.identifier.toLowerCase().contains('rescue')
           || pkg.storeProduct.identifier.toLowerCase().contains('rescue');
-      if (isPro) {
+      if (!isRescue) {
         await LocalStoreService.setSubscribed(true);
       }
-      if (isPro || isRescue) {
-        AnalyticsService.purchaseCompleted(pkg.identifier);
-        return PurchaseOutcome.success;
+      // Keep the entitlement read purely for telemetry — never to gate.
+      final entActive = result.entitlements.all[PurchaseConfig.proEntitlementId]
+          ?.isActive ?? false;
+      AnalyticsService.purchaseCompleted(pkg.identifier);
+      if (!entActive && !isRescue) {
+        // Completed transaction but entitlement not yet visible — expected
+        // sandbox lag. Logged (not surfaced) so we can watch prod for it.
+        AnalyticsService.purchaseFailed(pkg.identifier, 'entitlement_lag_ok');
       }
-      lastErrorMessage = 'Entitlement did not activate.';
-      AnalyticsService.purchaseFailed(pkg.identifier, 'entitlement_inactive');
-      return PurchaseOutcome.error;
+      return PurchaseOutcome.success;
     } on PlatformException catch (err) {
       // purchases_flutter throws PlatformException with the underlying
       // RevenueCat error code attached as `details`. Surface both the
