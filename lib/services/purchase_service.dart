@@ -273,8 +273,13 @@ class PurchaseService {
       // payment unlocks nothing.
       final entActive = result.entitlements.all[PurchaseConfig.proEntitlementId]
           ?.isActive ?? false;
-      final subActive = result.activeSubscriptions.isNotEmpty;
-      final isPro = entActive || subActive;
+      // Belt-and-suspenders: unlock on the `pro` entitlement, OR any
+      // active entitlement (covers a differently-named entitlement in
+      // the dashboard), OR any active subscription (covers no entitlement
+      // mapping at all). A completed subscription purchase must unlock.
+      final isPro = entActive ||
+          result.entitlements.active.isNotEmpty ||
+          result.activeSubscriptions.isNotEmpty;
       // The rescue one-time IAP is a consumable in Play Console — it
       // may grant credits (and in the user's RC config, also activates
       // the `pro` entitlement) but treat any successful rescue
@@ -331,7 +336,9 @@ class PurchaseService {
       // `pro` entitlement still restores.
       final entActive = info.entitlements.all[PurchaseConfig.proEntitlementId]
           ?.isActive ?? false;
-      final isPro = entActive || info.activeSubscriptions.isNotEmpty;
+      final isPro = entActive ||
+          info.entitlements.active.isNotEmpty ||
+          info.activeSubscriptions.isNotEmpty;
       await LocalStoreService.setSubscribed(isPro);
       AnalyticsService.restoreCompleted(isPro);
       return isPro ? PurchaseOutcome.success : PurchaseOutcome.noPriorPurchases;
@@ -350,7 +357,9 @@ class PurchaseService {
       // Entitlement OR active subscription (see purchase()/isProLive()).
       final entActive = info.entitlements.all[PurchaseConfig.proEntitlementId]
           ?.isActive ?? false;
-      final isPro = entActive || info.activeSubscriptions.isNotEmpty;
+      final isPro = entActive ||
+          info.entitlements.active.isNotEmpty ||
+          info.activeSubscriptions.isNotEmpty;
       await LocalStoreService.setSubscribed(isPro);
     } catch (_) {
       // Network fail on launch is not fatal — the cached flag stands.
@@ -411,7 +420,9 @@ class PurchaseService {
       // paying user, so the whole app must unlock.
       final entActive = info.entitlements.all[PurchaseConfig.proEntitlementId]
           ?.isActive ?? false;
-      final isPro = entActive || info.activeSubscriptions.isNotEmpty;
+      final isPro = entActive ||
+          info.entitlements.active.isNotEmpty ||
+          info.activeSubscriptions.isNotEmpty;
       await LocalStoreService.setSubscribed(isPro);
       // v279 — also detect tier (weekly vs annual) and cache it so
       // the cap window helpers can read it synchronously without
