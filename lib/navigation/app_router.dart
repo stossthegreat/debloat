@@ -4,6 +4,7 @@ import '../models/face_geometry.dart';
 import '../screens/chat/chat_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/legal/legal_screen.dart';
+import '../screens/onboarding/ai_consent_screen.dart';
 import '../screens/onboarding/gender_pick_screen.dart';
 import '../screens/onboarding/intro_reel_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
@@ -58,6 +59,13 @@ final appRouter = GoRouter(
           fromSettings: extra['fromSettings'] == true,
         );
       },
+    ),
+    // AI-data consent — sits between the gender pick and the first scan
+    // so every new user grants permission before any data reaches a
+    // third-party AI service (App Store 5.1.1(i) / 5.1.2(i)).
+    GoRoute(
+      path: '/onboarding/consent',
+      builder: (_, __) => const AiConsentScreen(),
     ),
     GoRoute(
       path: '/paywall',

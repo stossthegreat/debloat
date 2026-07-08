@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
-import '../../widgets/common/ai_consent_dialog.dart';
 import '../../widgets/common/imhim_wordmark.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -27,19 +26,6 @@ class _SplashScreenState extends State<SplashScreen> {
     final hasGender   = (await LocalStoreService.userGender()) != null;
     await Future.delayed(const Duration(milliseconds: 2400));
     if (!mounted) return;
-
-    // ── AI DATA CONSENT (App Store 5.1.1(i) / 5.1.2(i)) ──────────────────
-    // ONE upfront permission, shown once at first launch before the user
-    // can reach any AI feature. Covers every path — scans, voice roleplay,
-    // Rizz — so the app never has to prompt again inside a feature (the
-    // per-feature ensure() checks below just read the stored flag and stay
-    // silent). ensure() short-circuits instantly when already granted, so
-    // returning users who accepted before never see this.
-    if (!await LocalStoreService.hasAiConsent()) {
-      if (!mounted) return;
-      await AiConsentDialog.ensure(context);
-      if (!mounted) return;
-    }
 
     // Gating order:
     //

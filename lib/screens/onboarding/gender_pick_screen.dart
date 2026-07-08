@@ -43,7 +43,10 @@ class GenderPickScreen extends StatelessWidget {
     if (fromSettings) {
       context.pop();
     } else {
-      context.go('/scan');
+      // New users pass through the AI-data consent screen before the
+      // first scan; it forwards to /scan on agree (or immediately if
+      // consent was already granted).
+      context.go('/onboarding/consent');
     }
   }
 
