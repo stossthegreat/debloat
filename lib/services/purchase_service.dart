@@ -81,6 +81,14 @@ class PurchaseService {
       final info = await Purchases.getCustomerInfo();
       lines.add('Active entitlements: '
                 '${info.entitlements.active.keys.toList()}');
+      lines.add('Active subscriptions: ${info.activeSubscriptions.toList()}');
+      lines.add('All purchased products: '
+                '${info.allPurchasedProductIdentifiers.toList()}');
+      lines.add('App user id: ${info.originalAppUserId}');
+      final pro = info.entitlements.all[PurchaseConfig.proEntitlementId];
+      lines.add('"pro" entitlement: '
+                '${pro == null ? "NOT FOUND" : "active=${pro.isActive}, "
+                    "product=${pro.productIdentifier}"}');
     } catch (err) {
       lines.add('getCustomerInfo threw: $err');
     }

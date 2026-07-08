@@ -237,10 +237,15 @@ class _PaywallScreenState extends State<PaywallScreen> {
         if (mounted) _forwardOnSuccess();
         break;
       case PurchaseOutcome.error:
+        // Purchase didn't unlock. Surface the FULL RevenueCat state so we
+        // can see exactly what the store returned (offering, weekly
+        // product id, active subs, "pro" entitlement) instead of a vague
+        // toast — this is how we diagnose "paid but nothing unlocked".
+        final diag = await PurchaseService.diagnose();
+        if (!mounted) return;
         final detail = PurchaseService.lastErrorMessage;
-        _snack(detail != null && detail.isNotEmpty
-            ? detail
-            : 'Purchase could not complete. Please try again.');
+        _showDiagnostic('${detail ?? 'Purchase could not complete.'}'
+            '\n\n──────────\n$diag');
         break;
     }
   }
