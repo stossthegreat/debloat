@@ -520,29 +520,18 @@ class _PaywallScreenState extends State<PaywallScreen> {
   /// Single price line under the CTA. Carries the three Apple-required
   /// essentials in one glance — real store price, weekly cadence, and
   /// the auto-renew / cancel notice. Full disclosure lives in Terms.
+  /// (The on-device build tag was removed for launch — check the build
+  /// number in Settings → TestFlight instead.)
   Widget _priceLine() {
     final price = _priceFor(_Tier.weekly);
-    return Column(
-      children: [
-        Text(
-          '$price per week · auto-renews · cancel anytime',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
-            color: AppColors.textSecondary,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        // Tiny build tag so we can confirm the installed build on-device.
-        Text(
-          kBuildTag,
-          style: GoogleFonts.inter(
-            color: AppColors.textTertiary,
-            fontSize: 8,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
+    return Text(
+      '$price per week · auto-renews · cancel anytime',
+      textAlign: TextAlign.center,
+      style: GoogleFonts.inter(
+        color: AppColors.textSecondary,
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 }
