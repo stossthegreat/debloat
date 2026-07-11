@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/api_config.dart';
 import '../../services/paywall_gate.dart';
@@ -366,6 +367,14 @@ class _RizzChatScreenState extends State<RizzChatScreen> {
                   'context — that\'s it.)';
     }
     final reply = await _ask(effective, image: image);
+    // Day stamp for the Ascend RIZZ CHAT mission + the daily streak — a
+    // coached exchange counts as showing up today.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      await prefs.setInt(
+          'rizz_chat_done_ymd', now.year * 10000 + now.month * 100 + now.day);
+    } catch (_) {}
     if (!mounted) return;
     setState(() {
       _msgs.add(_RizzMsg('assistant', reply));

@@ -14,6 +14,7 @@ import '../../services/notification_service.dart';
 import '../../services/paywall_gate.dart';
 import '../../services/protocol_service.dart';
 import '../../services/review_prompt_service.dart';
+import '../../services/daily_mission_service.dart';
 import '../../services/streak_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
@@ -78,6 +79,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // that have always rendered out of 10.
   int _looksScore100 = 0;
   int _gameScore100  = 0;
+  // Today's quota-aware mission set from DailyMissionService — rotates
+  // daily, only offers what the weekly allowances can actually complete.
+  List<DailyMission> _dailyMissions = const [];
   // Today\'s Ascension — which pillars have a completion logged TODAY.
   // Each session screen writes its `<pillar>_done_ymd` int (year*10000 +
   // month*100 + day) to SharedPreferences when a rep lands; here we
@@ -165,6 +169,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final snap = await StreakService.progress();
     final curStreak  = snap.streak;
     final longStreak = snap.longest;
+    // Today's quota-aware mission set (rotates daily, remembers what's
+    // done) for the Ascend panel. progress() above already generated /
+    // persisted today's set, so this read is instant and consistent.
+    final dailyMissions = await DailyMissionService.loadToday();
 
     if (!mounted) return;
     setState(() {
@@ -196,6 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _longestStreak = longStreak;
       _ascensionDay  = snap.ascensionDay;
       _consistency   = snap.consistency;
+      _dailyMissions = dailyMissions;
       _looksDoneToday = looksOk;
       _auraDoneToday  = auraOk;
       _gameDoneToday  = gameOk;
@@ -270,6 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   longestStreak:        _longestStreak,
                   ascensionDay:         _ascensionDay,
                   consistency:          _consistency,
+                  dailyMissions:        _dailyMissions,
                   looksDoneToday:       _looksDoneToday,
                   gameDoneToday:        _gameDoneToday,
                   rizzDoneToday:        _rizzDoneToday,

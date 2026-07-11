@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'daily_mission_service.dart';
 import 'local_store_service.dart';
 
 /// THE ASCENSION ENGINE — one source of truth for the three numbers the
@@ -41,17 +42,21 @@ import 'local_store_service.dart';
 class StreakService {
   static const _kActiveDays = 'streak_active_days'; // List<String> of YMD
   static const _kLongest    = 'daily_streak_longest';
-  static const _kMissionLog = 'mission_daily_log';   // List<String> "ymd:count"
+  // List<String> "ymd:done:offered" ("ymd:done" legacy = offered 5).
+  static const _kMissionLog = 'mission_daily_log';
 
   /// Total length of the ascension ladder, in earned days.
   static const int ascensionTotalDays = 60;
 
   /// Mission flags stamped with today's YMD by each mission screen.
+  /// Any ONE of these landing today keeps the flame alive.
   static const _doneFlags = <String>[
     'looks_done_ymd',
     'game_done_ymd',
     'rizz_done_ymd',
     'pickup_line_done_ymd',
+    'render_done_ymd',
+    'rizz_chat_done_ymd',
   ];
 
   static int _ymd(DateTime d) => d.year * 10000 + d.month * 100 + d.day;
@@ -79,13 +84,9 @@ class StreakService {
     }
 
     // Seed from real history so an existing user isn't starting at 0.
-    // Track whether a scan landed TODAY for the SCAN mission.
-    bool scanToday = false;
     try {
       for (final s in await LocalStoreService.loadScans()) {
-        final y = _ymd(s.takenAt);
-        days.add(y);
-        if (y == today) scanToday = true;
+        days.add(_ymd(s.takenAt));
       }
     } catch (_) {}
     try {
@@ -100,30 +101,46 @@ class StreakService {
     await prefs.setStringList(
         _kActiveDays, kept.map((e) => e.toString()).toList());
 
-    // Today's mission count — the five Ascend missions, exactly as the
-    // tab renders them (a scan ticks both PROTOCOL/looks and SCAN).
-    final looks  = (prefs.getInt('looks_done_ymd') ?? 0) == today;
-    final game   = (prefs.getInt('game_done_ymd') ?? 0) == today;
-    final rizz   = (prefs.getInt('rizz_done_ymd') ?? 0) == today;
-    final pickup = (prefs.getInt('pickup_line_done_ymd') ?? 0) == today;
-    final missionsToday =
-        [looks, game, rizz, pickup, scanToday].where((b) => b).length;
+    // Today's mission count — from the DAILY MISSION ENGINE, which is
+    // quota-aware and rotates the set each day. done/offered are logged
+    // together so consistency judges the user against what was actually
+    // asked of them today, not a fixed five.
+    int missionsToday = 0;
+    int offeredToday = 5;
+    try {
+      final missions = await DailyMissionService.loadToday();
+      missionsToday = missions.where((m) => m.done).length;
+      offeredToday = missions.isEmpty ? 5 : missions.length;
+    } catch (_) {}
 
-    // Upsert today's count into the mission log; trim to 60 days.
+    // Upsert today's done/offered into the mission log; trim to 60 days.
     final logCutoff = _ymd(DateTime.now().subtract(const Duration(days: 60)));
-    final Map<int, int> log = {};
-    for (final e in prefs.getStringList(_kMissionLog) ?? const <String>[]) {
-      final parts = e.split(':');
-      if (parts.length != 2) continue;
-      final y = int.tryParse(parts[0]);
-      final c = int.tryParse(parts[1]);
-      if (y != null && c != null && y >= logCutoff) log[y] = c;
-    }
-    log[today] = missionsToday;
+    final Map<int, (int, int)> log = _readMissionLog(prefs, logCutoff);
+    log[today] = (missionsToday, offeredToday);
     await prefs.setStringList(
-        _kMissionLog, log.entries.map((e) => '${e.key}:${e.value}').toList());
+        _kMissionLog,
+        log.entries
+            .map((e) => '${e.key}:${e.value.$1}:${e.value.$2}')
+            .toList());
 
     return (kept.toSet(), missionsToday);
+  }
+
+  /// Parse the mission log. New entries are "ymd:done:offered"; legacy
+  /// two-part entries ("ymd:done") predate the dynamic engine and are
+  /// read with offered = 5.
+  static Map<int, (int done, int offered)> _readMissionLog(
+      SharedPreferences prefs, int cutoff) {
+    final Map<int, (int, int)> log = {};
+    for (final e in prefs.getStringList(_kMissionLog) ?? const <String>[]) {
+      final parts = e.split(':');
+      if (parts.length < 2) continue;
+      final y = int.tryParse(parts[0]);
+      final d = int.tryParse(parts[1]);
+      final o = parts.length >= 3 ? (int.tryParse(parts[2]) ?? 5) : 5;
+      if (y != null && d != null && y >= cutoff) log[y] = (d, o <= 0 ? 5 : o);
+    }
+    return log;
   }
 
   /// Streak `(current, longest)` from the active-day set. Pure activity
@@ -175,28 +192,25 @@ class StreakService {
   /// user isn't punished for days before they started.
   static int _consistency7d(SharedPreferences prefs) {
     final today = _todayYmd();
-    final Map<int, int> log = {};
-    for (final e in prefs.getStringList(_kMissionLog) ?? const <String>[]) {
-      final parts = e.split(':');
-      if (parts.length != 2) continue;
-      final y = int.tryParse(parts[0]);
-      final c = int.tryParse(parts[1]);
-      if (y != null && c != null) log[y] = c;
-    }
+    final log = _readMissionLog(prefs, 0);
     if (log.isEmpty) return 0;
     final firstDay = log.keys.reduce((a, b) => a < b ? a : b);
     final elapsed =
         _fromYmd(today).difference(_fromYmd(firstDay)).inDays + 1;
     final window = elapsed < 1 ? 1 : (elapsed > 7 ? 7 : elapsed);
-    int sum = 0;
+    // Judge each day against what was actually OFFERED that day (the
+    // dynamic mission set can be smaller than 5 when weekly quotas are
+    // spent). A day with no log entry = the user never showed up = 0/5.
+    int done = 0, offered = 0;
     var d = _fromYmd(today);
     for (var i = 0; i < window; i++) {
-      sum += log[_ymd(d)] ?? 0;
+      final entry = log[_ymd(d)];
+      done += entry?.$1 ?? 0;
+      offered += entry?.$2 ?? 5;
       d = d.subtract(const Duration(days: 1));
     }
-    final denom = 5 * window;
-    if (denom <= 0) return 0;
-    return ((sum / denom) * 100).round().clamp(0, 100);
+    if (offered <= 0) return 0;
+    return ((done / offered) * 100).round().clamp(0, 100);
   }
 
   /// Consecutive run ending today, or yesterday if today is still

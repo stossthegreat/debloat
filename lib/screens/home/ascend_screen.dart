@@ -9,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/protocol.dart';
 import '../../models/scan_record.dart' show GameScoreEntry, ScanRecord;
 import '../../services/ascension_service.dart';
+import '../../services/daily_mission_service.dart';
 import '../../services/local_store_service.dart';
 import '../../services/share_service.dart';
 import '../../theme/app_colors.dart';
@@ -79,6 +80,12 @@ class AscendScreen extends StatefulWidget {
   /// IMHIM score.
   final int consistency;
 
+  /// Today's mission set from the quota-aware DailyMissionService —
+  /// protocol anchor + rotating slots that only offer what the user's
+  /// weekly allowances can actually complete. Empty → legacy fixed five
+  /// (first frame / fallback).
+  final List<DailyMission> dailyMissions;
+
   /// Did the user complete their protocol check-in today?
   final bool looksDoneToday;
 
@@ -110,6 +117,7 @@ class AscendScreen extends StatefulWidget {
     this.dayStreak = 0,
     this.ascensionDay = 1,
     this.consistency = 0,
+    this.dailyMissions = const [],
     this.looksDoneToday = false,
     this.gameDoneToday = false,
     this.rizzDoneToday = false,
@@ -347,6 +355,80 @@ class _AscendScreenState extends State<AscendScreen> {
     final w = widget;
     final day = w.protocol?.currentDay ?? 1;
     final scanToday = _scanLoggedToday();
+
+    // DYNAMIC SET — quota-aware, rotates daily, remembers what's been
+    // done (DailyMissionService). Each id maps to its copy + tab jump.
+    if (w.dailyMissions.isNotEmpty) {
+      return [
+        for (final m in w.dailyMissions)
+          switch (m.id) {
+            DailyMissionService.protocol => AscendMission(
+                title: 'PROTOCOL · LOG DAY $day',
+                hint: m.done
+                    ? 'banked. another day deeper.'
+                    : 'today\'s reps. the work that compounds.',
+                done: m.done,
+                onTap: () => w.onJumpToTab(0),
+              ),
+            DailyMissionService.roleplay => AscendMission(
+                title: 'ROLEPLAY · SPAR WITH LUCIEN',
+                hint: m.done
+                    ? 'round in the can. that\'s how reps build.'
+                    : 'one round. the man you\'re becoming talks like him first.',
+                done: m.done,
+                onTap: () => w.onJumpToTab(1),
+              ),
+            DailyMissionService.scan => AscendMission(
+                title: 'SCAN · MARK THE FACE',
+                hint: m.done
+                    ? 'baseline locked in for today.'
+                    : 'no honest mirror, no honest delta. capture it.',
+                done: m.done,
+                onTap: () => w.onJumpToTab(0),
+              ),
+            DailyMissionService.render => AscendMission(
+                title: 'MIRROR · RENDER THE FIX',
+                hint: m.done
+                    ? 'future you, rendered. study it.'
+                    : 'see what could change. run one render.',
+                done: m.done,
+                onTap: () => w.onJumpToTab(0),
+              ),
+            DailyMissionService.rizzSs => AscendMission(
+                title: 'READ · GET THE TAKE',
+                hint: m.done
+                    ? 'chat read. moves locked in.'
+                    : 'paste a chat or a profile. get the read.',
+                done: m.done,
+                onTap: () => w.onJumpToTab(2),
+              ),
+            DailyMissionService.pickup => AscendMission(
+                title: 'PICKUP · DROP A LINE',
+                hint: m.done
+                    ? 'used a banger today.'
+                    : 'one line. screenshot-worthy. copy it.',
+                done: m.done,
+                onTap: () => w.onJumpToTab(2),
+              ),
+            DailyMissionService.rizzChat => AscendMission(
+                title: 'RIZZ CHAT · ASK THE COACH',
+                hint: m.done
+                    ? 'coached. that\'s a rep.'
+                    : 'ask anything. we coach.',
+                done: m.done,
+                onTap: () => w.onJumpToTab(2),
+              ),
+            _ => AscendMission(
+                title: 'MISSION',
+                hint: '',
+                done: m.done,
+                onTap: () => w.onJumpToTab(0),
+              ),
+          },
+      ];
+    }
+
+    // LEGACY fallback — fixed five (first frame before the engine loads).
     return [
       AscendMission(
         title: 'PROTOCOL · LOG DAY $day',

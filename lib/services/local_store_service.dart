@@ -526,6 +526,11 @@ class LocalStoreService {
         : 1;
     await prefs.setInt(_kRenderWeekBucket, bucket);
     await prefs.setInt(_kRenderWeekCount,  count);
+    // Day stamp for the Ascend MIRROR mission + the daily streak — a
+    // render counts as showing up today.
+    final now = DateTime.now();
+    await prefs.setInt(
+        'render_done_ymd', now.year * 10000 + now.month * 100 + now.day);
   }
 
   // ── Weekly screenshot-rizz cap ─────────────────────────────────────────
