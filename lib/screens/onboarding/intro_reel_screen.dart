@@ -435,7 +435,7 @@ const _lines = <_Line>[
     tightSpacing: true,
   ),
   _Line(
-    ['GAME', 'decides.'],
+    ['GAME', 'keeps', 'it.'],
     size: 50,
     boldIndices: [0],          // GAME bold non-italic
     redIndices:  [0],          // GAME in brand red
