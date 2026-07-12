@@ -1027,13 +1027,29 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       final usedThisWeek = await LocalStoreService.scansThisWeek();
       if (usedThisWeek >= LocalStoreService.kScansPerWeek) {
         if (!mounted) return;
-        context.go('/paywall', extra: {
-          'afterPurchase': '/report',
-          'imageBytes':    imageBytes,
-          'geometry':      primaryGeom,
-          'extraImages':   extraImages,
-          'source':        'scan_quota_capped',
-        });
+        // HARD STOP — do NOT route a capped SUBSCRIBER to the paywall.
+        // The paywall detects their active subscription and forwards
+        // them "on success" straight into /report with this scan
+        // payload, silently bypassing the 2/week cap (the unlimited-
+        // scans bug). A paying user has nothing to buy, so the blocker
+        // is a deterministic notice — same pattern as the roleplay
+        // minutes cap. Explicit white text so it can't render
+        // black-on-black.
+        HapticFeedback.mediumImpact();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Both weekly scans used. They renew at the start of your '
+              'next billing week.',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  height: 1.35)),
+          backgroundColor: Color(0xFF16161B),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 5),
+        ));
+        setState(() => _phase = ScanPhase.searching);
         return;
       }
       await LocalStoreService.markScanUsed();
