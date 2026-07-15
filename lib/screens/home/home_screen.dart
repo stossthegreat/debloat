@@ -22,8 +22,12 @@ import '../../widgets/common/imhim_wordmark.dart';
 import '../../widgets/common/mirrorly_components.dart';
 import '../../widgets/report/aspect_protocol_cards.dart';
 import '../eyes/eyes_tab_screen.dart';
+import '../eyes/eye_contact_tab_screen.dart';
 import '../game/game_tab_screen.dart';
-import '../rizz/rizz_tab_screen.dart';
+// v350 — RIZZ tab commented out (folded away; the slot is now EYE
+// CONTACT). The Rizz screens + routes still exist for a one-line
+// restore, they're just no longer surfaced in the nav.
+// import '../rizz/rizz_tab_screen.dart';
 import 'ascend_screen.dart';
 
 /// The hub. Four surfaces, one promise per tab:
@@ -221,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // screen_view event so we can rebuild the LOOKS / GAME / RIZZ
     // / ASCEND funnel without having to dedupe screen_views by
     // source.
-    const tabNames = ['looks', 'game', 'rizz', 'ascend'];
+    const tabNames = ['looks', 'game', 'eyes', 'ascend'];
     if (i >= 0 && i < tabNames.length) {
       // ignore: discarded_futures
       AnalyticsService.tabOpened(tabNames[i]);
@@ -264,7 +268,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   onRefresh:        _reload,
                 ),
                 const GameTabScreen(),
-                const RizzTabScreen(),
+                // v350 — EYE CONTACT tab replaces RIZZ at index 2. The
+                // camera goes live only while this is the active tab
+                // (IndexedStack keeps every child mounted, so the
+                // `active` flag gates the controller lifecycle).
+                EyeContactTabScreen(active: _tab == 2),
                 // v281 — ASCEND restored as tab index 3. Pulls
                 // the protocol + scan history + per-pillar
                 // completion booleans from this screen's state so
@@ -1393,7 +1401,8 @@ class _NavBar extends StatelessWidget {
     final items = const <({String label, IconData icon, bool italic})>[
       (label: 'Looks',  icon: Icons.face_retouching_natural_outlined, italic: true),
       (label: 'Game',   icon: Icons.chat_bubble_outline_rounded,       italic: true),
-      (label: 'Rizz',   icon: Icons.bolt_rounded,                      italic: true),
+      // v350 — RIZZ → EYE CONTACT. Camera-forward gaze training.
+      (label: 'Eyes',   icon: Icons.remove_red_eye_outlined,           italic: true),
       (label: 'Ascend', icon: Icons.local_fire_department_rounded,     italic: true),
     ];
     // v303 — bottom nav rebuilt in the Skeletal-PT pattern bro

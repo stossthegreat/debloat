@@ -378,6 +378,14 @@ class _AscendScreenState extends State<AscendScreen> {
                 done: m.done,
                 onTap: () => w.onJumpToTab(1),
               ),
+            DailyMissionService.eyes => AscendMission(
+                title: 'EYE CONTACT · HOLD THE GAZE',
+                hint: m.done
+                    ? 'you held it. that\'s the look she remembers.'
+                    : 'one lesson. don\'t break first. train the eyes.',
+                done: m.done,
+                onTap: () => w.onJumpToTab(2),
+              ),
             DailyMissionService.scan => AscendMission(
                 title: 'SCAN · MARK THE FACE',
                 hint: m.done
@@ -394,30 +402,12 @@ class _AscendScreenState extends State<AscendScreen> {
                 done: m.done,
                 onTap: () => w.onJumpToTab(0),
               ),
-            DailyMissionService.rizzSs => AscendMission(
-                title: 'READ · GET THE TAKE',
-                hint: m.done
-                    ? 'chat read. moves locked in.'
-                    : 'paste a chat or a profile. get the read.',
-                done: m.done,
-                onTap: () => w.onJumpToTab(2),
-              ),
-            DailyMissionService.pickup => AscendMission(
-                title: 'PICKUP · DROP A LINE',
-                hint: m.done
-                    ? 'used a banger today.'
-                    : 'one line. screenshot-worthy. copy it.',
-                done: m.done,
-                onTap: () => w.onJumpToTab(2),
-              ),
-            DailyMissionService.rizzChat => AscendMission(
-                title: 'RIZZ CHAT · ASK THE COACH',
-                hint: m.done
-                    ? 'coached. that\'s a rep.'
-                    : 'ask anything. we coach.',
-                done: m.done,
-                onTap: () => w.onJumpToTab(2),
-              ),
+            // v350 — RIZZ missions folded away (the Rizz tab became Eye
+            // Contact). Left commented for a one-line restore. Any stale
+            // persisted rizz id falls through to the `_` default below.
+            // DailyMissionService.rizzSs => AscendMission(...),
+            // DailyMissionService.pickup => AscendMission(...),
+            // DailyMissionService.rizzChat => AscendMission(...),
             _ => AscendMission(
                 title: 'MISSION',
                 hint: '',
@@ -447,28 +437,18 @@ class _AscendScreenState extends State<AscendScreen> {
         onTap: () => w.onJumpToTab(1),
       ),
       AscendMission(
+        title: 'EYE CONTACT · HOLD THE GAZE',
+        hint:  'one lesson. don\'t break first. train the eyes.',
+        done:  false,
+        onTap: () => w.onJumpToTab(2),
+      ),
+      AscendMission(
         title: 'SCAN · MARK THE FACE',
         hint:  scanToday
             ? 'baseline locked in for today.'
             : 'no honest mirror, no honest delta. capture it.',
         done:  scanToday,
         onTap: () => w.onJumpToTab(0),
-      ),
-      AscendMission(
-        title: 'PICKUP · DROP A LINE',
-        hint:  w.pickupLineDoneToday
-            ? 'used a banger today.'
-            : 'one line. screenshot-worthy. copy it.',
-        done:  w.pickupLineDoneToday,
-        onTap: () => w.onJumpToTab(2),
-      ),
-      AscendMission(
-        title: 'READ · GET THE TAKE',
-        hint:  w.rizzDoneToday
-            ? 'chat read. moves locked in.'
-            : 'paste a chat or ask the rizz coach.',
-        done:  w.rizzDoneToday,
-        onTap: () => w.onJumpToTab(2),
       ),
     ];
   }

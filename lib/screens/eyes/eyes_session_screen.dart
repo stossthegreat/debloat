@@ -18,6 +18,7 @@ import '../../services/auralay_api.dart';
 import '../../services/face_detector_service.dart';
 import '../../services/gaze/gaze_progress_store.dart';
 import '../../services/gaze/gaze_scorer.dart';
+import '../../services/local_store_service.dart';
 import '../../services/review_prompt_service.dart';
 import '../../theme/auralay_app_colors.dart';
 import '../../theme/auralay_app_typography.dart';
@@ -599,6 +600,11 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
     _weeklyDelta  = await GazeProgressStore.weeklyImprovement();
     if (_disposed || !mounted) return;
     setState(() => _result = result);
+    // v350 — count this scored session against the weekly eye-contact
+    // allowance (3/week Pro) and stamp eyes_done_ymd so the Ascend
+    // "EYE CONTACT" mission ticks + the daily streak counts today.
+    // ignore: discarded_futures
+    LocalStoreService.markEyeLessonUsed();
     // Mark Aura milestone for the App Store review prompt. Fired only
     // once the result actually lands so users who bail before scoring
     // don't tick the box. Dialog fires on next home mount.

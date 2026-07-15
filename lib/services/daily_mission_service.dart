@@ -39,8 +39,12 @@ class DailyMissionService {
   // Mission type ids — stable strings, persisted.
   static const protocol = 'protocol';
   static const roleplay = 'roleplay';
+  static const eyes     = 'eyes';
   static const scan     = 'scan';
   static const render   = 'render';
+  // v350 — RIZZ folded away. These ids are kept defined (not deleted)
+  // so any persisted set from an older build still resolves, and so a
+  // one-line restore is possible; the generator no longer emits them.
   static const rizzSs   = 'rizz_ss';
   static const pickup   = 'pickup';
   static const rizzChat = 'rizz_chat';
@@ -74,24 +78,33 @@ class DailyMissionService {
   ///
   ///   1. PROTOCOL — every single day, always slot 1. Ticking the
   ///      protocol log on the Looks tab completes it (looks_done_ymd).
-  ///   2. ROLEPLAY — while weekly voice minutes remain (≈5 sessions).
-  ///   3. SCAN — max 2/week, SPACED: the first any time, the second
+  ///   2. ROLEPLAY — while weekly voice minutes remain (5 × 2-min
+  ///      "game lessons" = 10 min/week).
+  ///   3. EYE CONTACT — while the 3/week eye-contact allowance remains.
+  ///      The gaze-training tab that replaced Rizz; folded into the
+  ///      ascension plan at 3 lessons per week.
+  ///   4. SCAN — max 2/week, SPACED: the first any time, the second
   ///      only once the first is ≥3 days old, so both scans land in
   ///      different halves of the week instead of back-to-back.
-  ///   4. MIRROR RENDER — while the 3/week render budget remains.
-  ///   5. RIZZ — a DIFFERENT challenge each day, rotating screenshot
-  ///      read → pickup line → rizz chat; also backfills any empty
-  ///      slot above so the day always carries 5 missions when the
-  ///      unlimited challenges can cover it.
+  ///   5. MIRROR RENDER — while the 3/week render budget remains.
+  ///
+  /// v350 — RIZZ removed from the daily plan (the tab was folded away).
   static Future<List<String>> _generate(int today) async {
     final ids = <String>[protocol];
 
-    // ── ROLEPLAY — ≈5 sessions/week via the voice-minute budget.
+    // ── ROLEPLAY — 5 × 2-min sessions/week via the voice-minute budget.
     bool roleplayOk = true;
     try {
       roleplayOk = !await LocalStoreService.voiceCapReached();
     } catch (_) {}
     if (roleplayOk) ids.add(roleplay);
+
+    // ── EYE CONTACT — while the 3/week allowance remains.
+    bool eyesOk = true;
+    try {
+      eyesOk = !await LocalStoreService.eyeLessonsCapReached();
+    } catch (_) {}
+    if (eyesOk) ids.add(eyes);
 
     // ── SCAN — 2/week, spaced ≥3 days apart.
     try {
@@ -115,24 +128,6 @@ class DailyMissionService {
       }
     } catch (_) {}
 
-    // ── RIZZ — one different challenge per day (rotating), then
-    // backfill from the same rotation until the day holds 5.
-    final rot = DateTime.now().difference(DateTime(2026)).inDays % 3;
-    final rizzOrder = const [
-      [rizzSs, pickup, rizzChat],
-      [pickup, rizzChat, rizzSs],
-      [rizzChat, rizzSs, pickup],
-    ][rot];
-    bool ssOk = true;
-    try {
-      ssOk = !await LocalStoreService.screenshotRizzCapReached();
-    } catch (_) {}
-    for (final r in rizzOrder) {
-      if (ids.length >= 5) break;
-      if (r == rizzSs && !ssOk) continue;
-      ids.add(r);
-    }
-
     return ids;
   }
 
@@ -151,8 +146,10 @@ class DailyMissionService {
     return {
       protocol: stamped('looks_done_ymd'),
       roleplay: stamped('game_done_ymd'),
+      eyes:     stamped('eyes_done_ymd'),
       scan:     scanToday,
       render:   stamped('render_done_ymd'),
+      // Legacy rizz stamps kept so an older persisted set still resolves.
       rizzSs:   stamped('rizz_done_ymd'),
       pickup:   stamped('pickup_line_done_ymd'),
       rizzChat: stamped('rizz_chat_done_ymd'),
