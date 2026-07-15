@@ -259,8 +259,11 @@ class _FreeFlowScreenState extends State<FreeFlowScreen>
   final List<int> _pcmQueue = [];
 
   // Session length.
-  /// Default session length for Pro users — 3 minutes per session.
-  static const int _sessionSeconds = 180;
+  /// Default session length for Pro users — 2 minutes per session.
+  /// Bro: "make the game lessons two minutes each, and we give them
+  /// ten minutes a week, so they get five lessons." 120s × 5 = the
+  /// 10-minute weekly voice allowance (kVoiceMinutesPerWeek).
+  static const int _sessionSeconds = 120;
   /// Bro v6: "we want the free roleplay to be one minute then after
   /// one response add a brutal pop up tap Lucien for your legendary
   /// teacher." Free users get a single 60-second session, then the
@@ -1761,7 +1764,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen>
       _herSpeaking = false;
       _holding = false;
       _result = null;
-      _remaining = 180;
+      _remaining = _sessionSeconds;
       _clockStarted = false;
     });
     await _goLive(vibe);

@@ -63,17 +63,24 @@ class LocalStoreService {
   // Final spec bro locked in v238:
   //   · 2 scans per week
   //   · 3 mirror renders per week
-  //   · 15 screenshot rizz analyses per week
-  //   · 18 minutes of live AI roleplay per week
-  //     (= 6 sessions × 3 min, ~1 per day)
+  //   · 30 screenshot rizz analyses per week
+  //   · 10 minutes of live AI roleplay per week
+  //     (= 5 sessions × 2 min, the "game lessons")
+  //   · 3 eye-contact lessons per week
   //   · Unlimited AI chat rizz (text is cheap, no cap)
-  //   · Per-session voice cap of 3 min (free_flow_screen.dart enforces)
+  //   · Per-session voice cap of 2 min (free_flow_screen.dart enforces)
   // v279 — Pro cap numbers tuned for Month-1 cash flow (Apple's
   // ~33-45 day payout lag means OpenAI / Replicate get paid before
-  // we do). Voice 18 → 15 saves ~$0.15/wk per heavy user. Screenshots
+  // we do). Voice 18 → 15 saved ~$0.15/wk per heavy user. Screenshots
   // 15 → 30 costs ~$0.045/wk extra but reads as abundance on the
   // App Store screenshots. Net Month-1 burn drops ~$1,500 at 5K
   // Pro converts. See UNIT_ECONOMICS.md Scenario B.
+  //
+  // v350 — bro reworked the Game tab into 2-minute "lessons": voice
+  // dropped 15 → 10 min/week (5 sessions × 2 min) and the roleplay
+  // per-session ceiling dropped 3 → 2 min. Eye-contact training
+  // graduated into its own tab (replacing Rizz) with a 3-lesson
+  // weekly Pro allowance folded into the ascension plan.
   //
   // Annual subscribers get the SAME per-period numbers but on a
   // 30-day rolling window instead of 7 days. Same yearly total,
@@ -81,7 +88,8 @@ class LocalStoreService {
   static const int  kScansPerWeek        = 2;
   static const int  kRendersPerWeek      = 3;
   static const int  kScreenshotsPerWeek  = 30;
-  static const int  kVoiceMinutesPerWeek = 15;
+  static const int  kVoiceMinutesPerWeek = 10;
+  static const int  kEyeLessonsPerWeek   = 3;
 
   static const _kScanWeekBucket        = 'caps.scan.week_bucket.v1';
   static const _kScanWeekCount         = 'caps.scan.week_count.v1';
@@ -95,6 +103,11 @@ class LocalStoreService {
   static const _kRenderWeekCount       = 'caps.render.week_count.v1';
   static const _kScreenshotWeekBucket  = 'caps.screenshot.week_bucket.v1';
   static const _kScreenshotWeekCount   = 'caps.screenshot.week_count.v1';
+  // v350 — eye-contact lessons: 3 per rolling window (Pro allowance,
+  // folded into the ascension plan). Same per-user anchor + window as
+  // every other cap.
+  static const _kEyeWeekBucket         = 'caps.eyes.week_bucket.v1';
+  static const _kEyeWeekCount          = 'caps.eyes.week_count.v1';
 
   // ── Scans ────────────────────────────────────────────────────────────────
   static Future<List<ScanRecord>> loadScans() async {
@@ -600,6 +613,42 @@ class LocalStoreService {
   static Future<bool> screenshotRizzCapReached() async {
     final used = await screenshotRizzThisWeek();
     return used >= kScreenshotsPerWeek;
+  }
+
+  // ── Weekly eye-contact lesson cap (Pro) ────────────────────────────────
+  /// v350 — how many eye-contact lessons the Pro user has completed
+  /// THIS window. Resets on the user's own rolling window rollover.
+  static Future<int> eyeLessonsThisWeek() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
+    final stored = prefs.getInt(_kEyeWeekBucket) ?? 0;
+    if (stored != bucket) return 0;
+    return prefs.getInt(_kEyeWeekCount) ?? 0;
+  }
+
+  /// Increment the weekly eye-contact lesson count AND stamp today as
+  /// the last eye-contact completion day (drives the Ascend "EYE
+  /// CONTACT" mission tick + the daily streak). Called once per scored
+  /// gaze session from EyesSessionScreen.
+  static Future<void> markEyeLessonUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
+    final stored = prefs.getInt(_kEyeWeekBucket) ?? 0;
+    final count  = stored == bucket
+        ? (prefs.getInt(_kEyeWeekCount) ?? 0) + 1
+        : 1;
+    await prefs.setInt(_kEyeWeekBucket, bucket);
+    await prefs.setInt(_kEyeWeekCount,  count);
+    final now = DateTime.now();
+    await prefs.setInt(
+        'eyes_done_ymd', now.year * 10000 + now.month * 100 + now.day);
+  }
+
+  /// True when the Pro user has used up their weekly eye-contact
+  /// lesson allowance (3/week).
+  static Future<bool> eyeLessonsCapReached() async {
+    final used = await eyeLessonsThisWeek();
+    return used >= kEyeLessonsPerWeek;
   }
 
   // ── Onboarding (has the user completed first-run?) ──────────────────────
