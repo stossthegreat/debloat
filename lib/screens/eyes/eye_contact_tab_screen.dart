@@ -6,13 +6,11 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../config/dev_flags.dart';
 import '../../models/face_metrics.dart';
 import '../../models/gaze/gaze_lesson.dart';
 import '../../models/gaze/gaze_syllabus.dart';
 import '../../services/face_detector_service.dart';
 import '../../services/gaze/gaze_progress_store.dart';
-import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/eyes/auralay_face_overlay_painter.dart';
@@ -60,10 +58,7 @@ class _EyeContactTabScreenState extends State<EyeContactTabScreen>
   FaceMetrics _metrics = FaceMetrics.empty;
   late final AnimationController _pulse;
 
-  // ─── Entitlement + progress state ─────────────────────────────────
-  bool _pro        = false;
-  bool _eyesUsed   = false;
-  bool _capReached = false;
+  // ─── Progress state ───────────────────────────────────────────────
   /// Lesson ids the apprentice has scored above zero on — drives the
   /// sequential unlock (lesson N opens once N-1 is in this set).
   Set<String> _completed = const {};
@@ -118,21 +113,13 @@ class _EyeContactTabScreenState extends State<EyeContactTabScreen>
   }
 
   Future<void> _loadState() async {
-    final pro     = kBypassPaywall ? true : await LocalStoreService.isSubscribed();
-    final used    = await LocalStoreService.eyesFreeUsed();
-    final capped  = await LocalStoreService.eyeLessonsCapReached();
     final done = <String>{};
     for (final l in _lessons) {
       final best = await GazeProgressStore.bestFor(l.id);
       if (best != null && best > 0) done.add(l.id);
     }
     if (!mounted) return;
-    setState(() {
-      _pro        = pro;
-      _eyesUsed   = used;
-      _capReached = capped;
-      _completed  = done;
-    });
+    setState(() => _completed = done);
   }
 
   // ─── Camera lifecycle ─────────────────────────────────────────────
@@ -242,24 +229,8 @@ class _EyeContactTabScreenState extends State<EyeContactTabScreen>
       return;
     }
 
-    if (!_pro) {
-      // Free tier: one free lesson, then the paywall.
-      if (_eyesUsed) {
-        await context.push('/paywall', extra: {'source': 'aura_capped'});
-        if (mounted) _loadState();
-        return;
-      }
-      await LocalStoreService.markEyesFreeUsed();
-      if (mounted) setState(() => _eyesUsed = true);
-    } else {
-      // Pro: 3 lessons/week. Capped → white-text notice, NOT paywall.
-      if (_capReached) {
-        _notice('All 3 eye-contact lessons used this week. '
-            'They renew at the start of your next billing week.');
-        return;
-      }
-    }
-
+    // v354 — paywall removed from eye contact for now: every unlocked
+    // lesson just opens, no Pro gate, no weekly cap.
     await _openLesson(l);
   }
 

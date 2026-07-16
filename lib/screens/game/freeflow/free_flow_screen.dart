@@ -543,7 +543,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen>
     // Resolve free-vs-pro for THIS session so the clock + post-session
     // upsell run on the correct timing for the right user. Re-read on
     // every _goLive so a mid-session upgrade flips the user to the Pro
-    // 3-minute ceiling on their next vibe-switch.
+    // 2-minute ceiling on their next vibe-switch.
     final pro = await PaywallGate.isPro();
     // First-ever check — gameFreeUsed is set by _startHold the moment
     // the user actually presses to talk for the first time. If it's
@@ -562,7 +562,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen>
       _meterArmed     = false;
       _meterStartedAt = null;
       _chargedMs      = 0;
-      // v244 — always show the full 3-minute session timer. The old
+      // v244 — always show the full 2-minute session timer. The old
       // pro ? _sessionSeconds : _freeSessionSeconds split made sense
       // when free users got a 60-second grace window; v224 killed
       // free roleplay entirely so this branch was lying to paid users
@@ -1493,7 +1493,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen>
     // "timer" — clock hit zero (free or pro ceiling)
     // "user"  — they tapped END & GET SCORED
     // (cap / error / bail report from their own callers)
-    // v244 — cap matches the timer: every session is 3 minutes.
+    // v244 — cap matches the timer: every session is 2 minutes.
     final cap = _sessionSeconds;
     final reason = _remaining <= 0 ? 'timer' : 'user';
     // ignore: discarded_futures
