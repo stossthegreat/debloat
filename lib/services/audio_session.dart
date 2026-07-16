@@ -34,25 +34,46 @@ import 'package:audioplayers/audioplayers.dart';
 ///           [priorityConflictMessage] to the user so they know
 ///           to pause the other audio.
 abstract final class AudioSession {
-  static bool _configured = false;
+  /// Which context is currently asserted. Tracked by KIND (not a bare
+  /// bool) so a playback-only screen and a record-capable screen can
+  /// hand the session back and forth — each configure call re-asserts
+  /// only when the active kind differs.
+  static _SessionKind _active = _SessionKind.none;
 
   /// One-time setup at the top of any screen that records.
   static Future<void> configureForPlayAndRecord() async {
-    if (_configured) return;
+    if (_active == _SessionKind.playAndRecord) return;
     try {
       await AudioPlayer.global.setAudioContext(_playAndRecordContext());
-      _configured = true;
+      _active = _SessionKind.playAndRecord;
     } catch (_) {
       // Will retry next time.
     }
   }
 
-  /// Force the next [configureForPlayAndRecord] call to actually run
-  /// setAudioContext again instead of short-circuiting on the cached
-  /// flag. Use when tearing down a screen that owns the mic / speaker
-  /// so the next screen\'s configure re-asserts the session context.
+  /// Setup for screens that PLAY voice but never touch the mic (the
+  /// Aura gaze lessons: camera + TTS only). v362 — these screens used
+  /// to assert playAndRecord, which runs the voice-call processing
+  /// chain: quieter output on iOS, and on Android it routed the TTS
+  /// through the VOICE-CALL stream instead of media — "the voice is
+  /// proper low, can barely hear it". Pure playback = full media
+  /// loudness on both platforms.
+  static Future<void> configureForPlayback() async {
+    if (_active == _SessionKind.playback) return;
+    try {
+      await AudioPlayer.global.setAudioContext(_playbackContext());
+      _active = _SessionKind.playback;
+    } catch (_) {
+      // Will retry next time.
+    }
+  }
+
+  /// Force the next configure call to actually run setAudioContext
+  /// again instead of short-circuiting on the cached kind. Use when
+  /// tearing down a screen that owns the mic / speaker so the next
+  /// screen\'s configure re-asserts the session context.
   static void invalidate() {
-    _configured = false;
+    _active = _SessionKind.none;
   }
 
   /// Force the session into a clean record-capable state RIGHT BEFORE
@@ -81,14 +102,14 @@ abstract final class AudioSession {
   ///   4. Brief settle delay.
   /// Caller retries the recorder ONCE after this returns.
   static Future<void> recoverFromPriorityConflict() async {
-    _configured = false;
+    _active = _SessionKind.none;
     try {
       await AudioPlayer.global.setAudioContext(_ambientContext());
     } catch (_) {}
     await Future.delayed(const Duration(milliseconds: 400));
     try {
       await AudioPlayer.global.setAudioContext(_playAndRecordContext());
-      _configured = true;
+      _active = _SessionKind.playAndRecord;
     } catch (_) {}
     await Future.delayed(const Duration(milliseconds: 150));
   }
@@ -136,6 +157,24 @@ abstract final class AudioSession {
         ),
       );
 
+  /// Full-loudness media playback — no mic claim, no voice-call
+  /// processing. iOS `playback` always routes to the loud speaker;
+  /// Android uses the MEDIA stream (the volume rocker most users
+  /// actually have turned up), not the in-call stream.
+  static AudioContext _playbackContext() => AudioContext(
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.playback,
+          options: const {},
+        ),
+        android: const AudioContextAndroid(
+          isSpeakerphoneOn: false,
+          stayAwake: true,
+          contentType: AndroidContentType.speech,
+          usageType: AndroidUsageType.media,
+          audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+        ),
+      );
+
   /// Neutral ambient context used only by [recoverFromPriorityConflict]
   /// to give iOS a clean release before we re-claim playAndRecord.
   static AudioContext _ambientContext() => AudioContext(
@@ -154,3 +193,7 @@ abstract final class AudioSession {
         ),
       );
 }
+
+/// Which audio-session shape is currently asserted via
+/// AudioPlayer.global.setAudioContext.
+enum _SessionKind { none, playback, playAndRecord }
