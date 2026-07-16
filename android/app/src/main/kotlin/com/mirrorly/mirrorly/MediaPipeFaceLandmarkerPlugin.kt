@@ -48,6 +48,12 @@ class MediaPipeFaceLandmarkerPlugin(private val context: Context) :
         private const val LEFT_EYE_INNER  = 362
         private const val LEFT_EYE_OUTER  = 263
         private const val NOSE_TIP = 1
+        // Eye contour rings (upper + lower lid) so the Flutter overlay can
+        // draw the tracking arc on each eye.
+        private val RIGHT_EYE_RING = intArrayOf(
+            33, 246, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163, 7)
+        private val LEFT_EYE_RING = intArrayOf(
+            362, 398, 384, 385, 386, 387, 388, 466, 263, 249, 390, 373, 374, 380, 381, 382)
     }
 
     private var landmarker: FaceLandmarker? = null
@@ -131,6 +137,15 @@ class MediaPipeFaceLandmarkerPlugin(private val context: Context) :
             marks[i].x().toDouble(), marks[i].y().toDouble()
         )
 
+        fun ring(idx: IntArray): List<Double> {
+            val out = ArrayList<Double>(idx.size * 2)
+            for (i in idx) {
+                out.add(marks[i].x().toDouble())
+                out.add(marks[i].y().toDouble())
+            }
+            return out
+        }
+
         val rIris = px(RIGHT_IRIS)
         val lIris = px(LEFT_IRIS)
         val rOuter = px(RIGHT_EYE_OUTER)
@@ -189,7 +204,9 @@ class MediaPipeFaceLandmarkerPlugin(private val context: Context) :
             "rightEyeOpen" to rightOpen,
             "smile" to smile,
             "bboxCenter" to listOf((minX + maxX) / 2, (minY + maxY) / 2),
-            "bboxWidth" to (maxX - minX)
+            "bboxWidth" to (maxX - minX),
+            "leftEyePoly" to ring(LEFT_EYE_RING),
+            "rightEyePoly" to ring(RIGHT_EYE_RING)
         )
     }
 
