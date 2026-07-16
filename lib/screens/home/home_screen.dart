@@ -225,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // screen_view event so we can rebuild the LOOKS / GAME / RIZZ
     // / ASCEND funnel without having to dedupe screen_views by
     // source.
-    const tabNames = ['looks', 'game', 'eyes', 'ascend'];
+    const tabNames = ['looks', 'game', 'aura', 'ascend'];
     if (i >= 0 && i < tabNames.length) {
       // ignore: discarded_futures
       AnalyticsService.tabOpened(tabNames[i]);
@@ -1401,8 +1401,8 @@ class _NavBar extends StatelessWidget {
     final items = const <({String label, IconData icon, bool italic})>[
       (label: 'Looks',  icon: Icons.face_retouching_natural_outlined, italic: true),
       (label: 'Game',   icon: Icons.chat_bubble_outline_rounded,       italic: true),
-      // v350 — RIZZ → EYE CONTACT. Camera-forward gaze training.
-      (label: 'Eyes',   icon: Icons.remove_red_eye_outlined,           italic: true),
+      // v350 — RIZZ → AURA. Camera-forward eye-contact gaze training.
+      (label: 'Aura',   icon: Icons.remove_red_eye_outlined,           italic: true),
       (label: 'Ascend', icon: Icons.local_fire_department_rounded,     italic: true),
     ];
     // v303 — bottom nav rebuilt in the Skeletal-PT pattern bro

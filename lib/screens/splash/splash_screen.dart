@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../services/local_store_service.dart';
+import '../../widgets/common/imhim_wordmark.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -53,29 +54,40 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Pure black loading screen — just the logo, centred, breathing in.
-    // Bro: "change to use logo and black screen." No gradient wash, no
-    // grid, no crosshair, no taglines — the mark carries it alone.
+    // Pure black loading screen — logo sitting a touch above centre with
+    // the ImHim wordmark beneath it, set exactly like the Looks-tab
+    // header. Bro: "move the logo higher then write ImHim in the same
+    // way it's written on the Looks tab header."
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Center(
-        child: Image.asset(
-          'assets/icons/appstore.png',
-          width: 148,
-          height: 148,
-          filterQuality: FilterQuality.high,
-          errorBuilder: (_, __, ___) => const SizedBox(
-            width: 148, height: 148,
-          ),
-        )
-            .animate()
-            .fadeIn(duration: 700.ms, curve: Curves.easeOut)
-            .scale(
-              begin: const Offset(0.94, 0.94),
-              end: const Offset(1, 1),
-              duration: 900.ms,
-              curve: Curves.easeOut,
-            ),
+      body: Align(
+        alignment: const Alignment(0, -0.22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/icons/appstore.png',
+              width: 150,
+              height: 150,
+              filterQuality: FilterQuality.high,
+              errorBuilder: (_, __, ___) => const SizedBox(
+                width: 150, height: 150,
+              ),
+            )
+                .animate()
+                .fadeIn(duration: 700.ms, curve: Curves.easeOut)
+                .scale(
+                  begin: const Offset(0.94, 0.94),
+                  end: const Offset(1, 1),
+                  duration: 900.ms,
+                  curve: Curves.easeOut,
+                ),
+            const SizedBox(height: 22),
+            const ImHimWordmark(fontSize: 40)
+                .animate()
+                .fadeIn(delay: 260.ms, duration: 700.ms, curve: Curves.easeOut),
+          ],
+        ),
       ),
     );
   }
