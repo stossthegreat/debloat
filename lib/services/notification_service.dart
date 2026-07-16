@@ -278,8 +278,8 @@ class NotificationService {
       if (day14.isAfter(now)) {
         await _plugin.zonedSchedule(
           _rescanDay14Id,
-          'Day 14 · rescan',
-          'Two weeks in. Take a new scan and compare to baseline.',
+          'Day 14 · the delta',
+          'Two weeks of reps. Rescan and watch your number move.',
           day14,
           _rescanDetails(),
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -290,8 +290,8 @@ class NotificationService {
       if (day30.isAfter(now)) {
         await _plugin.zonedSchedule(
           _rescanDay30Id,
-          'Day 30 · midpoint',
-          'Rescan time. Check which axis moved.',
+          'Day 30 · halfway',
+          'Halfway up. Rescan — see how far the face has climbed.',
           day30,
           _rescanDetails(),
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -426,25 +426,25 @@ class NotificationService {
   }) {
     if (streakDays <= 0) {
       return (
-        'Run a drill',
-        'Eyes or Game — 30 seconds locks in day one.',
+        'Take today\'s test',
+        'One round with Lucien or one aura lock. The climb starts now.',
       );
     }
     if (atRisk) {
       return (
-        'Don\'t break $streakDays',
-        'You\'re on a $streakDays-day run. One drill keeps it alive.',
+        'Don\'t fold on $streakDays',
+        'The man you\'re building is watching. One rep keeps the run alive.',
       );
     }
     if (trainedToday) {
       return (
-        '$streakDays days · on fire',
-        'See you tomorrow. Keep the streak.',
+        '$streakDays-day climb',
+        'Today\'s reps are in. Come back tomorrow — the ascension continues.',
       );
     }
     return (
-      '$streakDays days',
-      'One drill. 30 seconds. Streak stays alive.',
+      'Your reps are waiting',
+      'Test your game or lock your aura. Keep the $streakDays-day climb.',
     );
   }
 

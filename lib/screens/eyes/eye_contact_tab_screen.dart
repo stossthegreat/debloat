@@ -471,7 +471,7 @@ class _LessonDropdownButton extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   )),
               const SizedBox(width: 8),
-              Text('· choose a lesson',
+              Text('· test your aura',
                   style: GoogleFonts.inter(
                     color: Colors.white.withValues(alpha: 0.86),
                     fontSize: 12.5,

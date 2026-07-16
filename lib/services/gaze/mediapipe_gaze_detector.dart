@@ -196,14 +196,21 @@ class MediaPipeGazeDetector implements GazeDetector {
     final leftEye   = _offsetFrom(r['leftEyeCenter']);
     final rightEye  = _offsetFrom(r['rightEyeCenter']);
 
-    // Iris-in-socket offset — the real gaze signal.
-    // Positive x = iris sits toward the OUTER corner of that eye (looking away
-    // from center). Normalized by eye width so it's pose-invariant.
+    // Iris-in-socket offset — the real gaze signal, normalized by the
+    // INTER-EYE distance so the units are distance-invariant: the same
+    // eye movement produces the same number whether the face fills the
+    // frame or sits at arm's length. (The previous raw-image-space
+    // version made the score depend on how close the phone was — one
+    // of the reasons marks read as noise, not eye contact.)
+    // Positive x = iris toward that eye's outer corner.
     double? gazeX;
     double? gazeY;
     if (leftIris != null && rightIris != null && leftEye != null && rightEye != null) {
-      gazeX = ((leftIris.dx - leftEye.dx) + (rightIris.dx - rightEye.dx)) / 2.0;
-      gazeY = ((leftIris.dy - leftEye.dy) + (rightIris.dy - rightEye.dy)) / 2.0;
+      final interEye = math.max(1e-4, (leftEye - rightEye).distance);
+      gazeX = (((leftIris.dx - leftEye.dx) + (rightIris.dx - rightEye.dx)) / 2.0) /
+          interEye;
+      gazeY = (((leftIris.dy - leftEye.dy) + (rightIris.dy - rightEye.dy)) / 2.0) /
+          interEye;
     }
 
     // bboxCenter from native payload — used both for the FaceMetrics
@@ -213,12 +220,12 @@ class MediaPipeGazeDetector implements GazeDetector {
     final bboxWidth  = (r['bboxWidth'] as num?)?.toDouble() ?? 0.4;
 
     // Screen-space gaze point — project iris offset + face position into
-    // preview-space 0..1 coordinates. Iris offsets are in normalized image
-    // space, scale by 4x because eye width is ~25% of expected gaze span.
+    // preview-space 0..1 coordinates. Offsets are in inter-eye units now,
+    // so scale by the face width to land back in preview space.
     Offset? gazePoint;
     if (gazeX != null && gazeY != null) {
-      final px = (bboxCenter.dx + gazeX * 4.0).clamp(0.0, 1.0);
-      final py = (bboxCenter.dy + gazeY * 4.0).clamp(0.0, 1.0);
+      final px = (bboxCenter.dx + gazeX * bboxWidth * 1.7).clamp(0.0, 1.0);
+      final py = (bboxCenter.dy + gazeY * bboxWidth * 1.7).clamp(0.0, 1.0);
       gazePoint = Offset(px, py);
     }
 
@@ -291,10 +298,14 @@ class MediaPipeGazeDetector implements GazeDetector {
       calibrated: isCalibrated,
       leftEyePos: leftEye,
       rightEyePos: rightEye,
-      // Expose eye-open (0..1) as the aperture so the session screen's
-      // blink edge-detector (aperture < 0.22 = closed) counts real blinks.
-      leftEyeAperture:  leftOpen,
-      rightEyeAperture: rightOpen,
+      // Map the blendshape eye-open probability onto the aperture scale
+      // the session screens' blink edge-detector expects (MLKit's h/w
+      // contour ratio: ~0.35 open, <0.22 = closed). Raw open-prob sat at
+      // 0.8-1.0 and never crossed 0.22 mid-blink → the counter froze and
+      // blinkControl scored fake-perfect. Now open=1.0 → 0.35, and a real
+      // blink (open ≲ 0.55) crosses the threshold and COUNTS.
+      leftEyeAperture:  0.05 + leftOpen * 0.30,
+      rightEyeAperture: 0.05 + rightOpen * 0.30,
       gazePoint: gazePoint,
     );
   }
@@ -313,20 +324,30 @@ class MediaPipeGazeDetector implements GazeDetector {
     final bx = _baselineGazeX ?? 0.0;
     final by = _baselineGazeY ?? 0.0;
     final dx = gazeX - bx;
-    final dy = gazeY - by;
-    // Magnitude of iris offset from calibrated center, in normalized units.
-    // Empirically, |offset| > 0.025 = clearly looking elsewhere.
+    // Vertical iris reads are polluted by the lids (blinks, hooded-lid
+    // drills) and by the camera sitting above the screen — weight it
+    // down so horizontal darts (the real "broke the gaze" tell) rule.
+    final dy = (gazeY - by) * 0.6;
+    // Magnitude in INTER-EYE units, measured from the drill-calibrated
+    // baseline (the 3-2-1 countdown samples where THIS user's irises sit
+    // when locked on the dots).
     final mag = math.sqrt(dx * dx + dy * dy);
-    // Linear falloff — NO plateau at the top, so even a small iris drift
-    // off the lens immediately costs marks. |offset| ≈ 0.045 (iris pushed
-    // toward the eye corner) reads as clearly looking elsewhere → 0.
-    final irisScore = (1.0 - mag / 0.045).clamp(0.0, 1.0);
+    // ≤0.02 (~a few degrees of micro-drift) still counts as locked —
+    // human eyes are never perfectly still. Past that it falls linearly,
+    // hitting zero at 0.10 (~eyes clearly off the phone). Real spread:
+    // a solid lock scores high, a glance at the notification bar costs,
+    // a look across the room zeroes it.
+    const dead = 0.020;
+    const full = 0.100;
+    final irisScore = mag <= dead
+        ? 1.0
+        : (1.0 - (mag - dead) / (full - dead)).clamp(0.0, 1.0);
 
-    // Combine with head yaw (lower weight — iris is authoritative).
+    // Combine with head yaw (low weight — iris is authoritative).
     final yawDev = (yaw - (_baselineYaw ?? 0.0)).abs();
     final yawScore = (1.0 / (1.0 + math.exp(-(1.0 - yawDev / 22.0) * 5))).clamp(0.0, 1.0);
 
-    final fused = (irisScore * 0.80 + yawScore * 0.20).clamp(0.0, 1.0);
+    final fused = (irisScore * 0.85 + yawScore * 0.15).clamp(0.0, 1.0);
     return _Gaze(score: fused, confidence: isCalibrated ? 0.95 : 0.65);
   }
 
