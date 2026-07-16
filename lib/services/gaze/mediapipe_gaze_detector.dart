@@ -252,9 +252,15 @@ class MediaPipeGazeDetector implements GazeDetector {
       range * 0.12
     ) * 100;
 
-    // MediaPipe payload doesn't ship 478 landmarks over the wire for perf.
-    // faceRect is derived from bbox; contours stays empty until we extend
-    // the native payload to include eye + lip polylines.
+    // MediaPipe payload doesn't ship all 478 landmarks — but it DOES ship
+    // the two eye rings so the face overlay can draw the tracking arcs.
+    final leftEyePoly  = _poly(r['leftEyePoly']);
+    final rightEyePoly = _poly(r['rightEyePoly']);
+    final contours = <String, List<Offset>>{};
+    if (leftEyePoly.isNotEmpty)  contours['leftEye']  = leftEyePoly;
+    if (rightEyePoly.isNotEmpty) contours['rightEye'] = rightEyePoly;
+    final contourFlat = <Offset>[...leftEyePoly, ...rightEyePoly];
+
     final halfW = bboxWidth / 2.0;
     final approxRect = Rect.fromLTWH(
       (bboxCenter.dx - halfW).clamp(0.0, 1.0),
@@ -279,14 +285,16 @@ class MediaPipeGazeDetector implements GazeDetector {
       faceCenter: bboxCenter,
       faceSize: bboxWidth,
       faceRect: approxRect,
-      contourPoints: const [],
-      contours: const {},
+      contourPoints: contourFlat,
+      contours: contours,
       overallAura: overall.clamp(0, 100),
       calibrated: isCalibrated,
       leftEyePos: leftEye,
       rightEyePos: rightEye,
-      leftEyeAperture: null,
-      rightEyeAperture: null,
+      // Expose eye-open (0..1) as the aperture so the session screen's
+      // blink edge-detector (aperture < 0.22 = closed) counts real blinks.
+      leftEyeAperture:  leftOpen,
+      rightEyeAperture: rightOpen,
       gazePoint: gazePoint,
     );
   }
@@ -394,6 +402,19 @@ class MediaPipeGazeDetector implements GazeDetector {
       if (x != null && y != null) return Offset(x, y);
     }
     return null;
+  }
+
+  /// Parse a flat [x0,y0,x1,y1,…] landmark list into preview-space points.
+  List<Offset> _poly(dynamic v) {
+    final out = <Offset>[];
+    if (v is List) {
+      for (var i = 0; i + 1 < v.length; i += 2) {
+        final x = (v[i] as num?)?.toDouble();
+        final y = (v[i + 1] as num?)?.toDouble();
+        if (x != null && y != null) out.add(Offset(x, y));
+      }
+    }
+    return out;
   }
 
   void _push(List<double> l, double v, int cap) {

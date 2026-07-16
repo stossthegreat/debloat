@@ -27,6 +27,9 @@ import MediaPipeTasksVision
     private let leftEyeInner  = 362
     private let leftEyeOuter  = 263
     private let noseTip = 1
+    // Eye contour rings (upper + lower lid) for the Flutter overlay arcs.
+    private let rightEyeRing = [33, 246, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163, 7]
+    private let leftEyeRing  = [362, 398, 384, 385, 386, 387, 388, 466, 263, 249, 390, 373, 374, 380, 381, 382]
 
     // Front-camera portrait orientation for the incoming BGRA buffer.
     // If the first device test shows the mesh rotated/mirrored, this is
@@ -110,6 +113,11 @@ import MediaPipeTasksVision
         }
 
         func p(_ i: Int) -> [Double] { [Double(marks[i].x), Double(marks[i].y)] }
+        func ring(_ idx: [Int]) -> [Double] {
+            var out = [Double](); out.reserveCapacity(idx.count * 2)
+            for i in idx { out.append(Double(marks[i].x)); out.append(Double(marks[i].y)) }
+            return out
+        }
 
         let rI = p(rightIris), lI = p(leftIris)
         let rO = p(rightEyeOuter), rN = p(rightEyeInner)
@@ -155,7 +163,9 @@ import MediaPipeTasksVision
             "leftEyeOpen": leftOpen, "rightEyeOpen": rightOpen,
             "smile": smile,
             "bboxCenter": [(minX + maxX) / 2, (minY + maxY) / 2],
-            "bboxWidth": (maxX - minX)
+            "bboxWidth": (maxX - minX),
+            "leftEyePoly": ring(leftEyeRing),
+            "rightEyePoly": ring(rightEyeRing)
         ]
     }
 
