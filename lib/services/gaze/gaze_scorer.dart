@@ -54,14 +54,6 @@ import '../../models/gaze/gaze_lesson.dart';
 ///     tension + smileControl; Smile Calibration loads on
 ///     smileControl; etc.
 abstract final class GazeScorer {
-  /// Eye-contact threshold for "locked on" per frame. Bumped from
-  /// 0.7 to 0.82 — the user reported scoring a perfect 10/10 on
-  /// their first attempt at THE LOCK, which is impossible if the
-  /// metric is honest. At 0.7 the threshold was passing on any
-  /// "looking-at-the-screen" frame including drift. 0.82 requires
-  /// a true lock — eyes centred on the camera, not glancing past.
-  static const double _lockThreshold = 0.82;
-
   /// Blink-over-target soft penalty per extra blink. Each blink
   /// beyond the lesson's target costs this much, capped at 0 floor.
   /// Bumped from 0.22 → 0.30 so a single over-blink shows up in
@@ -94,9 +86,17 @@ abstract final class GazeScorer {
     }
 
     // ── 1. EYE STABILITY ────────────────────────────────────────
-    final lockedFrames =
-        samples.where((m) => m.eyeContactScore > _lockThreshold).length;
-    final eyeStability = lockedFrames / samples.length;
+    // MEAN iris-gaze across the drill, then a difficulty gamma so the
+    // mark genuinely spreads. The old "fraction of frames above a fixed
+    // threshold" pegged at 1.0 for anyone roughly facing the phone —
+    // that's the whole reason every mark read a flat 10. Now a rock-solid
+    // lock lands high and any real drift pulls it down hard.
+    final meanContact = samples
+            .map((m) => m.eyeContactScore)
+            .reduce((a, b) => a + b) /
+        samples.length;
+    final eyeStability =
+        math.pow(meanContact.clamp(0.0, 1.0), 1.8).toDouble();
 
     // ── 2. BLINK CONTROL ───────────────────────────────────────
     final target = lesson.targetBlinks;
@@ -135,7 +135,11 @@ abstract final class GazeScorer {
     final stillness = (1.0 -
             ((varYaw + varPitch + varRoll) / 3.0) / 100.0)
         .clamp(0.0, 1.0);
-    final tension = ((tensionAvg + stillness) / 2.0).clamp(0.0, 1.0);
+    // Difficulty gamma so "held pretty still" reads ~8, not a flat 10 —
+    // only genuine stone-stillness scores the top mark.
+    final tension = math
+        .pow(((tensionAvg + stillness) / 2.0).clamp(0.0, 1.0), 1.4)
+        .toDouble();
 
     // ── 4. SMILE CONTROL ───────────────────────────────────────
     // Tightened — at avg-smile 0.3 the old curve gave neutral-mouth

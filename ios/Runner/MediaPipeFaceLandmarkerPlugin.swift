@@ -32,9 +32,12 @@ import MediaPipeTasksVision
     private let leftEyeRing  = [362, 398, 384, 385, 386, 387, 388, 466, 263, 249, 390, 373, 374, 380, 381, 382]
 
     // Front-camera portrait orientation for the incoming BGRA buffer.
-    // If the first device test shows the mesh rotated/mirrored, this is
-    // the single knob to turn (.leftMirrored / .right / .up / .down).
-    private let frameOrientation: UIImage.Orientation = .leftMirrored
+    // MUST be un-mirrored (.right, not .leftMirrored): the shared Flutter
+    // overlay painter already applies the front-cam horizontal flip, so a
+    // mirrored frame here double-flips and the mesh tracks the wrong way.
+    // If a device test shows the mesh rotated, this is the single knob to
+    // turn (.right / .up / .down / .left).
+    private let frameOrientation: UIImage.Orientation = .right
 
     private var landmarker: FaceLandmarker?
     private var lastTs: Int = 0
