@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../config/dev_flags.dart';
 import '../../models/face_metrics.dart';
 import '../../models/gaze/gaze_lesson.dart';
 import '../../models/gaze/gaze_syllabus.dart';
@@ -338,6 +339,23 @@ class _EyeContactTabScreenState extends State<EyeContactTabScreen>
               alignment: const Alignment(0, 0.86),
               child: _IdleHint(locked: _metrics.isGoodEyeContact),
             ),
+
+          // ── Tiny build tag (bottom-left) so we can confirm the
+          //    installed build isn't a stale TestFlight one.
+          Positioned(
+            left: 10, bottom: 6,
+            child: IgnorePointer(
+              child: Text(
+                kBuildTag,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.30),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+          ),
 
           // ── Dropdown overlay — tap-scrim + the lesson list panel.
           if (_menuOpen) ...[
