@@ -33,14 +33,12 @@ import MediaPipeTasksVision
 
     // Front-camera portrait orientation for the incoming BGRA buffer.
     //
-    // .left = the SAME 90°-CCW rotation that made the frame upright, but
-    // with the front-camera mirror REMOVED. (.leftMirrored kept the mirror,
-    // which double-flipped against the overlay painter's own front-cam flip
-    // and made the mesh track the wrong way; .right would have un-mirrored
-    // but ALSO rotated 180°, i.e. upside down.) So .left is the one that
-    // keeps the face upright AND lets the painter's single flip land right.
-    // If a device test shows the mesh rotated, this is the knob to turn.
-    private let frameOrientation: UIImage.Orientation = .left
+    // .leftMirrored makes the front-cam frame upright AND keeps it mirrored
+    // to match the iOS auto-mirrored preview — the same space the proven
+    // face-scan pipeline works in. The overlay must then map with NO extra
+    // flip (the Dart side cancels the shared painter's built-in flip on
+    // iOS). This is the "don't double-flip on iOS" rule the scan documents.
+    private let frameOrientation: UIImage.Orientation = .leftMirrored
 
     private var landmarker: FaceLandmarker?
     private var lastTs: Int = 0

@@ -408,13 +408,23 @@ class MediaPipeGazeDetector implements GazeDetector {
   }
 
   /// Parse a flat [x0,y0,x1,y1,…] landmark list into preview-space points.
+  ///
+  /// iOS FIX (matches the face-scan pipeline): the front-cam BGRA buffer is
+  /// already mirrored to match the auto-mirrored preview, so the overlay
+  /// must map with NO horizontal flip. The shared AuralayFaceOverlayPainter
+  /// unconditionally applies a `(1 - x)` flip, so on iOS we pre-invert x
+  /// here to CANCEL it → net direct mapping. Applying both is the classic
+  /// "double flip → mesh tracks the wrong way" bug. On Android the buffer
+  /// is un-mirrored, so we keep the painter's flip (store x as-is).
   List<Offset> _poly(dynamic v) {
     final out = <Offset>[];
     if (v is List) {
       for (var i = 0; i + 1 < v.length; i += 2) {
         final x = (v[i] as num?)?.toDouble();
         final y = (v[i + 1] as num?)?.toDouble();
-        if (x != null && y != null) out.add(Offset(x, y));
+        if (x != null && y != null) {
+          out.add(Offset(Platform.isIOS ? 1.0 - x : x, y));
+        }
       }
     }
     return out;
