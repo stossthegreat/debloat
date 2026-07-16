@@ -317,7 +317,10 @@ class MediaPipeGazeDetector implements GazeDetector {
     // Magnitude of iris offset from calibrated center, in normalized units.
     // Empirically, |offset| > 0.025 = clearly looking elsewhere.
     final mag = math.sqrt(dx * dx + dy * dy);
-    final irisScore = (1.0 / (1.0 + math.exp(-(1.0 - mag / 0.030) * 5))).clamp(0.0, 1.0);
+    // Linear falloff — NO plateau at the top, so even a small iris drift
+    // off the lens immediately costs marks. |offset| ≈ 0.045 (iris pushed
+    // toward the eye corner) reads as clearly looking elsewhere → 0.
+    final irisScore = (1.0 - mag / 0.045).clamp(0.0, 1.0);
 
     // Combine with head yaw (lower weight — iris is authoritative).
     final yawDev = (yaw - (_baselineYaw ?? 0.0)).abs();
