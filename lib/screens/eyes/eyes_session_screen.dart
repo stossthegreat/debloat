@@ -144,8 +144,12 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
       vsync: this,
       duration: const Duration(milliseconds: 2400),
     )..repeat();
+    // v362 — PLAYBACK session, not playAndRecord. This screen never
+    // touches the mic (camera + TTS only), and playAndRecord runs the
+    // quiet voice-call output chain — Lucile's voice was barely
+    // audible. Pure playback = full media loudness.
     // ignore: discarded_futures
-    AudioSession.configureForPlayAndRecord();
+    AudioSession.configureForPlayback();
     // Keep the screen on for the whole drill — it was dimming/sleeping.
     // ignore: discarded_futures
     WakelockPlus.enable();
