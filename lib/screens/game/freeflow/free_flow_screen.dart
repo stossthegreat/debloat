@@ -3248,7 +3248,7 @@ class _FirstTimeBubble extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('REAL-TIME AI',
+          Text('THE GAME TEST',
             textAlign: TextAlign.center,
             style: AppTypography.label.copyWith(
               color: AppColors.red,
@@ -3257,7 +3257,7 @@ class _FirstTimeBubble extends StatelessWidget {
             )),
           const SizedBox(height: 8),
           Text(
-            'Live AI. Real pressure.',
+            'Test your game.',
             textAlign: TextAlign.center,
             style: GoogleFonts.playfairDisplay(
               color: Colors.white,
@@ -3269,9 +3269,10 @@ class _FirstTimeBubble extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            "The AI listens. Reacts. Pushes back —\n"
-            "tone, tempo, judgment, all of it.\n"
-            "Every rep in here is one freeze less out there.",
+            "Live AI, real pressure — she reacts to your\n"
+            "tone, tempo and nerve. Then Lucien scores\n"
+            "your game out of 10. Looks open the door.\n"
+            "This is what keeps it.",
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               color: AppColors.textSecondary,
@@ -3309,7 +3310,7 @@ class _FirstTimeBubble extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Text('UNLOCK PRO TO PRACTICE',
+                child: Text('UNLOCK · TAKE THE TEST',
                   style: AppTypography.label.copyWith(
                     color: Colors.white,
                     fontSize: 12, letterSpacing: 2.8,

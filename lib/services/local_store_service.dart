@@ -89,7 +89,7 @@ class LocalStoreService {
   static const int  kRendersPerWeek      = 3;
   static const int  kScreenshotsPerWeek  = 30;
   static const int  kVoiceMinutesPerWeek = 10;
-  static const int  kEyeLessonsPerWeek   = 3;
+  static const int  kEyeLessonsPerWeek   = 4;
 
   static const _kScanWeekBucket        = 'caps.scan.week_bucket.v1';
   static const _kScanWeekCount         = 'caps.scan.week_count.v1';
