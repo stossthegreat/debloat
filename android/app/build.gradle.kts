@@ -48,6 +48,13 @@ android {
         buildConfig = true
     }
 
+    // MediaPipe memory-maps the FaceLandmarker model via AssetManager
+    // openFd(), which fails if aapt has deflated it. Keep .task assets
+    // stored uncompressed so the iris landmarker can load.
+    androidResources {
+        noCompress += "task"
+    }
+
     defaultConfig {
         applicationId = "com.mirrorly.mirrorly"
 
@@ -56,11 +63,12 @@ android {
         // them at runtime without re-parsing the properties file.
         buildConfigField("String", "PLAY_UPLOAD_KEY_SHA1",   "\"$playUploadKeySha1\"")
         buildConfigField("String", "PLAY_UPLOAD_KEY_SHA256", "\"$playUploadKeySha256\"")
-        // ML Kit Face Mesh requires Android 6.0+ (API 23). Below that the
-        // detector loads but silently returns empty meshes — which was our
-        // exact Android silent-failure bug.
+        // ML Kit Face Mesh requires Android 6.0+ (API 23). MediaPipe Tasks
+        // Vision (the iris FaceLandmarker on the Aura tab) requires API 24,
+        // so the floor is raised to 24 — negligible device loss (API 23 is
+        // <0.5% of active Androids) for real iris eye-contact scoring.
         // Source: https://developers.google.com/ml-kit/vision/face-mesh-detection/android
-        minSdk = 23
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -119,4 +127,7 @@ dependencies {
     // Required for `isCoreLibraryDesugaringEnabled = true` above.
     // Version 2.0.4+ is the one flutter_local_notifications documents.
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // MediaPipe Tasks Vision — powers the iris FaceLandmarker behind the
+    // Aura tab's real eye-contact scoring (MediaPipeFaceLandmarkerPlugin).
+    implementation("com.google.mediapipe:tasks-vision:0.10.14")
 }

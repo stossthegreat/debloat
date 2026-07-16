@@ -44,6 +44,11 @@ target 'Runner' do
   use_frameworks!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
+  # MediaPipe Tasks Vision — the iris FaceLandmarker behind the Aura
+  # tab's real eye-contact scoring (MediaPipeFaceLandmarkerPlugin.swift).
+  pod 'MediaPipeTasksVision', '0.10.14'
+
   target 'RunnerTests' do
     inherit! :search_paths
   end
