@@ -497,6 +497,14 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
 
   Future<void> _runCountdown() async {
     if (_disposed) return;
+    // The 3-2-1 countdown doubles as GAZE CALIBRATION. The apprentice is
+    // already locked on the fixation dots, so we sample where HIS irises
+    // sit for these 3 seconds and the drill scores DRIFT FROM THAT
+    // baseline. Every other gaze surface (train screen, charisma test)
+    // has always calibrated — this screen never did, so the iris engine
+    // was measuring drift from a guessed (0,0) baseline and the marks
+    // read as noise instead of eye contact.
+    _detector.startCalibration(duration: const Duration(seconds: 3));
     setState(() {
       _phase = _Phase.countdown;
       _countdownValue = 3;
