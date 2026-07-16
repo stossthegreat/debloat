@@ -901,15 +901,15 @@ class _EyesVoiceSessionScreenState extends State<EyesVoiceSessionScreen>
   String _statusLabel() {
     if (_phase == _Phase.error) return 'LINE DROPPED';
     switch (_phase) {
-      case _Phase.warmup:      return 'LUCIEN IS APPROACHING';
-      case _Phase.story:       return 'LUCIEN SETS THE TONE';
+      case _Phase.warmup:      return 'LUCILE IS APPROACHING';
+      case _Phase.story:       return 'LUCILE SETS THE TONE';
       case _Phase.demo:        return 'LISTEN';
       case _Phase.instruct:    return 'GET READY';
       case _Phase.countdown:   return 'BEGIN ON ONE';
       case _Phase.drillReady:  return 'TAP TO DELIVER THE LINE';
       case _Phase.recording:   return 'RECORDING · TAP TO SEND';
-      case _Phase.scoring:     return 'LUCIEN IS LISTENING';
-      case _Phase.correction:  return 'LUCIEN TEACHES';
+      case _Phase.scoring:     return 'LUCILE IS LISTENING';
+      case _Phase.correction:  return 'LUCILE TEACHES';
       case _Phase.score:       return 'SESSION COMPLETE';
       default:                 return '';
     }
