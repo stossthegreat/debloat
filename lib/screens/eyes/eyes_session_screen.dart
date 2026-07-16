@@ -953,14 +953,14 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
   String _statusLabel() {
     if (_phase == _Phase.error) return 'CAMERA OFFLINE';
     switch (_phase) {
-      case _Phase.warmup:     return 'LUCIEN IS APPROACHING';
-      case _Phase.story:      return 'LUCIEN SETS THE TONE';
-      case _Phase.demo:       return 'WATCH HIM';
+      case _Phase.warmup:     return 'LUCILE IS APPROACHING';
+      case _Phase.story:      return 'LUCILE SETS THE TONE';
+      case _Phase.demo:       return 'WATCH HER';
       case _Phase.instruct:   return 'GET READY';
       case _Phase.countdown:  return 'BEGIN ON ONE';
       case _Phase.drill:      return widget.lesson.objective.toUpperCase();
       case _Phase.scoring:    return 'SCORING…';
-      case _Phase.correction: return 'LUCIEN TEACHES';
+      case _Phase.correction: return 'LUCILE TEACHES';
       case _Phase.score:      return 'SESSION COMPLETE';
       default:                return '';
     }

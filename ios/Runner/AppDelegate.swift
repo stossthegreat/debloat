@@ -17,6 +17,9 @@ import UserNotifications
     static let methodChannelName = "com.mirrorly.app/share_intake"
 
     private var shareChannel: FlutterMethodChannel?
+    // Kept alive for the app's lifetime — owns the MediaPipe landmarker.
+    private var mediaPipePlugin: MediaPipeFaceLandmarkerPlugin?
+    private var mediaPipeChannel: FlutterMethodChannel?
 
     override func application(
         _ application: UIApplication,
@@ -34,6 +37,19 @@ import UserNotifications
             )
             shareChannel?.setMethodCallHandler { [weak self] call, result in
                 self?.handleMethodCall(call, result: result)
+            }
+
+            // MediaPipe FaceLandmarker (iris) — the Aura tab's real
+            // eye-contact scoring. Held on the AppDelegate so the native
+            // landmarker survives across detect calls.
+            let mp = MediaPipeFaceLandmarkerPlugin()
+            mediaPipePlugin = mp
+            mediaPipeChannel = FlutterMethodChannel(
+                name: MediaPipeFaceLandmarkerPlugin.channelName,
+                binaryMessenger: controller.binaryMessenger
+            )
+            mediaPipeChannel?.setMethodCallHandler { call, result in
+                mp.handle(call, result: result)
             }
         }
 

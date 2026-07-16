@@ -230,7 +230,7 @@ class GazeShareCard extends StatelessWidget {
                                 )),
                           ),
                           const SizedBox(height: 8),
-                          Text('— LUCIEN',
+                          Text('— LUCILE',
                               style: AppTypography.label.copyWith(
                                 color: AppColors.accent,
                                 fontSize: 10,
