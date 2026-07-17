@@ -60,6 +60,10 @@ class _EyeContactTabScreenState extends State<EyeContactTabScreen>
   /// Which gaze engine actually initialised — shown next to the build
   /// tag so a device test instantly reveals iris vs fallback.
   String _engine = '…';
+  /// No face seen for >1.5s while the camera runs — too dark or out of
+  /// frame. Drives the "TURN ON A LIGHT" hint.
+  bool _noFace = false;
+  DateTime? _lastFaceAt;
   late final AnimationController _pulse;
 
   // ─── Progress state ───────────────────────────────────────────────
@@ -196,11 +200,26 @@ class _EyeContactTabScreenState extends State<EyeContactTabScreen>
         _cam?.description.sensorOrientation ?? 0,
         isFrontCam: true,
       );
-      if (!mounted || m == null) {
+      if (!mounted) {
         _processing = false;
         return;
       }
-      setState(() => _metrics = m);
+      if (m == null) {
+        // No face this frame. If we haven't seen one for 1.5s the frame
+        // is unusable (too dark / face out of view) — SAY so instead of
+        // silently doing nothing. A 3:47am device test showed a pitch-
+        // black preview with the app pretending everything was fine.
+        final stale = _lastFaceAt == null ||
+            DateTime.now().difference(_lastFaceAt!).inMilliseconds > 1500;
+        if (stale != _noFace) setState(() => _noFace = stale);
+        _processing = false;
+        return;
+      }
+      _lastFaceAt = DateTime.now();
+      setState(() {
+        _noFace = false;
+        _metrics = m;
+      });
     } catch (_) {} finally {
       _processing = false;
     }
@@ -349,7 +368,10 @@ class _EyeContactTabScreenState extends State<EyeContactTabScreen>
           if (_camReady)
             Align(
               alignment: const Alignment(0, 0.86),
-              child: _IdleHint(locked: _metrics.isGoodEyeContact),
+              child: _IdleHint(
+                locked: _metrics.isGoodEyeContact,
+                noFace: _noFace,
+              ),
             ),
 
           // ── Tiny build tag (bottom-left) so we can confirm the
@@ -704,16 +726,24 @@ class _Trailing extends StatelessWidget {
 
 class _IdleHint extends StatelessWidget {
   final bool locked;
-  const _IdleHint({required this.locked});
+  final bool noFace;
+  const _IdleHint({required this.locked, required this.noFace});
   @override
   Widget build(BuildContext context) {
+    final text = noFace
+        ? 'NO FACE — TURN ON A LIGHT'
+        : locked
+            ? 'HOLD THE GAZE'
+            : 'FIND YOUR EYES';
     return IgnorePointer(
       child: Text(
-        locked ? 'HOLD THE GAZE' : 'FIND YOUR EYES',
+        text,
         style: GoogleFonts.playfairDisplay(
-          color: locked
-              ? Colors.white
-              : Colors.white.withValues(alpha: 0.55),
+          color: noFace
+              ? AppColors.red
+              : locked
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.55),
           fontSize: 15,
           letterSpacing: 4.0,
           fontStyle: FontStyle.italic,

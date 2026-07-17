@@ -73,6 +73,10 @@ class MediaPipeGazeDetector implements GazeDetector {
   final List<double> _calYaw = [];
   final List<double> _calPitch = [];
 
+  // ── EMA state for the eye-open signal (blink de-noising) ───────────────
+  double _openL = 1.0;
+  double _openR = 1.0;
+
   // ── Blink / smile / stability history (mirrors MLKit impl) ─────────────
   final List<double> _eyeOpenHist = [];
   final List<DateTime> _blinkTs = [];
@@ -231,8 +235,18 @@ class MediaPipeGazeDetector implements GazeDetector {
 
     _maybeSampleCalibration(yaw, pitch, gazeX, gazeY);
 
-    final leftOpen  = (r['leftEyeOpen']  as num?)?.toDouble() ?? 1.0;
-    final rightOpen = (r['rightEyeOpen'] as num?)?.toDouble() ?? 1.0;
+    // EMA-smooth the eye-open signal before ANY consumer reads it. In
+    // low light the raw blendshape flickers frame-to-frame, and every
+    // flicker was registering as a blink — a real 4s drill scored
+    // "9 blinks" in the dark. Blinks last 100-300ms (2-4 frames), so a
+    // light 60/40 smooth kills single-frame noise without eating real
+    // blinks.
+    final rawL = (r['leftEyeOpen']  as num?)?.toDouble() ?? 1.0;
+    final rawR = (r['rightEyeOpen'] as num?)?.toDouble() ?? 1.0;
+    _openL = _openL * 0.4 + rawL * 0.6;
+    _openR = _openR * 0.4 + rawR * 0.6;
+    final leftOpen  = _openL;
+    final rightOpen = _openR;
     _detectBlink((leftOpen + rightOpen) / 2.0);
     final blinkRate = _blinkRate();
 
@@ -298,14 +312,14 @@ class MediaPipeGazeDetector implements GazeDetector {
       calibrated: isCalibrated,
       leftEyePos: leftEye,
       rightEyePos: rightEye,
-      // Map the blendshape eye-open probability onto the aperture scale
+      // Map the (smoothed) eye-open probability onto the aperture scale
       // the session screens' blink edge-detector expects (MLKit's h/w
-      // contour ratio: ~0.35 open, <0.22 = closed). Raw open-prob sat at
-      // 0.8-1.0 and never crossed 0.22 mid-blink → the counter froze and
-      // blinkControl scored fake-perfect. Now open=1.0 → 0.35, and a real
-      // blink (open ≲ 0.55) crosses the threshold and COUNTS.
-      leftEyeAperture:  0.05 + leftOpen * 0.30,
-      rightEyeAperture: 0.05 + rightOpen * 0.30,
+      // contour ratio: ~0.35 open, <0.22 = closed). Mapping tuned so a
+      // blink only registers when the model is CONFIDENT the lids
+      // dropped (open < 0.35 ⇒ blink blendshape > 0.65) — the previous
+      // looser mapping fired on low-light jitter and over-counted.
+      leftEyeAperture:  0.15 + leftOpen * 0.20,
+      rightEyeAperture: 0.15 + rightOpen * 0.20,
       gazePoint: gazePoint,
     );
   }
@@ -332,13 +346,14 @@ class MediaPipeGazeDetector implements GazeDetector {
     // baseline (the 3-2-1 countdown samples where THIS user's irises sit
     // when locked on the dots).
     final mag = math.sqrt(dx * dx + dy * dy);
-    // ≤0.02 (~a few degrees of micro-drift) still counts as locked —
-    // human eyes are never perfectly still. Past that it falls linearly,
-    // hitting zero at 0.10 (~eyes clearly off the phone). Real spread:
-    // a solid lock scores high, a glance at the notification bar costs,
-    // a look across the room zeroes it.
-    const dead = 0.020;
-    const full = 0.100;
+    // Tight dead-zone: ≤0.012 of micro-drift still counts as locked,
+    // but past that every bit of wander costs. The old 0.02/0.10 window
+    // let a held stare SATURATE at a flat 10 (device test: EYE
+    // STABILITY pinned 10) — now a genuinely solid hold lands ~7-9 with
+    // real spread, a glance at the notification bar visibly dents it,
+    // and a look off the phone zeroes it.
+    const dead = 0.012;
+    const full = 0.080;
     final irisScore = mag <= dead
         ? 1.0
         : (1.0 - (mag - dead) / (full - dead)).clamp(0.0, 1.0);
