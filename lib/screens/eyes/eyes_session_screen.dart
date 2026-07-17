@@ -472,6 +472,14 @@ class _EyesSessionScreenState extends State<EyesSessionScreen>
   Future<void> _speak(String text) async {
     if (_disposed) return;
     try {
+      // Re-assert full-loudness playback RIGHT BEFORE every chunk. The
+      // Game tab stays mounted in the IndexedStack and its live-voice
+      // plumbing re-asserts playAndRecord (the quiet voice-call output
+      // chain) on its own schedule — if that lands mid-lesson, Lucile
+      // drops to a whisper. Kind-guarded: a no-op unless something
+      // actually stole the session since the last chunk.
+      await AudioSession.configureForPlayback();
+      await _player.setVolume(1.0);
       // Female voice — Selene — replacing Lucien on the scripted
       // gaze lessons per bro\'s call: "put her voice into the eye
       // contact only lessons. Make sure those are using the real
