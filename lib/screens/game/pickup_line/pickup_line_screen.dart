@@ -11,7 +11,7 @@ import '../../../data/rizz_lines.dart';
 import '../../../services/paywall_gate.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_typography.dart';
-import '../../../widgets/common/imhim_wordmark.dart';
+import '../../../widgets/common/mirrorly_wordmark.dart';
 
 /// v298 — PICKUP LINE.
 ///
@@ -162,7 +162,7 @@ class _PickupLineScreenState extends State<PickupLineScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Header strip — v300 carries the ImHim wordmark
+            // ── Header strip — v300 carries the Mirrorly wordmark
             // so the screen reads as branded the moment the user
             // screenshots a line for their group chat.
             Padding(
@@ -178,7 +178,7 @@ class _PickupLineScreenState extends State<PickupLineScreen> {
                       minWidth: 28, minHeight: 28),
                   ),
                   const SizedBox(width: 6),
-                  const ImHimWordmark(fontSize: 22, letterSpacing: -0.5),
+                  const MirrorlyWordmark(fontSize: 22, letterSpacing: -0.5),
                   const SizedBox(width: 10),
                   Container(
                     padding: const EdgeInsets.symmetric(

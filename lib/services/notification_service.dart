@@ -175,7 +175,7 @@ class NotificationService {
       case 21: return ('21 days', 'Old habit dead. New man installed. Keep building.');
       case 30: return ('30 days', 'The version of you that quit can\'t reach you here.');
       case 45: return ('45 days', 'Magnetic territory. The room finds you. Stay on it.');
-      case 60: return ('60 days', 'Final form. Today is your IMHIM-certified day.');
+      case 60: return ('60 days', 'Final form. Today is your MIRRORLY-certified day.');
     }
     return null;
   }

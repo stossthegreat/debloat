@@ -5,7 +5,7 @@ import '../../theme/app_colors.dart' as base;
 import '../../theme/auralay_app_colors.dart';
 import '../../theme/auralay_app_typography.dart';
 
-/// ImHim universal score share card — the one that gets posted.
+/// Mirrorly universal score share card — the one that gets posted.
 ///
 /// 9:16 composition rendered off-screen by [ShareService.shareScore] at
 /// 1080×1920 logical size. Used by every result in the app — The Gaze,
@@ -13,7 +13,7 @@ import '../../theme/auralay_app_typography.dart';
 /// the same brand, scored the same way: out of 10.
 ///
 ///   VOICE GAME · CERTIFIED
-///   ImHim  ← two-tone wordmark, red "Him"
+///   Mirrorly  ← two-tone wordmark, red "Him"
 ///   ───────────────
 ///   FREE FLOW · INTO YOU
 ///
@@ -29,13 +29,13 @@ import '../../theme/auralay_app_typography.dart';
 ///   TENSION           ████████░░░░  7
 ///   ...
 ///
-///   ImHim · BECOME THE GUY WHO OWNS THE ROOM · imhim.app
+///   Mirrorly · BECOME THE GUY WHO OWNS THE ROOM · mirrorly.app
 class ScoreShareCard extends StatelessWidget {
-  /// Brand shown at the very top — rendered as the two-tone ImHim
+  /// Brand shown at the very top — rendered as the two-tone Mirrorly
   /// wordmark (white "Im", red "Him") so the share card matches the
   /// in-app wordmark you see on the live roleplay orb.
   static const String tagline = "BECOME THE GUY WHO OWNS THE ROOM";
-  static const String domain  = 'imhim.app';
+  static const String domain  = 'mirrorly.app';
 
   /// What this card is for — e.g. "THE GAZE", "FREE FLOW",
   /// "EYE CONTACT + VOICE".
@@ -135,10 +135,10 @@ class ScoreShareCard extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                     )),
                 const SizedBox(height: 22),
-                // Brand — two-tone ImHim wordmark, rendered at huge
-                // size so the card reads as an ImHim card from across
+                // Brand — two-tone Mirrorly wordmark, rendered at huge
+                // size so the card reads as an Mirrorly card from across
                 // a feed. Drop-in for the old all-caps MIRRORLY text.
-                _ImHimMark(fontSize: 130),
+                _MirrorlyMark(fontSize: 130),
                 const SizedBox(height: 20),
                 Container(
                     width: 120, height: 3, color: AppColors.accent),
@@ -238,7 +238,7 @@ class ScoreShareCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _ImHimMark(fontSize: 28),
+                    _MirrorlyMark(fontSize: 28),
                     const SizedBox(width: 14),
                     Container(
                       width: 4, height: 4,
@@ -274,13 +274,13 @@ class ScoreShareCard extends StatelessWidget {
   }
 }
 
-/// Two-tone ImHim wordmark — italic Playfair, white "Im" + red "Him".
-/// Same recipe as widgets/common/imhim_wordmark.dart, copied here so the
+/// Two-tone Mirrorly wordmark — italic Playfair, white "Im" + red "Him".
+/// Same recipe as widgets/common/mirrorly_wordmark.dart, copied here so the
 /// share card has no dependency on the theme variant that owns the
 /// canonical red. Sized purely by [fontSize].
-class _ImHimMark extends StatelessWidget {
+class _MirrorlyMark extends StatelessWidget {
   final double fontSize;
-  const _ImHimMark({required this.fontSize});
+  const _MirrorlyMark({required this.fontSize});
 
   @override
   Widget build(BuildContext context) {

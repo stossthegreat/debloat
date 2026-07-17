@@ -7,7 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../config/dev_flags.dart';
 import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/common/imhim_wordmark.dart';
+import '../../widgets/common/mirrorly_wordmark.dart';
 
 /// Three-page onboarding. No animations, no custom painters. Every screen
 /// answers one question in under six seconds:
@@ -83,11 +83,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   Row(
                     children: [
                       // Bumped from 22 → 30 so the onboarding scan +
-                      // score + mirror pages all read as ImHim from
+                      // score + mirror pages all read as Mirrorly from
                       // the first frame of a screen recording — was
                       // previously almost invisible against the
                       // 44pt page headlines.
-                      const ImHimWordmark(fontSize: 30, letterSpacing: -0.7),
+                      const MirrorlyWordmark(fontSize: 30, letterSpacing: -0.7),
                       const SizedBox(width: 8),
                       Container(
                         width: 4, height: 4,

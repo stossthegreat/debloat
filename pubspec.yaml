@@ -1,7 +1,7 @@
 name: mirror
-description: "ImHim — Look sharp. Speak sharp. Own every room."
+description: "Mirrorly — Look sharp. Speak sharp. Own every room."
 publish_to: 'none'
-version: 1.2.2+362
+version: 1.2.2+363
 
 environment:
   sdk: ^3.8.0

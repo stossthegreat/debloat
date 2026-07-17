@@ -268,7 +268,7 @@ class ShareService {
         await _shareBytes(
           bytes,
           'mirrorly-${DateTime.now().millisecondsSinceEpoch}.png',
-          text ?? '$kindLabel · $score/10 on IMHIM',
+          text ?? '$kindLabel · $score/10 on MIRRORLY',
           origin: origin,
         );
         return;
@@ -287,7 +287,7 @@ class ShareService {
     }
   }
 
-  /// Render + share the ImHim PROGRESS receipt — DAY hero, streak,
+  /// Render + share the Mirrorly PROGRESS receipt — DAY hero, streak,
   /// per-surface scores + deltas, total reps, brand wordmark + domain.
   /// Wired to /progress via the masthead SHARE button so the user can
   /// post a single "DAY 14 · STREAK 14 · +12 AESTHETIC" card the
@@ -305,7 +305,7 @@ class ShareService {
     int? voiceNow,
     int? voiceDelta,
     int? auraNow,
-    // v290 — IMHIM SCORE hero. The composite that the share card now
+    // v290 — MIRRORLY SCORE hero. The composite that the share card now
     // leads with; Looks + Game demoted to "BUILT FROM" rows beneath.
     int? imhimNow,
     int? imhimDelta,
@@ -381,11 +381,11 @@ class ShareService {
         HapticFeedback.mediumImpact();
         // Default copy is post-ready: claim, receipt, app handle.
         final defaultText = streakDays > 0
-            ? 'Day $day · streak $streakDays on ImHim.'
-            : 'Day $day on ImHim.';
+            ? 'Day $day · streak $streakDays on Mirrorly.'
+            : 'Day $day on Mirrorly.';
         await _shareBytes(
           bytes,
-          'imhim-progress-${DateTime.now().millisecondsSinceEpoch}.png',
+          'mirrorly-progress-${DateTime.now().millisecondsSinceEpoch}.png',
           text ?? defaultText,
           origin: origin,
         );
@@ -405,7 +405,7 @@ class ShareService {
     }
   }
 
-  /// Render + share the v291 IMHIM CERTIFIED Day-60 card. Unlocked
+  /// Render + share the v291 MIRRORLY CERTIFIED Day-60 card. Unlocked
   /// by [_FinalFormCard] in the Ascend tab once the user clears the
   /// 60-day protocol. Same off-screen render pipeline as
   /// [shareProgress] / [shareScore] so the share-sheet behaviour is
@@ -486,10 +486,10 @@ class ShareService {
         }
         HapticFeedback.heavyImpact();
         final defaultText =
-          '60 days. ImHim Certified. ${imhimStart} → ${imhimEnd}.';
+          '60 days. Mirrorly Certified. ${imhimStart} → ${imhimEnd}.';
         await _shareBytes(
           bytes,
-          'imhim-certified-${DateTime.now().millisecondsSinceEpoch}.png',
+          'mirrorly-certified-${DateTime.now().millisecondsSinceEpoch}.png',
           text ?? defaultText,
           origin: origin,
         );

@@ -17,7 +17,7 @@ class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
       throw UnsupportedError(
-        'Web is not configured for ImHim Firebase. '
+        'Web is not configured for Mirrorly Firebase. '
         'Drop in web options if/when a web build ships.',
       );
     }
@@ -28,7 +28,7 @@ class DefaultFirebaseOptions {
         return _android;
       default:
         throw UnsupportedError(
-          'ImHim Firebase is only configured for iOS + Android.',
+          'Mirrorly Firebase is only configured for iOS + Android.',
         );
     }
   }

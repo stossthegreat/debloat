@@ -7,7 +7,7 @@ import '../../theme/app_colors.dart' as base;
 import '../../theme/auralay_app_colors.dart';
 import '../../theme/auralay_app_typography.dart';
 
-/// ImHim PROGRESS share card — the receipt of the glow-up.
+/// Mirrorly PROGRESS share card — the receipt of the glow-up.
 ///
 /// 9:16 composition rendered off-screen by [ShareService.shareProgress]
 /// at 1080×device-aspect logical size. Designed to read as a SINGLE
@@ -16,7 +16,7 @@ import '../../theme/auralay_app_typography.dart';
 ///   ┌───────────────── 9 × 16 ─────────────────┐
 ///   │   DAY 14 · GLOW UP · CERTIFIED           │
 ///   │                                          │
-///   │             ImHim                        │
+///   │             Mirrorly                        │
 ///   │             ─────                        │
 ///   │                                          │
 ///   │             DAY                          │
@@ -33,8 +33,8 @@ import '../../theme/auralay_app_typography.dart';
 ///   │                                          │
 ///   │     "I scanned my face and committed."    │
 ///   │                                          │
-///   │   ImHim · BECOME THE GUY WHO OWNS THE ROOM │
-///   │   imhim.app                              │
+///   │   Mirrorly · BECOME THE GUY WHO OWNS THE ROOM │
+///   │   mirrorly.app                              │
 ///   └──────────────────────────────────────────┘
 ///
 /// The psychology brief — why this gets posted:
@@ -44,7 +44,7 @@ import '../../theme/auralay_app_typography.dart';
 ///     consistency, which is the trait the user is broadcasting.
 ///  3. ROOM FOR DUNK — leaving a verdict line ("committed") lets the
 ///     poster narrate their own version to their followers.
-///  4. SAME WORDMARK AS THE APP — anyone who's seen ImHim once
+///  4. SAME WORDMARK AS THE APP — anyone who's seen Mirrorly once
 ///     recognises the mark instantly.
 class ProgressShareCard extends StatelessWidget {
   /// Days into the protocol (1..N).
@@ -78,12 +78,12 @@ class ProgressShareCard extends StatelessWidget {
   /// Aura score (0..100) — the Auralay-imported combined index.
   final int? auraNow;
 
-  /// v290 — IMHIM SCORE composite (0..100). The hero of the card.
+  /// v290 — MIRRORLY SCORE composite (0..100). The hero of the card.
   /// Looks + Game demoted to "BUILT FROM" inputs underneath; the
   /// score on top is what the viewer reads first.
   final int? imhimNow;
 
-  /// v290 — IMHIM SCORE delta from the prior weekly snapshot.
+  /// v290 — MIRRORLY SCORE delta from the prior weekly snapshot.
   /// Positive numbers render as green ↑; null / 0 hide the chip
   /// rather than show a confusing "+0".
   final int? imhimDelta;
@@ -129,7 +129,7 @@ class ProgressShareCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    // v290 — IMHIM SCORE leads. Bro: "imhim score is in the progress
+    // v290 — MIRRORLY SCORE leads. Bro: "imhim score is in the progress
     // icon share right now its game looks scores but above them in
     // the middle needs imhim score". Same atmospheric halo, same
     // brand. The hero number is now the unified composite (320pt
@@ -174,8 +174,8 @@ class ProgressShareCard extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   )),
                 const SizedBox(height: 16),
-                // ── Brand — two-tone ImHim.
-                _ImHimMark(fontSize: 100),
+                // ── Brand — two-tone Mirrorly.
+                _MirrorlyMark(fontSize: 100),
                 const SizedBox(height: 12),
                 Container(width: 100, height: 3, color: base.AppColors.red),
                 const SizedBox(height: 22),
@@ -192,8 +192,8 @@ class ProgressShareCard extends StatelessWidget {
 
                 const SizedBox(height: 28),
 
-                // ── IMHIM SCORE HERO. The unified composite.
-                _ImHimScoreShareHero(
+                // ── MIRRORLY SCORE HERO. The unified composite.
+                _MirrorlyScoreShareHero(
                   score: imhimNow,
                   delta: imhimDelta,
                 ),
@@ -311,7 +311,7 @@ class ProgressShareCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _ImHimMark(fontSize: 28),
+                    _MirrorlyMark(fontSize: 28),
                     const SizedBox(width: 14),
                     Container(
                       width: 4, height: 4,
@@ -329,7 +329,7 @@ class ProgressShareCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                Text("BECOME THE GUY WHO OWNS THE ROOM  ·  imhim.app",
+                Text("BECOME THE GUY WHO OWNS THE ROOM  ·  mirrorly.app",
                   textAlign: TextAlign.center,
                   style: AppTypography.label.copyWith(
                     color: AppColors.textTertiary,
@@ -353,15 +353,15 @@ class ProgressShareCard extends StatelessWidget {
   }
 }
 
-/// v290 — IMHIM SCORE share hero. Single massive italic numeral on
+/// v290 — MIRRORLY SCORE share hero. Single massive italic numeral on
 /// top of the share card, "/100" anchored beneath, optional weekly
 /// delta pill underneath. The composite is the hook; viewers read
 /// the number first, then the BUILT FROM row tells them how it was
 /// earned. Same italic Playfair language as the in-app score block.
-class _ImHimScoreShareHero extends StatelessWidget {
+class _MirrorlyScoreShareHero extends StatelessWidget {
   final int? score;
   final int? delta;
-  const _ImHimScoreShareHero({required this.score, required this.delta});
+  const _MirrorlyScoreShareHero({required this.score, required this.delta});
 
   @override
   Widget build(BuildContext context) {
@@ -373,7 +373,7 @@ class _ImHimScoreShareHero extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('IMHIM SCORE',
+        Text('MIRRORLY SCORE',
           textAlign: TextAlign.center,
           style: AppTypography.label.copyWith(
             color: base.AppColors.red,
@@ -536,11 +536,11 @@ class _ScorePill extends StatelessWidget {
   }
 }
 
-/// Two-tone ImHim wordmark — italic Playfair, white "Im" + red "Him".
+/// Two-tone Mirrorly wordmark — italic Playfair, white "Im" + red "Him".
 /// Duplicated locally so the share card has no theme-variant dependency.
-class _ImHimMark extends StatelessWidget {
+class _MirrorlyMark extends StatelessWidget {
   final double fontSize;
-  const _ImHimMark({required this.fontSize});
+  const _MirrorlyMark({required this.fontSize});
 
   @override
   Widget build(BuildContext context) {

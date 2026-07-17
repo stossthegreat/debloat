@@ -7,7 +7,7 @@ import '../../theme/app_colors.dart' as base;
 import '../../theme/auralay_app_colors.dart';
 import '../../theme/auralay_app_typography.dart';
 
-/// ImHim — 60-DAY PROTOCOL CERTIFICATE share card (v291).
+/// Mirrorly — 60-DAY PROTOCOL CERTIFICATE share card (v291).
 ///
 /// The receipt of the 60-day Ascension. Locked until Day 60; on
 /// unlock, the user generates and shares this card from the Ascend
@@ -15,18 +15,18 @@ import '../../theme/auralay_app_typography.dart';
 ///
 /// 9:16 composition, same atmospheric halo + two-tone wordmark
 /// language as [ProgressShareCard] and [ScoreShareCard] so a viewer
-/// who's seen any ImHim card before instantly recognises the brand.
+/// who's seen any Mirrorly card before instantly recognises the brand.
 /// What's different:
 ///
 ///   ┌──────────── 9 × 16 ────────────┐
 ///   │ 60 DAY PROTOCOL · COMPLETE     │ ← red eyebrow
-///   │            ImHim               │ ← wordmark, then a divider
+///   │            Mirrorly               │ ← wordmark, then a divider
 ///   │            ─────               │
 ///   │                                │
 ///   │   [Day 1 face]    [Day 60 face]│ ← real before / after
 ///   │     BEFORE          AFTER      │
 ///   │                                │
-///   │       IMHIM SCORE              │
+///   │       MIRRORLY SCORE              │
 ///   │      43  →  71                 │ ← arc, big italics
 ///   │         ↑ +28                  │
 ///   │                                │
@@ -37,8 +37,8 @@ import '../../theme/auralay_app_typography.dart';
 ///   │   GAME          34 → 88  ↑54   │
 ///   │   CONSISTENCY   60 → 95  ↑35   │
 ///   │                                │
-///   │   ImHim · BECOME THE GUY …     │
-///   │   imhim.app                    │
+///   │   Mirrorly · BECOME THE GUY …     │
+///   │   mirrorly.app                    │
 ///   └────────────────────────────────┘
 ///
 /// The psychology brief:
@@ -57,7 +57,7 @@ class CertificateShareCard extends StatelessWidget {
   /// Local file path of the latest (Day-60 window) scan's photo.
   final String? afterPhotoPath;
 
-  // ── IMHIM SCORE arc ────────────────────────────────────────────
+  // ── MIRRORLY SCORE arc ────────────────────────────────────────────
   final int imhimStart;
   final int imhimEnd;
 
@@ -109,7 +109,7 @@ class CertificateShareCard extends StatelessWidget {
       child: Stack(
         children: [
           // Atmospheric halo — same red brand keying as the other
-          // ImHim share cards so the family reads as one.
+          // Mirrorly share cards so the family reads as one.
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -138,11 +138,11 @@ class CertificateShareCard extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   )),
                 const SizedBox(height: 16),
-                _ImHimMark(fontSize: 96),
+                _MirrorlyMark(fontSize: 96),
                 const SizedBox(height: 12),
                 Container(width: 110, height: 3, color: base.AppColors.red),
                 const SizedBox(height: 22),
-                Text('IMHIM CERTIFIED',
+                Text('MIRRORLY CERTIFIED',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.playfairDisplay(
                     color: AppColors.textPrimary,
@@ -187,8 +187,8 @@ class CertificateShareCard extends StatelessWidget {
 
                 const SizedBox(height: 32),
 
-                // ── IMHIM SCORE arc. The composite headline.
-                Text('IMHIM SCORE',
+                // ── MIRRORLY SCORE arc. The composite headline.
+                Text('MIRRORLY SCORE',
                   textAlign: TextAlign.center,
                   style: AppTypography.label.copyWith(
                     color: base.AppColors.red,
@@ -258,7 +258,7 @@ class CertificateShareCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _ImHimMark(fontSize: 28),
+                    _MirrorlyMark(fontSize: 28),
                     const SizedBox(width: 14),
                     Container(
                       width: 4, height: 4,
@@ -276,7 +276,7 @@ class CertificateShareCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                Text("BECOME THE GUY WHO OWNS THE ROOM  ·  imhim.app",
+                Text("BECOME THE GUY WHO OWNS THE ROOM  ·  mirrorly.app",
                   textAlign: TextAlign.center,
                   style: AppTypography.label.copyWith(
                     color: AppColors.textTertiary,
@@ -519,11 +519,11 @@ class _StatArcRow extends StatelessWidget {
   }
 }
 
-/// Two-tone ImHim wordmark — italic Playfair, white "Im" + red "Him".
+/// Two-tone Mirrorly wordmark — italic Playfair, white "Im" + red "Him".
 /// Duplicated locally so the share card has no theme-variant dependency.
-class _ImHimMark extends StatelessWidget {
+class _MirrorlyMark extends StatelessWidget {
   final double fontSize;
-  const _ImHimMark({required this.fontSize});
+  const _MirrorlyMark({required this.fontSize});
 
   @override
   Widget build(BuildContext context) {

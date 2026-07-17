@@ -8,7 +8,7 @@ import '../../services/analytics_service.dart';
 import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
-import '../../widgets/common/imhim_wordmark.dart';
+import '../../widgets/common/mirrorly_wordmark.dart';
 
 /// ── Onboarding manifesto screen ────────────────────────────────────────
 ///
@@ -97,7 +97,7 @@ class GenderPickScreen extends StatelessWidget {
                   // Wordmark — bigger, breathes.
                   const SizedBox(height: 22),
                   const Center(
-                    child: ImHimWordmark(fontSize: 56, letterSpacing: -1.6),
+                    child: MirrorlyWordmark(fontSize: 56, letterSpacing: -1.6),
                   ),
 
                   const SizedBox(height: 38),

@@ -3,17 +3,15 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/app_colors.dart';
 
-/// The ImHim wordmark. "Im" in white, "Him" in red, italic editorial
-/// Playfair — the same letterforms the rest of the app uses for its
-/// title display. Drop this anywhere we used to render "Mirrorly":
-/// splash, paywall, settings, share card, masthead, intro reel,
-/// onboarding manifesto.
+/// The Mirrorly wordmark. "Mirror" in white, "ly" in red, italic
+/// editorial Playfair — the same letterforms the rest of the app uses
+/// for its title display. Splash, paywall, settings, share card,
+/// masthead, intro reel, onboarding manifesto all render this.
 ///
 /// Why italic Playfair: it's the existing brand voice (luxury
-/// fragrance / editorial). Red on "Him" is the punchline — the user
-/// reads "Im" first, then "Him" with the red accent that says
-/// "this is who you're becoming."
-class ImHimWordmark extends StatelessWidget {
+/// fragrance / editorial). The red tail keeps the two-tone brand
+/// punch the Mirrorly-era mark had.
+class MirrorlyWordmark extends StatelessWidget {
   final double fontSize;
   final double letterSpacing;
   final FontWeight fontWeight;
@@ -22,7 +20,7 @@ class ImHimWordmark extends StatelessWidget {
   /// we'd want that is small-caps tracking labels. Default: italic.
   final bool italic;
 
-  const ImHimWordmark({
+  const MirrorlyWordmark({
     super.key,
     this.fontSize       = 36,
     this.letterSpacing  = -1.0,
@@ -45,9 +43,9 @@ class ImHimWordmark extends StatelessWidget {
       text: TextSpan(
         style: base.copyWith(color: Colors.white),
         children: [
-          const TextSpan(text: 'Im'),
+          const TextSpan(text: 'Mirror'),
           TextSpan(
-            text: 'Him',
+            text: 'ly',
             style: base.copyWith(color: AppColors.red),
           ),
         ],

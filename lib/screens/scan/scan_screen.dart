@@ -21,7 +21,7 @@ import '../../services/paywall_gate.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/ai_consent_dialog.dart';
-import '../../widgets/common/imhim_wordmark.dart';
+import '../../widgets/common/mirrorly_wordmark.dart';
 import '../../widgets/scan/geometry_overlay_painter.dart';
 
 class ScanScreen extends StatefulWidget {
@@ -1346,11 +1346,11 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                     children: [
                       // Wordmark — serif, editorial. Bumped from 22 →
                       // 30 so a screenshot of the scan flow reads as
-                      // ImHim from across the room (was previously
+                      // Mirrorly from across the room (was previously
                       // small enough to disappear next to the camera
                       // feed). The two-tone red "Him" carries the
                       // brand on its own.
-                      const ImHimWordmark(fontSize: 30, letterSpacing: -0.8),
+                      const MirrorlyWordmark(fontSize: 30, letterSpacing: -0.8),
                       const SizedBox(width: 10),
                       Container(
                         width: 4, height: 4,

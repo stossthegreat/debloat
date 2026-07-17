@@ -16,7 +16,7 @@ import '../../services/rizz_reply_service.dart' show RizzVibe, RizzVibeLabel;
 import '../../services/screenshot_ocr_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/common/ai_consent_dialog.dart';
-import '../../widgets/common/imhim_wordmark.dart';
+import '../../widgets/common/mirrorly_wordmark.dart';
 
 /// CHAT WITH MIRRORLY — clean, sexy, no-bullshit dating + self-improvement
 /// coach. Editorial bubbles, preset chips, screenshot upload, tap-to-
@@ -802,11 +802,11 @@ class _Header extends StatelessWidget {
               color: Colors.white, size: 18),
           ),
           const SizedBox(width: 2),
-          // v300 — wordmark replaces the old "IMHIM" pill so the
+          // v300 — wordmark replaces the old "MIRRORLY" pill so the
           // brand reads at full weight in any chat screenshot the
           // user posts. Same italic Playfair lockup as every other
           // Rizz surface.
-          const ImHimWordmark(fontSize: 22, letterSpacing: -0.5),
+          const MirrorlyWordmark(fontSize: 22, letterSpacing: -0.5),
           const Spacer(),
           Container(
             width: 8, height: 8,

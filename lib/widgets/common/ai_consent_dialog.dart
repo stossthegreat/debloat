@@ -87,7 +87,7 @@ class AiConsentDialog extends StatelessWidget {
                   fontSize: 11, letterSpacing: 2.4,
                   fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
-              Text('ImHim uses AI to power your scans, live voice '
+              Text('Mirrorly uses AI to power your scans, live voice '
                    'roleplay, and Rizz replies. The data each feature '
                    'needs is sent over an encrypted connection to our '
                    'AI providers. Face geometry is computed on your '
@@ -118,7 +118,7 @@ class AiConsentDialog extends StatelessWidget {
               _Bullet(
                 head: 'EQUAL PROTECTION',
                 body: 'Both providers contractually guarantee the '
-                      'same or equal privacy protection ImHim '
+                      'same or equal privacy protection Mirrorly '
                       'gives you here: encrypted in transit, no '
                       'long-term retention, no training, no '
                       'advertising or resale.'),
@@ -130,7 +130,7 @@ class AiConsentDialog extends StatelessWidget {
                       'Policy.'),
 
               const SizedBox(height: 18),
-              Text('Tap ALLOW to use ImHim\'s AI features with OpenAI '
+              Text('Tap ALLOW to use Mirrorly\'s AI features with OpenAI '
                    'and Replicate. Tap CANCEL to keep everything on '
                    'this device — scans, roleplay, and Rizz cannot run '
                    'without permission.',

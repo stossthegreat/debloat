@@ -8,7 +8,7 @@ import '../../services/analytics_service.dart';
 import '../../services/paywall_gate.dart';
 import '../../services/streak_service.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/common/imhim_wordmark.dart';
+import '../../widgets/common/mirrorly_wordmark.dart';
 import '../../widgets/common/mirrorly_components.dart';
 
 /// RIZZ tab — three red cards, three flood-gate states.
@@ -122,10 +122,10 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 32),
           children: [
-            // v274 — keep ImHim wordmark + right-side chip stack.
+            // v274 — keep Mirrorly wordmark + right-side chip stack.
             // Subheader ("Looks get attention. Game keeps it.")
             // removed per bro: "take the sub header out of rizz
-            // tab not the ImHim, just the sub header." The Looks
+            // tab not the Mirrorly, just the sub header." The Looks
             // tab keeps its subhead because it carries the brand
             // pitch on first impression; the Rizz tab doesn't need
             // it (the three cards already say what the tab is).
@@ -134,7 +134,7 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const ImHimWordmark(fontSize: 34),
+                  const MirrorlyWordmark(fontSize: 34),
                   const Spacer(),
                   if (_dayStreak > 0) ...[
                     _RizzStreakBadge(days: _dayStreak),

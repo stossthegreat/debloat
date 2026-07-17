@@ -476,7 +476,7 @@ class _PresenceGate extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('IMHIM',
+              Text('MIRRORLY',
                 style: AppTypography.h1.copyWith(
                   fontSize: 22, letterSpacing: 6,
                   fontWeight: FontWeight.w900,

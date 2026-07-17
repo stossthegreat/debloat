@@ -4,7 +4,7 @@
 <dict>
 	<!-- Name + glyph that appear inside the iOS Share Sheet. -->
 	<key>CFBundleDisplayName</key>
-	<string>ImHim</string>
+	<string>Mirrorly</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

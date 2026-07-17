@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../services/analytics_service.dart';
 import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/common/imhim_wordmark.dart';
+import '../../widgets/common/mirrorly_wordmark.dart';
 
 /// Onboarding AI-data consent — the single, up-front permission gate
 /// required by App Store guidelines 5.1.1(i) / 5.1.2(i). It sits between
@@ -60,7 +60,7 @@ class _AiConsentScreenState extends State<AiConsentScreen> {
               padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
               child: Row(
                 children: [
-                  const ImHimWordmark(fontSize: 28, letterSpacing: -0.7),
+                  const MirrorlyWordmark(fontSize: 28, letterSpacing: -0.7),
                   const SizedBox(width: 8),
                   Container(
                     width: 4, height: 4,
@@ -84,7 +84,7 @@ class _AiConsentScreenState extends State<AiConsentScreen> {
                           fontSize: 11, letterSpacing: 2.6,
                           fontWeight: FontWeight.w800)),
                     const SizedBox(height: 12),
-                    Text('ImHim uses AI to power your scans, live voice '
+                    Text('Mirrorly uses AI to power your scans, live voice '
                         'roleplay, and Rizz replies.',
                         style: GoogleFonts.inter(
                           color: Colors.white,
@@ -202,7 +202,7 @@ class _AiConsentScreenState extends State<AiConsentScreen> {
                           Expanded(
                             child: Text(
                               'I agree to the Privacy Policy and Terms of '
-                              'Use, and I consent to ImHim sharing the data '
+                              'Use, and I consent to Mirrorly sharing the data '
                               'described above with its AI providers '
                               '(OpenAI and Replicate).',
                               style: GoogleFonts.inter(
