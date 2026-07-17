@@ -176,7 +176,7 @@ class PostSessionScreen extends StatelessWidget {
       roast:          verdict.roast,
       dimensions:     hasDimensions ? _dimensions : verdict.dimensionPcts,
       techniqueName:  _techniqueName,
-      text: 'My AURA score is ${verdict.score} — ${verdict.tier}. Test yours on ImHim: imhim.app',
+      text: 'My AURA score is ${verdict.score} — ${verdict.tier}. Test yours on Mirrorly: mirrorly.app',
     );
   }
 

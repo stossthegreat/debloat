@@ -57,6 +57,9 @@ class _EyeContactTabScreenState extends State<EyeContactTabScreen>
   final FaceDetectorService _detector = FaceDetectorService();
   bool _processing = false;
   FaceMetrics _metrics = FaceMetrics.empty;
+  /// Which gaze engine actually initialised — shown next to the build
+  /// tag so a device test instantly reveals iris vs fallback.
+  String _engine = '…';
   late final AnimationController _pulse;
 
   // ─── Progress state ───────────────────────────────────────────────
@@ -77,7 +80,16 @@ class _EyeContactTabScreenState extends State<EyeContactTabScreen>
       vsync: this,
       duration: const Duration(milliseconds: 2400),
     )..repeat();
-    _detector.init();
+    // Surface WHICH engine actually came up next to the build tag —
+    // "IRIS" (real MediaPipe) vs "FALLBACK" (native plugin/model failed
+    // to load, MLKit head-pose running instead). One glance on-device
+    // tells us whether iris scoring is even in play.
+    _detector.init().then((_) {
+      if (!mounted) return;
+      setState(() => _engine = _detector.usingFallback ? 'FALLBACK' : 'IRIS');
+    }).catchError((_) {
+      if (mounted) setState(() => _engine = 'NO-ENGINE');
+    });
     _loadState();
     if (widget.active) _startCamera();
   }
@@ -346,7 +358,7 @@ class _EyeContactTabScreenState extends State<EyeContactTabScreen>
             left: 10, bottom: 6,
             child: IgnorePointer(
               child: Text(
-                kBuildTag,
+                '$kBuildTag · $_engine',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.30),
                   fontSize: 9,

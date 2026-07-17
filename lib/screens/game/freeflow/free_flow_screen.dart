@@ -27,7 +27,7 @@ import '../../../services/villain/villain_api.dart';
 import '../../../theme/auralay_app_colors.dart';
 import '../../../theme/auralay_app_typography.dart';
 import '../../../widgets/common/ai_consent_dialog.dart';
-import '../../../widgets/common/imhim_wordmark.dart';
+import '../../../widgets/common/mirrorly_wordmark.dart';
 import '../../../widgets/common/mirrorly_components.dart';
 import '../../../widgets/debug_panel.dart';
 import '../../../widgets/safe_close_button.dart';
@@ -1869,7 +1869,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen>
   Widget _buildLive() {
     final mins = (_remaining ~/ 60).toString();
     final secs = (_remaining % 60).toString().padLeft(2, '0');
-    // Bro v6 b: "the ImHim on roleplay should only show when the
+    // Bro v6 b: "the Mirrorly on roleplay should only show when the
     // user is talking not when the women is talking." So the
     // visibility gate tightens from "convo is active" to "user is
     // actively holding to talk." The wordmark now paints ONLY
@@ -1880,7 +1880,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen>
       children: [
         // Top chrome.
         // v298 — Game tab now matches the Looks / Rizz / Ascend
-        // chrome layout: ImHim wordmark on the left, controls on
+        // chrome layout: Mirrorly wordmark on the left, controls on
         // the right. Character chip + timer pair on the right so
         // the wordmark gets the same anchor across every tab. Bro:
         // "put imhim on roleplay and move the character dropdown
@@ -1891,7 +1891,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen>
           child: Row(
             children: [
               if (widget.tabMode)
-                const ImHimWordmark(fontSize: 34)
+                const MirrorlyWordmark(fontSize: 34)
               else
                 Text(_vibe?.label ?? '',
                     style: AppTypography.label.copyWith(
@@ -1945,8 +1945,8 @@ class _FreeFlowScreenState extends State<FreeFlowScreen>
           ),
         ),
 
-        // ── ImHim wordmark overlay (the "viral back-and-forth" CTA).
-        // Bro v5: "add ImHim header on the live roleplay but only when
+        // ── Mirrorly wordmark overlay (the "viral back-and-forth" CTA).
+        // Bro v5: "add Mirrorly header on the live roleplay but only when
         // you start recording so it's there on viral back and forth."
         // Logic: visible when there's actual conversation in flight —
         // user is holding to talk OR the AI is speaking back OR a
@@ -1955,7 +1955,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen>
         //
         // AnimatedOpacity gives a clean fade so screen recordings show
         // it land + lift rather than blink.
-        // ImHim wordmark moved INTO the top chrome row above (when
+        // Mirrorly wordmark moved INTO the top chrome row above (when
         // convoActive). The standalone Positioned overlay that used
         // to render it over the orb is gone — was overlapping the
         // orb when scaled up to the viral size bro asked for. Top
@@ -1968,7 +1968,7 @@ class _FreeFlowScreenState extends State<FreeFlowScreen>
         // reads) never collides with the bottom controls.
         //
         // Bro v8: orb dropped ~14 logical pixels (top: 56 → 82) to make
-        // room for the ImHim wordmark that now sits directly above it.
+        // room for the Mirrorly wordmark that now sits directly above it.
         // Wordmark only paints while the user is actively holding to
         // talk — same gate as v176, just relocated from the chrome row
         // so the brand reads as "above the record button" the moment

@@ -14,7 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 ///   - "Who do I become if I finish?"
 ///   - The flame stays alive as long as you keep showing up.
-///   - Rank is a public status (Observer → Initiate → … → ImHim)
+///   - Rank is a public status (Observer → Initiate → … → Mirrorly)
 ///     that compounds; users protect status, not percentages.
 ///   - The cost of quitting is named explicitly (rotating fear
 ///     reminder).
@@ -57,7 +57,7 @@ class AscensionService {
     ),
     AscendRank(
       minDay: 60,
-      label: 'IMHIM',
+      label: 'MIRRORLY',
       tagline: 'Identity locked. The man who walks in owning every room.',
     ),
   ];
@@ -75,7 +75,7 @@ class AscensionService {
   }
 
   /// Next rank after the current one, for the progression preview.
-  /// Returns null when the user is already at IMHIM (final tier).
+  /// Returns null when the user is already at MIRRORLY (final tier).
   static AscendRank? nextRankFor(int day) {
     for (final r in _ranks) {
       if (r.minDay > day) return r;
@@ -229,7 +229,7 @@ class AscensionService {
     'Day 51. The certificate is in sight.',
     'Fifty-two days. Don\'t stop now.',
     'Day 53. Stay loud, stay sharp.',
-    'Fifty-four days. Six days from ImHim.',
+    'Fifty-four days. Six days from Mirrorly.',
     'Day 55. The final form is taking shape.',
     'Five days remain.',
     // 57
@@ -260,7 +260,7 @@ class AscensionService {
     return _dailyMessages[i];
   }
 
-  // ── IMHIM Score — the composite (v289) ─────────────────────────────────
+  // ── MIRRORLY Score — the composite (v289) ─────────────────────────────────
   //
   // Bro + consultant: ONE number that unifies the four surfaces so
   // the user is levelling one character, not managing four systems.
@@ -275,7 +275,7 @@ class AscensionService {
   // don't really matter that"). It still surfaces as a soft "wins"
   // signal in the missions panel.
   //
-  // The user-facing label is IMHIM SCORE everywhere — never
+  // The user-facing label is MIRRORLY SCORE everywhere — never
   // "attraction score" (App Store 3.1.5 / 5.2 risk on attractiveness
   // claims).
   static int imhimScoreFromComponents({
@@ -298,7 +298,7 @@ class AscensionService {
   // signal bro asked for. Callers read the snapshot value and feed it
   // straight into [imhimScoreFromComponents].
 
-  /// Snapshot the current IMHIM score against TODAY so the weekly
+  /// Snapshot the current MIRRORLY score against TODAY so the weekly
   /// delta can be computed without storing a history table. Stamps
   /// `imhim_score_snapshot_<n>` + `imhim_score_snapshot_<n>_ymd` in
   /// SharedPreferences. Idempotent per calendar day — re-calling on
@@ -311,7 +311,7 @@ class AscensionService {
 
   static int _ymdOf(DateTime d) => d.year * 10000 + d.month * 100 + d.day;
 
-  /// Persist today's IMHIM score so a 7-days-ago lookup has data to
+  /// Persist today's MIRRORLY score so a 7-days-ago lookup has data to
   /// diff against. Pushes the previous snapshot into the `prior`
   /// slot on day-change so we always have two reference points: the
   /// freshest snapshot and the one before it. That's enough to

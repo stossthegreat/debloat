@@ -128,8 +128,8 @@ class MessagesViewController: MSMessagesAppViewController, PHPickerViewControlle
         }()
         let red = UIColor(red: 0.90, green: 0.22, blue: 0.27, alpha: 1)
         let s = NSMutableAttributedString()
-        s.append(NSAttributedString(string: "Im",  attributes: [.font: italic, .foregroundColor: UIColor.white, .kern: -0.5]))
-        s.append(NSAttributedString(string: "Him", attributes: [.font: italic, .foregroundColor: red, .kern: -0.5]))
+        s.append(NSAttributedString(string: "Mirror", attributes: [.font: italic, .foregroundColor: UIColor.white, .kern: -0.5]))
+        s.append(NSAttributedString(string: "ly",     attributes: [.font: italic, .foregroundColor: red, .kern: -0.5]))
         return s
     }
 

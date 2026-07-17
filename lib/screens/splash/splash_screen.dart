@@ -3,7 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../services/local_store_service.dart';
-import '../../widgets/common/imhim_wordmark.dart';
+import '../../widgets/common/mirrorly_wordmark.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -55,8 +55,8 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     // Pure black loading screen — logo sitting a touch above centre with
-    // the ImHim wordmark beneath it, set exactly like the Looks-tab
-    // header. Bro: "move the logo higher then write ImHim in the same
+    // the Mirrorly wordmark beneath it, set exactly like the Looks-tab
+    // header. Bro: "move the logo higher then write Mirrorly in the same
     // way it's written on the Looks tab header."
     return Scaffold(
       backgroundColor: Colors.black,
@@ -83,7 +83,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   curve: Curves.easeOut,
                 ),
             const SizedBox(height: 22),
-            const ImHimWordmark(fontSize: 40)
+            const MirrorlyWordmark(fontSize: 40)
                 .animate()
                 .fadeIn(delay: 260.ms, duration: 700.ms, curve: Curves.easeOut),
           ],

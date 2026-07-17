@@ -156,7 +156,7 @@ class LegalDoc {
 
 LegalDoc get termsDoc => LegalDoc(
   title: 'Terms of Use',
-  subtitle: 'IMHIM · THE AGREEMENT',
+  subtitle: 'MIRRORLY · THE AGREEMENT',
   lastUpdatedLine: 'Last updated 26 May 2026.',
   sections: [
     // TOP-OF-TERMS subscription disclosure. This carries every detail
@@ -165,13 +165,13 @@ LegalDoc get termsDoc => LegalDoc(
     // per-week "what you get" entitlement list) so the paywall itself
     // can stay clean while all the required specifics remain one tap
     // away at the very top of Terms.
-    LegalSection('IMHIM PRO — WHAT YOU GET, PRICE & AUTO-RENEWAL',
-      'ImHim Pro is a single auto-renewing weekly subscription. This is '
+    LegalSection('MIRRORLY PRO — WHAT YOU GET, PRICE & AUTO-RENEWAL',
+      'Mirrorly Pro is a single auto-renewing weekly subscription. This is '
       'the full disclosure of what you pay, how billing renews, how to '
       'cancel, and exactly what the subscription unlocks — the same '
       'details presented at the point of purchase.\n\n'
       'PRICE & BILLING\n\n'
-      '• ImHim Pro — \$6.99 USD per week (or the local-currency '
+      '• Mirrorly Pro — \$6.99 USD per week (or the local-currency '
       'equivalent shown on the paywall), billed weekly.\n'
       '• Payment is charged to your $_appleOrGoogleId at confirmation '
       'of purchase.\n'
@@ -184,7 +184,7 @@ LegalDoc get termsDoc => LegalDoc(
       '$_appleOrGoogleId settings. Uninstalling the app does NOT '
       'cancel the subscription.\n\n'
       'WHAT THE SUBSCRIPTION UNLOCKS\n\n'
-      'An active ImHim Pro subscription is required for scans, AI '
+      'An active Mirrorly Pro subscription is required for scans, AI '
       'renders, streaks, AI roleplay, and all rizz features. Each week '
       'it includes:\n\n'
       '• 2 face scans per week.\n'
@@ -199,7 +199,7 @@ LegalDoc get termsDoc => LegalDoc(
       'until the end of the paid week. No refund is issued for the '
       'unused portion of the current period.'),
     const LegalSection('ABOUT MIRRORLY',
-      'ImHim is a self-assessment and self-training tool for '
+      'Mirrorly is a self-assessment and self-training tool for '
       'cosmetic, grooming, and charisma decisions. It uses on-device '
       'face measurement (MediaPipe) plus AI image generation and '
       'analysis (Replicate, OpenAI) to show you measurements of your '
@@ -211,27 +211,27 @@ LegalDoc get termsDoc => LegalDoc(
       'tab helps you reply to dating-app conversations by reading a '
       'screenshot on-device (ML Kit OCR) and using OpenAI to suggest '
       'replies, an AI chat coach, and generated pickup lines. '
-      'ImHim is not a medical device and does not provide '
+      'Mirrorly is not a medical device and does not provide '
       'medical, dental, psychological, or surgical advice.'),
     const LegalSection('WHO CAN USE THIS APP',
-      'You must be at least 13 years old to use ImHim. If you are '
+      'You must be at least 13 years old to use Mirrorly. If you are '
       'under 18, you represent that your parent or legal guardian has '
       'reviewed and agreed to these terms on your behalf.'),
     LegalSection('ACCOUNTS',
-      'ImHim does not require an account. Purchases and saved '
+      'Mirrorly does not require an account. Purchases and saved '
       'scans live on your device and are tied to your '
       '$_storeAccount for billing purposes only.'),
     LegalSection('SUBSCRIPTIONS & AUTO-RENEWAL',
-      'ImHim offers an auto-renewing subscription:\n\n'
-      '• ImHim Pro Weekly — \$6.99 USD per week (or local '
+      'Mirrorly offers an auto-renewing subscription:\n\n'
+      '• Mirrorly Pro Weekly — \$6.99 USD per week (or local '
       'equivalent), billed weekly until cancelled.\n'
       // Annual tier temporarily withdrawn from sale — the app now
       // offers the weekly subscription only. Re-add this line if the
       // annual SKU is re-enabled in the paywall UI.
-      // '• ImHim Pro Annual — \$139.99 USD per year (or local '
+      // '• Mirrorly Pro Annual — \$139.99 USD per year (or local '
       // 'equivalent), billed annually until cancelled.\n'
       '\n'
-      'This subscription unlocks every ImHim Pro feature — scans, '
+      'This subscription unlocks every Mirrorly Pro feature — scans, '
       'AI-rendered "after" images, streaks and 60-day protocols, live '
       'AI roleplay, screenshot rizz analysis, and unlimited AI chat '
       'coaching.\n\n'
@@ -250,25 +250,25 @@ LegalDoc get termsDoc => LegalDoc(
       'you purchase a subscription.\n'
       '• No refund is issued for the unused portion of the current '
       'period. Partial refunds, where offered, are handled by '
-      '$_platformAppleStore directly, not by ImHim.'),
+      '$_platformAppleStore directly, not by Mirrorly.'),
     const LegalSection('ONE-TIME CREDIT PACKS',
       'Credit packs are non-subscription, one-time purchases. '
-      'ImHim Rescue Pack — \$9.99 USD (or local equivalent) — '
+      'Mirrorly Rescue Pack — \$9.99 USD (or local equivalent) — '
       'grants 20 AI-rendered "after" image credits. Credits do not '
       'expire, but they are non-refundable and non-transferable '
       'between accounts or devices.'),
     const LegalSection('WHAT WE RENDER — AND WHAT WE DO NOT',
-      'ImHim renders illustrative previews of grooming and '
+      'Mirrorly renders illustrative previews of grooming and '
       'styling changes applied to your photo. These images are '
       'approximations, not photographs of real outcomes, and may '
       'differ from the real-world result you would get from a '
-      'barber, surgeon, or dermatologist. Never use an ImHim '
+      'barber, surgeon, or dermatologist. Never use an Mirrorly '
       'rendering as the sole basis for a medical, dental, or '
       'surgical decision. Consult a licensed professional.'),
     const LegalSection('YOUR CONTENT',
-      'You retain all rights to photos you take inside ImHim. By '
+      'You retain all rights to photos you take inside Mirrorly. By '
       'scanning a photo and granting in-app permission in the AI data '
-      'consent dialog, you grant ImHim a limited, revocable, '
+      'consent dialog, you grant Mirrorly a limited, revocable, '
       'royalty-free licence to process that photo on your device and '
       'transmit it to our AI providers (OpenAI and Replicate) solely '
       'to produce your measurements, score, and rendered outputs. '
@@ -276,7 +276,7 @@ LegalDoc get termsDoc => LegalDoc(
       'your photos.'),
     const LegalSection('AI DATA PERMISSION — EVERY DETAIL OF WHAT GETS SENT, WHERE, AND WHY',
       'At the end of onboarding, before any photo bytes leave your '
-      'device, ImHim displays a full-screen permission dialog '
+      'device, Mirrorly displays a full-screen permission dialog '
       '("PERMISSION TO SHARE YOUR PHOTO WITH AI PROVIDERS"). The '
       'same dialog is also shown the first time you reach any '
       'other AI-firing path (Mirror chat, try-on render, '
@@ -298,12 +298,12 @@ LegalDoc get termsDoc => LegalDoc(
       'contacts, IP-based tracking IDs, advertising IDs, '
       'social-login data.\n\n'
       'EXACT ROUTE THE PHOTO TAKES\n\n'
-      'Step 1 — your phone → ImHim\'s backend at '
+      'Step 1 — your phone → Mirrorly\'s backend at '
       'https://mirrorly-production.up.railway.app, encrypted by '
-      'HTTPS / TLS 1.3. ImHim\'s backend does NOT persist the '
+      'HTTPS / TLS 1.3. Mirrorly\'s backend does NOT persist the '
       'photo bytes; it forwards them to the relevant AI provider '
       'in-memory and returns the response.\n\n'
-      'Step 2 — ImHim\'s backend → AI provider:\n'
+      'Step 2 — Mirrorly\'s backend → AI provider:\n'
       '• POST /analyse and POST /rate → OpenAI GPT-4o Vision '
       '(api.openai.com) for analysis text and honest-looks '
       'rating.\n'
@@ -316,13 +316,13 @@ LegalDoc get termsDoc => LegalDoc(
       '• OpenAI, L.L.C. (San Francisco, CA, USA) — GPT-4o Vision.\n'
       '• Replicate, Inc. (San Francisco, CA, USA) — Nano Banana '
       '+ cdingram/face-swap.\n'
-      '• ImHim\'s own backend on Railway — transient routing '
+      '• Mirrorly\'s own backend on Railway — transient routing '
       'only.\n\n'
       'No other party receives your photo or geometry data.\n\n'
       'HOW LONG EACH PARTY KEEPS IT\n\n'
       '• On your phone: until you delete the scan or uninstall.\n'
       '• In flight: TLS 1.3 encrypted.\n'
-      '• On ImHim\'s backend: bytes not persisted; only '
+      '• On Mirrorly\'s backend: bytes not persisted; only '
       'timestamps + HTTP status codes logged, auto-expiring '
       'after 30 days.\n'
       '• On OpenAI: duration of one request; excluded from '
@@ -362,19 +362,19 @@ LegalDoc get termsDoc => LegalDoc(
       'an active drill).\n\n'
       'EXACT ROUTE THE AUDIO TAKES\n\n'
       'Recorded drills (Eyes voice, Arena, rhetoric scoring):\n'
-      'Phone → ImHim\'s voice backend at '
+      'Phone → Mirrorly\'s voice backend at '
       'https://auralayai-production-65c2.up.railway.app, encrypted '
       'by HTTPS / TLS 1.3 → backend forwards to OpenAI in-memory '
       'for one request → response (transcript text + replied audio) '
       'returns to phone. The audio bytes are NOT persisted on the '
-      'ImHim\'s voice backend; only timestamps and HTTP status codes are '
+      'Mirrorly\'s voice backend; only timestamps and HTTP status codes are '
       'logged for diagnostics, auto-expiring after 30 days.\n\n'
       'Live voice (Free Flow, Council):\n'
       'Phone requests a short-lived ephemeral OpenAI Realtime API '
-      'token from ImHim\'s voice backend (HTTPS) → phone opens a TLS-'
+      'token from Mirrorly\'s voice backend (HTTPS) → phone opens a TLS-'
       'encrypted WebSocket directly to api.openai.com → live audio '
       'streams to OpenAI and replies stream back, never traversing '
-      'ImHim servers.\n\n'
+      'Mirrorly servers.\n\n'
       'OPENAI MODELS USED\n\n'
       '• Whisper (whisper-1) — transcribes your recorded audio to '
       'text for scoring.\n'
@@ -388,7 +388,7 @@ LegalDoc get termsDoc => LegalDoc(
       '• OpenAI, L.L.C. (San Francisco, CA, USA) — receives the '
       'audio for transcription, language modelling, and voice '
       'synthesis.\n'
-      '• ImHim\'s voice backend on Railway — transient routing '
+      '• Mirrorly\'s voice backend on Railway — transient routing '
       'and Realtime token minting only.\n\n'
       'No other party receives your voice data.\n\n'
       'RETENTION\n\n'
@@ -396,7 +396,7 @@ LegalDoc get termsDoc => LegalDoc(
       'during the drill and deleted when the drill ends or the app '
       'is closed; transcripts are not stored.\n'
       '• In flight: TLS 1.3 encrypted.\n'
-      '• ImHim\'s voice backend: bytes not persisted; only HTTP '
+      '• Mirrorly\'s voice backend: bytes not persisted; only HTTP '
       'status + timestamp logs, auto-expiring after 30 days.\n'
       '• OpenAI: duration of one API request (or one live Realtime '
       'session); excluded from training and long-term retention '
@@ -428,7 +428,7 @@ LegalDoc get termsDoc => LegalDoc(
       'tile again, or deleting the app, re-locks everything.'),
     const LegalSection('FACE DATA — WHAT WE COLLECT, WHY, WHO RECEIVES IT, HOW LONG WE KEEP IT',
       'WHAT FACE DATA MIRRORLY COLLECTS\n\n'
-      'ImHim collects two related pieces of face data:\n'
+      'Mirrorly collects two related pieces of face data:\n'
       '1) The selfie photograph captured with the in-app scan camera.\n'
       '2) Sixteen scalar geometric measurements derived from that '
       'photograph, computed entirely on your device by Apple ML Kit '
@@ -451,7 +451,7 @@ LegalDoc get termsDoc => LegalDoc(
       'API request).\n'
       '• Persist the photo and the geometry numbers in the app\'s '
       'sandboxed local storage so you can revisit prior scans.\n\n'
-      'ImHim does NOT use face data for: facial recognition, '
+      'Mirrorly does NOT use face data for: facial recognition, '
       'identity matching, authentication, ARKit Face ID, advertising, '
       'profiling, AI model training, building a biometric template, '
       'or any cross-app tracking purpose.\n\n'
@@ -469,18 +469,18 @@ LegalDoc get termsDoc => LegalDoc(
       'STORAGE LOCATIONS\n\n'
       '• On your device — app sandbox, until you uninstall.\n'
       '• Transiently on OpenAI / Replicate infrastructure — seconds.\n'
-      '• On ImHim servers — request timestamps and status codes '
+      '• On Mirrorly servers — request timestamps and status codes '
       'only (no photo bytes, no face data); logs expire after 30 days.\n\n'
       'HOW LONG FACE DATA IS RETAINED\n\n'
       'On your device: indefinitely, until uninstall or scan deletion.\n'
-      'On ImHim\'s servers: never retained.\n'
+      'On Mirrorly\'s servers: never retained.\n'
       'On OpenAI / Replicate: only for the duration of one API call.\n\n'
       'You can stop the app from collecting any face data at any time '
       'by deleting it.'),
     const LegalSection('THIRD-PARTY PROTECTION PARITY',
       'Per App Store guideline 5.1.2(i), any third party that '
-      'receives ImHim user data must provide the same or equal '
-      'privacy protection as ImHim itself. Both providers we '
+      'receives Mirrorly user data must provide the same or equal '
+      'privacy protection as Mirrorly itself. Both providers we '
       'transmit photos to meet this bar:\n\n'
       '• OpenAI — under the standard API terms, customer inputs are '
       'excluded from model training, encrypted in transit (TLS) '
@@ -491,26 +491,26 @@ LegalDoc get termsDoc => LegalDoc(
       'excluded from training, processed for the duration of one '
       'inference request, not retained long-term, and not used for '
       'advertising, profiling, or sale to third parties.\n\n'
-      'ImHim does not transmit user photos to any other third '
+      'Mirrorly does not transmit user photos to any other third '
       'party. The on-device geometry numbers stay on-device unless '
       'they accompany the photo on a single API call.'),
     const LegalSection('ACCEPTABLE USE',
-      'You agree not to use ImHim to scan, analyse, or render a '
+      'You agree not to use Mirrorly to scan, analyse, or render a '
       'face that is not your own without that person\'s explicit '
       'consent. In the Rizz tab, only upload screenshots of '
       'conversations you are personally part of; do not submit other '
       'people\'s private messages, images, or personal information '
-      'that you have no right to share. You agree not to use ImHim '
+      'that you have no right to share. You agree not to use Mirrorly '
       'outputs to harass, demean, or defame any person.'),
     const LegalSection('TERMINATION',
       'We may suspend or terminate access for conduct that violates '
       'these terms, harms other users, or violates applicable law. '
       'You may stop using the app at any time by deleting it.'),
     const LegalSection('DISCLAIMERS & LIABILITY',
-      'ImHim is provided "as is" without warranty of any kind, '
+      'Mirrorly is provided "as is" without warranty of any kind, '
       'express or implied. To the maximum extent permitted by law, '
-      'ImHim\'s total liability for any claim is limited to the '
-      'amount you paid ImHim in the twelve months preceding the '
+      'Mirrorly\'s total liability for any claim is limited to the '
+      'amount you paid Mirrorly in the twelve months preceding the '
       'claim.'),
     const LegalSection('CHANGES TO THESE TERMS',
       'We may update these terms. Material changes will be surfaced '
@@ -534,7 +534,7 @@ LegalDoc get privacyDoc => LegalDoc(
       'IS FACE DATA RETAINED?\n'
       'No face image is retained anywhere. The selfie you take is held '
       'in device memory long enough to be analysed in a single API '
-      'call, then dropped. Neither ImHim nor the third parties we '
+      'call, then dropped. Neither Mirrorly nor the third parties we '
       'send it to (OpenAI, Replicate) keep the photo, store a face '
       'template, or build a biometric record from it.\n\n'
       'WHY DO YOU SEND IT AT ALL?\n'
@@ -549,7 +549,7 @@ LegalDoc get privacyDoc => LegalDoc(
       'when the response is returned. OpenAI and Replicate are '
       'configured to exclude these requests from any training corpus '
       'and from long-term retention.\n'
-      '• On ImHim\'s own backend: never persisted. The backend acts '
+      '• On Mirrorly\'s own backend: never persisted. The backend acts '
       'as a transient router — bytes are forwarded in-memory only. '
       'Server logs record only timestamps and HTTP status codes and '
       'auto-expire after 30 days; no image bytes are logged.\n'
@@ -616,7 +616,7 @@ LegalDoc get privacyDoc => LegalDoc(
       'in Settings.'),
     const LegalSection('AI DATA PERMISSION — EVERY DETAIL',
       'At the end of onboarding, before any photo bytes leave your '
-      'device, ImHim displays a full-screen permission dialog '
+      'device, Mirrorly displays a full-screen permission dialog '
       '("PERMISSION TO SHARE YOUR PHOTO WITH AI PROVIDERS"). The '
       'same dialog is also shown the first time you reach any '
       'other AI-firing path (Mirror chat, try-on render, '
@@ -636,7 +636,7 @@ LegalDoc get privacyDoc => LegalDoc(
       'contacts, IP-based tracking IDs, advertising IDs, '
       'social-login data.\n\n'
       'EXACT ROUTE\n\n'
-      'Phone → ImHim backend (mirrorly-production.up.railway'
+      'Phone → Mirrorly backend (mirrorly-production.up.railway'
       '.app) over HTTPS / TLS 1.3 — backend does NOT persist '
       'photo bytes — backend forwards in-memory to OpenAI '
       '(api.openai.com, GPT-4o Vision) for /analyse, /rate, '
@@ -646,12 +646,12 @@ LegalDoc get privacyDoc => LegalDoc(
       'WHO RECEIVES IT\n\n'
       '• OpenAI, L.L.C. (San Francisco, CA, USA).\n'
       '• Replicate, Inc. (San Francisco, CA, USA).\n'
-      '• ImHim\'s own backend (Railway), transient routing.\n'
+      '• Mirrorly\'s own backend (Railway), transient routing.\n'
       'No other party.\n\n'
       'RETENTION\n\n'
       '• On your phone: until you delete or uninstall.\n'
       '• In flight: TLS 1.3 encrypted.\n'
-      '• ImHim backend: bytes not persisted; only timestamps '
+      '• Mirrorly backend: bytes not persisted; only timestamps '
       '+ status codes, auto-expire after 30 days.\n'
       '• OpenAI: one API request; excluded from training and '
       'long-term retention.\n'
@@ -685,31 +685,31 @@ LegalDoc get privacyDoc => LegalDoc(
       'NOT sent: name, email, phone, location, contacts, ambient '
       'audio outside the drill, advertising IDs.\n\n'
       'EXACT ROUTE\n\n'
-      'Recorded drills: phone → ImHim\'s voice backend (https://'
+      'Recorded drills: phone → Mirrorly\'s voice backend (https://'
       'auralayai-production-65c2.up.railway.app) over HTTPS / TLS '
       '1.3 → backend forwards to OpenAI in-memory for one request '
-      '→ response returns. ImHim\'s voice backend does NOT persist '
+      '→ response returns. Mirrorly\'s voice backend does NOT persist '
       'audio bytes; only timestamps + HTTP status codes are logged, '
       'auto-expiring after 30 days.\n\n'
       'Live voice (Free Flow, Council): phone requests an ephemeral '
-      'OpenAI Realtime API token from ImHim\'s voice backend (HTTPS) '
+      'OpenAI Realtime API token from Mirrorly\'s voice backend (HTTPS) '
       '→ phone opens a TLS WebSocket directly to api.openai.com → '
       'live audio streams to OpenAI; replies stream back. Audio '
-      'never traverses ImHim servers in this mode.\n\n'
+      'never traverses Mirrorly servers in this mode.\n\n'
       'OPENAI MODELS\n\n'
       'whisper-1 (transcription) · gpt-4o (text replies) · '
       'gpt-4o-mini-tts (voice synthesis) · gpt-realtime (live '
       'voice sessions).\n\n'
       'WHO RECEIVES IT\n\n'
       '• OpenAI, L.L.C. (San Francisco, CA, USA).\n'
-      '• ImHim\'s voice backend on Railway — transient routing '
+      '• Mirrorly\'s voice backend on Railway — transient routing '
       'and Realtime token minting only.\n\n'
       'No other party.\n\n'
       'RETENTION\n\n'
       '• On your phone: clips deleted at drill end; transcripts '
       'not stored.\n'
       '• In flight: TLS 1.3 encrypted.\n'
-      '• ImHim\'s voice backend: bytes not persisted; only status + '
+      '• Mirrorly\'s voice backend: bytes not persisted; only status + '
       'timestamp logs, auto-expire after 30 days.\n'
       '• OpenAI: duration of one API request or one Realtime '
       'session; excluded from training and long-term retention.\n\n'
@@ -747,7 +747,7 @@ LegalDoc get privacyDoc => LegalDoc(
       'advertising IDs. We do not read your camera roll — only the '
       'single screenshot you explicitly pick.\n\n'
       'EXACT ROUTE\n\n'
-      'Phone → ImHim backend (mirrorly-production.up.railway.app) over '
+      'Phone → Mirrorly backend (mirrorly-production.up.railway.app) over '
       'HTTPS / TLS 1.3, POST /rizz/reply (screenshots) or POST /chat '
       '(Rizz Chat) → forwarded in-memory to OpenAI (GPT-4o, and GPT-4o '
       'vision when the image is included) → the suggested replies return '
@@ -757,7 +757,7 @@ LegalDoc get privacyDoc => LegalDoc(
       'WHO RECEIVES IT\n\n'
       '• OpenAI, L.L.C. (San Francisco, CA, USA) — GPT-4o / GPT-4o '
       'vision, for the single request.\n'
-      '• ImHim\'s own backend (Railway), transient routing only.\n'
+      '• Mirrorly\'s own backend (Railway), transient routing only.\n'
       'No other party. Excluded from training and long-term retention '
       'under OpenAI\'s standard API terms.\n\n'
       'ABOUT THE OTHER PERSON IN THE SCREENSHOT\n\n'
@@ -803,7 +803,7 @@ LegalDoc get privacyDoc => LegalDoc(
       'attach your photo, audio, or chats to a persistent account, '
       'because there is no account.'),
     const LegalSection('FACE DATA — WHAT IT IS, WHAT IT ISN\'T',
-      'ImHim uses on-device computer vision to derive geometric '
+      'Mirrorly uses on-device computer vision to derive geometric '
       'measurements from your selfie (Apple ML Kit on iOS, Google '
       'ML Kit on Android — both run entirely on the phone). These '
       'measurements are plain numbers: a canthal-tilt degree, a jaw '
@@ -826,8 +826,8 @@ LegalDoc get privacyDoc => LegalDoc(
       '• No long-term server storage. Photos sent to OpenAI / '
       'Replicate are processed for one request and discarded by '
       'their default API terms; we do not retain a copy on a '
-      'ImHim server.\n'
-      '• No model training. Neither ImHim nor any third party we '
+      'Mirrorly server.\n'
+      '• No model training. Neither Mirrorly nor any third party we '
       'send your photo to trains AI models on it (per our use of '
       'OpenAI and Replicate\'s default API endpoints, which exclude '
       'API inputs from training).\n'
@@ -849,8 +849,8 @@ LegalDoc get privacyDoc => LegalDoc(
       'send them through the API.'),
     const LegalSection('THIRD-PARTY PROTECTION PARITY',
       'Per App Store guideline 5.1.2(i), any third party that '
-      'receives ImHim user data must provide the same or equal '
-      'privacy protection as ImHim itself. Both AI providers '
+      'receives Mirrorly user data must provide the same or equal '
+      'privacy protection as Mirrorly itself. Both AI providers '
       'meet this bar:\n\n'
       '• OpenAI — under the standard API terms, customer inputs are '
       'excluded from model training, encrypted in transit (TLS) and '
@@ -861,7 +861,7 @@ LegalDoc get privacyDoc => LegalDoc(
       'excluded from training, processed for the duration of one '
       'inference request, not retained long-term, and not used for '
       'advertising, profiling, or sale to third parties.\n\n'
-      'ImHim does not transmit user photos to any other third '
+      'Mirrorly does not transmit user photos to any other third '
       'party — no advertisers, data brokers, analytics providers, '
       'or social-login partners.'),
     const LegalSection('WHAT WE DO NOT COLLECT',
@@ -871,7 +871,7 @@ LegalDoc get privacyDoc => LegalDoc(
       'biometrics. No speaker identification. No facial recognition '
       'or biometric template.'),
     const LegalSection('CHILDREN',
-      'ImHim is not intended for children under 13. We do not '
+      'Mirrorly is not intended for children under 13. We do not '
       'knowingly collect data from children under 13. If you '
       'believe a child has used the app, email info@m2mb.co.uk '
       'and we will delete any on-device and server-side records '
@@ -884,7 +884,7 @@ LegalDoc get privacyDoc => LegalDoc(
       'Opt-out of auto-renewal: $_storeName account settings.'),
     LegalSection('PURCHASES',
       'Billing is handled by $_platformAppleStore '
-      '($_storeName). ImHim never sees your card number. We see '
+      '($_storeName). Mirrorly never sees your card number. We see '
       'only a receipt that confirms whether your subscription is '
       'active.'),
     const LegalSection('SECURITY',

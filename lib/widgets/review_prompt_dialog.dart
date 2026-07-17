@@ -15,7 +15,7 @@ import '../services/analytics_service.dart';
 /// (LooksMax AI) use the compact pre-prompt pattern every high-rated
 /// iOS app uses:
 ///
-///   Stage 1 — "Enjoying ImHim? Tap a star to rate it on the App
+///   Stage 1 — "Enjoying Mirrorly? Tap a star to rate it on the App
 ///             Store." + a row of empty stars + "Not Now."
 ///   Stage 2 — once any star is tapped: filled orange-gold stars +
 ///             "Thanks for your feedback. You can also write a
@@ -128,7 +128,7 @@ class _ReviewPromptDialogState extends State<ReviewPromptDialog> {
                       Text(
                         tapped
                           ? 'Thanks for your feedback.'
-                          : 'Enjoying ImHim?',
+                          : 'Enjoying Mirrorly?',
                         style: GoogleFonts.inter(
                           color: Colors.black,
                           fontSize: 17, fontWeight: FontWeight.w700,

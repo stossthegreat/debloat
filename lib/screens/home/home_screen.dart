@@ -18,7 +18,7 @@ import '../../services/daily_mission_service.dart';
 import '../../services/streak_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
-import '../../widgets/common/imhim_wordmark.dart';
+import '../../widgets/common/mirrorly_wordmark.dart';
 import '../../widgets/common/mirrorly_components.dart';
 import '../../widgets/report/aspect_protocol_cards.dart';
 import '../eyes/eyes_tab_screen.dart';
@@ -78,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _ascensionDay = 1;
   int _consistency  = 0;
   // v289 — raw 0-100 versions surfaced separately because the
-  // Ascend tab's IMHIM-score formula needs the original precision;
+  // Ascend tab's MIRRORLY-score formula needs the original precision;
   // the /10 fields above stay around for the home-tab pillar tiles
   // that have always rendered out of 10.
   int _looksScore100 = 0;
@@ -354,7 +354,7 @@ class _ScanHubTab extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: Sp.xl),
           children: [
             // ── Masthead — replaced the old "Looks" title with the
-            //    ImHim wordmark and the brand subhead "The guy she
+            //    Mirrorly wordmark and the brand subhead "The guy she
             //    can't ignore." Subhead sits tight against the
             //    wordmark so it reads as one editorial header.
             Padding(
@@ -362,7 +362,7 @@ class _ScanHubTab extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const ImHimWordmark(fontSize: 34),
+                  const MirrorlyWordmark(fontSize: 34),
                   const Spacer(),
                   if (dayStreak > 0) ...[
                     _StreakBadge(days: dayStreak),

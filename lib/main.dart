@@ -66,7 +66,7 @@ void main() async {
   await LocalStoreService.migrateGameFreeUsedFlagOnce();
 
   // Share Extension intake — listen for incoming screenshots from
-  // the iOS Share Sheet (ios/ImHimShare/ShareViewController.swift).
+  // the iOS Share Sheet (ios/MirrorlyShare/ShareViewController.swift).
   // Calling wire() before runApp guarantees we don't miss the cold-
   // start MethodChannel event when the user shares directly into us.
   ShareIntakeService.instance.wire();

@@ -14,7 +14,7 @@ import '../../services/purchase_service.dart';
 import '../../services/review_prompt_service.dart';
 import '../../theme/app_colors.dart';
 
-/// ImHim paywall — "paywall-final" carousel.
+/// Mirrorly paywall — "paywall-final" carousel.
 ///
 /// A swipeable five-panel story (Looks → Game → Rizz → Ascension → Him)
 /// rebuilt 1:1 from the HTML mock. The header copy + classified
