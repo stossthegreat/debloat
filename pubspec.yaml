@@ -1,7 +1,7 @@
 name: mirror
 description: "Mirrorly — Look sharp. Speak sharp. Own every room."
 publish_to: 'none'
-version: 1.2.2+367
+version: 1.2.2+368
 
 environment:
   sdk: ^3.8.0
