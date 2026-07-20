@@ -368,24 +368,14 @@ class _AscendScreenState extends State<AscendScreen> {
                     ? 'banked. another day deeper.'
                     : 'today\'s reps. the work that compounds.',
                 done: m.done,
-                onTap: () => w.onJumpToTab(0),
-              ),
-            DailyMissionService.roleplay => AscendMission(
-                title: 'ROLEPLAY · SPAR WITH LUCIEN',
-                hint: m.done
-                    ? 'round in the can. that\'s how reps build.'
-                    : 'one round. the man you\'re becoming talks like him first.',
-                done: m.done,
+                // v366 — protocols live on the TRANSFORM tab now.
                 onTap: () => w.onJumpToTab(1),
               ),
-            DailyMissionService.eyes => AscendMission(
-                title: 'EYE CONTACT · HOLD THE GAZE',
-                hint: m.done
-                    ? 'you held it. that\'s the look she remembers.'
-                    : 'one lesson. don\'t break first. train the eyes.',
-                done: m.done,
-                onTap: () => w.onJumpToTab(2),
-              ),
+            // v366 — ROLEPLAY + EYE CONTACT missions retired with the
+            // Game/Aura tabs (looks pivot). Stale persisted ids fall
+            // through to the `_` default harmlessly.
+            // DailyMissionService.roleplay => AscendMission(...),
+            // DailyMissionService.eyes => AscendMission(...),
             DailyMissionService.scan => AscendMission(
                 title: 'SCAN · MARK THE FACE',
                 hint: m.done
@@ -395,12 +385,13 @@ class _AscendScreenState extends State<AscendScreen> {
                 onTap: () => w.onJumpToTab(0),
               ),
             DailyMissionService.render => AscendMission(
-                title: 'MIRROR · RENDER THE FIX',
+                title: 'GLOW-UP · RENDER THE AFTER',
                 hint: m.done
                     ? 'future you, rendered. study it.'
                     : 'see what could change. run one render.',
                 done: m.done,
-                onTap: () => w.onJumpToTab(0),
+                // v366 — the Mirror glow-up lives on TRANSFORM now.
+                onTap: () => w.onJumpToTab(1),
               ),
             // v350 — RIZZ missions folded away (the Rizz tab became Eye
             // Contact). Left commented for a one-line restore. Any stale
@@ -420,27 +411,14 @@ class _AscendScreenState extends State<AscendScreen> {
 
     // LEGACY fallback — fixed five (first frame before the engine loads).
     return [
+      // v366 — looks-pivot fallback: protocol + scan + glow-up.
       AscendMission(
         title: 'PROTOCOL · LOG DAY $day',
         hint:  w.looksDoneToday
             ? 'banked. another day deeper.'
             : 'today\'s reps. the work that compounds.',
         done:  w.looksDoneToday,
-        onTap: () => w.onJumpToTab(0),
-      ),
-      AscendMission(
-        title: 'ROLEPLAY · SPAR WITH LUCIEN',
-        hint:  w.gameDoneToday
-            ? 'round in the can. that\'s how reps build.'
-            : 'one round. the man you\'re becoming talks like him first.',
-        done:  w.gameDoneToday,
         onTap: () => w.onJumpToTab(1),
-      ),
-      AscendMission(
-        title: 'EYE CONTACT · HOLD THE GAZE',
-        hint:  'one lesson. don\'t break first. train the eyes.',
-        done:  false,
-        onTap: () => w.onJumpToTab(2),
       ),
       AscendMission(
         title: 'SCAN · MARK THE FACE',
@@ -449,6 +427,12 @@ class _AscendScreenState extends State<AscendScreen> {
             : 'no honest mirror, no honest delta. capture it.',
         done:  scanToday,
         onTap: () => w.onJumpToTab(0),
+      ),
+      AscendMission(
+        title: 'GLOW-UP · RENDER THE AFTER',
+        hint:  'see what could change. run one render.',
+        done:  false,
+        onTap: () => w.onJumpToTab(1),
       ),
     ];
   }

@@ -92,19 +92,14 @@ class DailyMissionService {
   static Future<List<String>> _generate(int today) async {
     final ids = <String>[protocol];
 
-    // ── ROLEPLAY — 5 × 2-min sessions/week via the voice-minute budget.
-    bool roleplayOk = true;
-    try {
-      roleplayOk = !await LocalStoreService.voiceCapReached();
-    } catch (_) {}
-    if (roleplayOk) ids.add(roleplay);
-
-    // ── EYE CONTACT — while the 3/week allowance remains.
-    bool eyesOk = true;
-    try {
-      eyesOk = !await LocalStoreService.eyeLessonsCapReached();
-    } catch (_) {}
-    if (eyesOk) ids.add(eyes);
+    // v366 — THE LOOKS PIVOT: roleplay + eye-contact missions retired
+    // with the Game/Aura tabs. The daily plan is now the looks loop:
+    // protocol (anchor) + scan (spaced) + glow-up render.
+    //
+    // // ── ROLEPLAY — retired.
+    // if (!await LocalStoreService.voiceCapReached()) ids.add(roleplay);
+    // // ── EYE CONTACT — retired.
+    // if (!await LocalStoreService.eyeLessonsCapReached()) ids.add(eyes);
 
     // ── SCAN — 2/week, spaced ≥3 days apart.
     try {
