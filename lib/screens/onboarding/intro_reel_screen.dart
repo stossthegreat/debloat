@@ -25,7 +25,7 @@ import '../../theme/app_colors.dart';
 ///   LOOKS get attention.
 ///   GAME decides.
 ///   ─ beat ─
-///   Mirrorly gives you both. 🔥❤️
+///   ImHim Looks gives you both. 🔥❤️
 ///   [BEGIN]
 class IntroReelScreen extends StatefulWidget {
   /// Route to advance to when the user taps BEGIN or SKIP.
@@ -348,7 +348,7 @@ class _BeginButton extends StatelessWidget {
 /// One sentence + its styling. [words] is the flat list of words
 /// that reveal one by one. Per-word colour / weight overrides via
 /// [redIndices] (those render in brand red) and [boldIndices] (those
-/// render extra-heavy non-italic — used for LOOKS / GAME / Mirrorly).
+/// render extra-heavy non-italic — used for LOOKS / GAME / ImHim Looks).
 class _Line {
   final List<String> words;
   /// Optional small-caps eyebrow above the line.
@@ -357,7 +357,7 @@ class _Line {
   final bool italic;
   /// Word indices that render in brand red instead of white.
   final List<int> redIndices;
-  /// Word indices that render bold non-italic (LOOKS / GAME / Mirrorly).
+  /// Word indices that render bold non-italic (LOOKS / GAME / ImHim Looks).
   final List<int> boldIndices;
   /// Trailing icons that pop after the last word — 🔥 ❤️ on the
   /// finale line.
@@ -445,7 +445,7 @@ const _lines = <_Line>[
 
   // 9. The promise + icons + CTA.
   _Line(
-    ['Mirrorly', 'gives', 'you', 'both.'],
+    ['ImHim Looks', 'gives', 'you', 'both.'],
     eyebrow: 'BOTH AT ONCE',
     size: 44,
     boldIndices: [0],

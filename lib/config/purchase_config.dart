@@ -4,7 +4,7 @@
 /// WHAT YOU NEED TO DO BEFORE PAYMENT WORKS
 /// ──────────────────────────────────────────────────────────────────────
 /// 1. Log in to https://app.revenuecat.com
-/// 2. Create a project "Mirrorly" if you haven't already.
+/// 2. Create a project "ImHim Looks" if you haven't already.
 /// 3. Project Settings → API Keys — copy:
 ///      - "Public SDK Key" for the iOS app  (starts with  appl_…)
 ///      - "Public SDK Key" for the Android app (starts with  goog_…)
@@ -31,7 +31,7 @@ class PurchaseConfig {
   /// RevenueCat public SDK key for Android. Starts with `goog_`.
   static const androidApiKey = 'goog_cdoFAjjiwMkzsxNjPBwoKalEwkF';
 
-  /// The entitlement identifier that grants Mirrorly Pro. Configured
+  /// The entitlement identifier that grants ImHim Pro. Configured
   /// in RevenueCat dashboard → Entitlements. Both weekly and annual
   /// subscriptions attach to this entitlement.
   static const proEntitlementId = 'pro';

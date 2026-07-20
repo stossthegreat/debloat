@@ -41,7 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // ONLY the settings that actually do something. Dead tiles
     // ("Rescan history → COMING SOON", "Export report → COMING SOON",
     // "Rizz from anywhere" duplicated by the Rizz tab, the marketing
-    // blurbs "How we handle photos" + "How Mirrorly works") are gone.
+    // blurbs "How we handle photos" + "How ImHim Looks works") are gone.
     // "Rate us" sits at the top and deep-links to the App Store
     // listing via in_app_review's openStoreListing (uses the App
     // Store ID 6762532788 from
@@ -85,12 +85,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // toast the tile fires on tap, so the list reads as
               // tall clean rectangles like the reference image.
 
-              // ── Get Mirrorly Pro — top of the list (red crown) ───────────
+              // ── Get ImHim Pro — top of the list (red crown) ───────────
               if (!kBypassPaywall)
                 _SettingTile(
                   icon: Icons.workspace_premium_rounded,
                   iconColor: AppColors.red,
-                  title: 'Get Mirrorly Pro',
+                  title: 'Get ImHim Pro',
                   onTap: () {
                     HapticFeedback.selectionClick();
                     context.push('/paywall', extra: {'force': true});
@@ -199,7 +199,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: Sp.md),
               Center(
                 child: Text(
-                  '© 2026 Mirrorly',
+                  '© 2026 ImHim Looks',
                   style: AppTypography.bodySmall.copyWith(
                     color: AppColors.textTertiary.withValues(alpha: 0.6),
                     fontSize: 11),
@@ -279,11 +279,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!ctx.mounted) return;
     final body = Platform.isIOS
         ? 'Open Settings → Apple ID (your name) → Subscriptions → '
-          'Mirrorly Pro → Cancel subscription.\n\n'
+          'ImHim Pro → Cancel subscription.\n\n'
           'Cancel at least 24 hours before renewal to avoid the next '
           'charge.'
         : 'Open Google Play → Profile → Payments & subscriptions → '
-          'Subscriptions → Mirrorly Pro → Cancel subscription.\n\n'
+          'Subscriptions → ImHim Pro → Cancel subscription.\n\n'
           'Cancel at least 24 hours before renewal to avoid the next '
           'charge.';
     showModalBottomSheet(
@@ -343,7 +343,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   );
 
   void _showHow(BuildContext ctx) => _showInfoSheet(ctx,
-    'How Mirrorly works',
+    'How ImHim Looks works',
     'The two-score moat, end to end:\n\n'
     '1. MediaPipe maps 468 landmarks on your face at 30fps, on-device. '
     'From those landmarks we compute 16 geometric measurements — canthal '
@@ -596,7 +596,7 @@ class _SectionHeader extends StatelessWidget {
 /// AI settings screen). Light dark-grey rounded rectangles, colored
 /// icon left, single-line title, no chevron, no subtitle by default.
 /// Follows our style: AppColors.surface palette, optional red accent
-/// on the icon, Mirrorly Inter typography.
+/// on the icon, ImHim Looks Inter typography.
 ///
 /// `subtitle` is still accepted so the voice-cap tile and the email
 /// tile can carry an extra line — but the default callsite passes

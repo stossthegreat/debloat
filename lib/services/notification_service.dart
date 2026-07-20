@@ -39,7 +39,7 @@ class NotificationService {
   static bool _permissionRequested = false;
 
   // Stable integer IDs so later schedules overwrite earlier ones cleanly.
-  // 1xxx = Mirrorly protocol; 2xxx = Auralay training (Eyes + Game tabs).
+  // 1xxx = ImHim Looks protocol; 2xxx = Auralay training (Eyes + Game tabs).
   static const _streakNudgeId        = 1001;
   static const _rescanDay14Id        = 1014;
   static const _rescanDay30Id        = 1030;
@@ -175,7 +175,7 @@ class NotificationService {
       case 21: return ('21 days', 'Old habit dead. New man installed. Keep building.');
       case 30: return ('30 days', 'The version of you that quit can\'t reach you here.');
       case 45: return ('45 days', 'Magnetic territory. The room finds you. Stay on it.');
-      case 60: return ('60 days', 'Final form. Today is your MIRRORLY-certified day.');
+      case 60: return ('60 days', 'Final form. Today is your IMHIM-certified day.');
     }
     return null;
   }
@@ -478,7 +478,7 @@ class NotificationService {
   /// On Android the per-icon dot is system-managed and clears
   /// automatically when the user opens / dismisses; no code path
   /// needed there.
-  static const _kBadgeChannel = MethodChannel('com.mirrorly.app/share_intake');
+  static const _kBadgeChannel = MethodChannel('com.imhim.app/share_intake');
 
   static Future<void> clearIconBadge() async {
     if (!_initialized) return;

@@ -88,7 +88,7 @@ class _DebugPanelState extends State<DebugPanel> {
 
   String _buildReport() {
     final sb = StringBuffer();
-    sb.writeln('MIRRORLY IN-SESSION DEBUG REPORT');
+    sb.writeln('IMHIM LOOKS IN-SESSION DEBUG REPORT');
     sb.writeln('Timestamp: ${DateTime.now().toIso8601String()}');
     sb.writeln('===========================================');
     sb.writeln('STATE');

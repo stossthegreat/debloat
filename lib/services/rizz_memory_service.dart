@@ -15,7 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// "she went cold yesterday" or "we matched last week, third date
 /// next Friday" carries forward. Each call is a blank slate.
 ///
-/// Mirrorly closes the gap with a tiny on-device memory layer. After
+/// ImHim Looks closes the gap with a tiny on-device memory layer. After
 /// every successful rizz generate we stash a compact entry (vibe +
 /// context blurb + scenario + timestamp). On the next generate we
 /// build a short "RECENT THREADS" prefix from the last 3 entries

@@ -6,7 +6,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Mirrorly tab kit — the shared vocabulary every primary tab is built from.
+//  ImHim Looks tab kit — the shared vocabulary every primary tab is built from.
 //  Five primitives, used the same way across Scan, Mirror, Eyes, Game so the
 //  product reads as one voice: black + white + red, Playfair italic display,
 //  Inter all-caps labels, photoreal character portraits with red rim light.

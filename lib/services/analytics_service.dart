@@ -339,7 +339,7 @@ class AnalyticsService {
   static Future<void> streakLost(int previousLength) =>
       _log('streak_lost', {'previous_length': previousLength});
 
-  // ── Mirrorly Keyboard ─────────────────────────────────────────────────
+  // ── ImHim Looks Keyboard ─────────────────────────────────────────────────
 
   /// User landed on the install/onboarding screen.
   static Future<void> keyboardInstallViewed() =>

@@ -9,7 +9,7 @@ import 'package:flutter/services.dart';
 /// On the iOS side, `ShareViewController` writes the shared screenshot
 /// to the App Group container and deep-links Runner via `imhim://rizz`.
 /// AppDelegate notices the URL, posts an `onSharedScreenshot` event
-/// over the `com.mirrorly.app/share_intake` MethodChannel, and exposes
+/// over the `com.imhim.app/share_intake` MethodChannel, and exposes
 /// a `pullPendingShare` method that returns the bytes + timestamp.
 ///
 /// This service:
@@ -23,7 +23,7 @@ class ShareIntakeService {
   ShareIntakeService._();
   static final ShareIntakeService instance = ShareIntakeService._();
 
-  static const _channel = MethodChannel('com.mirrorly.app/share_intake');
+  static const _channel = MethodChannel('com.imhim.app/share_intake');
 
   final StreamController<SharedScreenshot> _controller =
       StreamController<SharedScreenshot>.broadcast();

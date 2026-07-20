@@ -73,18 +73,18 @@ const _goals = <_BodyGoal>[
     oneLine: 'Drop the fat. Unbury the frame.',
     icon: Icons.local_fire_department_rounded,
     brief: [
-      'TRANSFORM THE BODY DRAMATICALLY: strip 12-15 kg of body fat off '
-          'this exact man — this is him after 6 months of a strict cut',
-      'ripped lean physique at 10-12% body fat: sharp visible six-pack '
-          'abs, defined obliques, chest definition, vascular forearms',
-      'dramatically slimmer waist, tight defined jawline and neck, '
-          'zero belly fat',
-      'the change must be OBVIOUS and striking at a glance — not a '
-          'subtle touch-up',
+      'REPLACE HIS PHYSIQUE ENTIRELY — do NOT make a subtle edit. '
+          'Show this exact man after ONE FULL YEAR of a disciplined '
+          'cut and daily training',
+      'shredded at 10% body fat: razor-sharp six-pack, deep muscle '
+          'separation across the chest and obliques, vascular arms and '
+          'forearms, a dramatically smaller waist, tight defined '
+          'jawline and neck — every trace of belly fat gone',
+      'the change must look unbelievable next to the before photo',
       'KEEP IDENTICAL: his exact face, identity, beard, hair, tattoos, '
           'skin tone, pose, clothing, background and camera framing',
-      'photorealistic, natural lighting, a believable real photo of '
-          'the same man transformed',
+      'photorealistic, natural lighting — a real one-year '
+          'transformation photo of the same man',
     ],
     plan: [
       ('WALK 10K STEPS', 'Every day. Non-negotiable. Fat leaves on foot.'),
@@ -102,19 +102,19 @@ const _goals = <_BodyGoal>[
     oneLine: 'Add the muscle. Fill the shirt.',
     icon: Icons.fitness_center_rounded,
     brief: [
-      'TRANSFORM THE BODY DRAMATICALLY: this exact man after 3 years '
-          'of serious weightlifting — add 10 kg of visible lean muscle',
-      'significantly broader, rounder shoulders with capped delts; a '
-          'thick full chest; visibly bigger arms and forearms; wide '
-          'lats creating a strong V-taper; developed traps; thicker neck',
-      'clear muscle separation and athletic mass — he should look like '
-          'a man who seriously lifts',
-      'the change must be OBVIOUS and striking at a glance — not a '
-          'subtle touch-up',
+      'REPLACE HIS PHYSIQUE ENTIRELY — do NOT make a subtle edit. '
+          'Show this exact man after ONE FULL YEAR of serious '
+          'weightlifting and proper eating',
+      'give him the body of a men\'s physique athlete: dramatically '
+          'broader, rounder 3D shoulders; a thick armour-plate chest; '
+          'arms nearly twice as thick as now; wide flaring lats forming '
+          'a strong V-taper; developed traps; a thicker neck; visible abs',
+      'he should look 12-15 kg of lean muscle heavier — a '
+          'transformation nobody would believe without the before photo',
       'KEEP IDENTICAL: his exact face, identity, beard, hair, tattoos, '
           'skin tone, pose, clothing, background and camera framing',
-      'photorealistic, natural lighting, a believable real photo of '
-          'the same man transformed',
+      'photorealistic, natural lighting — a real one-year '
+          'transformation photo of the same man',
     ],
     plan: [
       ('LIFT 4× / WEEK', 'Push, pull, legs, repeat. Progressive overload or nothing.'),
@@ -132,18 +132,18 @@ const _goals = <_BodyGoal>[
     oneLine: 'Lean. Sharp. Ready for any room.',
     icon: Icons.bolt_rounded,
     brief: [
-      'TRANSFORM THE BODY DRAMATICALLY: rebuild this exact man as a '
-          'lean athlete at ~12% body fat',
-      'visible abs, defined athletic chest and shoulders, clear muscle '
-          'separation, slimmer waist with a wider shoulder-to-waist ratio',
-      'upright powerful posture — chest up, shoulders back, the stance '
-          'of a trained athlete',
-      'the change must be OBVIOUS and striking at a glance — not a '
-          'subtle touch-up',
+      'REPLACE HIS PHYSIQUE ENTIRELY — do NOT make a subtle edit. '
+          'Show this exact man rebuilt after ONE FULL YEAR of athletic '
+          'training and proper eating',
+      'a lean athlete at ~11% body fat: visible six-pack, sculpted '
+          'shoulders and chest with clear muscle separation, a narrow '
+          'waist under a wide shoulder-to-waist ratio, upright powerful '
+          'posture — chest up, shoulders back',
+      'a transformation people notice from across the room',
       'KEEP IDENTICAL: his exact face, identity, beard, hair, tattoos, '
           'skin tone, pose, clothing, background and camera framing',
-      'photorealistic, natural lighting, a believable real photo of '
-          'the same man transformed',
+      'photorealistic, natural lighting — a real one-year '
+          'transformation photo of the same man',
     ],
     plan: [
       ('LIFT 3× / WEEK', 'Compound lifts. Strength is the base of sharp.'),

@@ -861,7 +861,7 @@ class _InlineBeforeAfter extends StatelessWidget {
                     projectedScore: 0,
                     tagline:        caption ?? 'Same face. Better execution.',
                     microProofs:    _proofsFromTraits(traits),
-                    text: 'Same face. mirrorly.app',
+                    text: 'Same face. imhim.app',
                   ),
                   icon: const Icon(Icons.ios_share_rounded, size: 14),
                   label: Text('SHARE',

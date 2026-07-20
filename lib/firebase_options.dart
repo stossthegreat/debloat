@@ -17,7 +17,7 @@ class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
       throw UnsupportedError(
-        'Web is not configured for Mirrorly Firebase. '
+        'Web is not configured for ImHim Looks Firebase. '
         'Drop in web options if/when a web build ships.',
       );
     }
@@ -28,7 +28,7 @@ class DefaultFirebaseOptions {
         return _android;
       default:
         throw UnsupportedError(
-          'Mirrorly Firebase is only configured for iOS + Android.',
+          'ImHim Looks Firebase is only configured for iOS + Android.',
         );
     }
   }
@@ -39,7 +39,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '18046958403',
     projectId:         'mirrorly-f5a1b',
     storageBucket:     'mirrorly-f5a1b.firebasestorage.app',
-    iosBundleId:       'com.mirrorly.app',
+    iosBundleId:       'com.imhim.app',
   );
 
   static const _android = FirebaseOptions(

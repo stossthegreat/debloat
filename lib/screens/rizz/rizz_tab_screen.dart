@@ -20,7 +20,7 @@ import '../../widgets/common/mirrorly_components.dart';
 /// Free-tier matrix on this tab:
 ///   · UPLOAD A SCREENSHOT  — 1 free pass, then paywall on every tap.
 ///   · GIMME A PICKUP LINE  — locked outright (paywall on every tap).
-///   · CHAT WITH MIRRORLY   — locked outright (paywall on every tap).
+///   · CHAT WITH IMHIM LOOKS   — locked outright (paywall on every tap).
 ///
 /// Subscribers / kBypassPaywall ignore every lock here. The actual
 /// per-card gate is re-checked inside each destination screen too, so
@@ -122,10 +122,10 @@ class _RizzTabScreenState extends State<RizzTabScreen> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 32),
           children: [
-            // v274 — keep Mirrorly wordmark + right-side chip stack.
+            // v274 — keep ImHim Looks wordmark + right-side chip stack.
             // Subheader ("Looks get attention. Game keeps it.")
             // removed per bro: "take the sub header out of rizz
-            // tab not the Mirrorly, just the sub header." The Looks
+            // tab not the ImHim Looks, just the sub header." The Looks
             // tab keeps its subhead because it carries the brand
             // pitch on first impression; the Rizz tab doesn't need
             // it (the three cards already say what the tab is).
@@ -321,7 +321,7 @@ class _RizzSettingsCog extends StatelessWidget {
 }
 
 /// One of the three red cards. Big icon-on-the-left layout — the
-/// composition matches PlugAI / Rizz exactly but in the Mirrorly
+/// composition matches PlugAI / Rizz exactly but in the ImHim Looks
 /// black + red + white voice. Italic Playfair title to keep brand
 /// consistency with the rest of the app's editorial cards.
 ///

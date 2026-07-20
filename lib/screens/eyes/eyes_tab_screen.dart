@@ -155,7 +155,7 @@ class _EyesTabScreenState extends State<EyesTabScreen> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: Sp.xxl),
           children: [
-            // ── Masthead — AURA. Only the Ascend tab uses the "Mirrorly"
+            // ── Masthead — AURA. Only the Ascend tab uses the "ImHim Looks"
             //    wordmark; every other tab carries its own name only.
             MirrorlyMasthead(
               title: 'Aura',

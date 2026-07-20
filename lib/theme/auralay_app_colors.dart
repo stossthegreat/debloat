@@ -16,7 +16,7 @@ abstract final class AppColors {
 
   // ── SEDUCTIVE RED — primary accent (use everywhere a brand mark lands) ───
   // Saturated cinnabar — the share card + hero numbers + CTA all use this.
-  // Same hex Mirrorly's hero numbers / share card use, so the brand colour
+  // Same hex ImHim's hero numbers / share card use, so the brand colour
   // family carries across both apps in the user's portfolio.
   static const accent       = Color(0xFFE8222A); // primary
   static const accentBright = Color(0xFFFF3D45); // hover / lift

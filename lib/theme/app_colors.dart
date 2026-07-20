@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Mirrorly palette — editorial black, surgical indigo, laboratory sky.
+/// ImHim Looks palette — editorial black, surgical indigo, laboratory sky.
 /// Reads like an analysis report from a high-end cosmetic surgery clinic.
 abstract final class AppColors {
   // ── Base layers (near-black to elevated) ─────────────────────────────────

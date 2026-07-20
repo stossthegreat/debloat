@@ -113,7 +113,7 @@ class _TrainScreenState extends State<TrainScreen>
       // bytes it understands. iOS ML Kit expects BGRA8888; Android ML Kit
       // expects NV21. Setting nv21 unconditionally silently fails on iOS
       // (ML Kit returns empty face lists → scan state never advances).
-      // Same bug that bit Mirrorly before we patched it.
+      // Same bug that bit ImHim Looks before we patched it.
       _camera = CameraController(
         front,
         ResolutionPreset.medium,

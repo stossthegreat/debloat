@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 ///   1. Score transition   56  →  78   (red arrow, the single pop)
 ///      CURRENT   PROJECTED            (captions)
 ///   2. Before/After image              (tight crop, eyes upper third)
-///      "Mirrorly" overlays top-left of the NOW half so the brand
+///      "ImHim Looks" overlays top-left of the NOW half so the brand
 ///      sits inside the image itself instead of competing with the
 ///      score numbers. Bottom-corner "NOW"/"FIXED" labels preserved.
 ///   3. Tagline                         (italic serif, same as hero)
@@ -50,7 +50,7 @@ class ShareCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── 1 · SCORE TRANSITION (or just "Mirrorly" if no scores) ──
+              // ── 1 · SCORE TRANSITION (or just "ImHim Looks" if no scores) ──
               // Sized LARGE for 1080×1920 export. These look absurd in
               // code; at export size they read as the dominant element.
               if (hasScores) ...[
@@ -174,7 +174,7 @@ class ShareCard extends StatelessWidget {
               const Spacer(),
 
               // ── 5 · CTA — clear, centred, brand red, button-style block.
-              // Replaces the previous tiny grey "mirrorly.app" footer that
+              // Replaces the previous tiny grey "imhim.app" footer that
               // was lost at the corner. Anyone who sees the card knows
               // exactly where to go and that it's free.
               Center(
@@ -201,7 +201,7 @@ class ShareCard extends StatelessWidget {
                           fontWeight: FontWeight.w900, height: 1,
                         )),
                       const SizedBox(height: 8),
-                      Text('MIRRORLY.APP',
+                      Text('IMHIM.APP',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
                           color: Colors.white.withValues(alpha: 0.92),
@@ -243,7 +243,7 @@ class ShareCard extends StatelessWidget {
           const ColoredBox(color: Color(0xFF0C0C0C)),
 
         // Soft scrim along the top of the NOW half so the big red
-        // "Mirrorly" wordmark reads over any skin tone or highlight.
+        // "ImHim Looks" wordmark reads over any skin tone or highlight.
         if (showBrandWordmark)
           Positioned(
             left: 0, right: 0, top: 0, height: 80,

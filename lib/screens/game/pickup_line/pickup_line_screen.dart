@@ -162,7 +162,7 @@ class _PickupLineScreenState extends State<PickupLineScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Header strip — v300 carries the Mirrorly wordmark
+            // ── Header strip — v300 carries the ImHim Looks wordmark
             // so the screen reads as branded the moment the user
             // screenshots a line for their group chat.
             Padding(
