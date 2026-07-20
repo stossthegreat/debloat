@@ -118,7 +118,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
 
               // ── Usage tile — voice minutes this week ────────────────────
-              const _VoiceCapTile(),
+              // v366 — hidden with the looks pivot (Game tab parked).
+              // Restore alongside the Game tab if roleplay comes back.
+              // const _VoiceCapTile(),
 
               // ── Glow-up style (gender pick) ────────────────────────────
               _SettingTile(

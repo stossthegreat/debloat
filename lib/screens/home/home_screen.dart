@@ -20,15 +20,17 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/mirrorly_wordmark.dart';
 import '../../widgets/common/mirrorly_components.dart';
-import '../../widgets/report/aspect_protocol_cards.dart';
-import '../eyes/eyes_tab_screen.dart';
-import '../eyes/eye_contact_tab_screen.dart';
-import '../game/game_tab_screen.dart';
-// v350 — RIZZ tab commented out (folded away; the slot is now EYE
-// CONTACT). The Rizz screens + routes still exist for a one-line
-// restore, they're just no longer surfaced in the nav.
+// v366 — THE LOOKS PIVOT. Mirrorly is a pure looks app now:
+// LOOKS / TRANSFORM / BODY / ASCEND. Game + Aura are parked exactly
+// like Rizz was — screens/routes stay in the codebase for a one-line
+// restore (or a second app), they're just out of the nav.
+// import '../eyes/eyes_tab_screen.dart';
+// import '../eyes/eye_contact_tab_screen.dart';
+// import '../game/game_tab_screen.dart';
 // import '../rizz/rizz_tab_screen.dart';
+import '../body/body_tab_screen.dart';
 import 'ascend_screen.dart';
+import 'transform_tab_screen.dart';
 
 /// The hub. Four surfaces, one promise per tab:
 ///   0. HOME (Ascend) — streak, daily missions, gap to potential
@@ -225,7 +227,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // screen_view event so we can rebuild the LOOKS / GAME / RIZZ
     // / ASCEND funnel without having to dedupe screen_views by
     // source.
-    const tabNames = ['looks', 'game', 'aura', 'ascend'];
+    const tabNames = ['looks', 'transform', 'body', 'ascend'];
     if (i >= 0 && i < tabNames.length) {
       // ignore: discarded_futures
       AnalyticsService.tabOpened(tabNames[i]);
@@ -267,12 +269,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   isPro:            _isPro,
                   onRefresh:        _reload,
                 ),
-                const GameTabScreen(),
-                // v350 — EYE CONTACT tab replaces RIZZ at index 2. The
-                // camera goes live only while this is the active tab
-                // (IndexedStack keeps every child mounted, so the
-                // `active` flag gates the controller lifecycle).
-                EyeContactTabScreen(active: _tab == 2),
+                // v366 — TRANSFORM (Mirror glow-up + 60-day protocols)
+                // and BODY (mission presets + body glow-up + plan)
+                // replace Game/Aura at indexes 1 and 2.
+                TransformTabScreen(
+                  latest:          _latest,
+                  activeProtocols: _activeProtocols,
+                  dayStreak:       _dayStreak,
+                  onRefresh:       _reload,
+                ),
+                const BodyTabScreen(),
                 // v281 — ASCEND restored as tab index 3. Pulls
                 // the protocol + scan history + per-pillar
                 // completion booleans from this screen's state so
@@ -503,33 +509,9 @@ class _ScanHubTab extends StatelessWidget {
                 ),
               ).animate().fadeIn(delay: 120.ms, duration: 400.ms),
 
-              const SizedBox(height: Sp.md),
-
-              // THE MIRROR — moved up from below the protocol grid to
-              // sit directly under RESCAN, above the protocol streak
-              // cards. It's the most-used post-scan secondary action,
-              // so it earns the slot.
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-                child: _MirrorHeroCard(
-                  onTap: () => context.push('/chat', extra: {
-                    'geometry':  latest!.geometry,
-                    'imagePath': latest!.capturedImagePath,
-                  }),
-                ),
-              ).animate().fadeIn(delay: 180.ms, duration: 400.ms),
-
-              const SizedBox(height: Sp.lg),
-
-              // SKIN / JAW / DEBLOAT / HAIR — protocol streak tiles.
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-                child: AspectProtocolCards(
-                  geometry:         latest!.geometry,
-                  savedImagePath:   latest!.capturedImagePath,
-                  activeProtocols:  activeProtocols,
-                ),
-              ).animate().fadeIn(delay: 240.ms, duration: 400.ms),
+              // v366 — THE MIRROR hero + the protocol streak tiles
+              // moved to the TRANSFORM tab. Looks is now purely the
+              // rating surface: score, rescan, done.
             ],
           ],
         ),
@@ -887,155 +869,6 @@ class _MastheadCog extends StatelessWidget {
               size: 18, color: AppColors.textSecondary),
         ),
       ),
-    );
-  }
-}
-
-// ── Mirror hero card — compact, with the before/after image inline
-// so the card SHOWS the AI advisor's value at a glance. The right
-// half is a tight split image (current ↔ optimised); the left half
-// carries the headline copy. Smaller than the previous full-bleed
-// red card — just enough to read and tap.
-class _MirrorHeroCard extends StatelessWidget {
-  final VoidCallback onTap;
-  const _MirrorHeroCard({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface1,
-      borderRadius: BorderRadius.circular(Rd.lg),
-      child: InkWell(
-        onTap: () { HapticFeedback.selectionClick(); onTap(); },
-        borderRadius: BorderRadius.circular(Rd.lg),
-        splashColor: AppColors.red.withValues(alpha: 0.06),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Rd.lg),
-            border: Border.all(
-              color: AppColors.red.withValues(alpha: 0.42), width: 0.9),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.red.withValues(alpha: 0.18),
-                blurRadius: 22, spreadRadius: 0,
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(Rd.lg),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Left — copy block.
-                  Expanded(
-                    flex: 5,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 18, 8, 18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('THE MIRROR',
-                            style: AppTypography.label.copyWith(
-                              color: AppColors.red,
-                              fontSize: 10.5, letterSpacing: 2.8,
-                              fontWeight: FontWeight.w800,
-                            )),
-                          const SizedBox(height: 8),
-                          Text('See what could\nchange.',
-                            style: GoogleFonts.playfairDisplay(
-                              color: AppColors.textPrimary,
-                              fontSize: 20, height: 1.1,
-                              letterSpacing: -0.4,
-                              fontStyle: FontStyle.italic,
-                              fontWeight: FontWeight.w800,
-                            )),
-                          const SizedBox(height: 6),
-                          Text(
-                            'AI that knows your face.',
-                            style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.textSecondary,
-                              fontSize: 12.5, height: 1.35,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Right — before / after split image.
-                  Expanded(
-                    flex: 4,
-                    child: SizedBox(
-                      height: 130,
-                      child: Row(
-                        children: [
-                          Expanded(child: _half(
-                            asset: 'assets/marketing/before.jpg',
-                            label: 'NOW',
-                          )),
-                          Container(width: 1, color: Colors.white),
-                          Expanded(child: _half(
-                            asset: 'assets/marketing/after.jpg',
-                            label: 'FIXED',
-                          )),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _half({required String asset, required String label}) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image.asset(asset,
-          fit: BoxFit.cover,
-          alignment: const Alignment(0, -0.25),
-          errorBuilder: (_, __, ___) => Container(
-            color: AppColors.surface2,
-            alignment: Alignment.center,
-            child: const Icon(Icons.face_retouching_natural,
-                size: 32, color: AppColors.surface3),
-          ),
-        ),
-        // Bottom scrim for the corner label.
-        Positioned(
-          left: 0, right: 0, bottom: 0, height: 36,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  Colors.black.withValues(alpha: 0.58),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-          child: Align(
-            alignment: Alignment.bottomLeft,
-            child: Text(label,
-              style: GoogleFonts.inter(
-                color: Colors.white.withValues(alpha: 0.92),
-                fontSize: 9, letterSpacing: 2.4,
-                fontWeight: FontWeight.w800,
-              )),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1399,11 +1232,11 @@ class _NavBar extends StatelessWidget {
     // pre-existing index map (Looks=0, Game=1, Rizz=2) stays
     // valid for every legacy caller of initialTab + onJumpToTab.
     final items = const <({String label, IconData icon, bool italic})>[
-      (label: 'Looks',  icon: Icons.face_retouching_natural_outlined, italic: true),
-      (label: 'Game',   icon: Icons.chat_bubble_outline_rounded,       italic: true),
-      // v350 — RIZZ → AURA. Camera-forward eye-contact gaze training.
-      (label: 'Aura',   icon: Icons.remove_red_eye_outlined,           italic: true),
-      (label: 'Ascend', icon: Icons.local_fire_department_rounded,     italic: true),
+      // v366 — the looks pivot: LOOKS / TRANSFORM / BODY / ASCEND.
+      (label: 'Looks',     icon: Icons.face_retouching_natural_outlined, italic: true),
+      (label: 'Transform', icon: Icons.auto_awesome_rounded,             italic: true),
+      (label: 'Body',      icon: Icons.accessibility_new_rounded,        italic: true),
+      (label: 'Ascend',    icon: Icons.local_fire_department_rounded,    italic: true),
     ];
     // v303 — bottom nav rebuilt in the Skeletal-PT pattern bro
     // pointed at: each tab is its own block, the ACTIVE block fills
