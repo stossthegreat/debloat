@@ -13,7 +13,7 @@ import 'gaze_detector.dart';
 /// Combines three threads of work:
 ///
 ///   1. Main-branch rotation-aware preview-space normalization (ported
-///      VERBATIM from Mirrorly's scan_screen._normalize) — all positional
+///      VERBATIM from ImHim's scan_screen._normalize) — all positional
 ///      output is in preview-space 0..1, ready to plot in a CustomPaint
 ///      sitting as a CHILD of CameraPreview. Grouped contours per
 ///      FaceContourType.name so the painter draws each region (face oval,
@@ -159,7 +159,7 @@ class MlkitGazeDetector implements GazeDetector {
     _push(_pitchHist, pitch, _poseWindow);
     _push(_rollHist,  roll,  _poseWindow);
 
-    // ── Rotation-aware preview-space normalizer (from main/Mirrorly) ─────
+    // ── Rotation-aware preview-space normalizer (from main/ImHim Looks) ─────
     //
     // ML Kit returns landmarks in the ROTATED UPRIGHT frame, not the raw
     // sensor frame. For a portrait phone with a landscape sensor at

@@ -20,7 +20,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/mirrorly_wordmark.dart';
 import '../../widgets/common/mirrorly_components.dart';
-// v366 — THE LOOKS PIVOT. Mirrorly is a pure looks app now:
+// v366 — THE LOOKS PIVOT. ImHim Looks is a pure looks app now:
 // LOOKS / TRANSFORM / BODY / ASCEND. Game + Aura are parked exactly
 // like Rizz was — screens/routes stay in the codebase for a one-line
 // restore (or a second app), they're just out of the nav.
@@ -80,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _ascensionDay = 1;
   int _consistency  = 0;
   // v289 — raw 0-100 versions surfaced separately because the
-  // Ascend tab's MIRRORLY-score formula needs the original precision;
+  // Ascend tab's IMHIM LOOKS-score formula needs the original precision;
   // the /10 fields above stay around for the home-tab pillar tiles
   // that have always rendered out of 10.
   int _looksScore100 = 0;
@@ -360,7 +360,7 @@ class _ScanHubTab extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: Sp.xl),
           children: [
             // ── Masthead — replaced the old "Looks" title with the
-            //    Mirrorly wordmark and the brand subhead "The guy she
+            //    ImHim Looks wordmark and the brand subhead "The guy she
             //    can't ignore." Subhead sits tight against the
             //    wordmark so it reads as one editorial header.
             Padding(

@@ -222,7 +222,7 @@ final appRouter = GoRouter(
       },
     ),
 
-    // Auralay's profile route — folded into Mirrorly's HomeScreen
+    // Auralay's profile route — folded into ImHim's HomeScreen
     // Progress tab (tab index 4). Pushing /you lands on that tab.
     GoRoute(
       path: '/you',

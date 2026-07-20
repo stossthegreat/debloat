@@ -55,8 +55,8 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     // Pure black loading screen — logo sitting a touch above centre with
-    // the Mirrorly wordmark beneath it, set exactly like the Looks-tab
-    // header. Bro: "move the logo higher then write Mirrorly in the same
+    // the ImHim Looks wordmark beneath it, set exactly like the Looks-tab
+    // header. Bro: "move the logo higher then write ImHim Looks in the same
     // way it's written on the Looks tab header."
     return Scaffold(
       backgroundColor: Colors.black,

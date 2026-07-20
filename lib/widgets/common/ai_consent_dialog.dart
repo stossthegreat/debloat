@@ -7,7 +7,7 @@ import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
 
 /// Modal disclosure asking the user to permit transmission of their
-/// selfie photo to the third-party AI providers Mirrorly uses to
+/// selfie photo to the third-party AI providers ImHim Looks uses to
 /// generate the analysis and renders.
 ///
 /// Required by App Store guideline 5.1.2(i): the user must be told
@@ -87,7 +87,7 @@ class AiConsentDialog extends StatelessWidget {
                   fontSize: 11, letterSpacing: 2.4,
                   fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
-              Text('Mirrorly uses AI to power your scans, live voice '
+              Text('ImHim Looks uses AI to power your scans, live voice '
                    'roleplay, and Rizz replies. The data each feature '
                    'needs is sent over an encrypted connection to our '
                    'AI providers. Face geometry is computed on your '
@@ -118,7 +118,7 @@ class AiConsentDialog extends StatelessWidget {
               _Bullet(
                 head: 'EQUAL PROTECTION',
                 body: 'Both providers contractually guarantee the '
-                      'same or equal privacy protection Mirrorly '
+                      'same or equal privacy protection ImHim Looks '
                       'gives you here: encrypted in transit, no '
                       'long-term retention, no training, no '
                       'advertising or resale.'),
@@ -130,7 +130,7 @@ class AiConsentDialog extends StatelessWidget {
                       'Policy.'),
 
               const SizedBox(height: 18),
-              Text('Tap ALLOW to use Mirrorly\'s AI features with OpenAI '
+              Text('Tap ALLOW to use ImHim Looks\'s AI features with OpenAI '
                    'and Replicate. Tap CANCEL to keep everything on '
                    'this device — scans, roleplay, and Rizz cannot run '
                    'without permission.',

@@ -173,7 +173,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
 
   String _buildReport() {
     final sb = StringBuffer();
-    sb.writeln('MIRRORLY DIAGNOSTIC REPORT');
+    sb.writeln('IMHIM LOOKS DIAGNOSTIC REPORT');
     sb.writeln('Timestamp:    ${DateTime.now().toIso8601String()}');
     sb.writeln('Backend URL:  ${AuralayDevFlags.apiBaseUrl}');
     sb.writeln('hasBackend:   ${AuralayDevFlags.hasBackend}');

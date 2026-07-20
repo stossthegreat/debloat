@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auralay_app_state.dart';
 import '../services/daily_nudge_service.dart';
 
-/// Auralay-side global state — bridged into Mirrorly's main `ChangeNotifierProvider`.
+/// Auralay-side global state — bridged into ImHim's main `ChangeNotifierProvider`.
 ///
 /// Tracks training progress for the Eyes + Game tabs:
 ///   - **auraScore**   — accumulator across all sessions (0..100, clamped)

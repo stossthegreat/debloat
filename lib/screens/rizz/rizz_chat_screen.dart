@@ -18,7 +18,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/common/ai_consent_dialog.dart';
 import '../../widgets/common/mirrorly_wordmark.dart';
 
-/// CHAT WITH MIRRORLY — clean, sexy, no-bullshit dating + self-improvement
+/// CHAT WITH IMHIM LOOKS — clean, sexy, no-bullshit dating + self-improvement
 /// coach. Editorial bubbles, preset chips, screenshot upload, tap-to-
 /// dismiss keyboard. Backed by /chat with mode=rizz_mentor.
 class RizzChatScreen extends StatefulWidget {
@@ -446,7 +446,7 @@ class _RizzChatScreenState extends State<RizzChatScreen> {
     if (history.isEmpty) {
       history.add({'role': 'user', 'content': text});
     }
-    // Mirrorly backend's dedicated /rizz/chat endpoint. Separate from
+    // ImHim Looks backend's dedicated /rizz/chat endpoint. Separate from
     // /chat (the face doctor) — uses the RIZZ system prompt + gpt-4o
     // with the BANNED PHRASES list baked in server-side, so no client
     // preamble jailbreak required.
@@ -802,7 +802,7 @@ class _Header extends StatelessWidget {
               color: Colors.white, size: 18),
           ),
           const SizedBox(width: 2),
-          // v300 — wordmark replaces the old "MIRRORLY" pill so the
+          // v300 — wordmark replaces the old "IMHIM LOOKS" pill so the
           // brand reads at full weight in any chat screenshot the
           // user posts. Same italic Playfair lockup as every other
           // Rizz surface.

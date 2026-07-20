@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>Mirrorly</string>
+	<string>ImHim Looks</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -81,6 +81,6 @@
 	</dict>
 
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Mirrorly reads the screenshot you just took (or one you pick) so it can write three reply options to drop straight into your chat. The screenshot is sent once and not stored.</string>
+	<string>ImHim Looks reads the screenshot you just took (or one you pick) so it can write three reply options to drop straight into your chat. The screenshot is sent once and not stored.</string>
 </dict>
 </plist>

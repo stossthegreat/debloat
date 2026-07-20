@@ -5,7 +5,7 @@ import 'local_store_service.dart';
 
 /// THE ASCENSION ENGINE — one source of truth for the three numbers the
 /// whole app reconciles around: the daily STREAK (the flame), the
-/// ASCENSION DAY (how far up the Observer → Mirrorly ladder you've climbed),
+/// ASCENSION DAY (how far up the Observer → ImHim Looks ladder you've climbed),
 /// and the CONSISTENCY score (how fully you're doing each day's missions).
 ///
 /// The model (locked with bro):
@@ -20,7 +20,7 @@ import 'local_store_service.dart';
 ///     shown up. It is earned, never free: it only climbs on days you do
 ///     the work, and it NEVER goes backward (a broken streak doesn't cost
 ///     you your day). Day thresholds drive the rank ladder (Observer 1,
-///     Initiate 10, Contender 20, Dangerous 30, Magnetic 45, Mirrorly 60).
+///     Initiate 10, Contender 20, Dangerous 30, Magnetic 45, ImHim Looks 60).
 ///     Clamped to 1..60 for display.
 ///
 ///   • CONSISTENCY — a rolling 7-day mission-completion rate. Each day

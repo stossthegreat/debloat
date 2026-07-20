@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/auralay_app_colors.dart';
 import '../../theme/auralay_app_typography.dart';
 
-/// MIRRORLY share card — elite edition.
+/// IMHIM LOOKS share card — elite edition.
 ///
 /// 9:16 composition rendered off-screen by ShareService at 1080×1920
 /// logical size (pixel ratio 2.0 → 2160×3840 PNG). Every size in this file
@@ -16,7 +16,7 @@ import '../../theme/auralay_app_typography.dart';
 ///   │  EYE STRIP  (top 22%, eye-centered crop of snapshot)     │
 ///   │ ──────────────────────────────────────────────────────── │
 ///   │                                                          │
-///   │                        MIRRORLY ·                         │
+///   │                        IMHIM LOOKS ·                         │
 ///   │                  AURA INDEX · 01                         │
 ///   │                                                          │
 ///   │                         87                               │
@@ -32,7 +32,7 @@ import '../../theme/auralay_app_typography.dart';
 ///   │    WARMTH        ███████░░░░░░░░  63%                   │
 ///   │    RANGE         ████░░░░░░░░░░░  48%                   │
 ///   │                                                          │
-///   │   SESSION · APR 23            MIRRORLY.APP                │
+///   │   SESSION · APR 23            IMHIM.APP                │
 ///   └──────────────────────────────────────────────────────────┘
 class EyeStripShareCard extends StatelessWidget {
   /// PNG/JPG bytes of the snapshot taken at session end.
@@ -128,8 +128,8 @@ class EyeStripShareCard extends StatelessWidget {
                             fontWeight: FontWeight.w900,
                           )),
                         const SizedBox(height: 16),
-                        // ─── WORDMARK ROW — two-tone italic Playfair Mirrorly
-                        // + red dot. Replaces the old all-caps MIRRORLY so
+                        // ─── WORDMARK ROW — two-tone italic Playfair ImHim Looks
+                        // + red dot. Replaces the old all-caps IMHIM LOOKS so
                         // the eye-strip card matches the rest of the share
                         // family.
                         Row(
@@ -231,7 +231,7 @@ class EyeStripShareCard extends StatelessWidget {
                                 fontSize: 14, letterSpacing: 3.4,
                                 fontWeight: FontWeight.w700,
                               )),
-                            Text('MIRRORLY.APP',
+                            Text('IMHIM.APP',
                               style: AppTypography.label.copyWith(
                                 color: AppColors.accent,
                                 fontSize: 15, letterSpacing: 3.8,

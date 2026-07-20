@@ -119,7 +119,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
       padding: const EdgeInsets.fromLTRB(Sp.lg, Sp.lg, Sp.lg, Sp.xxl),
       children: [
         // Masthead — title + heartbeat dot, with a SHARE button +
-        // CLOSE X on the right. SHARE renders the Mirrorly Progress
+        // CLOSE X on the right. SHARE renders the ImHim Progress
         // receipt off-screen (DAY hero, streak, per-surface scores)
         // and opens the system share sheet so the user can post their
         // glow-up arc in one tap. CLOSE bails back to wherever pushed
@@ -164,7 +164,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
         const SizedBox(height: Sp.lg),
 
-        // ── v302 MIRRORLY HERO. Photo pair → MIRRORLY SCORE → Looks +
+        // ── v302 IMHIM LOOKS HERO. Photo pair → IMHIM LOOKS SCORE → Looks +
         // Game beneath → italic hard-hitting line on top. Replaces
         // the dead-feeling chart-first landing with the screenshot
         // a user actually wants to send to their group chat. Hides
@@ -183,7 +183,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         // Aura Score hero + Day/Streak chips + per-tab drill counts +
         // technique curriculum dot row. Shows once the user has ANY
         // Auralay activity, otherwise hidden so the tab still feels like
-        // Mirrorly to scan-first users.
+        // ImHim Looks to scan-first users.
         if (hasTraining) ...[
           _TrainingBlock(
             gazeCompleted:     _gazeCompleted,
@@ -193,7 +193,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         ],
 
         if (hasScans) ...[
-          // Score-over-time chart (Mirrorly's face-score timeline)
+          // Score-over-time chart (ImHim's face-score timeline)
           _ChartCard(scans: sorted)
             .animate().fadeIn(duration: 400.ms),
 
@@ -239,7 +239,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  /// Fire the Mirrorly Progress share card. Aggregates the user's data
+  /// Fire the ImHim Progress share card. Aggregates the user's data
   /// from every tracked surface (scans, game reps, gaze drills, voice
   /// drills) plus the Auralay-imported day/streak/aura state into one
   /// post-able receipt. Deltas come from the same axis-delta pass that
@@ -270,7 +270,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
           : null;
     }
 
-    // v290 — compute the MIRRORLY SCORE composite the share card now
+    // v290 — compute the IMHIM LOOKS SCORE composite the share card now
     // leads with. Same formula AscensionService runs on the in-app
     // hero so the number is consistent between surfaces. Loading
     // the protocol is one async hop; the share spinner is already
@@ -1557,7 +1557,7 @@ class _ProgressCloseButton extends StatelessWidget {
 /// Stack (top → bottom):
 ///   1. Hard-hitting identity line (italic Playfair, rotates daily
 ///      via AscensionService.todayMessageFor so it never stales).
-///   2. MIRRORLY SCORE composite — 84pt italic numeral in red, "/100"
+///   2. IMHIM LOOKS SCORE composite — 84pt italic numeral in red, "/100"
 ///      anchor and weekly delta arrow beneath.
 ///   3. BEFORE / AFTER face pair — first scan capturedImagePath vs
 ///      latest, accent borders, "BEFORE" / "AFTER" labels.
@@ -1683,8 +1683,8 @@ class _ProgressImhimHeroState extends State<_ProgressImhimHero> {
             const SizedBox(height: 18),
           ],
 
-          // ── MIRRORLY SCORE numeral hero.
-          Text('MIRRORLY SCORE',
+          // ── IMHIM LOOKS SCORE numeral hero.
+          Text('IMHIM LOOKS SCORE',
             style: GoogleFonts.inter(
               color: AppColors.red,
               fontSize: 10.5, letterSpacing: 3.2,

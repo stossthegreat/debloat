@@ -84,7 +84,7 @@ class _AiConsentScreenState extends State<AiConsentScreen> {
                           fontSize: 11, letterSpacing: 2.6,
                           fontWeight: FontWeight.w800)),
                     const SizedBox(height: 12),
-                    Text('Mirrorly uses AI to power your scans, live voice '
+                    Text('ImHim Looks uses AI to power your scans, live voice '
                         'roleplay, and Rizz replies.',
                         style: GoogleFonts.inter(
                           color: Colors.white,
@@ -202,7 +202,7 @@ class _AiConsentScreenState extends State<AiConsentScreen> {
                           Expanded(
                             child: Text(
                               'I agree to the Privacy Policy and Terms of '
-                              'Use, and I consent to Mirrorly sharing the data '
+                              'Use, and I consent to ImHim Looks sharing the data '
                               'described above with its AI providers '
                               '(OpenAI and Replicate).',
                               style: GoogleFonts.inter(

@@ -157,7 +157,7 @@ class _MirrorAppState extends State<MirrorApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     // ChangeNotifierProvider wraps the app so the Auralay-imported state
     // (Aura score, current day, gaze streak) is reachable from the
-    // Progress tab + the Eyes/Game session screens. Mirrorly's own state
+    // Progress tab + the Eyes/Game session screens. ImHim's own state
     // continues to live in SharedPreferences-backed static services
     // (LocalStoreService, PurchaseService, etc.) — no migration needed.
     return ChangeNotifierProvider(

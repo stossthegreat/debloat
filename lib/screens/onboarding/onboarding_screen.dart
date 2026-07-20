@@ -83,7 +83,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   Row(
                     children: [
                       // Bumped from 22 → 30 so the onboarding scan +
-                      // score + mirror pages all read as Mirrorly from
+                      // score + mirror pages all read as ImHim Looks from
                       // the first frame of a screen recording — was
                       // previously almost invisible against the
                       // 44pt page headlines.

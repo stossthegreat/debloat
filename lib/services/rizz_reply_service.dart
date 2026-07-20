@@ -174,7 +174,7 @@ extension RizzVibeLabel on RizzVibe {
 /// Rizz God — generates 3 ranked reply options for a message she sent.
 ///
 /// Strategy:
-///   1. Calls /rizz/reply on the Mirrorly backend with {her, vibe, ctx}.
+///   1. Calls /rizz/reply on the ImHim Looks backend with {her, vibe, ctx}.
 ///   2. If the route doesn't exist yet (404) or returns malformed JSON,
 ///      falls back to /chat with a heavy system preamble that instructs
 ///      GPT to output ONLY the JSON shape we need.
@@ -259,7 +259,7 @@ class RizzReplyService {
       RizzDebug.add('vision path active — sending ${imageB64!.length}c b64');
     }
 
-    // 1) Mirrorly backend /rizz/reply — the dedicated dating-text
+    // 1) ImHim Looks backend /rizz/reply — the dedicated dating-text
     // coach endpoint. Separate from /chat (the face doctor). Returns
     // { replies: [{text, tag}, …] } directly so no JSON-from-prose
     // parsing required.
@@ -335,7 +335,7 @@ class RizzReplyService {
 
     // 2) Fall back to VillainApi.council — Auralay's text-in/text-out
     // chat endpoint. CRITICAL: this is the SEPARATE Auralay backend
-    // (auralayai-production-65c2.up.railway.app), not the Mirrorly
+    // (auralayai-production-65c2.up.railway.app), not the ImHim Looks
     // /chat which is hardwired for face advice. council has its own
     // system prompt + LLM and accepts arbitrary text, so the rizz
     // preamble actually runs the model instead of being short-

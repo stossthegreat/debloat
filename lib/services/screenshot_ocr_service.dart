@@ -41,7 +41,7 @@ class ScreenshotOcrService {
   }
 
   /// Single OCR entry point that both the screenshot rizz screen AND
-  /// the chat-with-Mirrorly screen call. Eliminates code drift between
+  /// the chat-with-ImHim Looks screen call. Eliminates code drift between
   /// the two helpers — if OCR works on one it works on the other.
   ///
   /// Writes the bytes to an app-sandbox temp file via path_provider

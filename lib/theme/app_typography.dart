@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
-/// Mirrorly typography — editorial. Serif for display (luxury fragrance ad
+/// ImHim Looks typography — editorial. Serif for display (luxury fragrance ad
 /// energy), sans for body (modern, clinical), mono for measurements
 /// (scanner/diagnostic feel).
 abstract final class AppTypography {
