@@ -157,6 +157,17 @@ class EyeStripShareCard extends StatelessWidget {
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
+                                  TextSpan(
+                                    text: '  Looks',
+                                    style: GoogleFonts.playfairDisplay(
+                                      color: AppColors.textPrimary
+                                          .withValues(alpha: 0.72),
+                                      fontSize: 64 * 0.42, height: 1,
+                                      letterSpacing: 0.2,
+                                      fontStyle: FontStyle.italic,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),

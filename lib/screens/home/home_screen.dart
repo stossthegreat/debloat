@@ -71,7 +71,6 @@ class _HomeScreenState extends State<HomeScreen> {
   //   - GAME   ← Free Flow / Council best score SharedPref (out of 100)
   int _looksScore = 0;
   int _auraScore  = 0;
-  int _gameScore  = 0;
   int _dayStreak  = 0;
   int _longestStreak = 0;
   // Earned ascension day (total days shown up, 1..60) + rolling 7-day
@@ -84,7 +83,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // the /10 fields above stay around for the home-tab pillar tiles
   // that have always rendered out of 10.
   int _looksScore100 = 0;
-  int _gameScore100  = 0;
   // Today's quota-aware mission set from DailyMissionService — rotates
   // daily, only offers what the weekly allowances can actually complete.
   List<DailyMission> _dailyMissions = const [];
@@ -94,7 +92,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // read each and compare against today\'s YMD.
   bool _looksDoneToday = false;
   bool _auraDoneToday  = false;
-  bool _gameDoneToday  = false;
   /// v289 — Rizz pillar completion-today flag. Written by
   /// `rizz_reply_screen` whenever a generation lands successfully.
   /// Drives the Rizz row of the Ascend tab's pillar missions panel.
@@ -162,7 +159,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final today    = _todayYmd();
     final looksOk  = (prefs.getInt('looks_done_ymd') ?? 0) == today;
     final auraOk   = (prefs.getInt('aura_done_ymd')  ?? 0) == today;
-    final gameOk   = (prefs.getInt('game_done_ymd')  ?? 0) == today;
     // v289 — read the Rizz daily flag stamped by rizz_reply_screen.
     final rizzOk   = (prefs.getInt('rizz_done_ymd')  ?? 0) == today;
     // v301 — pickup-line daily flag from pickup_line_screen._copy.
@@ -198,12 +194,9 @@ class _HomeScreenState extends State<HomeScreen> {
       // fallback for users whose first scan landed before the
       // looks_score key existed.
       final looksRaw = prefs.getInt('looks_score') ?? latest?.score ?? 0;
-      final gameRaw  = prefs.getInt('game_score')  ?? 0;
       _looksScore    = (looksRaw / 10).round().clamp(0, 10);
       _auraScore     = ((prefs.getInt('aura_score') ?? 0) / 10).round().clamp(0, 10);
-      _gameScore     = (gameRaw / 10).round().clamp(0, 10);
       _looksScore100 = looksRaw.clamp(0, 100);
-      _gameScore100  = gameRaw.clamp(0, 100);
       // Daily streak from StreakService — the single source every
       // masthead + the Ascend panel now read.
       _dayStreak     = curStreak;
@@ -213,7 +206,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _dailyMissions = dailyMissions;
       _looksDoneToday = looksOk;
       _auraDoneToday  = auraOk;
-      _gameDoneToday  = gameOk;
       _rizzDoneToday  = rizzOk;
       _pickupLineDoneToday = pickupOk;
       _isPro = pro;
@@ -296,11 +288,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   consistency:          _consistency,
                   dailyMissions:        _dailyMissions,
                   looksDoneToday:       _looksDoneToday,
-                  gameDoneToday:        _gameDoneToday,
                   rizzDoneToday:        _rizzDoneToday,
                   pickupLineDoneToday:  _pickupLineDoneToday,
                   looksScore100:        _looksScore100,
-                  gameScore100:         _gameScore100,
                 ),
               ],
             ),

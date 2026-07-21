@@ -34,7 +34,7 @@ import '../../theme/auralay_app_typography.dart';
 ///   │            — LUCIEN            │
 ///   │                                │
 ///   │   LOOKS         58 → 79  ↑21   │ ← supporting stat rows
-///   │   GAME          34 → 88  ↑54   │
+///   │   CONSISTENCY   0 → 92   ↑92   │
 ///   │   CONSISTENCY   60 → 95  ↑35   │
 ///   │                                │
 ///   │   ImHim Looks · BECOME THE GUY …     │
@@ -65,8 +65,6 @@ class CertificateShareCard extends StatelessWidget {
   //    the delta the card renders as a green pill on the right.
   final int looksStart;
   final int looksEnd;
-  final int gameStart;
-  final int gameEnd;
   final int consistencyStart;
   final int consistencyEnd;
 
@@ -79,8 +77,6 @@ class CertificateShareCard extends StatelessWidget {
     required this.imhimEnd,
     required this.looksStart,
     required this.looksEnd,
-    required this.gameStart,
-    required this.gameEnd,
     required this.consistencyStart,
     required this.consistencyEnd,
     this.beforePhotoPath,
@@ -97,7 +93,6 @@ class CertificateShareCard extends StatelessWidget {
 
   int get _imhimDelta       => imhimEnd       - imhimStart;
   int get _looksDelta       => looksEnd       - looksStart;
-  int get _gameDelta        => gameEnd        - gameStart;
   int get _consistencyDelta => consistencyEnd - consistencyStart;
 
   @override
@@ -215,14 +210,8 @@ class CertificateShareCard extends StatelessWidget {
                       fontStyle: FontStyle.italic,
                       fontWeight: FontWeight.w700,
                     )),
-                  const SizedBox(height: 6),
-                  Text('— LUCIEN',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.textTertiary,
-                      fontSize: 18, letterSpacing: 4,
-                      fontWeight: FontWeight.w900,
-                    )),
+                  // v379 — "— LUCIEN" attribution removed with the
+                  // looks pivot; the certificate is pure looks now.
                   const SizedBox(height: 28),
                 ],
 
@@ -535,6 +524,15 @@ class _MirrorlyMark extends StatelessWidget {
           TextSpan(
             text: 'Him',
             style: style.copyWith(color: base.AppColors.red),
+          ),
+          TextSpan(
+            text: '  Looks',
+            style: style.copyWith(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: fontSize * 0.42,
+              letterSpacing: 0.2,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
