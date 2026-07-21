@@ -173,9 +173,13 @@ class StreakService {
     final prefs = await SharedPreferences.getInstance();
     final (set, missionsToday) = await _rebuild(prefs);
     final (current, longest) = await _streakPair(prefs, set);
-    // Ascension day = total distinct days shown up, earned + permanent,
-    // clamped to the 1..60 ladder for display.
-    final ascensionDay = set.length.clamp(1, ascensionTotalDays);
+    // v374 — Ascension day IS the streak. Bro: "streak says day 2,
+    // ascension says day 6 — no, it has to match. They break the
+    // streak, we stop the days in the ascension." One number drives
+    // both surfaces: the flame and DAY N/60 always agree, and a broken
+    // streak knocks the ascension day back with it. (The old model
+    // counted total-days-shown-up, which let the two drift apart.)
+    final ascensionDay = current.clamp(1, ascensionTotalDays);
     final consistency = _consistency7d(prefs);
     return AscensionSnapshot(
       streak: current,
