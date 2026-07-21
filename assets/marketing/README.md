@@ -29,26 +29,20 @@ whenever they're ready.
 
 ## Paywall BODY panel — body before/after
 
-The paywall's BODY slide (panel 2) expects **one** JPEG:
+The paywall's BODY slide (panel 2) uses:
 
 ```
-assets/marketing/body_beforeafter.jpg
+assets/marketing/body_beforeafter.jpg   ← BUNDLED (b377)
 ```
 
-A single side-by-side pair: skinny/untrained on the LEFT, the
-committed one-year physique on the RIGHT — same man, same pose, same
-light (like the Body tab's result card). The slide overlays its own
-NOW / COMMITTED labels and the 62 → 90 scores, so the image itself
-should carry NO text.
+It is the founder-supplied Body-tab verdict composition: before/after
+pair (skinny left, committed one-year physique right, same man) with
+the NOW / COMMITTED labels, the 62 → +28 → 90 score strip and the
+verdict line ALL baked into the image. The slide renders it 1:1 with
+no overlays. Normalised to **914 × 778** — the exact crop of
+beforeafter.jpg, so both slides present at the same size.
 
-### Specs
-- **Aspect ratio:** 914 × 778 (same crop as beforeafter.jpg — the
-  slide crops to it, anything else letterboxes).
-- **Format:** JPEG, sRGB, ~80% quality.
-- **Same man both halves** — Apple flags fake before/after marketing
-  under guideline 4.2 / 5.0.
-
-### Fallback
-If the file is missing the slide shows a dark placeholder with a
-dumbbell icon — the build still ships. Drop the JPEG whenever it's
-ready (marketing dir auto-bundles, no pubspec edit).
+To replace it, drop a new JPEG at the same path with the same 914×778
+crop (resize to width 914, trim overshoot off the top). Same man in
+both halves — Apple flags fake before/after marketing under
+guideline 4.2 / 5.0.

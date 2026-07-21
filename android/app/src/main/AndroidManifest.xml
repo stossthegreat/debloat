@@ -29,7 +29,7 @@
     <uses-feature android:name="android.hardware.camera.any" android:required="true" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <application
-        android:label="ImHim Looks"
+        android:label="ImHim-Looks"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
