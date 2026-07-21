@@ -7,10 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/protocol.dart';
-import '../../models/scan_record.dart' show GameScoreEntry, ScanRecord;
+import '../../models/scan_record.dart' show ScanRecord;
 import '../../services/ascension_service.dart';
 import '../../services/daily_mission_service.dart';
-import '../../services/local_store_service.dart';
 import '../../services/share_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
@@ -93,9 +92,6 @@ class AscendScreen extends StatefulWidget {
   /// Did the user complete their protocol check-in today?
   final bool looksDoneToday;
 
-  /// Did the user complete a Free Flow / roleplay session today?
-  final bool gameDoneToday;
-
   /// v289 — Did the user generate a rizz reply today?
   final bool rizzDoneToday;
 
@@ -103,12 +99,8 @@ class AscendScreen extends StatefulWidget {
   final bool pickupLineDoneToday;
 
   /// v289 — latest Looks pillar score, 0-100 raw scale. Feeds the
-  /// IMHIM LOOKS-score formula.
+  /// IMHIM LOOKS-score formula (Looks + Consistency — nothing else).
   final int looksScore100;
-
-  /// v289 — best Free Flow / Game pillar score, 0-100 raw scale.
-  /// Feeds the IMHIM LOOKS-score formula.
-  final int gameScore100;
 
   const AscendScreen({
     super.key,
@@ -124,11 +116,9 @@ class AscendScreen extends StatefulWidget {
     this.consistency = 0,
     this.dailyMissions = const [],
     this.looksDoneToday = false,
-    this.gameDoneToday = false,
     this.rizzDoneToday = false,
     this.pickupLineDoneToday = false,
     this.looksScore100 = 0,
-    this.gameScore100 = 0,
   });
 
   @override
@@ -155,7 +145,6 @@ class _AscendScreenState extends State<AscendScreen> {
   Future<void> _loadDeltaAndSnapshot() async {
     final score = AscensionService.imhimScoreFromComponents(
       looks:       widget.looksScore100,
-      game:        widget.gameScore100,
       consistency: widget.consistency,
     );
     final delta = await AscensionService.weeklyDeltaFor(score);
@@ -175,7 +164,6 @@ class _AscendScreenState extends State<AscendScreen> {
     final consistency    = widget.consistency;
     final imhimScore     = AscensionService.imhimScoreFromComponents(
       looks:       widget.looksScore100,
-      game:        widget.gameScore100,
       consistency: consistency,
     );
     final missions       = _buildMissions();
@@ -241,17 +229,13 @@ class _AscendScreenState extends State<AscendScreen> {
 
             const SizedBox(height: Sp.lg),
 
-            // ── 2 — IMHIM LOOKS SCORE. The composite number that unifies
-            // the four surfaces. Consultant's biggest call: "Without
-            // this, users are managing 4 systems. With this, users
-            // are levelling one character." Built from Looks + Game
-            // + Consistency; Rizz is too soft to score honestly.
+            // ── 2 — IMHIM LOOKS SCORE. One number, one character to
+            // level. Built from Looks + Consistency — nothing else.
             _MirrorlyScoreHero(
               score:        imhimScore,
               delta:        _weeklyDelta,
               deltaReady:   _deltaLoaded,
               looks:        widget.looksScore100,
-              game:         widget.gameScore100,
               consistency:  consistency,
             ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
 
@@ -453,14 +437,12 @@ class _AscendScreenState extends State<AscendScreen> {
   }
 
   /// v291 — Generate the IMHIM CERTIFIED Day-60 share card.
-  /// Collects:
+  /// Collects (LOOKS ONLY since v380):
   ///   - BEFORE photo: first scan in history (chronological)
   ///   - AFTER photo:  last scan in history (the Day-60-window scan)
-  ///   - IMHIM LOOKS SCORE arc: composite computed at Day-1 conditions
-  ///     (first scan's looks, first game score, consistency = 0)
-  ///     vs the current composite
+  ///   - IMHIM LOOKS SCORE arc: composite at Day-1 conditions
+  ///     (first scan's looks, consistency = 0) vs the current composite
   ///   - LOOKS arc:  first scan score → latest scan score
-  ///   - GAME arc:   first GameScoreEntry → best to-date
   ///   - CONSISTENCY arc: 0 → current consistency
   /// All data comes from existing on-device stores so the card can
   /// generate offline. Falls back to safe defaults if any history
@@ -471,16 +453,6 @@ class _AscendScreenState extends State<AscendScreen> {
       ..sort((a, b) => a.takenAt.compareTo(b.takenAt));
     final firstScan = scans.isNotEmpty ? scans.first : null;
     final lastScan  = scans.isNotEmpty ? scans.last  : null;
-
-    // Game history (chronological). First and best — first reads as
-    // the user's starting point, best is what they shipped.
-    final gameScores = await LocalStoreService.loadGameScores();
-    final gameSorted = [...gameScores]
-      ..sort((a, b) => a.takenAt.compareTo(b.takenAt));
-    final int gameStart = gameSorted.isEmpty ? 0 : gameSorted.first.score;
-    final int gameEnd   = gameSorted.isEmpty
-        ? 0
-        : gameSorted.map((g) => g.score).reduce((a, b) => a > b ? a : b);
 
     // Looks (out of 100) — direct off the scan record.
     final int looksStart = firstScan?.score ?? 0;
@@ -495,12 +467,10 @@ class _AscendScreenState extends State<AscendScreen> {
     // hero so the certificate reads as continuous with the live tab.
     final int imhimStart = AscensionService.imhimScoreFromComponents(
       looks:       looksStart,
-      game:        gameStart,
       consistency: consistencyStart,
     );
     final int imhimEnd = AscensionService.imhimScoreFromComponents(
       looks:       looksEnd,
-      game:        gameEnd,
       consistency: consistencyEnd,
     );
 
@@ -513,8 +483,6 @@ class _AscendScreenState extends State<AscendScreen> {
       imhimEnd:         imhimEnd,
       looksStart:       looksStart,
       looksEnd:         looksEnd,
-      gameStart:        gameStart,
-      gameEnd:          gameEnd,
       consistencyStart: consistencyStart,
       consistencyEnd:   consistencyEnd,
     );
@@ -790,14 +758,12 @@ class _MirrorlyScoreHero extends StatelessWidget {
   final int delta;
   final bool deltaReady;
   final int looks;
-  final int game;
   final int consistency;
   const _MirrorlyScoreHero({
     required this.score,
     required this.delta,
     required this.deltaReady,
     required this.looks,
-    required this.game,
     required this.consistency,
   });
 
@@ -1727,7 +1693,7 @@ class _FinalFormCard extends StatelessWidget {
               unlocked
                 ? 'You finished the protocol. Generate the receipt — '
                   'real before / after photos, the IMHIM LOOKS SCORE arc, '
-                  'and the Looks + Game lift, on one card people will '
+                  'and the full Looks lift, on one card people will '
                   'screenshot.'
                 : 'Reach Day 60 to unlock:',
               style: GoogleFonts.inter(

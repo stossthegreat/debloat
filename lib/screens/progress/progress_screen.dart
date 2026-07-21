@@ -213,7 +213,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
       streak = snap.streak;
       final imhim = AscensionService.imhimScoreFromComponents(
         looks: aestheticNow ?? 0,
-        game:  0, // inert since the looks pivot
         consistency: snap.consistency,
       );
       imhimNow   = imhim;
@@ -993,7 +992,7 @@ class _ProgressImhimHeroState extends State<_ProgressImhimHero> {
     final looks = widget.scans.isEmpty ? 0 : widget.scans.last.score;
     final snap = await StreakService.progress();
     final imhim = AscensionService.imhimScoreFromComponents(
-      looks: looks, game: 0, consistency: snap.consistency);
+      looks: looks, consistency: snap.consistency);
     final delta = await AscensionService.weeklyDeltaFor(imhim);
     if (!mounted) return;
     setState(() {

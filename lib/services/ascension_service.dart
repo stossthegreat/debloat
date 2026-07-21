@@ -264,28 +264,23 @@ class AscensionService {
   //
   // Bro + consultant: ONE number that unifies the four surfaces so
   // the user is levelling one character, not managing four systems.
-  // Built from the three signals we can score honestly today:
+  // Built from the two signals we can score honestly today:
   //
-  //   LOOKS       (35 %)  — latest scan score, 0-100
-  //   GAME        (35 %)  — best Free Flow score, 0-100
-  //   CONSISTENCY (30 %)  — completedDays / max(currentDay, 1) × 100
+  //   LOOKS       (65 %)  — latest scan score, 0-100
+  //   CONSISTENCY (35 %)  — rolling 7-day mission-completion rate
   //
-  // Rizz is intentionally dropped from the score because we have no
-  // honest server-side judge for it (bro: "rizz score is hard we
-  // don't really matter that"). It still surfaces as a soft "wins"
-  // signal in the missions panel.
+  // v380 — the `game` parameter is GONE from the signature (it had
+  // been inert since v371's looks pivot; bro: "make sure it's not
+  // affecting the score"). No call site can feed game into the
+  // number anymore, by construction.
   //
   // The user-facing label is IMHIM LOOKS SCORE everywhere — never
   // "attraction score" (App Store 3.1.5 / 5.2 risk on attractiveness
   // claims).
   static int imhimScoreFromComponents({
     required int looks,
-    required int game,
     required int consistency,
   }) {
-    // v371 — GAME retired (looks pivot). The score is built from
-    // LOOKS + CONSISTENCY only; the `game` param stays for call-site
-    // compatibility but no longer moves the number.
     final l = looks.clamp(0, 100);
     final c = consistency.clamp(0, 100);
     final raw = 0.65 * l + 0.35 * c;
