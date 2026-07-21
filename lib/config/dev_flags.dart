@@ -38,10 +38,15 @@
 ///   · Rizz       — 1 free screenshot reply, then paywall;
 ///                  Lines + Chat are Pro-only outright
 ///   · Lessons    — Pro-only from Day 1
-const kBypassPaywall = false;
+/// v373 — flipped to TRUE per bro: "take the limits off everything
+/// while I test." Unlocks every paywall AND (new) zeroes every weekly
+/// cap counter (scans / renders / voice / screenshots / eye lessons)
+/// via the kBypassPaywall guards in LocalStoreService.
+/// **FLIP BACK TO FALSE BEFORE THE STORE BUILD.**
+const kBypassPaywall = true;
 
 /// Human-readable build tag shown tiny on the paywall so we can instantly
 /// tell which build is actually installed on-device (TestFlight lag has
 /// repeatedly made us debug a stale build). Bump this with every pubspec
 /// build-number bump.
-const kBuildTag = 'b372';
+const kBuildTag = 'b373';
