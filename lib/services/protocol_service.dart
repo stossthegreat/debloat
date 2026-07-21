@@ -19,6 +19,7 @@ const _axisSkin        = 'Skin';
 const _axisHair        = 'Hair';
 const _axisPosture     = 'Posture';
 const _axisDebloat     = 'Puffiness';
+const _axisBody        = 'Body';
 const _axisFoundations = 'Foundations';
 
 /// Creates, loads, and advances the user's active 60-day protocol.
@@ -183,6 +184,14 @@ class ProtocolService {
   }) {
     final p = pulldown.toLowerCase();
 
+    // BODY — the v371 body protocol (committed from the Body tab).
+    // Checked first so 'body' can never keyword-collide with the face
+    // axes below.
+    if (p.contains('body') || p.contains('physique') ||
+        p.contains('shred') || p.contains('athletic build')) {
+      return _axisBody;
+    }
+
     // Order matters. Broad anatomical references ("jaw", "eye") appear
     // in a lot of pulldowns even when they're not the actual topic, so
     // we check MORE SPECIFIC keywords first and fall through to the
@@ -324,6 +333,7 @@ class ProtocolService {
       case _axisHair:        return _hair;
       case _axisPosture:     return _posture;
       case _axisDebloat:     return _debloat;
+      case _axisBody:        return _body;
       default:               return _foundations;
     }
   }
@@ -979,3 +989,66 @@ class _Template {
     this.successMetrics = const [],
   });
 }
+
+
+// ── BODY — the frame under the face (v371). Committed from the Body
+// tab after the glow-up render; logged daily like every face protocol
+// and feeds the same streak / ascension engine.
+const _body = _Template(
+  title: 'The Frame',
+  summary: 'The body under the face. Train, feed, walk, sleep — sixty '
+           'days rebuilds the silhouette every shirt hangs off.',
+  dailyTasks: [
+    // ── MORNING ──
+    DailyTask(
+      title: 'Protein-first breakfast',
+      detail: '30g+ of protein before anything sweet. Sets the whole '
+              'day\'s appetite.',
+      duration: '10 min', category: TaskCategory.nutrition,
+      timeBand: TimeBand.am),
+    DailyTask(
+      title: 'Posture reset',
+      detail: 'Chin back, chest up, shoulders down. 30-second dead hang '
+              'if you have a bar.',
+      duration: '1 min', category: TaskCategory.exercise,
+      timeBand: TimeBand.am),
+    // ── ALL DAY ──
+    DailyTask(
+      title: '10k steps',
+      detail: 'Non-negotiable. Fat leaves on foot.',
+      duration: 'all day', category: TaskCategory.habit,
+      timeBand: TimeBand.ongoing),
+    DailyTask(
+      title: 'Train — 45 min',
+      detail: 'Lift or sprint per your mission. Progressive overload or '
+              'nothing. Rest days: walk further.',
+      duration: '45 min', category: TaskCategory.exercise,
+      timeBand: TimeBand.ongoing),
+    DailyTask(
+      title: 'Water over everything',
+      detail: 'Zero liquid calories. Water, black coffee, tea.',
+      duration: 'all day', category: TaskCategory.nutrition,
+      timeBand: TimeBand.ongoing),
+    // ── EVENING ──
+    DailyTask(
+      title: 'Kitchen closes at 8',
+      detail: 'Discipline loves a deadline. Nothing after the cutoff.',
+      duration: '—', category: TaskCategory.habit,
+      timeBand: TimeBand.pm),
+    DailyTask(
+      title: 'Sleep 7–8',
+      detail: 'The body is built in bed, not the gym.',
+      duration: '8 h', category: TaskCategory.habit,
+      timeBand: TimeBand.night),
+  ],
+  donts: [
+    'No liquid calories — beer, juice, sugary coffee.',
+    'No zero-training weeks. Three sessions minimum, whatever happens.',
+    'No scale obsession — the weekly photo is the judge, not the number.',
+  ],
+  successMetrics: [
+    'Waist visibly tighter in the week-4 photo.',
+    'Shirts fitting the shoulders before the stomach.',
+    'Three training sessions logged every single week.',
+  ],
+);

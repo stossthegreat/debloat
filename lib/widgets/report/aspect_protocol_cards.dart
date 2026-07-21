@@ -130,6 +130,14 @@ class AspectProtocolCards extends StatelessWidget {
       oneLiner:       'Hold the hairline. 6-month plan.',
       color:          AppColors.measure,
     ),
+    // v371 — the BODY protocol, first-class next to the face axes.
+    _Aspect(
+      axisKey:        'body',
+      pulldownString: 'Body',
+      title:          'Body',
+      oneLiner:       'The frame under the face. 60 days.',
+      color:          AppColors.accent,
+    ),
   ];
 }
 

@@ -227,7 +227,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // screen_view event so we can rebuild the LOOKS / GAME / RIZZ
     // / ASCEND funnel without having to dedupe screen_views by
     // source.
-    const tabNames = ['looks', 'transform', 'body', 'ascend'];
+    const tabNames = ['looks', 'body', 'transform', 'ascend'];
     if (i >= 0 && i < tabNames.length) {
       // ignore: discarded_futures
       AnalyticsService.tabOpened(tabNames[i]);
@@ -269,22 +269,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   isPro:            _isPro,
                   onRefresh:        _reload,
                 ),
-                // v366 — TRANSFORM (Mirror glow-up + 60-day protocols)
-                // and BODY (mission presets + body glow-up + plan)
-                // replace Game/Aura at indexes 1 and 2.
+                // v371 — tab order: LOOKS / BODY / TRANSFORM / ASCEND.
+                // The two SCANS sit side by side (face, body); Transform
+                // is the change engine for both.
+                const BodyTabScreen(),
                 TransformTabScreen(
                   latest:          _latest,
                   activeProtocols: _activeProtocols,
                   dayStreak:       _dayStreak,
                   onRefresh:       _reload,
                 ),
-                const BodyTabScreen(),
                 // v281 — ASCEND restored as tab index 3. Pulls
                 // the protocol + scan history + per-pillar
                 // completion booleans from this screen's state so
                 // it never has to spin up its own service layer.
                 AscendScreen(
                   onJumpToTab:          _switchTab,
+                  activeProtocols:      _activeProtocols,
                   onRefresh:            _reload,
                   protocol:             _protocol,
                   latest:               _latest,
@@ -1232,10 +1233,11 @@ class _NavBar extends StatelessWidget {
     // pre-existing index map (Looks=0, Game=1, Rizz=2) stays
     // valid for every legacy caller of initialTab + onJumpToTab.
     final items = const <({String label, IconData icon, bool italic})>[
-      // v366 — the looks pivot: LOOKS / TRANSFORM / BODY / ASCEND.
+      // v371 — LOOKS / BODY / TRANSFORM / ASCEND (scans together,
+      // then the change engine, then the program).
       (label: 'Looks',     icon: Icons.face_retouching_natural_outlined, italic: true),
-      (label: 'Transform', icon: Icons.auto_awesome_rounded,             italic: true),
       (label: 'Body',      icon: Icons.accessibility_new_rounded,        italic: true),
+      (label: 'Transform', icon: Icons.auto_awesome_rounded,             italic: true),
       (label: 'Ascend',    icon: Icons.local_fire_department_rounded,    italic: true),
     ];
     // v303 — bottom nav rebuilt in the Skeletal-PT pattern bro

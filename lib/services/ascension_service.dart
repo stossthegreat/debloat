@@ -283,10 +283,12 @@ class AscensionService {
     required int game,
     required int consistency,
   }) {
+    // v371 — GAME retired (looks pivot). The score is built from
+    // LOOKS + CONSISTENCY only; the `game` param stays for call-site
+    // compatibility but no longer moves the number.
     final l = looks.clamp(0, 100);
-    final g = game.clamp(0, 100);
     final c = consistency.clamp(0, 100);
-    final raw = 0.35 * l + 0.35 * g + 0.30 * c;
+    final raw = 0.65 * l + 0.35 * c;
     return raw.round().clamp(0, 100);
   }
 

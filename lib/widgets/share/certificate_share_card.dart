@@ -234,14 +234,7 @@ class CertificateShareCard extends StatelessWidget {
                   delta: _looksDelta,
                   accent: AppColors.accent,
                 ),
-                const SizedBox(height: 12),
-                _StatArcRow(
-                  label: 'GAME',
-                  start: gameStart,
-                  end:   gameEnd,
-                  delta: _gameDelta,
-                  accent: AppColors.signalAmber,
-                ),
+                // v371 — GAME arc retired (looks pivot).
                 const SizedBox(height: 12),
                 _StatArcRow(
                   label:  'CONSISTENCY',

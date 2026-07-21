@@ -52,6 +52,10 @@ class AscendScreen extends StatefulWidget {
   /// Same gesture the Looks tab uses.
   final Future<void> Function()? onRefresh;
 
+  /// v371 — EVERY committed protocol, keyed by axis. Drives the
+  /// one-row-per-protocol daily mission list.
+  final Map<String, Protocol> activeProtocols;
+
   /// Active 60-day protocol, if any. Drives Day-N, streak,
   /// completedToday, and rank progression.
   final Protocol? protocol;
@@ -112,6 +116,7 @@ class AscendScreen extends StatefulWidget {
     this.onRefresh,
     this.longestStreak = 0,
     this.protocol,
+    this.activeProtocols = const {},
     this.latest,
     this.allScans = const [],
     this.dayStreak = 0,
@@ -353,86 +358,37 @@ class _AscendScreenState extends State<AscendScreen> {
   // rep banked toward becoming Him.
   List<AscendMission> _buildMissions() {
     final w = widget;
-    final day = w.protocol?.currentDay ?? 1;
-    final scanToday = _scanLoggedToday();
 
-    // DYNAMIC SET — quota-aware, rotates daily, remembers what's been
-    // done (DailyMissionService). Each id maps to its copy + tab jump.
-    if (w.dailyMissions.isNotEmpty) {
+    // v371 — THE ASCENSION IS THE PROTOCOLS. One mission row per
+    // committed protocol (Skin, Jaw, Eyes, Hair, Body...), each row
+    // deep-linking straight into that protocol's check-in screen.
+    // Nothing else qualifies as a daily mission — the whole trick of
+    // the 60 days is protocol reps, logged daily.
+    final active = w.activeProtocols;
+    if (active.isNotEmpty) {
       return [
-        for (final m in w.dailyMissions)
-          switch (m.id) {
-            DailyMissionService.protocol => AscendMission(
-                title: 'PROTOCOL · LOG DAY $day',
-                hint: m.done
-                    ? 'banked. another day deeper.'
-                    : 'today\'s reps. the work that compounds.',
-                done: m.done,
-                // v366 — protocols live on the TRANSFORM tab now.
-                onTap: () => w.onJumpToTab(1),
-              ),
-            // v366 — ROLEPLAY + EYE CONTACT missions retired with the
-            // Game/Aura tabs (looks pivot). Stale persisted ids fall
-            // through to the `_` default harmlessly.
-            // DailyMissionService.roleplay => AscendMission(...),
-            // DailyMissionService.eyes => AscendMission(...),
-            DailyMissionService.scan => AscendMission(
-                title: 'SCAN · MARK THE FACE',
-                hint: m.done
-                    ? 'baseline locked in for today.'
-                    : 'no honest mirror, no honest delta. capture it.',
-                done: m.done,
-                onTap: () => w.onJumpToTab(0),
-              ),
-            DailyMissionService.render => AscendMission(
-                title: 'GLOW-UP · RENDER THE AFTER',
-                hint: m.done
-                    ? 'future you, rendered. study it.'
-                    : 'see what could change. run one render.',
-                done: m.done,
-                // v366 — the Mirror glow-up lives on TRANSFORM now.
-                onTap: () => w.onJumpToTab(1),
-              ),
-            // v350 — RIZZ missions folded away (the Rizz tab became Eye
-            // Contact). Left commented for a one-line restore. Any stale
-            // persisted rizz id falls through to the `_` default below.
-            // DailyMissionService.rizzSs => AscendMission(...),
-            // DailyMissionService.pickup => AscendMission(...),
-            // DailyMissionService.rizzChat => AscendMission(...),
-            _ => AscendMission(
-                title: 'MISSION',
-                hint: '',
-                done: m.done,
-                onTap: () => w.onJumpToTab(0),
-              ),
-          },
+        for (final p in active.values)
+          AscendMission(
+            title: '${p.targetAxis.toUpperCase()} · LOG DAY ${p.currentDay}',
+            hint: p.completedToday
+                ? 'banked. another day deeper.'
+                : 'today\'s reps. the work that compounds.',
+            done: p.completedToday,
+            onTap: () => context.push('/protocol', extra: {
+              'pulldown': p.targetAxis,
+            }),
+          ),
       ];
     }
 
-    // LEGACY fallback — fixed five (first frame before the engine loads).
+    // No protocols committed yet — one mission: commit.
     return [
-      // v366 — looks-pivot fallback: protocol + scan + glow-up.
       AscendMission(
-        title: 'PROTOCOL · LOG DAY $day',
-        hint:  w.looksDoneToday
-            ? 'banked. another day deeper.'
-            : 'today\'s reps. the work that compounds.',
-        done:  w.looksDoneToday,
-        onTap: () => w.onJumpToTab(1),
-      ),
-      AscendMission(
-        title: 'SCAN · MARK THE FACE',
-        hint:  scanToday
-            ? 'baseline locked in for today.'
-            : 'no honest mirror, no honest delta. capture it.',
-        done:  scanToday,
-        onTap: () => w.onJumpToTab(0),
-      ),
-      AscendMission(
-        title: 'GLOW-UP · RENDER THE AFTER',
-        hint:  'see what could change. run one render.',
-        done:  false,
-        onTap: () => w.onJumpToTab(1),
+        title: 'COMMIT YOUR FIRST PROTOCOL',
+        hint: 'skin, jaw, eyes, hair, body — pick the axis. '
+            'the 60 days start there.',
+        done: false,
+        onTap: () => w.onJumpToTab(2),
       ),
     ];
   }
@@ -906,9 +862,9 @@ class _MirrorlyScoreHero extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               )),
             const SizedBox(height: 10),
+            // v371 — GAME retired from the score (looks pivot): the
+            // score is built from LOOKS + CONSISTENCY only.
             _MirrorlyComponentRow(label: 'Looks',       value: looks,        accent: AppColors.measure),
-            const SizedBox(height: 6),
-            _MirrorlyComponentRow(label: 'Game',        value: game,         accent: AppColors.accent),
             const SizedBox(height: 6),
             _MirrorlyComponentRow(label: 'Consistency', value: consistency,  accent: AppColors.red),
           ],
@@ -1784,7 +1740,7 @@ class _FinalFormCard extends StatelessWidget {
             for (final line in const [
               'Before / after face pair',
               'IMHIM LOOKS SCORE arc — start to Day 60',
-              'Looks + Game arcs with deltas',
+              'Looks arc — the full delta receipt',
               'Consistency receipt',
               'Shareable certificate card',
             ]) Padding(

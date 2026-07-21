@@ -625,6 +625,25 @@ class _BodyTabScreenState extends State<BodyTabScreen> {
                         .fadeIn(delay: 200.ms, duration: 400.ms),
 
                   const SizedBox(height: Sp.md),
+
+                  // ── 4. COMMIT — lock the body protocol into the
+                  //    60-day ascension, logged daily like the face
+                  //    protocols (same engine, same streak).
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+                    child: PrimaryCta(
+                      label: 'Commit The Body Protocol',
+                      icon: Icons.local_fire_department_rounded,
+                      meta: 'Log it daily · counts toward your ascension',
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
+                        context.push('/protocol',
+                            extra: {'pulldown': 'Body'});
+                      },
+                    ),
+                  ).animate().fadeIn(delay: 260.ms, duration: 400.ms),
+
+                  const SizedBox(height: Sp.md),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
                     child: Row(

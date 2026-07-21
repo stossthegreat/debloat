@@ -156,9 +156,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         ),
         const SizedBox(height: 2),
         Text('${_scans.length} SCAN${_scans.length == 1 ? '' : 'S'}'
-             ' · ${_gameScores.length} GAME REP${_gameScores.length == 1 ? '' : 'S'}'
-             ' · ${_generations.length} GENERATIONS'
-             ' · ${_gazeCompleted + _presenceCompleted} DRILLS',
+             ' · ${_generations.length} GENERATIONS',
           style: AppTypography.label.copyWith(
             color: AppColors.textMuted, fontSize: 8.5, letterSpacing: 2.8)),
 
@@ -217,11 +215,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         // session; with one point it shows the single dot + the
         // session-count caption, with multiple points it draws the
         // arc so the user sees their voice game compounding.
-        if (hasGame) ...[
-          _GameChartCard(scores: _gameScores)
-            .animate().fadeIn(delay: 200.ms, duration: 400.ms),
-          const SizedBox(height: Sp.lg),
-        ],
+        // v371 — GAME chart retired (looks pivot).
 
         if (_generations.isNotEmpty) ...[
           Text('GENERATION VAULT',
