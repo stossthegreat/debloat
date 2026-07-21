@@ -90,40 +90,12 @@ class DailyMissionService {
   ///
   /// v350 — RIZZ removed from the daily plan (the tab was folded away).
   static Future<List<String>> _generate(int today) async {
-    final ids = <String>[protocol];
-
-    // v366 — THE LOOKS PIVOT: roleplay + eye-contact missions retired
-    // with the Game/Aura tabs. The daily plan is now the looks loop:
-    // protocol (anchor) + scan (spaced) + glow-up render.
-    //
-    // // ── ROLEPLAY — retired.
-    // if (!await LocalStoreService.voiceCapReached()) ids.add(roleplay);
-    // // ── EYE CONTACT — retired.
-    // if (!await LocalStoreService.eyeLessonsCapReached()) ids.add(eyes);
-
-    // ── SCAN — 2/week, spaced ≥3 days apart.
-    try {
-      final used = await LocalStoreService.scansThisWeek();
-      if (used < LocalStoreService.kScansPerWeek) {
-        var eligible = used == 0;
-        if (!eligible) {
-          final latest = await LocalStoreService.latestScan();
-          eligible = latest == null ||
-              DateTime.now().difference(latest.takenAt).inDays >= 3;
-        }
-        if (eligible) ids.add(scan);
-      }
-    } catch (_) {}
-
-    // ── MIRROR RENDER — while the 3/week budget remains.
-    try {
-      if (await LocalStoreService.mirrorRendersThisWeek() <
-          LocalStoreService.kRendersPerWeek) {
-        ids.add(render);
-      }
-    } catch (_) {}
-
-    return ids;
+    // v371 — THE ASCENSION IS THE PROTOCOLS. One daily job: log every
+    // protocol you committed. Scan/render prompts live as milestone
+    // cards on the Ascend timeline, not as daily missions — the trick
+    // is 60 straight days of protocol reps (hair, eyes, skin, body):
+    // that is where the two-month difference comes from.
+    return const [protocol];
   }
 
   /// Per-mission "done today" reads. Each maps to the day stamp the

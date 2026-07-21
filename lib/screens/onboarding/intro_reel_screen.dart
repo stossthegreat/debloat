@@ -22,8 +22,8 @@ import '../../theme/app_colors.dart';
 ///   Most men think it\'s luck.
 ///   It\'s not.
 ///   ─ beat ─
-///   LOOKS get attention.
-///   GAME decides.
+///   LOOKS open the door.
+///   Yours aren't maxed. Yet.
 ///   ─ beat ─
 ///   ImHim Looks gives you both. 🔥❤️
 ///   [BEGIN]
@@ -427,32 +427,35 @@ const _lines = <_Line>[
     bigBreath: true,
   ),
 
-  // 7-8. The product — LOOKS + GAME.
+  // 7-9. The truth — she judges the looks first, and yours have
+  // untapped room. Brutal, then the hope hinge.
   _Line(
-    ['LOOKS', 'get', 'attention.'],
+    ['She', 'sees', 'you', 'before', 'she', 'hears', 'you.'],
+    size: 36,
+  ),
+  _Line(
+    ['LOOKS', 'open', 'the', 'door.'],
     size: 50,
     boldIndices: [0],          // LOOKS bold non-italic
     tightSpacing: true,
   ),
   _Line(
-    ['GAME', 'keeps', 'it.'],
-    size: 50,
-    boldIndices: [0],          // GAME bold non-italic
-    redIndices:  [0],          // GAME in brand red
-    tightSpacing: true,
+    ['Yours', 'aren\'t', 'maxed.', 'Yet.'],
+    size: 46,
+    redIndices: [3],           // "Yet." — the hinge from brutal to hope
     bigBreath: true,
   ),
 
-  // 9. The promise + icons + CTA.
+  // 10. The promise + icons + CTA.
   _Line(
-    ['ImHim Looks', 'gives', 'you', 'both.'],
-    eyebrow: 'BOTH AT ONCE',
+    ['ImHim Looks', 'maxes', 'them.'],
+    eyebrow: 'SCAN · TRANSFORM · ASCEND',
     size: 44,
     boldIndices: [0],
     redIndices:  [0],
     icons: [
+      Icons.face_retouching_natural,
       Icons.local_fire_department_rounded,
-      Icons.favorite_rounded,
     ],
   ),
 ];

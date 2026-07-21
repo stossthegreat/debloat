@@ -181,7 +181,7 @@ class ProgressShareCard extends StatelessWidget {
                 const SizedBox(height: 22),
 
                 // ── TAGLINE.
-                Text('LOOKS GET ATTENTION.\nGAME KEEPS IT.',
+                Text('THE GLOW-UP.\nMEASURED DAILY.',
                   textAlign: TextAlign.center,
                   style: AppTypography.label.copyWith(
                     color: AppColors.textPrimary,
@@ -262,9 +262,8 @@ class ProgressShareCard extends StatelessWidget {
                   const SizedBox(height: 22),
                 ],
 
-                // ── LOOKS / GAME pills — the two inputs, in the same
-                // pill language the Progress screen uses (LOOKS blue,
-                // GAME gold). Replaces the old BUILT FROM bar rows.
+                // ── LOOKS pill — the input. v371: GAME retired
+                // (looks pivot); the card is pure looks now.
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -272,12 +271,6 @@ class ProgressShareCard extends StatelessWidget {
                       label: 'LOOKS',
                       value: aestheticNow,
                       accent: AppColors.accent,
-                    ),
-                    const SizedBox(width: 22),
-                    _ScorePill(
-                      label: 'GAME',
-                      value: voiceNow,
-                      accent: AppColors.signalAmber,
                     ),
                   ],
                 ),
@@ -347,7 +340,6 @@ class ProgressShareCard extends StatelessWidget {
   String get _activityLine {
     final parts = <String>[];
     if (scanCount   > 0) parts.add('$scanCount SCAN${scanCount   == 1 ? '' : 'S'}');
-    if (gameReps    > 0) parts.add('$gameReps GAME REP${gameReps == 1 ? '' : 'S'}');
     if (drillsCount > 0) parts.add('$drillsCount DRILL${drillsCount == 1 ? '' : 'S'}');
     return parts.isEmpty ? 'FIRST DAY ON THE PROTOCOL' : parts.join('  ·  ');
   }

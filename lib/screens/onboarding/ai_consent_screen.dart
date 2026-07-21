@@ -1,22 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../services/analytics_service.dart';
 import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_typography.dart';
 import '../../widgets/common/mirrorly_wordmark.dart';
 
-/// Onboarding AI-data consent — the single, up-front permission gate
-/// required by App Store guidelines 5.1.1(i) / 5.1.2(i). It sits between
-/// the gender pick and the first scan, so every new user reads exactly
-/// what data is sent, to whom, and must tick to agree BEFORE any data
-/// reaches a third-party AI service.
+/// Onboarding consent — deliberately MINIMAL (v371).
 ///
-/// Granting persists [LocalStoreService.setAiConsent] once, so no feature
-/// screen ever has to prompt again (the per-feature checks read this flag
-/// and stay silent). Revocable later in Settings.
+/// Bro: "we say too much there... just two clean things on that screen
+/// with links to privacy and terms, one tick box — that's perfect."
+///
+/// So: wordmark, one disclosure line (App Store 5.1.1(i)/5.1.2(i) —
+/// photos are processed by third-party AI), TWO tappable link cards
+/// (Terms of Use, Privacy Policy), ONE checkbox, one CTA. Everything
+/// detailed lives inside the linked documents.
+///
+/// Granting persists [LocalStoreService.setAiConsent] once, so no
+/// feature screen ever has to prompt again. Auto-skips forward if
+/// consent was already granted.
 class AiConsentScreen extends StatefulWidget {
   const AiConsentScreen({super.key});
 
@@ -40,258 +46,186 @@ class _AiConsentScreenState extends State<AiConsentScreen> {
   }
 
   Future<void> _continue() async {
-    if (!_agreed) return;
+    if (!_agreed) {
+      HapticFeedback.heavyImpact();
+      return;
+    }
     HapticFeedback.mediumImpact();
     await LocalStoreService.setAiConsent(true);
+    // ignore: discarded_futures
     AnalyticsService.consentGranted();
-    if (!mounted) return;
-    context.go('/scan');
+    if (mounted) context.go('/scan');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.base,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
-              child: Row(
-                children: [
-                  const MirrorlyWordmark(fontSize: 28, letterSpacing: -0.7),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 4, height: 4,
-                    margin: const EdgeInsets.only(top: 11),
-                    decoration: const BoxDecoration(
-                        color: AppColors.red, shape: BoxShape.circle),
-                  ),
-                ],
-              ),
-            ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(26, 24, 26, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const MirrorlyWordmark(fontSize: 34)
+                  .animate()
+                  .fadeIn(duration: 500.ms),
 
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('AI & YOUR PRIVACY',
-                        style: GoogleFonts.inter(
-                          color: AppColors.red,
-                          fontSize: 11, letterSpacing: 2.6,
-                          fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 12),
-                    Text('ImHim Looks uses AI to power your scans, live voice '
-                        'roleplay, and Rizz replies.',
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 24, height: 1.2,
-                          letterSpacing: -0.4,
-                          fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 8),
-                    Text('The data each feature needs is sent over an '
-                        'encrypted connection to our AI providers. Face '
-                        'geometry is computed on your device first, and '
-                        'dating-app screenshots are read on your device '
-                        '(OCR) first.',
-                        style: GoogleFonts.inter(
-                          color: AppColors.textSecondary,
-                          fontSize: 14, height: 1.5,
-                          fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 22),
+              const Spacer(),
 
-                    const _Row(
-                      head: 'WHAT IS SENT',
-                      body: 'Your selfie photo (scans), your voice during '
-                          'live roleplay and voice drills, and the '
-                          'screenshots or text you submit in Rizz. Nothing '
-                          'else — no name, email, contacts, location, or '
-                          'tracking IDs.'),
-                    const _Row(
-                      head: 'WHO RECEIVES IT',
-                      body: 'OpenAI (analysis, ratings, voice roleplay, '
-                          'Rizz replies) and Replicate (rendered "after" '
-                          'previews). Each processes your data for one '
-                          'request only and excludes it from training '
-                          'under their standard API terms.'),
-                    const _Row(
-                      head: 'EQUAL PROTECTION',
-                      body: 'Both providers contractually guarantee the '
-                          'same or equal privacy protection: encrypted in '
-                          'transit, no long-term retention, no training, '
-                          'no advertising, no resale.'),
-                    const _Row(
-                      head: 'YOU\'RE IN CONTROL',
-                      body: 'You can revoke this permission any time in '
-                          'Settings → Revoke AI permission, and delete all '
-                          'on-device data. Nothing is tied to an account — '
-                          'there is no account.'),
-
-                    const SizedBox(height: 6),
-                    // Functional links to the full documents.
-                    Wrap(
-                      spacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text('Read the full',
-                            style: GoogleFonts.inter(
-                              color: AppColors.textTertiary,
-                              fontSize: 13, fontWeight: FontWeight.w500)),
-                        _LinkText(
-                            label: 'Privacy Policy',
-                            onTap: () => context.push('/privacy')),
-                        Text('and',
-                            style: GoogleFonts.inter(
-                              color: AppColors.textTertiary,
-                              fontSize: 13, fontWeight: FontWeight.w500)),
-                        _LinkText(
-                            label: 'Terms of Use',
-                            onTap: () => context.push('/terms')),
-                        Text('.',
-                            style: GoogleFonts.inter(
-                              color: AppColors.textTertiary,
-                              fontSize: 13, fontWeight: FontWeight.w500)),
-                      ],
-                    ),
-                  ],
+              Text('Before we start.',
+                      style: GoogleFonts.playfairDisplay(
+                        color: AppColors.textPrimary,
+                        fontSize: 34, height: 1.05,
+                        letterSpacing: -0.8,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w800,
+                      ))
+                  .animate()
+                  .fadeIn(delay: 120.ms, duration: 500.ms),
+              const SizedBox(height: 12),
+              Text(
+                'Your photos are analysed by our AI partners (OpenAI · '
+                'Replicate) to build your scores, renders and plans. '
+                'Nothing is sold. Full details in the documents below.',
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 14, height: 1.5,
                 ),
-              ),
-            ),
+              ).animate().fadeIn(delay: 220.ms, duration: 500.ms),
 
-            // Tick-to-agree + continue, pinned to the bottom.
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  InkWell(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _agreed = !_agreed);
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 140),
-                            width: 24, height: 24,
-                            margin: const EdgeInsets.only(top: 1),
-                            decoration: BoxDecoration(
-                              color: _agreed
-                                  ? AppColors.red
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(7),
-                              border: Border.all(
-                                color: _agreed
-                                    ? AppColors.red
-                                    : Colors.white.withValues(alpha: 0.35),
-                                width: 1.4),
-                            ),
-                            child: _agreed
-                                ? const Icon(Icons.check_rounded,
-                                    size: 16, color: Colors.white)
-                                : null,
+              const SizedBox(height: 26),
+
+              _LinkCard(
+                title: 'Terms of Use',
+                onTap: () => context.push('/terms'),
+              ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
+              const SizedBox(height: 10),
+              _LinkCard(
+                title: 'Privacy Policy',
+                onTap: () => context.push('/privacy'),
+              ).animate().fadeIn(delay: 360.ms, duration: 400.ms),
+
+              const SizedBox(height: 24),
+
+              // The ONE checkbox.
+              InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _agreed = !_agreed);
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        width: 24, height: 24,
+                        decoration: BoxDecoration(
+                          color: _agreed ? AppColors.red : Colors.transparent,
+                          borderRadius: BorderRadius.circular(7),
+                          border: Border.all(
+                            color: _agreed
+                                ? AppColors.red
+                                : AppColors.textTertiary,
+                            width: 1.4,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'I agree to the Privacy Policy and Terms of '
-                              'Use, and I consent to ImHim Looks sharing the data '
-                              'described above with its AI providers '
-                              '(OpenAI and Replicate).',
-                              style: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontSize: 12.5, height: 1.4,
-                                fontWeight: FontWeight.w500),
-                            ),
+                        ),
+                        child: _agreed
+                            ? const Icon(Icons.check_rounded,
+                                size: 17, color: Colors.white)
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'I agree to the Terms of Use and Privacy Policy.',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textPrimary,
+                            fontSize: 13.5, height: 1.35,
+                            fontWeight: FontWeight.w600,
                           ),
-                        ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ).animate().fadeIn(delay: 420.ms, duration: 400.ms),
+
+              const SizedBox(height: 18),
+
+              // CTA — dim until the box is ticked.
+              SizedBox(
+                width: double.infinity,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 180),
+                  opacity: _agreed ? 1.0 : 0.45,
+                  child: Material(
+                    color: AppColors.red,
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: _continue,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Text('AGREE & CONTINUE',
+                            textAlign: TextAlign.center,
+                            style: AppTypography.label.copyWith(
+                              color: Colors.white,
+                              fontSize: 13, letterSpacing: 3.0,
+                              fontWeight: FontWeight.w900,
+                            )),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: _agreed ? _continue : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.red,
-                        disabledBackgroundColor:
-                            AppColors.red.withValues(alpha: 0.25),
-                        foregroundColor: Colors.white,
-                        disabledForegroundColor:
-                            Colors.white.withValues(alpha: 0.5),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
-                      ),
-                      child: Text('AGREE & CONTINUE',
-                          style: GoogleFonts.inter(
-                            fontSize: 15, letterSpacing: 2,
-                            fontWeight: FontWeight.w900)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              ).animate().fadeIn(delay: 480.ms, duration: 400.ms),
+
+              const SizedBox(height: 6),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _Row extends StatelessWidget {
-  final String head, body;
-  const _Row({required this.head, required this.body});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(head,
-              style: GoogleFonts.inter(
-                color: AppColors.red,
-                fontSize: 9.5, letterSpacing: 2.0,
-                fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          Text(body,
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontSize: 13, height: 1.45,
-                fontWeight: FontWeight.w500)),
-        ],
-      ),
-    );
-  }
-}
-
-class _LinkText extends StatelessWidget {
-  final String label;
+class _LinkCard extends StatelessWidget {
+  final String title;
   final VoidCallback onTap;
-  const _LinkText({required this.label, required this.onTap});
+  const _LinkCard({required this.title, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Text(label,
-          style: GoogleFonts.inter(
-            color: AppColors.red,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            decoration: TextDecoration.underline,
-            decorationColor: AppColors.red,
-          )),
+    return Material(
+      color: AppColors.surface1,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: () { HapticFeedback.selectionClick(); onTap(); },
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.surface3, width: 1),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(title,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    )),
+              ),
+              const Icon(Icons.arrow_forward_ios_rounded,
+                  size: 14, color: AppColors.red),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
