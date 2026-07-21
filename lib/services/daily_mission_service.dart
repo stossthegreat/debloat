@@ -63,6 +63,13 @@ class DailyMissionService {
     if ((prefs.getInt(_kYmd) ?? 0) == today &&
         (prefs.getStringList(_kIds)?.isNotEmpty ?? false)) {
       ids = prefs.getStringList(_kIds)!;
+      // v374 — SANITIZE stale sets. A set persisted by an older build
+      // can still carry scan/render/roleplay ids for the rest of the
+      // day, which kept nagging "scan the face" daily. Protocols are
+      // the only daily mission — scrub anything else on read.
+      ids = ids.where((i) => i == protocol).toList();
+      if (ids.isEmpty) ids = const [protocol];
+      await prefs.setStringList(_kIds, ids);
     } else {
       ids = await _generate(today);
       await prefs.setInt(_kYmd, today);

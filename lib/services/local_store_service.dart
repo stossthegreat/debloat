@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/dev_flags.dart';
 import '../models/scan_record.dart';
 
 /// v279 — active Pro subscription type. Lives here (not in
@@ -496,6 +497,7 @@ class LocalStoreService {
   /// How many scans the free user has consumed THIS window. Auto-
   /// resets to zero on the user's own 7-day rollover.
   static Future<int> scansThisWeek() async {
+    if (kBypassPaywall) return 0; // v373 — no caps while testing
     final prefs = await SharedPreferences.getInstance();
     final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
     final stored = prefs.getInt(_kScanWeekBucket) ?? 0;
@@ -523,6 +525,7 @@ class LocalStoreService {
   /// How many Mirror-tab image renders (`/maximize` + `/tryon`) the
   /// pro user has consumed THIS window.
   static Future<int> mirrorRendersThisWeek() async {
+    if (kBypassPaywall) return 0; // v373 — no caps while testing
     final prefs = await SharedPreferences.getInstance();
     final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
     final stored = prefs.getInt(_kRenderWeekBucket) ?? 0;
@@ -550,6 +553,7 @@ class LocalStoreService {
   /// v238 — Pro users get 15 screenshot rizz analyses per rolling
   /// 7-day window from the user's own anchor.
   static Future<int> screenshotRizzThisWeek() async {
+    if (kBypassPaywall) return 0; // v373 — no caps while testing
     final prefs = await SharedPreferences.getInstance();
     final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
     final stored = prefs.getInt(_kScreenshotWeekBucket) ?? 0;
@@ -580,6 +584,7 @@ class LocalStoreService {
   /// OpenAI Realtime at ~$0.04-0.05/min meant the Sunday-to-Monday
   /// double-dip cost ~$1.60+ per week per exploiter.
   static Future<int> voiceMsThisWeek() async {
+    if (kBypassPaywall) return 0; // v373 — no caps while testing
     final prefs = await SharedPreferences.getInstance();
     final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
     final stored = prefs.getInt(_kVoiceWeekBucket) ?? 0;
@@ -619,6 +624,7 @@ class LocalStoreService {
   /// v350 — how many eye-contact lessons the Pro user has completed
   /// THIS window. Resets on the user's own rolling window rollover.
   static Future<int> eyeLessonsThisWeek() async {
+    if (kBypassPaywall) return 0; // v373 — no caps while testing
     final prefs = await SharedPreferences.getInstance();
     final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
     final stored = prefs.getInt(_kEyeWeekBucket) ?? 0;

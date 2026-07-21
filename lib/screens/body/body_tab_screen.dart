@@ -76,11 +76,15 @@ const _goals = <_BodyGoal>[
       'REPLACE HIS PHYSIQUE ENTIRELY — do NOT make a subtle edit. '
           'Show this exact man after ONE FULL YEAR of a disciplined '
           'cut and daily training',
-      'shredded at 10% body fat: razor-sharp six-pack, deep muscle '
-          'separation across the chest and obliques, vascular arms and '
-          'forearms, a dramatically smaller waist, tight defined '
-          'jawline and neck — every trace of belly fat gone',
-      'the change must look unbelievable next to the before photo',
+      'apply a FULL documented year of fat loss: 15-20 kg of fat gone, '
+          'now at 10-12% body fat',
+      'razor-sharp six-pack, deep muscle separation across the chest '
+          'and obliques, vascular arms and forearms, a dramatically '
+          'smaller waist, tight defined jawline and neck — every trace '
+          'of belly fat gone',
+      'the difference must be STRIKING at a glance — but anatomically '
+          'realistic for one disciplined year: lean and athletic, not '
+          'emaciated',
       'KEEP IDENTICAL: his exact face, identity, beard, hair, tattoos, '
           'skin tone, pose, clothing, background and camera framing',
       'photorealistic, natural lighting — a real one-year '
@@ -105,12 +109,17 @@ const _goals = <_BodyGoal>[
       'REPLACE HIS PHYSIQUE ENTIRELY — do NOT make a subtle edit. '
           'Show this exact man after ONE FULL YEAR of serious '
           'weightlifting and proper eating',
+      'apply the FULL documented first-year rate of natural muscle '
+          'growth: 10-12 kg of new lean muscle — shoulders roughly 8 cm '
+          'wider, chest 10 cm deeper, arms 4 cm thicker than in the '
+          'photo',
       'give him the body of a men\'s physique athlete: dramatically '
-          'broader, rounder 3D shoulders; a thick armour-plate chest; '
-          'arms nearly twice as thick as now; wide flaring lats forming '
-          'a strong V-taper; developed traps; a thicker neck; visible abs',
-      'he should look 12-15 kg of lean muscle heavier — a '
-          'transformation nobody would believe without the before photo',
+          'broader, rounder 3D shoulders; a thick full chest; wide '
+          'flaring lats forming a strong V-taper; developed traps; a '
+          'thicker neck; visible abs',
+      'the difference must be STRIKING at a glance — but anatomically '
+          'realistic for one year of hard natural training: athletic, '
+          'not a bodybuilder or steroid look',
       'KEEP IDENTICAL: his exact face, identity, beard, hair, tattoos, '
           'skin tone, pose, clothing, background and camera framing',
       'photorealistic, natural lighting — a real one-year '
