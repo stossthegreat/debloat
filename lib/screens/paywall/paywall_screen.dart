@@ -16,13 +16,17 @@ import '../../theme/app_colors.dart';
 
 /// ImHim Looks paywall — "paywall-final" carousel.
 ///
-/// A swipeable five-panel story (Looks → Game → Rizz → Ascension → Him)
-/// rebuilt 1:1 from the HTML mock. The header copy + classified
-/// progress tracker change per panel, the CTA / price / legal row stay
-/// pinned at the bottom.
+/// v376 — THE LOOKS-APP STORY. A swipeable four-panel story
+/// (Looks → Body → Protocols → Him). The Game orb panel and the Rizz
+/// cards panel were removed with the looks pivot (both features are
+/// parked out of the nav); the new BODY panel sells the body
+/// transformation — before/after with the NOW → POTENTIAL score,
+/// 3 AI renders a week. The header copy + classified progress tracker
+/// change per panel, the CTA / price / legal row stay pinned at the
+/// bottom.
 ///
 /// Auto-tour behaviour (matches the mock): on open the carousel
-/// advances one panel every 6 s, plays through all five, returns to
+/// advances one panel every 6 s, plays through all four, returns to
 /// panel 1 (the photo) and then STOPS — from there the user swipes
 /// manually. Any manual touch also stops the tour immediately.
 ///
@@ -55,17 +59,18 @@ class PaywallScreen extends StatefulWidget {
 // only ever surfaces and purchases weekly.
 enum _Tier { weekly, annual, rescue }
 
-// Per-panel header copy — (headline, subhead). 1:1 with the mock.
+// Per-panel header copy — (headline, subhead). Every pair sells an
+// OUTCOME, not a feature.
 const List<(String, String)> _copy = [
   ("Meet the man you're capable of becoming.", 'Same genetics. Better decisions.'),
+  ('Your body. One committed year from now.',
+      'Rendered from your own photo · 3 AI renders a week, face or body.'),
   ('Fix what can actually be fixed.', 'Your highest-impact improvements. Ranked.'),
-  ('Looks get attention. Game keeps it.', 'Train until confidence is automatic.'),
-  ('Never wonder what to say again.', 'Coach. Practice. Improve.'),
   ('60 days. One decision.', 'Become the man you met on day one.'),
 ];
 
 // Classified progress-tracker section labels, one per panel.
-const List<String> _sections = ['LOOKS', 'GAME', 'RIZZ', 'ASCENSION', 'HIM'];
+const List<String> _sections = ['LOOKS', 'BODY', 'PROTOCOLS', 'HIM'];
 
 // Neon green used for the projected score + the final HIM pulse. The
 // mock uses a brighter green than the app's signalGreen, so it's local.
@@ -77,7 +82,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
   bool _purchasing = false;
 
   final PageController _pager = PageController();
-  static const int _panelCount = 5;
+  static const int _panelCount = 4;
   int _page = 0;
   final Set<int> _visited = {0};
 
@@ -85,8 +90,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
   Timer? _tourTimer;
   bool _interacted = false;
 
-  // Drives the ladder climb on panel 5 — bumped each time that panel
-  // becomes visible so the sub-widget restarts its animation.
+  // Drives the ladder climb on the final panel — bumped each time that
+  // panel becomes visible so the sub-widget restarts its animation.
   int _ladderRun = 0;
 
   @override
@@ -166,7 +171,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
   // ── Auto-tour ─────────────────────────────────────────────────────
   //
-  // Advance one panel every 3 s. Play through all five, wrap back to
+  // Advance one panel every 6 s. Play through all four, wrap back to
   // panel 0 (the photo), then stop — from there it's swipe-only. Any
   // manual touch cancels the tour early (see the Listener in build()).
   void _startTour() {
@@ -200,7 +205,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
     setState(() {
       _page = i;
       _visited.add(i);
-      if (i == 4) _ladderRun++;
+      if (i == _panelCount - 1) _ladderRun++;
     });
     // Only buzz on manual swipes — the auto-tour should stay silent.
     if (_interacted) HapticFeedback.selectionClick();
@@ -460,10 +465,11 @@ class _PaywallScreenState extends State<PaywallScreen> {
                   physics: const BouncingScrollPhysics(),
                   children: [
                     const _PhotoPanel(),
+                    const _BodyPanel(),
                     const _ProtoPanel(),
-                    const _OrbPanel(),
-                    const _RizzPanel(),
-                    _LadderPanel(runToken: _page == 4 ? _ladderRun : -1),
+                    _LadderPanel(
+                        runToken:
+                            _page == _panelCount - 1 ? _ladderRun : -1),
                   ],
                 ),
               ),
@@ -764,7 +770,91 @@ class _ScoreLabel extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  PANEL 2 — PROTOCOL LIST
+//  PANEL 2 — BODY BEFORE/AFTER
+// ══════════════════════════════════════════════════════════════════════
+
+/// The body transformation panel — same visual grammar as the face
+/// photo panel: two big scores on the ledge above the image
+/// (NOW → POTENTIAL, mirroring the Body tab's verdict card), the
+/// before/after pair below with NOW / COMMITTED labels riding the top
+/// edge. Asset: assets/marketing/body_beforeafter.jpg (side-by-side
+/// pair, same man — see assets/marketing/README.md); until it lands,
+/// the errorBuilder shows a clean placeholder so the build ships.
+class _BodyPanel extends StatelessWidget {
+  const _BodyPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: const [
+                Expanded(
+                    child: _ScoreNum(n: '62', color: Color(0xFFC4C4CB))),
+                Expanded(
+                    child: _ScoreNum(n: '90', color: _neon, glow: true)),
+              ],
+            ),
+            const SizedBox(height: 3),
+            AspectRatio(
+              aspectRatio: 914 / 778,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.asset(
+                      'assets/marketing/body_beforeafter.jpg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const ColoredBox(
+                        color: _tile,
+                        child: Center(
+                          child: Icon(Icons.fitness_center_rounded,
+                              size: 56, color: Color(0xFF3A3A40)),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.only(top: 8, bottom: 16),
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Color(0xB3000000), Color(0x00000000)],
+                          ),
+                        ),
+                        child: Row(
+                          children: const [
+                            Expanded(
+                                child:
+                                    _ScoreLabel('NOW', Color(0xFFC4C4CB))),
+                            Expanded(
+                                child: _ScoreLabel('COMMITTED', _neon)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  PANEL 3 — PROTOCOL LIST
 // ══════════════════════════════════════════════════════════════════════
 
 class _ProtoPanel extends StatelessWidget {
@@ -776,6 +866,7 @@ class _ProtoPanel extends StatelessWidget {
     ('👁', 'Eye Area', 'Look more awake, healthier and more attractive.'),
     ('✨', 'Skin', 'Clearer skin. Better texture. Better first impressions.'),
     ('💇', 'Hair', 'The right cut, style and long-term hair plan.'),
+    ('💪', 'Body', 'Shred, build or recomp — the frame under the face.'),
   ];
 
   @override
@@ -784,7 +875,9 @@ class _ProtoPanel extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       child: Center(
         child: AspectRatio(
-          aspectRatio: 680 / 538,
+          // Taller than the original 680/538 — the list grew to six
+          // rows when Body joined the protocols.
+          aspectRatio: 680 / 650,
           child: Column(
             children: [
               for (var i = 0; i < _rows.length; i++) ...[
@@ -843,216 +936,7 @@ class _ProtoRow extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  PANEL 3 — ORB / HOLD TO SPEAK
-// ══════════════════════════════════════════════════════════════════════
-
-class _OrbPanel extends StatefulWidget {
-  const _OrbPanel();
-
-  @override
-  State<_OrbPanel> createState() => _OrbPanelState();
-}
-
-class _OrbPanelState extends State<_OrbPanel> {
-  static const _lines = <(String, bool)>[
-    ('Girl interrupts.', false),
-    ('Girl rejects.', false),
-    ('Girl flirts.', false),
-    ('Girl goes cold.', false),
-    ('You adapt.', true),
-    ('You improve.', true),
-  ];
-
-  Timer? _timer;
-  int _i = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 1600), (_) {
-      if (!mounted) return;
-      setState(() => _i = (_i + 1) % _lines.length);
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final (text, you) = _lines[_i];
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 118,
-            height: 118,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const RadialGradient(
-                center: Alignment(-0.24, -0.36),
-                radius: 0.9,
-                colors: [Color(0xFFFF5A5F), AppColors.red, Color(0xFF8F1015)],
-                stops: [0.0, 0.55, 1.0],
-              ),
-              boxShadow: [
-                BoxShadow(
-                    color: AppColors.red.withValues(alpha: 0.5),
-                    blurRadius: 60),
-              ],
-            ),
-          )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .scale(
-                begin: const Offset(1, 1),
-                end: const Offset(1.05, 1.05),
-                duration: 1100.ms,
-                curve: Curves.easeInOut,
-              ),
-          const SizedBox(height: 18),
-          Text(
-            '🎙  HOLD TO SPEAK',
-            style: GoogleFonts.inter(
-              color: const Color(0xFFD9D9DE),
-              fontSize: 12,
-              letterSpacing: 5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 14),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            transitionBuilder: (child, anim) => FadeTransition(
-              opacity: anim,
-              child: SlideTransition(
-                position: Tween(
-                        begin: const Offset(0, 0.3), end: Offset.zero)
-                    .animate(anim),
-                child: child,
-              ),
-            ),
-            child: Text(
-              text,
-              key: ValueKey(_i),
-              style: GoogleFonts.inter(
-                color: you ? AppColors.red : Colors.white,
-                fontSize: 23,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════
-//  PANEL 4 — RIZZ ACTIONS
-// ══════════════════════════════════════════════════════════════════════
-
-class _RizzPanel extends StatelessWidget {
-  const _RizzPanel();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const _RizzBtn(
-              title: 'Upload a screenshot',
-              sub: 'Get rizz on how to respond',
-            ),
-            const SizedBox(height: 12),
-            const _RizzBtn(
-              title: 'Pickup line',
-              sub: 'One at a time. Regenerate. Done.',
-            ),
-            const SizedBox(height: 12),
-            const _RizzBtn(
-              title: 'Rizz Chat',
-              sub: 'Ask anything. We coach.',
-              ghost: true,
-              badge: 'NEW',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RizzBtn extends StatelessWidget {
-  final String title, sub;
-  final bool ghost;
-  final String? badge;
-  const _RizzBtn(
-      {required this.title, required this.sub, this.ghost = false, this.badge});
-
-  @override
-  Widget build(BuildContext context) {
-    final card = Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: ghost ? _tile : AppColors.red,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(title,
-              style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800)),
-          const SizedBox(height: 2),
-          Text(sub,
-              style: GoogleFonts.inter(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500)),
-        ],
-      ),
-    );
-
-    if (badge == null) return card;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        card,
-        Positioned(
-          top: -8,
-          left: 4,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(badge!,
-                style: GoogleFonts.inter(
-                    color: AppColors.red,
-                    fontSize: 8,
-                    letterSpacing: 2,
-                    fontWeight: FontWeight.w800)),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════
-//  PANEL 5 — ASCENSION LADDER
+//  PANEL 4 — ASCENSION LADDER
 // ══════════════════════════════════════════════════════════════════════
 
 class _LadderPanel extends StatefulWidget {
