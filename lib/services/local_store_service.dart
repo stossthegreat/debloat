@@ -312,6 +312,22 @@ class LocalStoreService {
     await prefs.setBool(_kSubscribed, v);
   }
 
+  /// v375 one-shot — clear the subscribed cache that the v373/v374
+  /// kBypassPaywall builds force-wrote as TRUE at every launch. With
+  /// the bypass off, that stale cache would keep every test install
+  /// unlocked forever (PaywallGate.isPro trusts the cache first and
+  /// never re-asks RevenueCat while it reads true). Clearing it once
+  /// is safe for real subscribers: the next gate check falls through
+  /// to PurchaseService.isProLive(), which repaints the cache from
+  /// the live entitlement. No-op on every boot after the first.
+  static const _kBypassSubResetV375 = 'caps.bypass_sub_reset_v375.v1';
+  static Future<void> resetBypassSubscribedOnce() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_kBypassSubResetV375) ?? false) return;
+    await prefs.setBool(_kSubscribed, false);
+    await prefs.setBool(_kBypassSubResetV375, true);
+  }
+
   // ── Free-tier allowance: Eyes + Game (Auralay tabs) ─────────────────────
   /// True once the free eye-contact lesson has been opened. Set the
   /// moment the session screen is pushed so a free user gets exactly

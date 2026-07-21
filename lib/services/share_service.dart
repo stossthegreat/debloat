@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'face_asset_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/share_card.dart';
+import '../widgets/share/body_share_card.dart';
 import '../widgets/share/certificate_share_card.dart';
 import '../widgets/share/eye_strip_share_card.dart';
 import '../widgets/share/progress_share_card.dart';
@@ -127,6 +128,86 @@ class ShareService {
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  /// Render + share the BODY transformation card — the face-scan share
+  /// pipeline applied to the Body tab. 9:16 (1080×1920) off-screen
+  /// composition, never shown in UI: wordmark + mission chip, quick
+  /// NOW → POTENTIAL score row above the images, before/after pair as
+  /// the hero, one hard line underneath, brand footer.
+  ///
+  /// BOTH panes take bytes — the caller pre-downloads the after render
+  /// (the offscreen pipeline paints a single synchronous frame, so an
+  /// async network image would export as an empty pane).
+  static Future<void> shareBodyTransformation({
+    required BuildContext context,
+    required Uint8List beforeBytes,
+    required Uint8List afterBytes,
+    required int scoreNow,
+    required int scorePotential,
+    required String missionName,
+    required String tagline,
+    String? text,
+  }) async {
+    HapticFeedback.lightImpact();
+
+    if (context.mounted) {
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.black54,
+        builder: (_) => const _RenderingOverlay(),
+      );
+    }
+
+    final mq = MediaQuery.of(context);
+    final origin = Rect.fromLTWH(
+      mq.size.width / 2 - 1, mq.padding.top + 8, 2, 2);
+
+    String errorMsg = 'Share failed';
+    try {
+      if (!context.mounted) return;
+      final card = BodyShareCard(
+        beforeBytes:    beforeBytes,
+        afterBytes:     afterBytes,
+        scoreNow:       scoreNow,
+        scorePotential: scorePotential,
+        missionName:    missionName,
+        tagline:        tagline,
+      );
+      final bytes = await _captureOffscreen(
+        context:     context,
+        widget:      card,
+        logicalSize: const Size(1080, 1920),
+        pixelRatio:  2.0,
+      );
+      if (bytes == null) {
+        errorMsg = "Couldn't render the card — try again";
+      } else {
+        if (context.mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+        HapticFeedback.mediumImpact();
+        await _shareBytes(
+          bytes,
+          'imhim-body-${DateTime.now().millisecondsSinceEpoch}.png',
+          text ?? '$scoreNow → $scorePotential. $tagline · ImHim Looks',
+          origin: origin,
+        );
+        return;
+      }
+    } catch (e) {
+      errorMsg = 'Share failed: ${e.toString().split('\n').first}';
+    }
+
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(errorMsg),
+        backgroundColor: AppColors.surface2,
+        behavior: SnackBarBehavior.floating,
+      ));
     }
   }
 

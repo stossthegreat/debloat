@@ -1,7 +1,7 @@
 name: mirror
 description: "ImHim Looks — Look sharp. Speak sharp. Own every room."
 publish_to: 'none'
-version: 1.2.2+374
+version: 1.2.2+375
 
 environment:
   sdk: ^3.8.0

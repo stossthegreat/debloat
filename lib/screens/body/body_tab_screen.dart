@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/local_store_service.dart';
 import '../../services/mirror_api_service.dart';
 import '../../services/paywall_gate.dart';
+import '../../services/share_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/ai_consent_dialog.dart';
@@ -509,6 +511,55 @@ class _BodyTabScreenState extends State<BodyTabScreen> {
     ));
   }
 
+  // ─── Share — the face-scan share pipeline, body edition ───────────
+
+  /// The hard line under the images — one per mission.
+  static const _shareTaglines = <String, String>{
+    'shred':    'Same man. Minus the excuses.',
+    'build':    'Same face. One year of iron.',
+    'athletic': 'Built like he means it.',
+  };
+
+  Future<void> _share() async {
+    final goal = _selected;
+    if (!_hasResult || goal == null ||
+        _heightCm == null || _weightKg == null) {
+      return;
+    }
+    HapticFeedback.mediumImpact();
+
+    // Gather BOTH panes as bytes before composing — the offscreen
+    // pipeline paints one synchronous frame, so the after render is
+    // downloaded up front instead of being handed over as a URL.
+    final Uint8List beforeBytes;
+    final Uint8List afterBytes;
+    try {
+      beforeBytes = await File(_beforePath!).readAsBytes();
+      final res = await http
+          .get(Uri.parse(_afterUrl!))
+          .timeout(const Duration(seconds: 20));
+      if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}');
+      afterBytes = res.bodyBytes;
+    } catch (_) {
+      _notice('Couldn\'t load the render — check your connection '
+          'and try again.');
+      return;
+    }
+    if (!mounted) return;
+
+    final verdict = _computeVerdict(goal, _heightCm!, _weightKg!);
+    final tagline = _shareTaglines[goal.id] ?? 'Same man. New frame.';
+    await ShareService.shareBodyTransformation(
+      context:        context,
+      beforeBytes:    beforeBytes,
+      afterBytes:     afterBytes,
+      scoreNow:       verdict.scoreNow,
+      scorePotential: verdict.scorePotential,
+      missionName:    goal.name,
+      tagline:        tagline,
+    );
+  }
+
   void _notice(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -651,6 +702,20 @@ class _BodyTabScreenState extends State<BodyTabScreen> {
                       },
                     ),
                   ).animate().fadeIn(delay: 260.ms, duration: 400.ms),
+
+                  const SizedBox(height: Sp.md),
+
+                  // ── 5. SHARE — the before/after as a 9:16 card, same
+                  //    pipeline as the face-scan share.
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+                    child: PrimaryCta(
+                      label: 'Share The Transformation',
+                      icon: Icons.ios_share_rounded,
+                      meta: 'Before / after · score · one card',
+                      onTap: _share,
+                    ),
+                  ).animate().fadeIn(delay: 320.ms, duration: 400.ms),
 
                   const SizedBox(height: Sp.md),
                   Padding(
