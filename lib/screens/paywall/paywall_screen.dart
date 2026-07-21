@@ -773,13 +773,14 @@ class _ScoreLabel extends StatelessWidget {
 //  PANEL 2 — BODY BEFORE/AFTER
 // ══════════════════════════════════════════════════════════════════════
 
-/// The body transformation panel — same visual grammar as the face
-/// photo panel: two big scores on the ledge above the image
-/// (NOW → POTENTIAL, mirroring the Body tab's verdict card), the
-/// before/after pair below with NOW / COMMITTED labels riding the top
-/// edge. Asset: assets/marketing/body_beforeafter.jpg (side-by-side
-/// pair, same man — see assets/marketing/README.md); until it lands,
-/// the errorBuilder shows a clean placeholder so the build ships.
+/// The body transformation panel. The bundled graphic
+/// (assets/marketing/body_beforeafter.jpg, 914×778 — the SAME crop as
+/// the face slide's beforeafter.jpg) is the full Body-tab verdict
+/// composition supplied by the founder: before/after pair with baked
+/// NOW / COMMITTED labels, the 62 → +28 → 90 score strip and the
+/// verdict line. Everything is IN the image, so this panel draws no
+/// overlays of its own — just the image at the exact size/rounding of
+/// the face slide before it.
 class _BodyPanel extends StatelessWidget {
   const _BodyPanel();
 
@@ -788,65 +789,22 @@ class _BodyPanel extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: const [
-                Expanded(
-                    child: _ScoreNum(n: '62', color: Color(0xFFC4C4CB))),
-                Expanded(
-                    child: _ScoreNum(n: '90', color: _neon, glow: true)),
-              ],
-            ),
-            const SizedBox(height: 3),
-            AspectRatio(
-              aspectRatio: 914 / 778,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.asset(
-                      'assets/marketing/body_beforeafter.jpg',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const ColoredBox(
-                        color: _tile,
-                        child: Center(
-                          child: Icon(Icons.fitness_center_rounded,
-                              size: 56, color: Color(0xFF3A3A40)),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.only(top: 8, bottom: 16),
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0xB3000000), Color(0x00000000)],
-                          ),
-                        ),
-                        child: Row(
-                          children: const [
-                            Expanded(
-                                child:
-                                    _ScoreLabel('NOW', Color(0xFFC4C4CB))),
-                            Expanded(
-                                child: _ScoreLabel('COMMITTED', _neon)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+        child: AspectRatio(
+          aspectRatio: 914 / 778,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.asset(
+              'assets/marketing/body_beforeafter.jpg',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const ColoredBox(
+                color: _tile,
+                child: Center(
+                  child: Icon(Icons.fitness_center_rounded,
+                      size: 56, color: Color(0xFF3A3A40)),
                 ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
