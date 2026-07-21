@@ -42,11 +42,15 @@
 /// while I test." Unlocks every paywall AND (new) zeroes every weekly
 /// cap counter (scans / renders / voice / screenshots / eye lessons)
 /// via the kBypassPaywall guards in LocalStoreService.
-/// **FLIP BACK TO FALSE BEFORE THE STORE BUILD.**
-const kBypassPaywall = true;
+///
+/// v375 — flipped back to FALSE per bro: "put the lock on the ai as
+/// in the limits back up, I'm gonna put in distribution." Every
+/// paywall is live again and all five weekly cap counters count for
+/// real (the LocalStoreService guards deactivate with this flag).
+const kBypassPaywall = false;
 
 /// Human-readable build tag shown tiny on the paywall so we can instantly
 /// tell which build is actually installed on-device (TestFlight lag has
 /// repeatedly made us debug a stale build). Bump this with every pubspec
 /// build-number bump.
-const kBuildTag = 'b374';
+const kBuildTag = 'b376';

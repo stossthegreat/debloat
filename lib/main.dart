@@ -56,6 +56,12 @@ void main() async {
   // on a real release build this no-ops because kBypassPaywall is false.
   if (kBypassPaywall) {
     await LocalStoreService.setSubscribed(true);
+  } else {
+    // v375 — the locks are back on for distribution. The v373/v374
+    // test builds force-wrote subscribed=true above; clear that stale
+    // cache ONCE so bypass-era installs re-lock. Real subscribers are
+    // re-validated live by RevenueCat on their next gate check.
+    await LocalStoreService.resetBypassSubscribedOnce();
   }
 
   // v181 one-shot — clear the stale gameFreeUsed bool that v171..v178
