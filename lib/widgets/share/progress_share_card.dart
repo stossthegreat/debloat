@@ -552,6 +552,15 @@ class _MirrorlyMark extends StatelessWidget {
             text: 'Him',
             style: style.copyWith(color: base.AppColors.red),
           ),
+          TextSpan(
+            text: '  Looks',
+            style: style.copyWith(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: fontSize * 0.42,
+              letterSpacing: 0.2,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

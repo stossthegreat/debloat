@@ -100,6 +100,14 @@ class ShareCard extends StatelessWidget {
                           fontWeight: FontWeight.w800, height: 1,
                         ),
                       ),
+                      TextSpan(
+                        text: '  Looks',
+                        style: GoogleFonts.playfairDisplay(
+                          color: Colors.white.withValues(alpha: 0.72),
+                          fontSize: 72 * 0.42, letterSpacing: 0.2,
+                          fontWeight: FontWeight.w600, height: 1,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -291,6 +299,21 @@ class ShareCard extends StatelessWidget {
                       color: ShareCard.accentRed,
                       fontSize: 34, letterSpacing: -0.8,
                       fontWeight: FontWeight.w900, height: 1,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withValues(alpha: 0.75),
+                          blurRadius: 3,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextSpan(
+                    text: '  Looks',
+                    style: GoogleFonts.playfairDisplay(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontSize: 34 * 0.42, letterSpacing: 0.2,
+                      fontWeight: FontWeight.w600, height: 1,
                       shadows: [
                         Shadow(
                           color: Colors.black.withValues(alpha: 0.75),

@@ -215,14 +215,8 @@ class CertificateShareCard extends StatelessWidget {
                       fontStyle: FontStyle.italic,
                       fontWeight: FontWeight.w700,
                     )),
-                  const SizedBox(height: 6),
-                  Text('— LUCIEN',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.textTertiary,
-                      fontSize: 18, letterSpacing: 4,
-                      fontWeight: FontWeight.w900,
-                    )),
+                  // v379 — "— LUCIEN" attribution removed with the
+                  // looks pivot; the certificate is pure looks now.
                   const SizedBox(height: 28),
                 ],
 
@@ -535,6 +529,15 @@ class _MirrorlyMark extends StatelessWidget {
           TextSpan(
             text: 'Him',
             style: style.copyWith(color: base.AppColors.red),
+          ),
+          TextSpan(
+            text: '  Looks',
+            style: style.copyWith(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: fontSize * 0.42,
+              letterSpacing: 0.2,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

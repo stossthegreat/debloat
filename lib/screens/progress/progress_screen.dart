@@ -5,25 +5,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 
-import '../../config/dev_flags.dart';
 import '../../models/protocol.dart';
 import '../../models/scan_record.dart';
-import '../../models/technique.dart';
-import '../../providers/auralay_app_provider.dart';
 import '../../services/analytics_service.dart';
 import '../../services/face_asset_service.dart';
-import '../../services/gaze/gaze_progress_store.dart';
 import '../../services/local_store_service.dart';
-import '../../services/presence/presence_progress_store.dart';
 import '../../services/ascension_service.dart';
 import '../../services/protocol_service.dart';
 import '../../services/streak_service.dart';
 import '../../services/share_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
-import '../../widgets/common/mirrorly_wordmark.dart';
 
 class ProgressScreen extends StatefulWidget {
   final ScanRecord? latest;
@@ -44,12 +37,7 @@ class ProgressScreen extends StatefulWidget {
 class _ProgressScreenState extends State<ProgressScreen> {
   List<ScanRecord> _scans = [];
   List<GenerationRecord> _generations = [];
-  List<GameScoreEntry> _gameScores = [];
   bool _loading = true;
-
-  // Auralay training stats — surfaced in the TRAINING section.
-  int _gazeCompleted = 0;
-  int _presenceCompleted = 0;
 
   @override
   void initState() {
@@ -59,19 +47,17 @@ class _ProgressScreenState extends State<ProgressScreen> {
     _loadAll();
   }
 
+  // v379 — LOOKS ONLY. The Auralay graft (Aura score, gaze/voice drill
+  // counts, curriculum) and the game-score history are gone from this
+  // surface with the looks pivot; the tab reads scans + renders, full
+  // stop.
   Future<void> _loadAll() async {
     final scans = await LocalStoreService.loadScans();
     final gens  = await LocalStoreService.loadGenerations();
-    final game  = await LocalStoreService.loadGameScores();
-    final gz    = await GazeProgressStore.completedCount();
-    final pr    = await PresenceProgressStore.completedCount();
     if (!mounted) return;
     setState(() {
       _scans = scans;
       _generations = gens;
-      _gameScores = game;
-      _gazeCompleted = gz;
-      _presenceCompleted = pr;
       _loading = false;
     });
   }
@@ -91,14 +77,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
           child: _loading
               ? const Center(child: CircularProgressIndicator(
                   color: AppColors.red, strokeWidth: 2))
-              // Empty-state ONLY when nothing exists on any pillar — no
-              // scans AND no Auralay training AND no game sessions. As
-              // soon as the user has touched any surface, the tab shows
-              // the relevant blocks (training, game chart, scan chart).
-              : (_scans.isEmpty &&
-                      _gameScores.isEmpty &&
-                      _gazeCompleted == 0 &&
-                      _presenceCompleted == 0)
+              // Empty-state until the first scan lands — the tab is
+              // looks-only, so the scan history IS the data.
+              : _scans.isEmpty
                   ? _emptyState()
                   : _body(),
         ),
@@ -111,9 +92,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
   Widget _body() {
     final sorted = [..._scans]..sort((a, b) => a.takenAt.compareTo(b.takenAt));
     final deltas = _scans.length >= 2 ? _computeAxisDeltas(sorted) : null;
-    final hasTraining = _gazeCompleted > 0 || _presenceCompleted > 0;
-    final hasScans    = _scans.isNotEmpty;
-    final hasGame     = _gameScores.isNotEmpty;
+    final hasScans = _scans.isNotEmpty;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(Sp.lg, Sp.lg, Sp.lg, Sp.xxl),
@@ -162,33 +141,15 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
         const SizedBox(height: Sp.lg),
 
-        // ── v302 IMHIM LOOKS HERO. Photo pair → IMHIM LOOKS SCORE → Looks +
-        // Game beneath → italic hard-hitting line on top. Replaces
-        // the dead-feeling chart-first landing with the screenshot
-        // a user actually wants to send to their group chat. Hides
-        // until they have at least one scan (nothing to anchor the
-        // before frame to before then).
+        // ── IMHIM LOOKS HERO. Photo pair → IMHIM LOOKS SCORE →
+        // Looks + Consistency chips beneath → italic hard-hitting
+        // line on top. v379: pure looks — the Auralay TRAINING block
+        // (Aura score, drill counts, curriculum) is gone.
         if (hasScans)
-          _ProgressImhimHero(
-            scans:        sorted,
-            gameScores:   _gameScores,
-            dayCount:     context.read<AuralayAppProvider>().state.currentDay,
-          ).animate().fadeIn(duration: 420.ms),
+          _ProgressImhimHero(scans: sorted)
+              .animate().fadeIn(duration: 420.ms),
 
         if (hasScans) const SizedBox(height: Sp.lg),
-
-        // ── TRAINING block (Auralay graft) ──────────────────────────────
-        // Aura Score hero + Day/Streak chips + per-tab drill counts +
-        // technique curriculum dot row. Shows once the user has ANY
-        // Auralay activity, otherwise hidden so the tab still feels like
-        // ImHim Looks to scan-first users.
-        if (hasTraining) ...[
-          _TrainingBlock(
-            gazeCompleted:     _gazeCompleted,
-            presenceCompleted: _presenceCompleted,
-          ).animate().fadeIn(duration: 400.ms),
-          const SizedBox(height: Sp.lg),
-        ],
 
         if (hasScans) ...[
           // Score-over-time chart (ImHim's face-score timeline)
@@ -209,14 +170,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
           const SizedBox(height: Sp.lg),
         ],
 
-        // ── GAME · OVER TIME — Lucien scorecard arc.
-        // Mirror of the Aesthetic Index chart, but for roleplay reps.
-        // Renders the moment the user has finished one Free Flow
-        // session; with one point it shows the single dot + the
-        // session-count caption, with multiple points it draws the
-        // arc so the user sees their voice game compounding.
-        // v371 — GAME chart retired (looks pivot).
-
         if (_generations.isNotEmpty) ...[
           Text('GENERATION VAULT',
             style: AppTypography.label.copyWith(
@@ -233,12 +186,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  /// Fire the ImHim Progress share card. Aggregates the user's data
-  /// from every tracked surface (scans, game reps, gaze drills, voice
-  /// drills) plus the Auralay-imported day/streak/aura state into one
-  /// post-able receipt. Deltas come from the same axis-delta pass that
-  /// powers the in-app DELTA · FIRST → LATEST row so the share number
-  /// matches what the user just looked at.
+  /// Fire the ImHim Looks Progress share card — LOOKS ONLY (v379).
+  /// Day + streak come from StreakService (the one source of truth,
+  /// so the card matches the flame and DAY N/60 everywhere else);
+  /// the IMHIM LOOKS SCORE composite is Looks + Consistency, same
+  /// formula as the in-app hero. No game, no aura, no drills.
   Future<void> _shareProgress(
       List<ScanRecord> sortedScans,
       Map<String, (double, double)>? deltas) async {
@@ -246,63 +198,42 @@ class _ProgressScreenState extends State<ProgressScreen> {
     // ignore: discarded_futures
     AnalyticsService.shareTapped(surface: 'progress');
 
-    final aux = context.read<AuralayAppProvider>().state;
     final aestheticNow = sortedScans.isEmpty ? null : sortedScans.last.score;
     final aestheticDelta = (deltas != null && deltas['Score'] != null)
         ? deltas['Score']!.$1.round()
         : null;
 
-    // Game arc: now = last score, delta = (last − first) across all reps.
-    int? voiceNow;
-    int? voiceDelta;
-    if (_gameScores.isNotEmpty) {
-      final sorted = [..._gameScores]
-        ..sort((a, b) => a.takenAt.compareTo(b.takenAt));
-      voiceNow   = sorted.last.score;
-      voiceDelta = sorted.length >= 2
-          ? sorted.last.score - sorted.first.score
-          : null;
-    }
-
-    // v290 — compute the IMHIM LOOKS SCORE composite the share card now
-    // leads with. Same formula AscensionService runs on the in-app
-    // hero so the number is consistent between surfaces. Loading
-    // the protocol is one async hop; the share spinner is already
-    // up while we render the off-screen card so the user never
-    // sees the latency. Weekly delta comes from the same prior-
-    // snapshot ring used on the Ascend tab.
+    int day = 1;
+    int streak = 0;
     int? imhimNow;
     int? imhimDelta;
     try {
       final snap = await StreakService.progress();
-      final consistency = snap.consistency;
+      day    = snap.ascensionDay;
+      streak = snap.streak;
       final imhim = AscensionService.imhimScoreFromComponents(
         looks: aestheticNow ?? 0,
-        game:  voiceNow     ?? 0,
-        consistency: consistency,
+        game:  0, // inert since the looks pivot
+        consistency: snap.consistency,
       );
       imhimNow   = imhim;
       imhimDelta = await AscensionService.weeklyDeltaFor(imhim);
     } catch (_) {
-      // No protocol or prefs unhappy — fall through with nulls so
-      // the share card hides the hero number rather than render
-      // garbage. Looks + Game still surface in the BUILT FROM row.
+      // Prefs unhappy — fall through with nulls so the share card
+      // hides the hero number rather than render garbage.
     }
 
     if (!mounted) return;
     // ignore: discarded_futures
     ShareService.shareProgress(
       context:        context,
-      day:            aux.currentDay,
-      streakDays:     aux.streakDays,
+      day:            day,
+      streakDays:     streak,
       scanCount:      _scans.length,
-      gameReps:       _gameScores.length,
-      drillsCount:    _gazeCompleted + _presenceCompleted,
+      gameReps:       0,
+      drillsCount:    0,
       aestheticNow:   aestheticNow,
       aestheticDelta: aestheticDelta,
-      voiceNow:       voiceNow,
-      voiceDelta:     voiceDelta,
-      auraNow:        aux.auraScore > 0 ? aux.auraScore : null,
       imhimNow:       imhimNow,
       imhimDelta:     imhimDelta,
       // BEFORE = oldest scan photo, NOW = newest — the same pair the
@@ -947,527 +878,6 @@ class _GenerationGrid extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  TRAINING block — Auralay graft
-//
-//  Surfaces the data accumulated by the Eyes + Game tabs. Reads from
-//  [AuralayAppProvider] (Aura score, current day, training streak) plus
-//  the per-curriculum drill counters passed in from the parent.
-//
-//  Tap Aura number → Eyes tab (drill more, raise the score).
-//  Tap a technique dot → /lesson/<id> deep-link.
-// ═══════════════════════════════════════════════════════════════════════════
-class _TrainingBlock extends StatelessWidget {
-  final int gazeCompleted;
-  final int presenceCompleted;
-  const _TrainingBlock({
-    required this.gazeCompleted,
-    required this.presenceCompleted,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<AuralayAppProvider>().state;
-    return Container(
-      padding: const EdgeInsets.all(Sp.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(Rd.xl),
-        border: Border.all(color: AppColors.accent.withValues(alpha: 0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('TRAINING',
-            style: AppTypography.label.copyWith(
-              color: AppColors.accent, letterSpacing: 2.8, fontSize: 9.5)),
-          const SizedBox(height: 6),
-          Text('Eyes · Game · Streak',
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textTertiary, fontSize: 12)),
-
-          const SizedBox(height: Sp.md),
-
-          // Aura score hero — Auralay's signature number.
-          _AuraHero(score: state.auraScore, day: state.currentDay),
-
-          const SizedBox(height: Sp.md),
-
-          // Day / Streak row
-          Row(
-            children: [
-              Expanded(child: _StatChip(
-                label: 'DAY', value: '${state.currentDay}', accent: AppColors.measure)),
-              const SizedBox(width: 8),
-              Expanded(child: _StatChip(
-                label: 'STREAK',
-                value: '${state.streakDays}',
-                accent: state.streakDays > 0
-                    ? AppColors.red
-                    : AppColors.textTertiary,
-                trailing: state.streakDays > 0 ? ' 🔥' : '',
-              )),
-            ],
-          ),
-
-          const SizedBox(height: Sp.md),
-
-          // Per-tab drill counts
-          Row(
-            children: [
-              Expanded(child: _StatChip(
-                label: 'EYES · GAZE',
-                value: '$gazeCompleted / 10',
-                accent: gazeCompleted > 0 ? AppColors.signalGreen : AppColors.textTertiary,
-              )),
-              const SizedBox(width: 8),
-              Expanded(child: _StatChip(
-                label: 'EYES · VOICE',
-                value: '$presenceCompleted / 10',
-                accent: presenceCompleted > 0 ? AppColors.signalGreen : AppColors.textTertiary,
-              )),
-            ],
-          ),
-
-          const SizedBox(height: Sp.md),
-
-          // Technique curriculum — compact 11-dot row representing days
-          _TechniqueRow(currentDay: state.currentDay),
-        ],
-      ),
-    );
-  }
-}
-
-class _AuraHero extends StatelessWidget {
-  final int score;
-  final int day;
-  const _AuraHero({required this.score, required this.day});
-
-  String get _stageLabel {
-    if (score < 20) return 'Raw material.';
-    if (score < 40) return 'Building foundations.';
-    if (score < 60) return 'Control developing.';
-    if (score < 78) return 'Presence forming.';
-    if (score < 90) return 'The room notices.';
-    return 'Magnetic.';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(Sp.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(Rd.lg),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Column(
-        children: [
-          Text('AURA SCORE',
-            style: AppTypography.label.copyWith(
-              color: AppColors.accent, letterSpacing: 2.4, fontSize: 9)),
-          const SizedBox(height: 8),
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: score.toDouble()),
-            duration: const Duration(milliseconds: 1400),
-            curve: Curves.easeOutCubic,
-            builder: (_, value, __) => Text(
-              value.round().toString(),
-              style: AppTypography.display.copyWith(
-                fontSize: 56,
-                color: AppColors.textPrimary,
-                letterSpacing: -2,
-                fontWeight: FontWeight.w800,
-                fontStyle: FontStyle.italic,
-                height: 1,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(100),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: score / 100),
-              duration: const Duration(milliseconds: 1100),
-              curve: Curves.easeOutCubic,
-              builder: (_, v, __) => LinearProgressIndicator(
-                value: v,
-                backgroundColor: AppColors.surface3,
-                valueColor: const AlwaysStoppedAnimation(AppColors.accent),
-                minHeight: 2,
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(_stageLabel,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary, fontSize: 12)),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color accent;
-  final String trailing;
-  const _StatChip({
-    required this.label,
-    required this.value,
-    required this.accent,
-    this.trailing = '',
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(Rd.lg),
-        border: Border.all(color: accent.withValues(alpha: 0.35)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-            style: AppTypography.label.copyWith(
-              color: accent, letterSpacing: 2, fontSize: 9)),
-          const SizedBox(height: 3),
-          Text('$value$trailing',
-            style: AppTypography.h2.copyWith(
-              color: AppColors.textPrimary,
-              fontSize: 18, fontWeight: FontWeight.w700)),
-        ],
-      ),
-    );
-  }
-}
-
-class _TechniqueRow extends StatelessWidget {
-  final int currentDay;
-  const _TechniqueRow({required this.currentDay});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(Sp.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(Rd.lg),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('CURRICULUM',
-            style: AppTypography.label.copyWith(
-              color: AppColors.textTertiary, letterSpacing: 2, fontSize: 9)),
-          const SizedBox(height: 8),
-          // Day-dot row — 11 dots, mastered green, current red glow,
-          // locked muted. Tap any unlocked dot → /lesson/<id>.
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (final t in Technique.all)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: GestureDetector(
-                      onTap: t.isUnlocked(currentDay)
-                          ? () async {
-                              HapticFeedback.selectionClick();
-                              // Paywall gate — the /train curriculum is
-                              // pro-only. Free users (who reach this row
-                              // via their one free Eyes drill) get the
-                              // paywall instead of the lesson.
-                              final pro = kBypassPaywall
-                                  ? true
-                                  : await LocalStoreService.isSubscribed();
-                              if (!context.mounted) return;
-                              context.push(
-                                pro
-                                    ? '/lesson/${t.id}'
-                                    : '/paywall',
-                                extra: pro ? {'currentDay': currentDay} : null,
-                              );
-                            }
-                          : null,
-                      child: _TechDot(
-                        day: t.day,
-                        unlocked: t.isUnlocked(currentDay),
-                        mastered: t.isMastered(currentDay),
-                        current:  t.day == currentDay,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TechDot extends StatelessWidget {
-  final int day;
-  final bool unlocked, mastered, current;
-  const _TechDot({
-    required this.day,
-    required this.unlocked,
-    required this.mastered,
-    required this.current,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = !unlocked
-        ? AppColors.textTertiary.withValues(alpha: 0.3)
-        : mastered
-            ? AppColors.signalGreen
-            : current
-                ? AppColors.red
-                : AppColors.accent;
-    return Column(
-      children: [
-        Container(
-          width: 22, height: 22,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: mastered
-                ? AppColors.signalGreen.withValues(alpha: 0.18)
-                : Colors.transparent,
-            border: Border.all(color: color, width: 1.3),
-            boxShadow: current
-                ? [BoxShadow(
-                    color: AppColors.red.withValues(alpha: 0.45),
-                    blurRadius: 8, spreadRadius: 1)]
-                : null,
-          ),
-          child: Center(
-            child: mastered
-                ? Icon(Icons.check, size: 12, color: AppColors.signalGreen)
-                : Text('$day',
-                    style: AppTypography.label.copyWith(
-                      color: color, fontSize: 9, fontWeight: FontWeight.w700)),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  Game · over time — Lucien scorecard arc.
-//  Same structure as _ChartCard, tuned for game scores: amber accent
-//  (matches the "voice" surface across the rest of the app) and a
-//  caption that says how many reps the user has actually banked.
-// ═══════════════════════════════════════════════════════════════════════════
-class _GameChartCard extends StatelessWidget {
-  final List<GameScoreEntry> scores;
-  const _GameChartCard({required this.scores});
-
-  @override
-  Widget build(BuildContext context) {
-    final latest = scores.last.score;
-    final best   = scores.map((e) => e.score).reduce(math.max);
-    // v302 — chart card lifted same way as the Looks card.
-    return Container(
-      padding: const EdgeInsets.all(Sp.md),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(Rd.xl),
-        border: Border.all(
-          color: AppColors.signalAmber.withValues(alpha: 0.32), width: 0.8),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.signalAmber.withValues(alpha: 0.10),
-            blurRadius: 24, spreadRadius: 0),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text('GAME · OVER TIME',
-                style: AppTypography.label.copyWith(
-                  color: AppColors.signalAmber,
-                  letterSpacing: 2.5, fontSize: 9.5,
-                  fontWeight: FontWeight.w900)),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.signalAmber.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text('BEST $best · NOW $latest',
-                  style: AppTypography.label.copyWith(
-                    color: AppColors.signalAmber,
-                    fontSize: 9, letterSpacing: 1.4,
-                    fontWeight: FontWeight.w900)),
-              ),
-            ],
-          ),
-          const SizedBox(height: Sp.md),
-          SizedBox(
-            height: 160,
-            child: CustomPaint(
-              size: Size.infinite,
-              painter: _GameChartPainter(scores: scores),
-            ),
-          ),
-          const SizedBox(height: Sp.sm),
-          Row(
-            children: [
-              Text(_fmt(scores.first.takenAt),
-                style: AppTypography.label.copyWith(
-                  color: AppColors.textTertiary, fontSize: 8.5, letterSpacing: 1.8)),
-              const Spacer(),
-              Text('${scores.length} REP${scores.length == 1 ? '' : 'S'}',
-                style: AppTypography.label.copyWith(
-                  color: AppColors.textTertiary, fontSize: 8.5, letterSpacing: 1.8)),
-              const Spacer(),
-              Text(_fmt(scores.last.takenAt),
-                style: AppTypography.label.copyWith(
-                  color: AppColors.textTertiary, fontSize: 8.5, letterSpacing: 1.8)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _fmt(DateTime d) {
-    const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-    return '${d.day} ${months[d.month - 1]}';
-  }
-}
-
-class _GameChartPainter extends CustomPainter {
-  final List<GameScoreEntry> scores;
-  _GameChartPainter({required this.scores});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (scores.isEmpty) return;
-
-    const padX = 10.0, padTop = 14.0, padBot = 14.0;
-    final chartW = size.width - padX * 2;
-    final chartH = size.height - padTop - padBot;
-
-    final values = scores.map((s) => s.score.toDouble()).toList();
-    final minS = values.reduce(math.min);
-    final maxS = values.reduce(math.max);
-    final yMin = math.max(0.0, (minS - 8).floorToDouble());
-    final yMax = math.min(100.0, (maxS + 8).ceilToDouble());
-    final yRange = (yMax - yMin).clamp(1.0, 100.0);
-
-    final gridPaint = Paint()
-      ..color = AppColors.surface3.withValues(alpha: 0.6)
-      ..strokeWidth = 0.6;
-    for (var i = 0; i <= 3; i++) {
-      final y = padTop + chartH * (i / 3);
-      canvas.drawLine(Offset(padX, y), Offset(size.width - padX, y), gridPaint);
-    }
-
-    final points = <Offset>[];
-    for (var i = 0; i < scores.length; i++) {
-      final x = padX + (scores.length == 1 ? chartW / 2 : chartW * (i / (scores.length - 1)));
-      final y = padTop + chartH * (1 - (scores[i].score - yMin) / yRange);
-      points.add(Offset(x, y));
-    }
-
-    if (points.length > 1) {
-      final areaPath = Path()
-        ..moveTo(points.first.dx, padTop + chartH)
-        ..lineTo(points.first.dx, points.first.dy);
-      for (var i = 1; i < points.length; i++) {
-        final prev = points[i - 1];
-        final cur  = points[i];
-        final midX = (prev.dx + cur.dx) / 2;
-        areaPath.cubicTo(midX, prev.dy, midX, cur.dy, cur.dx, cur.dy);
-      }
-      areaPath
-        ..lineTo(points.last.dx, padTop + chartH)
-        ..close();
-      // v302 — beefier amber gradient + glow line to match the
-      // Looks chart energy. The old 0.18-alpha wash was too faint
-      // to read on the dark surface.
-      canvas.drawPath(areaPath, Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter, end: Alignment.bottomCenter,
-          colors: [
-            AppColors.signalAmber.withValues(alpha: 0.40),
-            AppColors.signalAmber.withValues(alpha: 0.05),
-            Colors.transparent,
-          ],
-          stops: const [0.0, 0.7, 1.0],
-        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)));
-    }
-
-    if (points.length > 1) {
-      final linePath = Path()..moveTo(points.first.dx, points.first.dy);
-      for (var i = 1; i < points.length; i++) {
-        final prev = points[i - 1];
-        final cur  = points[i];
-        final midX = (prev.dx + cur.dx) / 2;
-        linePath.cubicTo(midX, prev.dy, midX, cur.dy, cur.dx, cur.dy);
-      }
-      canvas.drawPath(linePath, Paint()
-        ..color = AppColors.signalAmber.withValues(alpha: 0.55)
-        ..strokeWidth = 6
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
-      canvas.drawPath(linePath, Paint()
-        ..color = AppColors.signalAmber
-        ..strokeWidth = 2.6
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round);
-    }
-
-    for (var i = 0; i < points.length; i++) {
-      final p = points[i];
-      final isEnd = (i == 0 || i == points.length - 1);
-      if (isEnd) {
-        canvas.drawCircle(p, 9, Paint()
-          ..color = AppColors.signalAmber.withValues(alpha: 0.35)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
-      }
-      canvas.drawCircle(p, isEnd ? 5.5 : 4.5,
-        Paint()..color = AppColors.surface1);
-      canvas.drawCircle(p, isEnd ? 5.5 : 4.5, Paint()
-        ..color = AppColors.signalAmber
-        ..strokeWidth = isEnd ? 2.0 : 1.6
-        ..style = PaintingStyle.stroke);
-
-      if (i == 0 || i == points.length - 1) {
-        final tp = TextPainter(
-          text: TextSpan(
-            text: '${scores[i].score}',
-            style: TextStyle(
-              color: AppColors.signalAmber, fontSize: 10,
-              fontWeight: FontWeight.w800, letterSpacing: 0.5,
-              fontFamilyFallback: const ['monospace']),
-          ),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy - 20));
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_GameChartPainter old) => old.scores != scores;
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  Close X — small circular button mirroring the masthead cog styling,
@@ -1542,33 +952,23 @@ class _ProgressCloseButton extends StatelessWidget {
 }
 
 
-/// v302 — PROGRESS hero. Bro: "make the imhim score use the first
-/// before and after they get, then under it the game and looks
-/// scores, and then above the imhim score the hard hitting lines
-/// you were supposed to write. Also the actual progress tab needs
-/// some life — it looks like it's in a coffin."
+/// PROGRESS hero — LOOKS ONLY (v379).
 ///
 /// Stack (top → bottom):
 ///   1. Hard-hitting identity line (italic Playfair, rotates daily
 ///      via AscensionService.todayMessageFor so it never stales).
 ///   2. IMHIM LOOKS SCORE composite — 84pt italic numeral in red, "/100"
-///      anchor and weekly delta arrow beneath.
+///      anchor and weekly delta arrow beneath. Looks + Consistency
+///      only; the game input is dead since the looks pivot.
 ///   3. BEFORE / AFTER face pair — first scan capturedImagePath vs
-///      latest, accent borders, "BEFORE" / "AFTER" labels.
-///   4. LOOKS  · GAME inline chips — the two supporting pillars,
-///      colored.
+///      latest, accent borders, "BEFORE" / "NOW" labels.
+///   4. LOOKS · CONSISTENCY inline chips — the two live pillars.
 ///
 /// Card surface gets a soft red atmospheric wash + glow so the
 /// block reads as warm, not interred.
 class _ProgressImhimHero extends StatefulWidget {
-  final List<ScanRecord>   scans;       // chronological asc
-  final List<GameScoreEntry> gameScores;// any order
-  final int                dayCount;
-  const _ProgressImhimHero({
-    required this.scans,
-    required this.gameScores,
-    required this.dayCount,
-  });
+  final List<ScanRecord> scans; // chronological asc
+  const _ProgressImhimHero({required this.scans});
   @override
   State<_ProgressImhimHero> createState() => _ProgressImhimHeroState();
 }
@@ -1576,6 +976,8 @@ class _ProgressImhimHero extends StatefulWidget {
 class _ProgressImhimHeroState extends State<_ProgressImhimHero> {
   int  _imhim       = 0;
   int  _delta       = 0;
+  int  _day         = 1;
+  int  _consistency = 0;
   bool _ready       = false;
   Protocol? _proto;
 
@@ -1589,24 +991,16 @@ class _ProgressImhimHeroState extends State<_ProgressImhimHero> {
     Protocol? p;
     try { p = await ProtocolService.loadActive(); } catch (_) {}
     final looks = widget.scans.isEmpty ? 0 : widget.scans.last.score;
-    // MOST RECENT game score, matching how Looks reads — showing the
-    // all-time best made the number feel stuck; the latest score gives
-    // the user a live reason to run another session and beat it.
-    int game = 0;
-    if (widget.gameScores.isNotEmpty) {
-      final sorted = [...widget.gameScores]
-        ..sort((a, b) => a.takenAt.compareTo(b.takenAt));
-      game = sorted.last.score;
-    }
     final snap = await StreakService.progress();
-    final consistency = snap.consistency;
     final imhim = AscensionService.imhimScoreFromComponents(
-      looks: looks, game: game, consistency: consistency);
+      looks: looks, game: 0, consistency: snap.consistency);
     final delta = await AscensionService.weeklyDeltaFor(imhim);
     if (!mounted) return;
     setState(() {
       _imhim = imhim;
       _delta = delta;
+      _day = snap.ascensionDay;
+      _consistency = snap.consistency;
       _proto = p;
       _ready = true;
     });
@@ -1618,12 +1012,9 @@ class _ProgressImhimHeroState extends State<_ProgressImhimHero> {
     final firstScan = scans.first;
     final lastScan  = scans.last;
     final looks = lastScan.score;
-    final game  = widget.gameScores.isEmpty
-        ? 0
-        : widget.gameScores.map((g) => g.score).reduce(math.max);
     final streak = _proto?.effectiveStreak ?? 0;
     final line = AscensionService.todayMessageFor(
-      day: widget.dayCount, streak: streak);
+      day: _day, streak: streak);
     final deltaText = !_ready
         ? '—'
         : _delta == 0
@@ -1733,7 +1124,8 @@ class _ProgressImhimHeroState extends State<_ProgressImhimHero> {
 
           const SizedBox(height: 18),
 
-          // ── LOOKS · GAME supporting chips.
+          // ── LOOKS · CONSISTENCY supporting chips — the two inputs
+          // the composite is actually built from since the looks pivot.
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -1741,7 +1133,9 @@ class _ProgressImhimHeroState extends State<_ProgressImhimHero> {
                 label: 'LOOKS', value: looks, accent: AppColors.measure),
               const SizedBox(width: 12),
               _ProgressStatChip(
-                label: 'GAME', value: game, accent: AppColors.signalAmber),
+                label: 'CONSISTENCY',
+                value: _ready ? _consistency : 0,
+                accent: AppColors.red),
             ],
           ),
         ],
