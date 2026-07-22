@@ -14,7 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 ///   - "Who do I become if I finish?"
 ///   - The flame stays alive as long as you keep showing up.
-///   - Rank is a public status (Observer → Initiate → … → ImHim Looks)
+///   - Rank is a public status (Observer → Initiate → … → Debloat OS)
 ///     that compounds; users protect status, not percentages.
 ///   - The cost of quitting is named explicitly (rotating fear
 ///     reminder).
@@ -32,33 +32,33 @@ class AscensionService {
   static const List<AscendRank> _ranks = [
     AscendRank(
       minDay: 1,
-      label: 'OBSERVER',
-      tagline: 'You\'re watching. That\'s the first move.',
+      label: 'BOOTED',
+      tagline: 'System on. That\'s the first move.',
     ),
     AscendRank(
       minDay: 10,
-      label: 'INITIATE',
-      tagline: 'The work has started. The mirror reflects it.',
+      label: 'FLUSHING',
+      tagline: 'The water is moving. The mirror shows it first.',
     ),
     AscendRank(
       minDay: 20,
-      label: 'CONTENDER',
+      label: 'DRAINING',
       tagline: 'People who knew you before don\'t recognize this version.',
     ),
     AscendRank(
       minDay: 30,
-      label: 'DANGEROUS',
-      tagline: 'You walk into rooms differently now.',
+      label: 'DEFINED',
+      tagline: 'The jawline is out. You walk into rooms differently now.',
     ),
     AscendRank(
       minDay: 45,
-      label: 'MAGNETIC',
-      tagline: 'You stopped chasing. The room finds you.',
+      label: 'CHISELED',
+      tagline: 'Zero puff. The face holds its line all day.',
     ),
     AscendRank(
       minDay: 60,
-      label: 'IMHIM LOOKS',
-      tagline: 'Identity locked. The man who walks in owning every room.',
+      label: 'DRAINED',
+      tagline: 'Identity locked. The face was under there all along.',
     ),
   ];
 
@@ -75,7 +75,7 @@ class AscensionService {
   }
 
   /// Next rank after the current one, for the progression preview.
-  /// Returns null when the user is already at IMHIM LOOKS (final tier).
+  /// Returns null when the user is already at DEBLOAT (final tier).
   static AscendRank? nextRankFor(int day) {
     for (final r in _ranks) {
       if (r.minDay > day) return r;
@@ -229,7 +229,7 @@ class AscensionService {
     'Day 51. The certificate is in sight.',
     'Fifty-two days. Don\'t stop now.',
     'Day 53. Stay loud, stay sharp.',
-    'Fifty-four days. Six days from ImHim Looks.',
+    'Fifty-four days. Six days from Debloat OS.',
     'Day 55. The final form is taking shape.',
     'Five days remain.',
     // 57
@@ -260,7 +260,7 @@ class AscensionService {
     return _dailyMessages[i];
   }
 
-  // ── IMHIM LOOKS Score — the composite (v289) ─────────────────────────────────
+  // ── Debloat Score — the composite (v289) ─────────────────────────────────
   //
   // Bro + consultant: ONE number that unifies the four surfaces so
   // the user is levelling one character, not managing four systems.
@@ -274,10 +274,10 @@ class AscensionService {
   // affecting the score"). No call site can feed game into the
   // number anymore, by construction.
   //
-  // The user-facing label is IMHIM LOOKS SCORE everywhere — never
+  // The user-facing label is DEBLOAT SCORE everywhere — never
   // "attraction score" (App Store 3.1.5 / 5.2 risk on attractiveness
   // claims).
-  static int imhimScoreFromComponents({
+  static int debloatScoreFromComponents({
     required int looks,
     required int consistency,
   }) {
@@ -293,22 +293,22 @@ class AscensionService {
   // formula was replaced so that doing 3-of-5 missions visibly drops the
   // score while never breaking the streak — exactly the "half-showing-up"
   // signal bro asked for. Callers read the snapshot value and feed it
-  // straight into [imhimScoreFromComponents].
+  // straight into [debloatScoreFromComponents].
 
-  /// Snapshot the current IMHIM LOOKS score against TODAY so the weekly
+  /// Snapshot the current DEBLOAT score against TODAY so the weekly
   /// delta can be computed without storing a history table. Stamps
-  /// `imhim_score_snapshot_<n>` + `imhim_score_snapshot_<n>_ymd` in
+  /// `debloat_score_snapshot` keys in
   /// SharedPreferences. Idempotent per calendar day — re-calling on
   /// the same day overwrites, so the user gets one canonical record
   /// per day regardless of how many times they open the tab.
-  static const _kSnapshotKey      = 'imhim_score_snapshot';
-  static const _kSnapshotYmdKey   = 'imhim_score_snapshot_ymd';
-  static const _kPriorSnapshot    = 'imhim_score_snapshot_prior';
-  static const _kPriorSnapshotYmd = 'imhim_score_snapshot_prior_ymd';
+  static const _kSnapshotKey      = 'debloat_score_snapshot';
+  static const _kSnapshotYmdKey   = 'debloat_score_snapshot_ymd';
+  static const _kPriorSnapshot    = 'debloat_score_snapshot_prior';
+  static const _kPriorSnapshotYmd = 'debloat_score_snapshot_prior_ymd';
 
   static int _ymdOf(DateTime d) => d.year * 10000 + d.month * 100 + d.day;
 
-  /// Persist today's IMHIM LOOKS score so a 7-days-ago lookup has data to
+  /// Persist today's DEBLOAT score so a 7-days-ago lookup has data to
   /// diff against. Pushes the previous snapshot into the `prior`
   /// slot on day-change so we always have two reference points: the
   /// freshest snapshot and the one before it. That's enough to

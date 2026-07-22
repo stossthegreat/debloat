@@ -74,11 +74,11 @@ class _AiConsentScreenState extends State<AiConsentScreen> {
               const Spacer(),
 
               Text('Before we start.',
-                      style: GoogleFonts.playfairDisplay(
+                      style: GoogleFonts.spaceGrotesk(
                         color: AppColors.textPrimary,
                         fontSize: 34, height: 1.05,
                         letterSpacing: -0.8,
-                        fontStyle: FontStyle.italic,
+                        
                         fontWeight: FontWeight.w800,
                       ))
                   .animate()

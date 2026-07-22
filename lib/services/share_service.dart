@@ -9,44 +9,21 @@ import 'package:share_plus/share_plus.dart';
 import 'face_asset_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/share_card.dart';
-import '../widgets/share/body_share_card.dart';
 import '../widgets/share/certificate_share_card.dart';
-import '../widgets/share/eye_strip_share_card.dart';
 import '../widgets/share/progress_share_card.dart';
-import '../widgets/share/score_share_card.dart';
 
 /// Captures any widget via RepaintBoundary + exports a PNG + opens the
 /// system share sheet. Supports:
 /// - Simple repaint-boundary share (widget already on screen)
 /// - Off-screen ShareCard render (composed just for sharing, never shown)
-/// - Auralay eye-strip card (Eyes tab — gaze sessions)
-/// - Auralay score card (Game tab — Free Flow + Eyes scores)
+/// - Progress + Day-60 certificate cards
 class ShareService {
-  /// Screenshot an existing widget wrapped in RepaintBoundary via GlobalKey.
-  static Future<void> shareFromKey(
-    GlobalKey key, {
-    String suggestedName = 'mirrorly.png',
-    String? text,
-  }) async {
-    try {
-      final boundary = key.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
-      if (boundary == null) return;
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return;
-      final origin = _sharePositionOriginFromKey(key);
-      await _shareBytes(byteData.buffer.asUint8List(), suggestedName, text,
-          origin: origin);
-    } catch (_) {}
-  }
-
   /// Render the ShareCard off-screen at 1080×1920, capture as PNG, open
   /// share sheet. The card never appears in UI — pure composition.
   ///
   /// Format is the 9:16 export of the in-app hero card: score transition
   /// on top (CURRENT → PROJECTED with red arrow), before/after with
-  /// "ImHim Looks" overlaid on the NOW half, tagline, three proof lines,
+  /// "Debloat OS" overlaid on the NOW half, tagline, three proof lines,
   /// domain footer. Same visual language in-app and on socials.
   ///
   /// Pass currentScore / projectedScore = 0 from contexts that don't have
@@ -109,7 +86,7 @@ class ShareService {
         HapticFeedback.mediumImpact();
         await _shareBytes(
           bytes,
-          'mirrorly-${DateTime.now().millisecondsSinceEpoch}.png',
+          'debloat-${DateTime.now().millisecondsSinceEpoch}.png',
           text,
           origin: origin,
         );
@@ -131,244 +108,7 @@ class ShareService {
     }
   }
 
-  /// Render + share the BODY transformation card — the face-scan share
-  /// pipeline applied to the Body tab. 9:16 (1080×1920) off-screen
-  /// composition, never shown in UI: wordmark + mission chip, quick
-  /// NOW → POTENTIAL score row above the images, before/after pair as
-  /// the hero, one hard line underneath, brand footer.
-  ///
-  /// BOTH panes take bytes — the caller pre-downloads the after render
-  /// (the offscreen pipeline paints a single synchronous frame, so an
-  /// async network image would export as an empty pane).
-  static Future<void> shareBodyTransformation({
-    required BuildContext context,
-    required Uint8List beforeBytes,
-    required Uint8List afterBytes,
-    required int scoreNow,
-    required int scorePotential,
-    required String missionName,
-    required String tagline,
-    String? text,
-  }) async {
-    HapticFeedback.lightImpact();
-
-    if (context.mounted) {
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        barrierColor: Colors.black54,
-        builder: (_) => const _RenderingOverlay(),
-      );
-    }
-
-    final mq = MediaQuery.of(context);
-    final origin = Rect.fromLTWH(
-      mq.size.width / 2 - 1, mq.padding.top + 8, 2, 2);
-
-    String errorMsg = 'Share failed';
-    try {
-      if (!context.mounted) return;
-      final card = BodyShareCard(
-        beforeBytes:    beforeBytes,
-        afterBytes:     afterBytes,
-        scoreNow:       scoreNow,
-        scorePotential: scorePotential,
-        missionName:    missionName,
-        tagline:        tagline,
-      );
-      final bytes = await _captureOffscreen(
-        context:     context,
-        widget:      card,
-        logicalSize: const Size(1080, 1920),
-        pixelRatio:  2.0,
-      );
-      if (bytes == null) {
-        errorMsg = "Couldn't render the card — try again";
-      } else {
-        if (context.mounted) {
-          Navigator.of(context, rootNavigator: true).pop();
-        }
-        HapticFeedback.mediumImpact();
-        await _shareBytes(
-          bytes,
-          'imhim-body-${DateTime.now().millisecondsSinceEpoch}.png',
-          text ?? '$scoreNow → $scorePotential. $tagline · ImHim Looks',
-          origin: origin,
-        );
-        return;
-      }
-    } catch (e) {
-      errorMsg = 'Share failed: ${e.toString().split('\n').first}';
-    }
-
-    if (context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(errorMsg),
-        backgroundColor: AppColors.surface2,
-        behavior: SnackBarBehavior.floating,
-      ));
-    }
-  }
-
-  // ──────────────────────────────────────────────────────────────────────
-  //  Auralay-imported cards (Eyes + Game tabs)
-  // ──────────────────────────────────────────────────────────────────────
-
-  /// Render + share Auralay's eye-strip card. Used by the EYES tab after a
-  /// gaze session (post_session_screen) and by the seduction/charisma test
-  /// result-reveal screen. Composes at 1080×device-aspect, captures off
-  /// screen, opens system share sheet. Same pipeline as [shareComposed].
-  static Future<void> shareAuraResult({
-    required BuildContext context,
-    required Uint8List? photoBytes,
-    required double? eyeYNormalized,
-    required int score,
-    required String tier,
-    required String roast,
-    required Map<String, double> dimensions,
-    int sessionIndex = 1,
-    String? techniqueName,
-    String? text,
-  }) async {
-    HapticFeedback.lightImpact();
-
-    if (context.mounted) {
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        barrierColor: Colors.black54,
-        builder: (_) => const _RenderingOverlay(),
-      );
-    }
-
-    final mq = MediaQuery.of(context);
-    final origin = Rect.fromLTWH(
-      mq.size.width / 2 - 1, mq.padding.top + 8, 2, 2);
-
-    String errorMsg = 'Share failed';
-    try {
-      if (!context.mounted) return;
-      final card = EyeStripShareCard(
-        photoBytes:     photoBytes,
-        eyeYNormalized: eyeYNormalized,
-        score:          score,
-        tier:           tier,
-        roast:          roast,
-        dimensions:     dimensions,
-        sessionIndex:   sessionIndex,
-        techniqueName:  techniqueName,
-      );
-      final bytes = await _captureOffscreen(
-        context:     context,
-        widget:      card,
-        logicalSize: _auralayCardSize(context),
-        pixelRatio:  2.0,
-      );
-      if (bytes == null) {
-        errorMsg = "Couldn't render the card — try again";
-      } else {
-        if (context.mounted) {
-          Navigator.of(context, rootNavigator: true).pop();
-        }
-        HapticFeedback.mediumImpact();
-        await _shareBytes(
-          bytes,
-          'mirrorly-${DateTime.now().millisecondsSinceEpoch}.png',
-          text,
-          origin: origin,
-        );
-        return;
-      }
-    } catch (e) {
-      errorMsg = 'Share failed: ${e.toString().split('\n').first}';
-    }
-
-    if (context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(errorMsg),
-        backgroundColor: AppColors.surface2,
-        behavior: SnackBarBehavior.floating,
-      ));
-    }
-  }
-
-  /// Render + share the universal Auralay score card (0–10). Used by The
-  /// Gaze, Presence/Eye Contact+Voice, and Free Flow so every shared
-  /// result is on-brand with a single visual language.
-  static Future<void> shareScore({
-    required BuildContext context,
-    required String kindLabel,
-    required String subLabel,
-    required int score,
-    required String badge,
-    required String verdict,
-    List<({String label, int score})> stats = const [],
-    String? text,
-  }) async {
-    HapticFeedback.lightImpact();
-
-    if (context.mounted) {
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        barrierColor: Colors.black54,
-        builder: (_) => const _RenderingOverlay(),
-      );
-    }
-
-    final mq = MediaQuery.of(context);
-    final origin = Rect.fromLTWH(
-      mq.size.width / 2 - 1, mq.padding.top + 8, 2, 2);
-
-    String errorMsg = 'Share failed';
-    try {
-      if (!context.mounted) return;
-      final card = ScoreShareCard(
-        kindLabel: kindLabel,
-        subLabel:  subLabel,
-        score:     score.clamp(0, 10).toInt(),
-        badge:     badge,
-        verdict:   verdict,
-        stats:     stats,
-      );
-      final bytes = await _captureOffscreen(
-        context:     context,
-        widget:      card,
-        logicalSize: _auralayCardSize(context),
-        pixelRatio:  2.0,
-      );
-      if (bytes == null) {
-        errorMsg = "Couldn't render the card — try again";
-      } else {
-        if (context.mounted) {
-          Navigator.of(context, rootNavigator: true).pop();
-        }
-        HapticFeedback.mediumImpact();
-        await _shareBytes(
-          bytes,
-          'mirrorly-${DateTime.now().millisecondsSinceEpoch}.png',
-          text ?? '$kindLabel · $score/10 on IMHIM LOOKS',
-          origin: origin,
-        );
-        return;
-      }
-    } catch (e) {
-      errorMsg = 'Share failed: ${e.toString().split('\n').first}';
-    }
-
-    if (context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(errorMsg),
-        backgroundColor: AppColors.surface2,
-        behavior: SnackBarBehavior.floating,
-      ));
-    }
-  }
-
-  /// Render + share the ImHim Looks PROGRESS receipt — DAY hero, streak,
+  /// Render + share the Debloat OS PROGRESS receipt — DAY hero, streak,
   /// per-surface scores + deltas, total reps, brand wordmark + domain.
   /// Wired to /progress via the masthead SHARE button so the user can
   /// post a single "DAY 14 · STREAK 14 · +12 AESTHETIC" card the
@@ -386,10 +126,10 @@ class ShareService {
     int? voiceNow,
     int? voiceDelta,
     int? auraNow,
-    // v290 — IMHIM LOOKS SCORE hero. The composite that the share card now
+    // v290 — DEBLOAT SCORE hero. The composite that the share card now
     // leads with; Looks + Game demoted to "BUILT FROM" rows beneath.
-    int? imhimNow,
-    int? imhimDelta,
+    int? debloatNow,
+    int? debloatDelta,
     String verdict = '',
     String? text,
     // Oldest + newest scan photos for the BEFORE/NOW pair on the card.
@@ -441,8 +181,8 @@ class ShareService {
         voiceNow:       voiceNow,
         voiceDelta:     voiceDelta,
         auraNow:        auraNow,
-        imhimNow:       imhimNow,
-        imhimDelta:     imhimDelta,
+        debloatNow:       debloatNow,
+        debloatDelta:     debloatDelta,
         verdict:        verdict,
         beforePhotoPath: beforeResolved,
         nowPhotoPath:    nowResolved,
@@ -450,7 +190,7 @@ class ShareService {
       final bytes = await _captureOffscreen(
         context:     context,
         widget:      card,
-        logicalSize: _auralayCardSize(context),
+        logicalSize: _shareCardSize(context),
         pixelRatio:  2.0,
       );
       if (bytes == null) {
@@ -462,11 +202,11 @@ class ShareService {
         HapticFeedback.mediumImpact();
         // Default copy is post-ready: claim, receipt, app handle.
         final defaultText = streakDays > 0
-            ? 'Day $day · streak $streakDays on ImHim Looks.'
-            : 'Day $day on ImHim Looks.';
+            ? 'Day $day · streak $streakDays on Debloat OS.'
+            : 'Day $day on Debloat OS.';
         await _shareBytes(
           bytes,
-          'mirrorly-progress-${DateTime.now().millisecondsSinceEpoch}.png',
+          'debloat-progress-${DateTime.now().millisecondsSinceEpoch}.png',
           text ?? defaultText,
           origin: origin,
         );
@@ -486,7 +226,7 @@ class ShareService {
     }
   }
 
-  /// Render + share the v291 IMHIM CERTIFIED Day-60 card. Unlocked
+  /// Render + share the v291 DRAINED · CERTIFIED Day-60 card. Unlocked
   /// by [_FinalFormCard] in the Ascend tab once the user clears the
   /// 60-day protocol. Same off-screen render pipeline as
   /// [shareProgress] / [shareScore] so the share-sheet behaviour is
@@ -495,8 +235,8 @@ class ShareService {
     required BuildContext context,
     String? beforePhotoPath,
     String? afterPhotoPath,
-    required int imhimStart,
-    required int imhimEnd,
+    required int scoreStart,
+    required int scoreEnd,
     required int looksStart,
     required int looksEnd,
     required int consistencyStart,
@@ -541,8 +281,8 @@ class ShareService {
       final card = CertificateShareCard(
         beforePhotoPath:   beforeResolved,
         afterPhotoPath:    afterResolved,
-        imhimStart:        imhimStart,
-        imhimEnd:          imhimEnd,
+        scoreStart:        scoreStart,
+        scoreEnd:          scoreEnd,
         looksStart:        looksStart,
         looksEnd:          looksEnd,
         consistencyStart:  consistencyStart,
@@ -552,7 +292,7 @@ class ShareService {
       final bytes = await _captureOffscreen(
         context:     context,
         widget:      card,
-        logicalSize: _auralayCardSize(context),
+        logicalSize: _shareCardSize(context),
         pixelRatio:  2.0,
       );
       if (bytes == null) {
@@ -563,10 +303,10 @@ class ShareService {
         }
         HapticFeedback.heavyImpact();
         final defaultText =
-          '60 days. ImHim Certified. ${imhimStart} → ${imhimEnd}.';
+          '60 days. Debloat OS Certified. ${scoreStart} → ${scoreEnd}.';
         await _shareBytes(
           bytes,
-          'mirrorly-certified-${DateTime.now().millisecondsSinceEpoch}.png',
+          'debloat-certified-${DateTime.now().millisecondsSinceEpoch}.png',
           text ?? defaultText,
           origin: origin,
         );
@@ -588,7 +328,7 @@ class ShareService {
 
   /// Auralay cards render at the device's portrait aspect — wider phones get
   /// taller cards. Width pinned at 1080 for crisp output.
-  static Size _auralayCardSize(BuildContext context) {
+  static Size _shareCardSize(BuildContext context) {
     final s = MediaQuery.of(context).size;
     final aspect =
         (s.width <= 0 || s.height <= 0) ? 9 / 19.5 : s.width / s.height;
@@ -611,23 +351,6 @@ class ShareService {
       // and the sheet silently fails to present.
       sharePositionOrigin: origin,
     );
-  }
-
-  /// Best-effort source rect for the iOS share popover, derived from
-  /// a widget's RepaintBoundary key. Falls back to null if the key's
-  /// render object isn't yet attached — share_plus then computes a
-  /// default which works on iPhone but not iPad.
-  static Rect? _sharePositionOriginFromKey(GlobalKey key) {
-    try {
-      final ctx = key.currentContext;
-      if (ctx == null) return null;
-      final box = ctx.findRenderObject();
-      if (box is! RenderBox) return null;
-      final tl = box.localToGlobal(Offset.zero);
-      return tl & box.size;
-    } catch (_) {
-      return null;
-    }
   }
 
   /// Render any widget off-screen at an explicit logical size. Uses a

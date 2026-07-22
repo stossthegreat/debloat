@@ -36,14 +36,15 @@ import '../../widgets/common/mirrorly_wordmark.dart';
 ///   3. TODAY'S ASCENSION — 5 daily MISSIONS (not tasks). 4/5 COMPLETE
 ///      header, each tick visibly feeds the flame.
 ///   4. RANK PROGRESSION — Observer → Initiate → Contender →
-///      Dangerous → Magnetic → ImHim Looks. Status ladder, not stats.
+///      Dangerous → Magnetic → Debloat OS. Status ladder, not stats.
 ///   5. ASCENSION RECORD — timeline of milestones. "This becomes
 ///      their story."
 ///   6. STREAK — huge flame number. Users protect streaks, not scores.
 ///   7. FINAL FORM — Day-60 unlock card, locked + blurred. Anticipation
 ///      IS the retention.
 class AscendScreen extends StatefulWidget {
-  /// Switch the bottom-nav to a specific tab. 1=Looks, 2=Game, 3=Rizz.
+  /// Switch the bottom-nav to a specific tab. 0=Scan, 1=Debloat,
+  /// 2=Mirror, 3=Ascend.
   final ValueChanged<int> onJumpToTab;
 
   /// Pull-to-refresh hook — re-reads the home-screen state (scores,
@@ -80,7 +81,7 @@ class AscendScreen extends StatefulWidget {
 
   /// Rolling 7-day mission-completion consistency (0..100) from
   /// StreakService.progress. The 30% CONSISTENCY component of the
-  /// IMHIM LOOKS score.
+  /// DEBLOAT score.
   final int consistency;
 
   /// Today's mission set from the quota-aware DailyMissionService —
@@ -92,14 +93,8 @@ class AscendScreen extends StatefulWidget {
   /// Did the user complete their protocol check-in today?
   final bool looksDoneToday;
 
-  /// v289 — Did the user generate a rizz reply today?
-  final bool rizzDoneToday;
-
-  /// v301 — Did the user copy a pickup line today?
-  final bool pickupLineDoneToday;
-
   /// v289 — latest Looks pillar score, 0-100 raw scale. Feeds the
-  /// IMHIM LOOKS-score formula (Looks + Consistency — nothing else).
+  /// DEBLOAT-score formula (Looks + Consistency — nothing else).
   final int looksScore100;
 
   const AscendScreen({
@@ -116,8 +111,6 @@ class AscendScreen extends StatefulWidget {
     this.consistency = 0,
     this.dailyMissions = const [],
     this.looksDoneToday = false,
-    this.rizzDoneToday = false,
-    this.pickupLineDoneToday = false,
     this.looksScore100 = 0,
   });
 
@@ -127,7 +120,7 @@ class AscendScreen extends StatefulWidget {
 
 class _AscendScreenState extends State<AscendScreen> {
   /// Cached weekly delta — the diff between the user's current
-  /// IMHIM LOOKS score and the prior weekly snapshot. Pre-loaded on first
+  /// DEBLOAT score and the prior weekly snapshot. Pre-loaded on first
   /// build so the score hero can render the arrow synchronously.
   int _weeklyDelta = 0;
   bool _deltaLoaded = false;
@@ -143,7 +136,7 @@ class _AscendScreenState extends State<AscendScreen> {
   /// fresh reference point. Idempotent per calendar day — multiple
   /// taps on the tab don't move the "prior" slot.
   Future<void> _loadDeltaAndSnapshot() async {
-    final score = AscensionService.imhimScoreFromComponents(
+    final score = AscensionService.debloatScoreFromComponents(
       looks:       widget.looksScore100,
       consistency: widget.consistency,
     );
@@ -162,7 +155,7 @@ class _AscendScreenState extends State<AscendScreen> {
     final daysLeft       = AscensionService.daysRemainingFor(day);
     final rank           = AscensionService.rankFor(day);
     final consistency    = widget.consistency;
-    final imhimScore     = AscensionService.imhimScoreFromComponents(
+    final debloatScore     = AscensionService.debloatScoreFromComponents(
       looks:       widget.looksScore100,
       consistency: consistency,
     );
@@ -229,10 +222,10 @@ class _AscendScreenState extends State<AscendScreen> {
 
             const SizedBox(height: Sp.lg),
 
-            // ── 2 — IMHIM LOOKS SCORE. One number, one character to
+            // ── 2 — DEBLOAT SCORE. One number, one character to
             // level. Built from Looks + Consistency — nothing else.
             _MirrorlyScoreHero(
-              score:        imhimScore,
+              score:        debloatScore,
               delta:        _weeklyDelta,
               deltaReady:   _deltaLoaded,
               looks:        widget.looksScore100,
@@ -312,45 +305,36 @@ class _AscendScreenState extends State<AscendScreen> {
     );
   }
 
-  // ── Mission builder — v308 all-five always visible ──────────────────────
+  // ── Mission builder ─────────────────────────────────────────────────────
   //
-  // Bro: "on the first day streak you put no roleplay?? wtf is
-  // wrong with you, scan and roleplay need to be on the fucking
-  // list first day."
-  //
-  // v301 dropped Free Flow + Scan from the missions panel because
-  // they're weekly-capped. Wrong call — on Day 1 every user MUST
-  // see the full action set to commit to the app, and even on
-  // later days the weekly cap is enforced in the destination tab,
-  // not by hiding the row from the daily panel.
-  //
-  // All FIVE missions render every day:
-  //
-  //   PROTOCOL · looksDoneToday        (protocol_screen check-in)
-  //   ROLEPLAY · gameDoneToday         (Free Flow Lucien round)
-  //   SCAN     · _scanLoggedToday      (latest scan dated today)
-  //   PICKUP   · pickupLineDoneToday   (pickup_line_screen._copy)
-  //   READ     · rizzDoneToday         (rizz_reply_screen generate)
-  //
-  // Each row's done-flag is per-day so a user can tick it once
-  // each calendar day. Cap exhaustion ("0 / 5 Free Flows left
-  // this week") is surfaced inside the Game / Looks tabs at the
-  // moment they tap through — the missions panel doesn't
-  // pre-judge whether the cap is available.
-  //
-  // Copy stays in the leveling-up voice. Every line reads as a
-  // rep banked toward becoming Him.
+  // THE ASCENSION IS THE SYSTEM. Row one is always the daily debloat
+  // checklist (the core loop); a row per committed protocol follows,
+  // each deep-linking into its check-in screen. Every done-flag is
+  // per-day. Copy stays in the leveling-up voice.
   List<AscendMission> _buildMissions() {
     final w = widget;
 
-    // v371 — THE ASCENSION IS THE PROTOCOLS. One mission row per
-    // committed protocol (Skin, Jaw, Eyes, Hair, Body...), each row
-    // deep-linking straight into that protocol's check-in screen.
-    // Nothing else qualifies as a daily mission — the whole trick of
-    // the 60 days is protocol reps, logged daily.
+    // Daily checklist row — done/offered from DailyMissionService via
+    // home_screen. The mission list mirrors the checklist items, so
+    // count them here.
+    final clDone  = w.dailyMissions.where((m) => m.done).length;
+    final clTotal = w.dailyMissions.length;
+    final checklistRow = AscendMission(
+      title: clTotal > 0
+          ? 'RUN THE DEBLOAT SYSTEM · $clDone/$clTotal'
+          : 'RUN THE DEBLOAT SYSTEM',
+      hint: clTotal > 0 && clDone >= clTotal
+          ? 'fully drained. see it tomorrow morning.'
+          : 'the daily checklist. every tick shows in the mirror.',
+      done: clTotal > 0 && clDone >= clTotal,
+      // Debloat tab — where the checklist lives.
+      onTap: () => w.onJumpToTab(1),
+    );
+
     final active = w.activeProtocols;
     if (active.isNotEmpty) {
       return [
+        checklistRow,
         for (final p in active.values)
           AscendMission(
             title: '${p.targetAxis.toUpperCase()} · LOG DAY ${p.currentDay}',
@@ -365,27 +349,17 @@ class _AscendScreenState extends State<AscendScreen> {
       ];
     }
 
-    // No protocols committed yet — one mission: commit.
+    // No protocol committed yet — checklist + commit.
     return [
+      checklistRow,
       AscendMission(
-        title: 'COMMIT YOUR FIRST PROTOCOL',
-        hint: 'skin, jaw, eyes, hair, body — pick the axis. '
-            'the 60 days start there.',
+        title: 'COMMIT THE DEBLOAT PROTOCOL',
+        hint: 'the 60-day run. it starts on the Mirror tab.',
         done: false,
+        // Mirror tab — where the protocol is committed.
         onTap: () => w.onJumpToTab(2),
       ),
     ];
-  }
-
-  /// True if the latest scan in widget.allScans landed today.
-  /// Same shape the v301-deleted _hasScanFromToday had — restored
-  /// because the SCAN mission needs to know if today's already
-  /// banked.
-  bool _scanLoggedToday() {
-    if (widget.latest == null) return false;
-    final now = DateTime.now();
-    final t   = widget.latest!.takenAt;
-    return t.year == now.year && t.month == now.month && t.day == now.day;
   }
 
   /// v290 — which scan milestone (if any) is currently in window
@@ -401,7 +375,7 @@ class _AscendScreenState extends State<AscendScreen> {
         eyebrow:  'MID-PROTOCOL SCAN · DAY 28',
         title:    'Capture the delta.',
         subtitle: 'A new scan locks in the week-4 receipt and refreshes '
-                  'your IMHIM LOOKS score.',
+                  'your DEBLOAT score.',
         doneCopy: 'Mid-protocol scan locked in.',
         cta:      'Take the scan',
       );
@@ -413,7 +387,7 @@ class _AscendScreenState extends State<AscendScreen> {
         to:       60,
         eyebrow:  'FINAL SCAN · DAY 60',
         title:    'Your before / after lands now.',
-        subtitle: 'The Day-60 scan unlocks the IMHIM CERTIFIED card. '
+        subtitle: 'The Day-60 scan unlocks the DRAINED · CERTIFIED card. '
                   'This is the receipt people share.',
         doneCopy: 'Final scan logged. Certificate is ready.',
         cta:      'Take the final scan',
@@ -436,11 +410,11 @@ class _AscendScreenState extends State<AscendScreen> {
     return false;
   }
 
-  /// v291 — Generate the IMHIM CERTIFIED Day-60 share card.
+  /// v291 — Generate the DRAINED · CERTIFIED Day-60 share card.
   /// Collects (LOOKS ONLY since v380):
   ///   - BEFORE photo: first scan in history (chronological)
   ///   - AFTER photo:  last scan in history (the Day-60-window scan)
-  ///   - IMHIM LOOKS SCORE arc: composite at Day-1 conditions
+  ///   - DEBLOAT SCORE arc: composite at Day-1 conditions
   ///     (first scan's looks, consistency = 0) vs the current composite
   ///   - LOOKS arc:  first scan score → latest scan score
   ///   - CONSISTENCY arc: 0 → current consistency
@@ -463,13 +437,13 @@ class _AscendScreenState extends State<AscendScreen> {
     final int consistencyEnd = widget.consistency;
     const int consistencyStart = 0;
 
-    // IMHIM LOOKS SCORE arc — same formula AscensionService runs in the
+    // DEBLOAT SCORE arc — same formula AscensionService runs in the
     // hero so the certificate reads as continuous with the live tab.
-    final int imhimStart = AscensionService.imhimScoreFromComponents(
+    final int scoreStart = AscensionService.debloatScoreFromComponents(
       looks:       looksStart,
       consistency: consistencyStart,
     );
-    final int imhimEnd = AscensionService.imhimScoreFromComponents(
+    final int scoreEnd = AscensionService.debloatScoreFromComponents(
       looks:       looksEnd,
       consistency: consistencyEnd,
     );
@@ -479,8 +453,8 @@ class _AscendScreenState extends State<AscendScreen> {
       context:          context,
       beforePhotoPath:  firstScan?.capturedImagePath,
       afterPhotoPath:   lastScan?.capturedImagePath,
-      imhimStart:       imhimStart,
-      imhimEnd:         imhimEnd,
+      scoreStart:       scoreStart,
+      scoreEnd:         scoreEnd,
       looksStart:       looksStart,
       looksEnd:         looksEnd,
       consistencyStart: consistencyStart,
@@ -645,12 +619,12 @@ class _FlameHeroState extends State<_FlameHero>
                                 )),
                               const SizedBox(height: 6),
                               Text('${widget.day}',
-                                style: GoogleFonts.playfairDisplay(
+                                style: GoogleFonts.spaceGrotesk(
                                   color: Colors.white,
                                   fontSize: 96, height: 1,
                                   letterSpacing: -3,
                                   fontWeight: FontWeight.w900,
-                                  fontStyle: FontStyle.italic,
+                                  
                                 )),
                               const SizedBox(height: 2),
                               Text('/ ${widget.total}',
@@ -696,11 +670,11 @@ class _FlameHeroState extends State<_FlameHero>
           child: Text(
             widget.rank.tagline,
             textAlign: TextAlign.center,
-            style: GoogleFonts.playfairDisplay(
+            style: GoogleFonts.spaceGrotesk(
               color: AppColors.textPrimary,
               fontSize: 18, height: 1.35,
               letterSpacing: -0.4,
-              fontStyle: FontStyle.italic,
+              
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -725,7 +699,7 @@ class _ProgressRingPainter extends CustomPainter {
 
     final fill = Paint()
       ..shader = const SweepGradient(
-        colors: [Color(0xFFE8222A), Color(0xFFFF7A45), Color(0xFFE8222A)],
+        colors: [Color(0xFF22D3EE), Color(0xFF7DF9FF), Color(0xFF22D3EE)],
       ).createShader(Rect.fromCircle(center: center, radius: radius))
       ..strokeWidth = 6
       ..strokeCap = StrokeCap.round
@@ -748,7 +722,7 @@ class _ProgressRingPainter extends CustomPainter {
 //  SECTION 2 — COST OF QUITTING
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// v289 — IMHIM LOOKS SCORE hero. The composite that levels the whole
+/// v289 — DEBLOAT SCORE hero. The composite that levels the whole
 /// app into one character. Hero number in red, weekly delta arrow
 /// underneath, three component pillars stacked below as the
 /// "built from" credit row. Sits directly under the flame so the
@@ -795,7 +769,7 @@ class _MirrorlyScoreHero extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text('IMHIM LOOKS SCORE',
+            Text('DEBLOAT SCORE',
               style: GoogleFonts.inter(
                 color: AppColors.red,
                 fontSize: 10.5, letterSpacing: 3.2,
@@ -803,12 +777,12 @@ class _MirrorlyScoreHero extends StatelessWidget {
               )),
             const SizedBox(height: 6),
             Text('$score',
-              style: GoogleFonts.playfairDisplay(
+              style: GoogleFonts.spaceGrotesk(
                 color: Colors.white,
                 fontSize: 72, height: 1,
                 letterSpacing: -2.4,
                 fontWeight: FontWeight.w900,
-                fontStyle: FontStyle.italic,
+                
               )),
             const SizedBox(height: 6),
             Text(deltaText,
@@ -1029,11 +1003,11 @@ class _ScanMilestoneCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(milestone.title,
-                  style: GoogleFonts.playfairDisplay(
+                  style: GoogleFonts.spaceGrotesk(
                     color: AppColors.textPrimary,
                     fontSize: 24, height: 1.15,
                     letterSpacing: -0.8,
-                    fontStyle: FontStyle.italic,
+                    
                     fontWeight: FontWeight.w800,
                   )),
                 const SizedBox(height: 8),
@@ -1106,11 +1080,11 @@ class _TodayMessageCard extends StatelessWidget {
               )),
             const SizedBox(height: 8),
             Text(line,
-              style: GoogleFonts.playfairDisplay(
+              style: GoogleFonts.spaceGrotesk(
                 color: AppColors.textPrimary,
                 fontSize: 18, height: 1.35,
                 letterSpacing: -0.4,
-                fontStyle: FontStyle.italic,
+                
                 fontWeight: FontWeight.w600,
               )),
           ],
@@ -1350,7 +1324,7 @@ class _RankRow extends StatelessWidget {
               fontSize: 16, height: 1.2,
               letterSpacing: 1.4,
               fontWeight: isCurrent ? FontWeight.w900 : FontWeight.w700,
-              fontStyle: isCurrent ? FontStyle.italic : FontStyle.normal,
+              
             )),
         ),
         if (isCurrent)
@@ -1404,7 +1378,7 @@ class _RecordTimeline extends StatelessWidget {
                 style: GoogleFonts.inter(
                   color: AppColors.textTertiary,
                   fontSize: 13, height: 1.5,
-                  fontStyle: FontStyle.italic,
+                  
                   fontWeight: FontWeight.w500,
                 )),
             for (var i = 0; i < milestones.length; i++) ...[
@@ -1570,11 +1544,11 @@ class _StreakPanel extends StatelessWidget {
                       // to match the flame's optical height so the
                       // pair reads as one unit.
                       Text('$current',
-                        style: GoogleFonts.playfairDisplay(
+                        style: GoogleFonts.spaceGrotesk(
                           color: Colors.white,
                           fontSize: 92, height: 1,
                           letterSpacing: -3.4,
-                          fontStyle: FontStyle.italic,
+                          
                           fontWeight: FontWeight.w900,
                           shadows: [
                             Shadow(
@@ -1631,7 +1605,7 @@ class _FinalFormCard extends StatelessWidget {
   final int daysLeft;
   /// v291 — invoked when the user taps GENERATE CERTIFICATE on the
   /// unlocked card. The State subclass owns the data collection
-  /// (first/last scan, looks/game arcs, IMHIM LOOKS start/end) and the
+  /// (first/last scan, looks/game arcs, DEBLOAT start/end) and the
   /// ShareService call. Null when locked so the build path can
   /// hide the CTA entirely.
   final Future<void> Function()? onGenerate;
@@ -1680,19 +1654,19 @@ class _FinalFormCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            Text('IMHIM CERTIFIED',
-              style: GoogleFonts.playfairDisplay(
+            Text('DRAINED · CERTIFIED',
+              style: GoogleFonts.spaceGrotesk(
                 color: AppColors.textPrimary,
                 fontSize: 28, height: 1.1,
                 letterSpacing: -0.8,
                 fontWeight: FontWeight.w900,
-                fontStyle: FontStyle.italic,
+                
               )),
             const SizedBox(height: 14),
             Text(
               unlocked
                 ? 'You finished the protocol. Generate the receipt — '
-                  'real before / after photos, the IMHIM LOOKS SCORE arc, '
+                  'real before / after photos, the DEBLOAT SCORE arc, '
                   'and the full Looks lift, on one card people will '
                   'screenshot.'
                 : 'Reach Day 60 to unlock:',
@@ -1705,7 +1679,7 @@ class _FinalFormCard extends StatelessWidget {
             const SizedBox(height: 12),
             for (final line in const [
               'Before / after face pair',
-              'IMHIM LOOKS SCORE arc — start to Day 60',
+              'DEBLOAT SCORE arc — start to Day 60',
               'Looks arc — the full delta receipt',
               'Consistency receipt',
               'Shareable certificate card',

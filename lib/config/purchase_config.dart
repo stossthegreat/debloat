@@ -4,7 +4,7 @@
 /// WHAT YOU NEED TO DO BEFORE PAYMENT WORKS
 /// ──────────────────────────────────────────────────────────────────────
 /// 1. Log in to https://app.revenuecat.com
-/// 2. Create a project "ImHim Looks" if you haven't already.
+/// 2. Create a project "Debloat OS" if you haven't already.
 /// 3. Project Settings → API Keys — copy:
 ///      - "Public SDK Key" for the iOS app  (starts with  appl_…)
 ///      - "Public SDK Key" for the Android app (starts with  goog_…)
@@ -31,7 +31,7 @@ class PurchaseConfig {
   /// RevenueCat public SDK key for Android. Starts with `goog_`.
   static const androidApiKey = 'goog_cdoFAjjiwMkzsxNjPBwoKalEwkF';
 
-  /// The entitlement identifier that grants ImHim Pro. Configured
+  /// The entitlement identifier that grants Debloat Pro. Configured
   /// in RevenueCat dashboard → Entitlements. Both weekly and annual
   /// subscriptions attach to this entitlement.
   static const proEntitlementId = 'pro';
@@ -39,18 +39,15 @@ class PurchaseConfig {
   /// Product identifiers — MUST match exactly what's in App Store
   /// Connect and Google Play Console.
   ///
-  ///   mirrorly_pro_weekly    →  Weekly subscription ($6.99/wk)
-  ///   mirrorly_pro_yearly    →  Annual subscription ($139.99/yr,
-  ///                             Play Console registered the yearly
-  ///                             base plan as `mirrorly_pro_yearly`,
-  ///                             not `_annual`)
-  ///   mirrorly_pro_rescue    →  Rescue one-time IAP (Android only;
-  ///                             iOS rescue product is not yet
-  ///                             approved on App Store Connect)
+  ///   debloat_pro_weekly     →  Weekly subscription ($6.99/wk)
+  ///   debloat_pro_yearly     →  Annual subscription (not on sale;
+  ///                             register in the stores before
+  ///                             re-enabling the annual tier)
+  ///   debloat_pro_rescue     →  Rescue one-time IAP
   static const productIds = (
-    weekly:  'mirrorly_pro_weekly',
-    yearly:  'mirrorly_pro_yearly',
-    rescue:  'mirrorly_pro_rescue',
+    weekly:  'debloat_pro_weekly',
+    yearly:  'debloat_pro_yearly',
+    rescue:  'debloat_pro_rescue',
   );
 
   /// RevenueCat package identifiers inside the current Offering.
@@ -58,7 +55,7 @@ class PurchaseConfig {
   /// for the two subscriptions — those are what we attach products
   /// to in the dashboard. The rescue one-time IAP is a custom
   /// package slot named `rescue` (see RC dashboard: the Play Store
-  /// row shows `mirrorly_pro_rescue:rescue`).
+  /// row shows `debloat_pro_rescue:rescue`).
   static const offering = (
     weeklyPackage:  '\$rc_weekly',
     annualPackage:  '\$rc_annual',

@@ -60,7 +60,7 @@ class PerTraitScores extends StatelessWidget {
                   color: AppColors.textTertiary.withValues(alpha: 0.6),
                   fontSize: 9,
                   letterSpacing: 1.4,
-                  fontStyle: FontStyle.italic,
+                  
                 ),
               ),
             ],
@@ -71,7 +71,7 @@ class PerTraitScores extends StatelessWidget {
               color: AppColors.textTertiary,
               fontSize: 11.5,
               height: 1.4,
-              fontStyle: FontStyle.italic,
+              
             )),
           const SizedBox(height: 12),
           for (int i = 0; i < rows.length; i++) ...[

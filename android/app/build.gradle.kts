@@ -1,34 +1,16 @@
-import java.util.Properties
-import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // Reads android/app/google-services.json and exposes the Firebase
-    // config to the app at build time. Required by firebase_analytics.
-    id("com.google.gms.google-services")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Play Console upload-key fingerprints loaded from play-fingerprints.properties
-// — the values that must match the keystore at upload-keystore.jks for Play
-// Store to accept the AAB. The Verify-keystore CI step reads these and
-// fails the build if the keystore in the repo doesn't match, so a
-// wrong-key build never gets shipped past CI.
-val playFingerprintsFile = rootProject.file("app/play-fingerprints.properties")
-val playFingerprints = Properties().apply {
-    if (playFingerprintsFile.exists()) {
-        FileInputStream(playFingerprintsFile).use { load(it) }
-    }
-}
-val playUploadKeySha1   = playFingerprints.getProperty("play.upload.key.sha1",   "")
-val playUploadKeySha256 = playFingerprints.getProperty("play.upload.key.sha256", "")
-
 android {
-    namespace = "com.mirrorly.mirrorly"
+    namespace = "com.debloatos.app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // Pinned to an explicit NDK so builds are deterministic across machines.
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         // Core library desugaring is required by `flutter_local_notifications`
@@ -48,25 +30,11 @@ android {
         buildConfig = true
     }
 
-    // MediaPipe memory-maps the FaceLandmarker model via AssetManager
-    // openFd(), which fails if aapt has deflated it. Keep .task assets
-    // stored uncompressed so the iris landmarker can load.
-    androidResources {
-        noCompress += "task"
-    }
-
     defaultConfig {
-        applicationId = "com.mirrorly.mirrorly"
+        applicationId = "com.debloatos.app"
 
-        // Bake the registered Play Console fingerprints into BuildConfig
-        // so any in-app integrity check or asset_links logic can read
-        // them at runtime without re-parsing the properties file.
-        buildConfigField("String", "PLAY_UPLOAD_KEY_SHA1",   "\"$playUploadKeySha1\"")
-        buildConfigField("String", "PLAY_UPLOAD_KEY_SHA256", "\"$playUploadKeySha256\"")
-        // ML Kit Face Mesh requires Android 6.0+ (API 23). MediaPipe Tasks
-        // Vision (the iris FaceLandmarker on the Aura tab) requires API 24,
-        // so the floor is raised to 24 — negligible device loss (API 23 is
-        // <0.5% of active Androids) for real iris eye-contact scoring.
+        // ML Kit Face Mesh requires Android 6.0+ (API 23); floor kept at
+        // 24 for a consistent camera/detector baseline.
         // Source: https://developers.google.com/ml-kit/vision/face-mesh-detection/android
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
@@ -82,29 +50,31 @@ android {
         }
     }
 
-    // Upload-key signing config consumed by the `flutter-aab-final`
-    // workflow. Creds read from env first (how the GitHub Actions job
-    // sets them in the "Verify keystore" step), falling back to the
-    // literal workflow defaults so a local `flutter build appbundle
-    // --release` works for anyone who already has the .jks dropped in.
-    //
-    // The keystore file itself lives at android/app/upload-keystore.jks.
-    // SHA-1 fingerprint (registered with Play Console):
-    //   C2:27:D7:BE:A2:38:70:40:16:6A:E3:D9:BD:23:39:8D:60:DC:08:DE
-    // SHA-256:
-    //   76:E1:49:7A:35:36:DD:9A:02:8C:DB:46:5F:F8:D2:38:18:C0:FC:40:A2:55:53:C5:C7:AB:CF:2B:A7:5C:BD:ED
+    // Upload-key signing for Debloat OS. Generate a FRESH keystore for
+    // this app (do NOT reuse another app's key):
+    //   keytool -genkey -v -keystore upload-keystore.jks \
+    //     -keyalg RSA -keysize 2048 -validity 10000 -alias debloatos
+    // Drop it at android/app/upload-keystore.jks; creds come from env
+    // (CI) or the values you set here. Release builds fall back to the
+    // debug key while no keystore is present so local `flutter build`
+    // still works.
+    val uploadKeystore = file("upload-keystore.jks")
     signingConfigs {
         create("release") {
-            storeFile = file("upload-keystore.jks")
-            storePassword = System.getenv("STORE_PASSWORD") ?: "skeletalpt123"
-            keyAlias = System.getenv("KEY_ALIAS") ?: "skeletalpt"
-            keyPassword = System.getenv("KEY_PASSWORD") ?: "skeletalpt123"
+            if (uploadKeystore.exists()) {
+                storeFile = uploadKeystore
+                storePassword = System.getenv("STORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("KEY_ALIAS") ?: "debloatos"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (uploadKeystore.exists())
+                signingConfigs.getByName("release")
+            else signingConfigs.getByName("debug")
 
             // ML Kit classes are reached via reflection inside the detector
             // SDK. Without keep rules, R8 silently strips them and the
@@ -127,7 +97,4 @@ dependencies {
     // Required for `isCoreLibraryDesugaringEnabled = true` above.
     // Version 2.0.4+ is the one flutter_local_notifications documents.
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-    // MediaPipe Tasks Vision — powers the iris FaceLandmarker behind the
-    // Aura tab's real eye-contact scoring (MediaPipeFaceLandmarkerPlugin).
-    implementation("com.google.mediapipe:tasks-vision:0.10.14")
 }

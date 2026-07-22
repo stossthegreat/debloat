@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 ///   1. Score transition   56  →  78   (red arrow, the single pop)
 ///      CURRENT   PROJECTED            (captions)
 ///   2. Before/After image              (tight crop, eyes upper third)
-///      "ImHim Looks" overlays top-left of the NOW half so the brand
+///      "Debloat OS" overlays top-left of the NOW half so the brand
 ///      sits inside the image itself instead of competing with the
 ///      score numbers. Bottom-corner "NOW"/"FIXED" labels preserved.
 ///   3. Tagline                         (italic serif, same as hero)
@@ -17,7 +17,7 @@ import 'package:google_fonts/google_fonts.dart';
 /// Padding tightened vs the previous share card so everything fits
 /// comfortably in the 9:16 frame.
 class ShareCard extends StatelessWidget {
-  static const Color accentRed = Color(0xFFE8222A);
+  static const Color accentRed = Color(0xFF22D3EE);
 
   final int currentScore;
   final int projectedScore;
@@ -50,7 +50,7 @@ class ShareCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── 1 · SCORE TRANSITION (or just "ImHim Looks" if no scores) ──
+              // ── 1 · SCORE TRANSITION (or just "Debloat OS" if no scores) ──
               // Sized LARGE for 1080×1920 export. These look absurd in
               // code; at export size they read as the dominant element.
               if (hasScores) ...[
@@ -85,27 +85,19 @@ class ShareCard extends StatelessWidget {
                 // punchline as every other surface.
                 RichText(
                   text: TextSpan(
-                    style: GoogleFonts.playfairDisplay(
+                    style: GoogleFonts.spaceGrotesk(
                       color: Colors.white,
                       fontSize: 72, letterSpacing: -1.6,
                       fontWeight: FontWeight.w800, height: 1,
                     ),
                     children: [
-                      const TextSpan(text: 'Im'),
+                      const TextSpan(text: 'Debloat'),
                       TextSpan(
-                        text: 'Him',
-                        style: GoogleFonts.playfairDisplay(
+                        text: ' OS',
+                        style: GoogleFonts.spaceGrotesk(
                           color: ShareCard.accentRed,
                           fontSize: 72, letterSpacing: -1.6,
                           fontWeight: FontWeight.w800, height: 1,
-                        ),
-                      ),
-                      TextSpan(
-                        text: '  Looks',
-                        style: GoogleFonts.playfairDisplay(
-                          color: Colors.white.withValues(alpha: 0.72),
-                          fontSize: 72 * 0.42, letterSpacing: 0.2,
-                          fontWeight: FontWeight.w600, height: 1,
                         ),
                       ),
                     ],
@@ -155,10 +147,10 @@ class ShareCard extends StatelessWidget {
                 child: Text(tagline,
                   textAlign: TextAlign.center,
                   maxLines: 3, overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.playfairDisplay(
+                  style: GoogleFonts.spaceGrotesk(
                     color: Colors.white,
                     fontSize: 56, letterSpacing: -0.7,
-                    fontStyle: FontStyle.italic,
+                    
                     fontWeight: FontWeight.w500, height: 1.22,
                   )),
               ),
@@ -209,7 +201,7 @@ class ShareCard extends StatelessWidget {
                           fontWeight: FontWeight.w900, height: 1,
                         )),
                       const SizedBox(height: 8),
-                      Text('IMHIM.APP',
+                      Text('DEBLOAT OS',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
                           color: Colors.white.withValues(alpha: 0.92),
@@ -251,7 +243,7 @@ class ShareCard extends StatelessWidget {
           const ColoredBox(color: Color(0xFF0C0C0C)),
 
         // Soft scrim along the top of the NOW half so the big red
-        // "ImHim Looks" wordmark reads over any skin tone or highlight.
+        // "Debloat OS" wordmark reads over any skin tone or highlight.
         if (showBrandWordmark)
           Positioned(
             left: 0, right: 0, top: 0, height: 80,
@@ -279,7 +271,7 @@ class ShareCard extends StatelessWidget {
             // who you are and "Him" (red) is who you become.
             child: RichText(
               text: TextSpan(
-                style: GoogleFonts.playfairDisplay(
+                style: GoogleFonts.spaceGrotesk(
                   color: Colors.white,
                   fontSize: 34, letterSpacing: -0.8,
                   fontWeight: FontWeight.w900, height: 1,
@@ -292,10 +284,10 @@ class ShareCard extends StatelessWidget {
                   ],
                 ),
                 children: [
-                  const TextSpan(text: 'Im'),
+                  const TextSpan(text: 'Debloat'),
                   TextSpan(
-                    text: 'Him',
-                    style: GoogleFonts.playfairDisplay(
+                    text: ' OS',
+                    style: GoogleFonts.spaceGrotesk(
                       color: ShareCard.accentRed,
                       fontSize: 34, letterSpacing: -0.8,
                       fontWeight: FontWeight.w900, height: 1,
@@ -309,8 +301,8 @@ class ShareCard extends StatelessWidget {
                     ),
                   ),
                   TextSpan(
-                    text: '  Looks',
-                    style: GoogleFonts.playfairDisplay(
+                    text: '',
+                    style: GoogleFonts.spaceGrotesk(
                       color: Colors.white.withValues(alpha: 0.85),
                       fontSize: 34 * 0.42, letterSpacing: 0.2,
                       fontWeight: FontWeight.w600, height: 1,
@@ -388,10 +380,10 @@ class _ScoreTransitionStatic extends StatelessWidget {
       children: [
         Text('$currentScore',
           maxLines: 1,
-          style: GoogleFonts.playfairDisplay(
+          style: GoogleFonts.spaceGrotesk(
             fontSize: 150, height: 1.0, letterSpacing: -4.5,
             color: Colors.white.withValues(alpha: 0.62),
-            fontStyle: FontStyle.italic,
+            
             fontWeight: FontWeight.w500,
           )),
         const SizedBox(width: 32),
@@ -404,10 +396,10 @@ class _ScoreTransitionStatic extends StatelessWidget {
         const SizedBox(width: 32),
         Text('$projectedScore',
           maxLines: 1,
-          style: GoogleFonts.playfairDisplay(
+          style: GoogleFonts.spaceGrotesk(
             fontSize: 178, height: 1.0, letterSpacing: -5.0,
             color: ShareCard.accentRed,        // the "after" number = brand red
-            fontStyle: FontStyle.italic,
+            
             fontWeight: FontWeight.w700,
             shadows: [
               Shadow(

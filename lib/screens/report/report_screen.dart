@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +15,6 @@ import '../../services/archetype_service.dart';
 import '../../services/analytics_service.dart';
 import '../../services/daily_nudge_service.dart';
 import '../../services/face_asset_service.dart';
-import '../../services/feature_analysis_service.dart';
 import '../../services/honest_rating_service.dart';
 import '../../services/local_store_service.dart';
 import '../../services/mirror_api_service.dart';
@@ -451,16 +449,6 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  /// Estimate percentile from score — rough but reads as real.
-  int _percentile(int score) {
-    if (score >= 92) return 2;
-    if (score >= 85) return 8;
-    if (score >= 78) return 16;
-    if (score >= 70) return 28;
-    if (score >= 60) return 44;
-    return 62;
-  }
-
   /// Convert backend stack-dump errors into a human message. Raw
   /// backend JSON never reaches the user — they see a clean sentence
   /// plus Try Again. 429s get their own copy since they're transient.
@@ -595,7 +583,6 @@ class _ReportScreenState extends State<ReportScreen> {
   Widget _buildReport(MirrorAnalysis a) {
     final score = ScoringService.compute(widget.geometry);
     final traits = TraitBuilderService.build(widget.geometry);
-    final percentile = _percentile(score.value);
     final potential = _potentialDelta(score.value);
     final projected = (score.value + potential).clamp(0, 100);
     final correctionsCount = a.report.fixes.isNotEmpty
@@ -692,7 +679,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     microProofs.isNotEmpty ? microProofs.first : 'MEASURED PROFILE',
                   ],
                   text: '${_honest?.score ?? score.value} → $projected. '
-                        'Same face. imhim.app',
+                        'Same face. Debloat OS.',
                 ),
               ),
             ],
@@ -1198,7 +1185,7 @@ class _ApplyAllFixesButtonState extends State<_ApplyAllFixesButton> {
             Text('Tap to open fullscreen · share · screenshot',
               style: AppTypography.bodySmall.copyWith(
                 color: AppColors.textSecondary, fontSize: 11,
-                fontStyle: FontStyle.italic)),
+                )),
           ],
         ),
       ).animate()
@@ -1277,64 +1264,6 @@ class _ApplyAllFixesButtonState extends State<_ApplyAllFixesButton> {
     child: Text('Maximized render unavailable',
       style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted)),
   );
-}
-
-class _ConsultCard extends StatelessWidget {
-  final VoidCallback onTap;
-  const _ConsultCard({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(Rd.xl),
-        child: Container(
-          padding: const EdgeInsets.all(Sp.md),
-          decoration: BoxDecoration(
-            color: AppColors.surface1,
-            borderRadius: BorderRadius.circular(Rd.xl),
-            border: Border.all(color: AppColors.divider, width: 0.8),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 42, height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.surface2,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.divider, width: 0.8),
-                ),
-                child: const Icon(Icons.auto_awesome,
-                  size: 18, color: AppColors.textSecondary),
-              ),
-              const SizedBox(width: Sp.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('CONSULT THE AI',
-                      style: AppTypography.label.copyWith(
-                        color: AppColors.textPrimary, letterSpacing: 2.6, fontSize: 9,
-                        fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 3),
-                    Text('Ask about haircut, beard, skin, surgery — answered '
-                         'against your measured bones.',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textSecondary, fontSize: 12, height: 1.4)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 6),
-              const Icon(Icons.arrow_forward_rounded,
-                size: 18, color: AppColors.textTertiary),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // ── Protocol CTA card — auto-prescribe the 60-day routine keyed to the
@@ -1533,179 +1462,6 @@ class _ShareButton extends StatelessWidget {
   }
 }
 
-// ── Block card ────────────────────────────────────────────────────────────────
-class _Block extends StatelessWidget {
-  final String label;
-  final Color color;
-  final String body;
-
-  const _Block({required this.label, required this.color, required this.body});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(Sp.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(Rd.lg),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 2, height: 36,
-            margin: const EdgeInsets.only(top: 2, right: Sp.sm),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.65),
-              borderRadius: BorderRadius.circular(1),
-            ),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: AppTypography.label.copyWith(
-                  color: color, letterSpacing: 1.8, fontSize: 9)),
-                const SizedBox(height: 5),
-                Text(body, style: AppTypography.body.copyWith(
-                  color: AppColors.textPrimary, height: 1.55)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Fix card ──────────────────────────────────────────────────────────────────
-// ── Fix text card — text-only, no inline render ────────────────────────────
-// Previously this card offered a "See it" button that fired /tryon and
-// rendered a per-fix Nano Banana image (three fix cards × one render each =
-// three extra generations per scan, the single biggest cost item in the
-// report). We've pulled that generation out of the report entirely. The
-// hero "Final form" already shows the combined maximized twin; users who
-// want to drill into a single change can do it one at a time via the
-// Mirror chat, which remains the only per-user render surface.
-class _FixTextCard extends StatelessWidget {
-  final int index;
-  final Fix fix;
-  const _FixTextCard({required this.index, required this.fix});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: Sp.md),
-      padding: const EdgeInsets.all(Sp.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(Rd.lg),
-        border: Border.all(color: AppColors.accent.withValues(alpha: 0.14)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('$index',
-                style: AppTypography.h1.copyWith(
-                  color: AppColors.accent, fontSize: 28, letterSpacing: -1)),
-              const SizedBox(width: Sp.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 4),
-                    Text(fix.title.toUpperCase(),
-                      style: AppTypography.h3.copyWith(
-                        color: AppColors.textPrimary, letterSpacing: 0.5)),
-                    const SizedBox(height: 4),
-                    Text(fix.reason,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textSecondary, height: 1.55)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: Sp.sm),
-          const Divider(height: 1),
-          const SizedBox(height: Sp.sm),
-          Text('DO THIS', style: AppTypography.label.copyWith(
-            color: AppColors.measure, fontSize: 9, letterSpacing: 1.8)),
-          const SizedBox(height: 4),
-          Text(fix.action, style: AppTypography.body.copyWith(
-            color: AppColors.textPrimary, fontSize: 14, height: 1.55)),
-          const SizedBox(height: Sp.sm),
-          Row(
-            children: [
-              _Chip(label: fix.timeline, color: AppColors.textTertiary),
-              const SizedBox(width: 8),
-              _Chip(label: 'RESCAN DAY ${fix.rescanDay}', color: AppColors.accent),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-
-class _Chip extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _Chip({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.1),
-      border: Border.all(color: color.withValues(alpha: 0.3)),
-      borderRadius: BorderRadius.circular(4),
-    ),
-    child: Text(label.toUpperCase(),
-      style: AppTypography.label.copyWith(
-        color: color, fontSize: 9, letterSpacing: 1.4)),
-  );
-}
-
-// ── Verdict ───────────────────────────────────────────────────────────────────
-class _Verdict extends StatelessWidget {
-  final String text;
-  const _Verdict({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(Sp.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(Rd.xl),
-        border: Border.all(color: AppColors.accentBorder),
-        boxShadow: [BoxShadow(
-          color: AppColors.accent.withValues(alpha: 0.06),
-          blurRadius: 24,
-        )],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('VERDICT', style: AppTypography.label.copyWith(
-            color: AppColors.accent, letterSpacing: 2.5)),
-          const SizedBox(height: Sp.md),
-          Text(text, style: AppTypography.body.copyWith(
-            height: 1.75, color: AppColors.textPrimary)),
-        ],
-      ),
-    );
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 //  DUAL SCORE HERO
 //
@@ -1771,7 +1527,7 @@ class _DualScoreHero extends StatelessWidget {
                   color: AppColors.red,
                   fontSize: 78, height: 1,
                   letterSpacing: -2.8,
-                  fontStyle: FontStyle.italic,
+                  
                   fontWeight: FontWeight.w800,
                   shadows: [
                     Shadow(
@@ -1817,7 +1573,7 @@ class _DualScoreHero extends StatelessWidget {
               style: AppTypography.body.copyWith(
                 color: AppColors.textSecondary,
                 fontSize: 13, height: 1.45,
-                fontStyle: FontStyle.italic)),
+                )),
           ],
 
           const SizedBox(height: 14),
@@ -1982,7 +1738,7 @@ class _LockedSection extends StatelessWidget {
                       style: AppTypography.label.copyWith(
                         color: AppColors.textTertiary,
                         fontSize: 10, letterSpacing: 1.6,
-                        fontStyle: FontStyle.italic,
+                        
                         fontWeight: FontWeight.w600,
                       )),
                   ),

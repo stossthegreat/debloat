@@ -46,23 +46,9 @@ import '../firebase_options.dart';
 ///     restore_completed              { had_purchase }
 ///
 ///   Roleplay (Free Flow / Game tab)
-///     freeflow_screen_viewed
-///     freeflow_session_started       { vibe, is_free }
-///     freeflow_first_hold
-///     freeflow_session_ended         { reason, duration_sec, transcript_turns }
 ///                                       — reason: timer | user | cap | error | bail
-///     freeflow_char_switched         { from, to }
-///     freeflow_lucien_tapped         { had_first_reply, is_free }
-///     freeflow_lucien_upsell_shown
-///     freeflow_lucien_upsell_dismissed
-///     freeflow_blocked_free_cap      { surface }       — orb | lucien
-///     freeflow_voice_cap_hit
 ///
 ///   Rizz tab + screens
-///     rizz_card_tapped               { card }          — screenshot | lines | chat
-///     rizz_screenshot_uploaded       { has_text }
-///     rizz_replies_generated         { count, is_free }
-///     rizz_blocked_free_cap          { card }
 ///
 ///   Tab navigation
 ///     tab_opened                     { tab }
@@ -244,59 +230,6 @@ class AnalyticsService {
   static Future<void> restoreCompleted(bool hadPurchase) =>
       _log('restore_completed', {'had_purchase': hadPurchase});
 
-  // ── Roleplay (Free Flow) ───────────────────────────────────────────
-
-  static Future<void> freeflowScreenViewed() =>
-      _log('freeflow_screen_viewed');
-  static Future<void> freeflowSessionStarted({
-    required String vibe,
-    required bool isFree,
-  }) =>
-      _log('freeflow_session_started', {'vibe': vibe, 'is_free': isFree});
-  static Future<void> freeflowFirstHold() => _log('freeflow_first_hold');
-  static Future<void> freeflowSessionEnded({
-    required String reason,           // timer | user | cap | error | bail
-    required int durationSec,
-    required int transcriptTurns,
-  }) =>
-      _log('freeflow_session_ended', {
-        'reason':           reason,
-        'duration_sec':     durationSec,
-        'transcript_turns': transcriptTurns,
-      });
-  static Future<void> freeflowCharSwitched(String from, String to) =>
-      _log('freeflow_char_switched', {'from': from, 'to': to});
-  static Future<void> freeflowLucienTapped({
-    required bool hadFirstReply,
-    required bool isFree,
-  }) =>
-      _log('freeflow_lucien_tapped', {
-        'had_first_reply': hadFirstReply,
-        'is_free':         isFree,
-      });
-  static Future<void> freeflowLucienUpsellShown() =>
-      _log('freeflow_lucien_upsell_shown');
-  static Future<void> freeflowLucienUpsellDismissed() =>
-      _log('freeflow_lucien_upsell_dismissed');
-  static Future<void> freeflowBlockedFreeCap(String surface) =>
-      _log('freeflow_blocked_free_cap', {'surface': surface});
-  static Future<void> freeflowVoiceCapHit() =>
-      _log('freeflow_voice_cap_hit');
-
-  // ── Rizz tab + screens ─────────────────────────────────────────────
-
-  static Future<void> rizzCardTapped(String card) =>
-      _log('rizz_card_tapped', {'card': card});
-  static Future<void> rizzScreenshotUploaded({required bool hasText}) =>
-      _log('rizz_screenshot_uploaded', {'has_text': hasText});
-  static Future<void> rizzRepliesGenerated({
-    required int count,
-    required bool isFree,
-  }) =>
-      _log('rizz_replies_generated', {'count': count, 'is_free': isFree});
-  static Future<void> rizzBlockedFreeCap(String card) =>
-      _log('rizz_blocked_free_cap', {'card': card});
-
   // ── Tab navigation ─────────────────────────────────────────────────
 
   static Future<void> tabOpened(String tab) =>
@@ -309,7 +242,6 @@ class AnalyticsService {
   static Future<void> progressCloseTapped() =>
       _log('progress_close_tapped');
   /// Fires when any in-app SHARE button is tapped. `surface` names the
-  /// origin ("progress", "freeflow", "gaze") so the funnel report can
   /// tell us which result pages are actually post-able vs. dead ends.
   static Future<void> shareTapped({required String surface}) =>
       _log('share_tapped', {'surface': surface});
@@ -318,12 +250,6 @@ class AnalyticsService {
 
   static Future<void> settingsScreenViewed() =>
       _log('settings_screen_viewed');
-  static Future<void> settingsVoiceCapViewed({
-    required int usedMs,
-    required int capMs,
-  }) =>
-      _log('settings_voice_cap_viewed',
-          {'used_ms': usedMs, 'cap_ms': capMs});
 
   // ── Mirror chat / renders ──────────────────────────────────────────
 
@@ -339,7 +265,7 @@ class AnalyticsService {
   static Future<void> streakLost(int previousLength) =>
       _log('streak_lost', {'previous_length': previousLength});
 
-  // ── ImHim Looks Keyboard ─────────────────────────────────────────────────
+  // ── Debloat OS Keyboard ─────────────────────────────────────────────────
 
   /// User landed on the install/onboarding screen.
   static Future<void> keyboardInstallViewed() =>

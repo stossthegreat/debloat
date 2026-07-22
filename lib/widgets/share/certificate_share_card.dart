@@ -7,7 +7,7 @@ import '../../theme/app_colors.dart' as base;
 import '../../theme/auralay_app_colors.dart';
 import '../../theme/auralay_app_typography.dart';
 
-/// ImHim Looks — 60-DAY PROTOCOL CERTIFICATE share card (v291).
+/// Debloat OS — 60-DAY PROTOCOL CERTIFICATE share card (v291).
 ///
 /// The receipt of the 60-day Ascension. Locked until Day 60; on
 /// unlock, the user generates and shares this card from the Ascend
@@ -15,18 +15,18 @@ import '../../theme/auralay_app_typography.dart';
 ///
 /// 9:16 composition, same atmospheric halo + two-tone wordmark
 /// language as [ProgressShareCard] and [ScoreShareCard] so a viewer
-/// who's seen any ImHim Looks card before instantly recognises the brand.
+/// who's seen any Debloat OS card before instantly recognises the brand.
 /// What's different:
 ///
 ///   ┌──────────── 9 × 16 ────────────┐
 ///   │ 60 DAY PROTOCOL · COMPLETE     │ ← red eyebrow
-///   │            ImHim Looks               │ ← wordmark, then a divider
+///   │            Debloat OS               │ ← wordmark, then a divider
 ///   │            ─────               │
 ///   │                                │
 ///   │   [Day 1 face]    [Day 60 face]│ ← real before / after
 ///   │     BEFORE          AFTER      │
 ///   │                                │
-///   │       IMHIM LOOKS SCORE              │
+///   │       DEBLOAT SCORE              │
 ///   │      43  →  71                 │ ← arc, big italics
 ///   │         ↑ +28                  │
 ///   │                                │
@@ -37,7 +37,7 @@ import '../../theme/auralay_app_typography.dart';
 ///   │   CONSISTENCY   0 → 92   ↑92   │
 ///   │   CONSISTENCY   60 → 95  ↑35   │
 ///   │                                │
-///   │   ImHim Looks · BECOME THE GUY …     │
+///   │   Debloat OS · BECOME THE GUY …     │
 ///   │   imhim.app                    │
 ///   └────────────────────────────────┘
 ///
@@ -57,9 +57,9 @@ class CertificateShareCard extends StatelessWidget {
   /// Local file path of the latest (Day-60 window) scan's photo.
   final String? afterPhotoPath;
 
-  // ── IMHIM LOOKS SCORE arc ────────────────────────────────────────────
-  final int imhimStart;
-  final int imhimEnd;
+  // ── DEBLOAT SCORE arc ────────────────────────────────────────────
+  final int scoreStart;
+  final int scoreEnd;
 
   // ── Supporting stat rows. Each is (start, end). End − start gives
   //    the delta the card renders as a green pill on the right.
@@ -73,8 +73,8 @@ class CertificateShareCard extends StatelessWidget {
 
   const CertificateShareCard({
     super.key,
-    required this.imhimStart,
-    required this.imhimEnd,
+    required this.scoreStart,
+    required this.scoreEnd,
     required this.looksStart,
     required this.looksEnd,
     required this.consistencyStart,
@@ -91,7 +91,7 @@ class CertificateShareCard extends StatelessWidget {
     return '${m[n.month - 1]} ${n.day.toString().padLeft(2, '0')} ${n.year}';
   }
 
-  int get _imhimDelta       => imhimEnd       - imhimStart;
+  int get _debloatScoreDelta       => scoreEnd       - scoreStart;
   int get _looksDelta       => looksEnd       - looksStart;
   int get _consistencyDelta => consistencyEnd - consistencyStart;
 
@@ -104,7 +104,7 @@ class CertificateShareCard extends StatelessWidget {
       child: Stack(
         children: [
           // Atmospheric halo — same red brand keying as the other
-          // ImHim Looks share cards so the family reads as one.
+          // Debloat OS share cards so the family reads as one.
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -137,13 +137,13 @@ class CertificateShareCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 Container(width: 110, height: 3, color: base.AppColors.red),
                 const SizedBox(height: 22),
-                Text('IMHIM CERTIFIED',
+                Text('DRAINED · CERTIFIED',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.playfairDisplay(
+                  style: GoogleFonts.spaceGrotesk(
                     color: AppColors.textPrimary,
                     fontSize: 56, height: 1.05,
                     letterSpacing: -1.6,
-                    fontStyle: FontStyle.italic,
+                    
                     fontWeight: FontWeight.w900,
                   )),
 
@@ -182,8 +182,8 @@ class CertificateShareCard extends StatelessWidget {
 
                 const SizedBox(height: 32),
 
-                // ── IMHIM LOOKS SCORE arc. The composite headline.
-                Text('IMHIM LOOKS SCORE',
+                // ── DEBLOAT SCORE arc. The composite headline.
+                Text('DEBLOAT SCORE',
                   textAlign: TextAlign.center,
                   style: AppTypography.label.copyWith(
                     color: base.AppColors.red,
@@ -192,9 +192,9 @@ class CertificateShareCard extends StatelessWidget {
                   )),
                 const SizedBox(height: 14),
                 _ScoreArc(
-                  start:    imhimStart,
-                  end:      imhimEnd,
-                  delta:    _imhimDelta,
+                  start:    scoreStart,
+                  end:      scoreEnd,
+                  delta:    _debloatScoreDelta,
                   bigSize:  220,
                 ),
 
@@ -203,11 +203,11 @@ class CertificateShareCard extends StatelessWidget {
                 if (verdict.isNotEmpty) ...[
                   Text('"$verdict"',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.playfairDisplay(
+                    style: GoogleFonts.spaceGrotesk(
                       color: AppColors.textPrimary,
                       fontSize: 30, height: 1.35,
                       letterSpacing: -0.6,
-                      fontStyle: FontStyle.italic,
+                      
                       fontWeight: FontWeight.w700,
                     )),
                   // v379 — "— LUCIEN" attribution removed with the
@@ -258,7 +258,7 @@ class CertificateShareCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                Text("BECOME THE GUY WHO OWNS THE ROOM  ·  imhim.app",
+                Text("RUN THE SYSTEM. DRAIN THE FACE.  ·  DEBLOAT OS",
                   textAlign: TextAlign.center,
                   style: AppTypography.label.copyWith(
                     color: AppColors.textTertiary,
@@ -369,11 +369,11 @@ class _ScoreArc extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text('$start',
-              style: GoogleFonts.playfairDisplay(
+              style: GoogleFonts.spaceGrotesk(
                 color: AppColors.textTertiary,
                 fontSize: bigSize * 0.7, height: 0.95,
                 letterSpacing: -bigSize * 0.02,
-                fontStyle: FontStyle.italic,
+                
                 fontWeight: FontWeight.w900,
               )),
             Padding(
@@ -382,11 +382,11 @@ class _ScoreArc extends StatelessWidget {
                 color: base.AppColors.red, size: bigSize * 0.45),
             ),
             Text('$end',
-              style: GoogleFonts.playfairDisplay(
+              style: GoogleFonts.spaceGrotesk(
                 color: AppColors.textPrimary,
                 fontSize: bigSize, height: 0.95,
                 letterSpacing: -bigSize * 0.03,
-                fontStyle: FontStyle.italic,
+                
                 fontWeight: FontWeight.w900,
               )),
           ],
@@ -452,11 +452,11 @@ class _StatArcRow extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text('$start',
-                style: GoogleFonts.playfairDisplay(
+                style: GoogleFonts.spaceGrotesk(
                   color: AppColors.textTertiary,
                   fontSize: 40, height: 1,
                   letterSpacing: -1.0,
-                  fontStyle: FontStyle.italic,
+                  
                   fontWeight: FontWeight.w900,
                 )),
               Padding(
@@ -465,11 +465,11 @@ class _StatArcRow extends StatelessWidget {
                   color: AppColors.textTertiary, size: 24),
               ),
               Text('$end',
-                style: GoogleFonts.playfairDisplay(
+                style: GoogleFonts.spaceGrotesk(
                   color: AppColors.textPrimary,
                   fontSize: 54, height: 1,
                   letterSpacing: -1.4,
-                  fontStyle: FontStyle.italic,
+                  
                   fontWeight: FontWeight.w900,
                 )),
             ],
@@ -501,7 +501,7 @@ class _StatArcRow extends StatelessWidget {
   }
 }
 
-/// Two-tone ImHim Looks wordmark — italic Playfair, white "Im" + red "Him".
+/// Two-tone Debloat OS wordmark — italic Playfair, white "Im" + red "Him".
 /// Duplicated locally so the share card has no theme-variant dependency.
 class _MirrorlyMark extends StatelessWidget {
   final double fontSize;
@@ -509,24 +509,24 @@ class _MirrorlyMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = GoogleFonts.playfairDisplay(
+    final style = GoogleFonts.spaceGrotesk(
       fontSize:      fontSize,
       height:        1.0,
       letterSpacing: -fontSize * 0.02,
-      fontStyle:     FontStyle.italic,
+      
       fontWeight:    FontWeight.w900,
     );
     return RichText(
       text: TextSpan(
         style: style.copyWith(color: Colors.white),
         children: [
-          const TextSpan(text: 'Im'),
+          const TextSpan(text: 'Debloat'),
           TextSpan(
-            text: 'Him',
+            text: ' OS',
             style: style.copyWith(color: base.AppColors.red),
           ),
           TextSpan(
-            text: '  Looks',
+            text: '',
             style: style.copyWith(
               color: Colors.white.withValues(alpha: 0.72),
               fontSize: fontSize * 0.42,

@@ -6,7 +6,7 @@ abstract final class AppTypography {
   // ── Display (hero text, aura score) ───────────────────────────────────────
   // Playfair Display — high-contrast serif. Used on the share card score +
   // any moment we want luxury/editorial weight.
-  static TextStyle display = GoogleFonts.playfairDisplay(
+  static TextStyle display = GoogleFonts.spaceGrotesk(
     fontSize: 48,
     fontWeight: FontWeight.w900,
     color: AppColors.textPrimary,
@@ -15,10 +15,10 @@ abstract final class AppTypography {
   );
 
   // Italic Playfair — the "voice" line on the share card + verdicts.
-  static TextStyle h1Italic = GoogleFonts.playfairDisplay(
+  static TextStyle h1Italic = GoogleFonts.spaceGrotesk(
     fontSize: 24,
     fontWeight: FontWeight.w500,
-    fontStyle: FontStyle.italic,
+    
     color: AppColors.textPrimary,
     letterSpacing: -0.4,
     height: 1.25,

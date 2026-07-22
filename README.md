@@ -1,16 +1,19 @@
-# aura2
+# Debloat OS
 
-A new Flutter project.
+**The face under the bloat.** Scan your face, run the daily debloat
+system, see the AI-rendered drained version of you, and track the
+60-day ascension.
 
-## Getting Started
+- `lib/` — Flutter app (SCAN / DEBLOAT / MIRROR / ASCEND)
+- `backend/` — API (scan analysis, honest rating, Mirror renders)
+- Bundle id: `com.debloatos.app`
 
-This project is a starting point for a Flutter application.
+## Build
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+flutter pub get
+flutter run
+```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Release signing: generate a fresh upload keystore (see
+`android/app/build.gradle.kts`) — never reuse another app's key.

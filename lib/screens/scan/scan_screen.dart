@@ -1346,7 +1346,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                     children: [
                       // Wordmark — serif, editorial. Bumped from 22 →
                       // 30 so a screenshot of the scan flow reads as
-                      // ImHim Looks from across the room (was previously
+                      // Debloat OS from across the room (was previously
                       // small enough to disappear next to the camera
                       // feed). The two-tone red "Him" carries the
                       // brand on its own.

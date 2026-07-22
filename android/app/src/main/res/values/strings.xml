@@ -1,22 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Play Console upload-key fingerprints, registered for Mirrorly. -->
-    <string name="play_upload_key_sha1" translatable="false">C2:27:D7:BE:A2:38:70:40:16:6A:E3:D9:BD:23:39:8D:60:DC:08:DE</string>
-    <string name="play_upload_key_sha256" translatable="false">76:E1:49:7A:35:36:DD:9A:02:8C:DB:46:5F:F8:D2:38:18:C0:FC:40:A2:55:53:C5:C7:AB:CF:2B:A7:5C:BD:ED</string>
-
-    <!-- Digital Asset Links statement embedded inside the AAB.
-         Declares the registered upload-key SHA-256 as the cert allowed
-         to act on behalf of com.mirrorly.mirrorly. -->
-    <string name="asset_statements" translatable="false">
-        [{
-          \"relation\": [\"delegate_permission/common.handle_all_urls\"],
-          \"target\": {
-            \"namespace\": \"android_app\",
-            \"package_name\": \"com.mirrorly.mirrorly\",
-            \"sha256_cert_fingerprints\": [
-              \"76:E1:49:7A:35:36:DD:9A:02:8C:DB:46:5F:F8:D2:38:18:C0:FC:40:A2:55:53:C5:C7:AB:CF:2B:A7:5C:BD:ED\"
-            ]
-          }
-        }]
-    </string>
 </resources>

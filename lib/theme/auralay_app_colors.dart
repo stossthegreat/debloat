@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// AURALAY — black + seductive red. The whole brand reads off this file.
+/// Legacy Auralay palette — accent repointed to the Debloat OS cyan.
 abstract final class AppColors {
   // ── Surfaces ───────────────────────────────────────────────────────────────
   static const base     = Color(0xFF000000); // pure black — share card prints flush against any feed
@@ -14,16 +14,14 @@ abstract final class AppColors {
   static const textTertiary  = Color(0xFF55555F); // labels
   static const textMuted     = Color(0xFF35353D); // barely there
 
-  // ── SEDUCTIVE RED — primary accent (use everywhere a brand mark lands) ───
-  // Saturated cinnabar — the share card + hero numbers + CTA all use this.
-  // Same hex ImHim's hero numbers / share card use, so the brand colour
-  // family carries across both apps in the user's portfolio.
-  static const accent       = Color(0xFFE8222A); // primary
-  static const accentBright = Color(0xFFFF3D45); // hover / lift
-  static const accentDim    = Color(0xFFA61419); // pressed / dim
-  static const accentBorder = Color(0x55E8222A); // 33% — visible borders
-  static const accentGlow   = Color(0x22E8222A); // 13% — fill / glow bg
-  static const accentSoft   = Color(0x10E8222A); //  6% — subtle washes
+  // ── BRAND CYAN — primary accent (use everywhere a brand mark lands) ──────
+  // Same hex as AppColors.brand so the share cards read as one system.
+  static const accent       = Color(0xFF22D3EE); // primary
+  static const accentBright = Color(0xFF7DF9FF); // hover / lift
+  static const accentDim    = Color(0xFF0E7490); // pressed / dim
+  static const accentBorder = Color(0x5522D3EE); // 33% — visible borders
+  static const accentGlow   = Color(0x2222D3EE); // 13% — fill / glow bg
+  static const accentSoft   = Color(0x1022D3EE); //  6% — subtle washes
 
   // Aliases used widely across train/you screens (kept for code reuse).
   static const red          = accent;

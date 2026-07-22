@@ -160,7 +160,7 @@ class GenerationRecord {
 /// One row in the Lucien game-score timeline. Written at the end of
 /// every Free Flow session; read by the Progress page chart.
 class GameScoreEntry {
-  final int      score;   // 0..100, Lucien's scorecard for that session
+  final int      score;   // 0..100 session score (legacy field)
   final DateTime takenAt;
   const GameScoreEntry({required this.score, required this.takenAt});
 }

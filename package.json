@@ -1,7 +1,7 @@
 {
-  "name": "mirrorly-monorepo",
+  "name": "debloatos-monorepo",
   "private": true,
-  "description": "Mirrorly monorepo root — Railway deploys the backend from here",
+  "description": "Debloat OS monorepo root — Railway deploys the backend from here",
   "engines": {
     "node": ">=20"
   },

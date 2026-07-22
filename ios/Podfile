@@ -1,4 +1,4 @@
-# Mirrorly iOS Podfile — pinned to iOS 15.5 for ML Kit compatibility
+# Debloat OS iOS Podfile — pinned to iOS 15.5 for ML Kit compatibility
 platform :ios, '15.5'
 
 # SELF-HEAL the SwiftPM binary-artifact cache on CI. An interrupted build
@@ -45,9 +45,6 @@ target 'Runner' do
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
-  # MediaPipe Tasks Vision — the iris FaceLandmarker behind the Aura
-  # tab's real eye-contact scoring (MediaPipeFaceLandmarkerPlugin.swift).
-  pod 'MediaPipeTasksVision', '0.10.14'
 
   target 'RunnerTests' do
     inherit! :search_paths
@@ -62,23 +59,16 @@ post_install do |installer|
       # Force iOS 15.5 minimum across all pods — required by ML Kit
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.5'
 
-      # Camera + photo library + microphone usage — keeps pods happy when
-      # macro-enabled. MICROPHONE added with the Auralay graft (Eyes voice
-      # drills + Game tab voice surfaces use `record`, `audioplayers`,
-      # `flutter_pcm_sound`). Set defensively so any transitive
-      # `permission_handler` compile path includes the mic-prompt code
-      # instead of stripping it. Matches Auralay's known-good archive
-      # config so the App Store build behaves identically.
+      # Camera usage — keeps pods happy when macro-enabled. Set
+      # defensively so any transitive `permission_handler` compile path
+      # includes the camera-prompt code instead of stripping it.
       config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
         '$(inherited)',
         'PERMISSION_CAMERA=1',
-        'PERMISSION_MICROPHONE=1',
-        'PERMISSION_PHOTOS=1',
       ]
 
       # Avoid bitcode — Apple deprecated it in 2022; some pods still ship
-      # with it enabled and break archive builds. Matches Auralay's
-      # known-good archive setting.
+      # with it enabled and break archive builds.
       config.build_settings['ENABLE_BITCODE'] = 'NO'
 
       # Exclude arm64 for simulator to avoid M-chip simulator build issues

@@ -9,8 +9,8 @@ import '../../services/paywall_gate.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 
-/// ASPECT PROTOCOL CARDS — four small, clean tiles. SKIN / JAW /
-/// DEBLOAT / HAIR. Each tile renders in one of two states:
+/// PROTOCOL CARD — the Debloat Protocol tile. Renders in one of two
+/// states:
 ///
 ///   • COMMITTED → user has tapped to start this axis. Tile shows
 ///                 "DAY X / 60" + day count + tap to open the
@@ -42,19 +42,19 @@ class AspectProtocolCards extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('60-DAY PROTOCOLS',
+        Text('THE 60-DAY PROTOCOL',
           style: AppTypography.label.copyWith(
             color: AppColors.textTertiary,
             letterSpacing: 2.6,
             fontSize: 10.5,
             fontWeight: FontWeight.w900)),
         const SizedBox(height: 4),
-        Text('Pick one. Tap to start.',
+        Text('Commit once. Log daily.',
           style: GoogleFonts.inter(
             color: AppColors.textTertiary,
             fontSize: 11.5,
             height: 1.4,
-            fontStyle: FontStyle.italic,
+            
           )),
         const SizedBox(height: 12),
         for (int i = 0; i < aspects.length; i++) ...[
@@ -91,52 +91,15 @@ class AspectProtocolCards extends StatelessWidget {
     );
   }
 
-  // The four aspect protocols. One-liner is what shows on the tile —
-  // plain English, no jargon. The full daily plan (morning / midday
-  // / evening) is inside /protocol.
+  // ONE protocol — the Debloat Protocol. One-liner is what shows on
+  // the tile; the full time-banded daily plan is inside /protocol.
   List<_Aspect> get _aspects => const [
     _Aspect(
-      axisKey:        'skin',
-      pulldownString: 'Skin',
-      title:          'Skin',
-      oneLiner:       'Cleaner skin in 4 weeks.',
-      color:          AppColors.signalGreen,
-    ),
-    _Aspect(
-      axisKey:        'jaw',
-      pulldownString: 'Jaw definition',
-      title:          'Jaw',
-      oneLiner:       'Sharper jaw in 60 days.',
-      color:          AppColors.red,
-    ),
-    _Aspect(
-      axisKey:        'eyes',
-      pulldownString: 'Hunter Eyes',
-      title:          'Eyes',
-      oneLiner:       'Depuff, brighten, hunter eyes.',
-      color:          AppColors.accent,
-    ),
-    _Aspect(
       axisKey:        'debloat',
-      pulldownString: 'Puffiness',
-      title:          'Debloat',
-      oneLiner:       'Less puffy face by tomorrow.',
-      color:          AppColors.signalAmber,
-    ),
-    _Aspect(
-      axisKey:        'hair',
-      pulldownString: 'Hair',
-      title:          'Hair',
-      oneLiner:       'Hold the hairline. 6-month plan.',
-      color:          AppColors.measure,
-    ),
-    // v371 — the BODY protocol, first-class next to the face axes.
-    _Aspect(
-      axisKey:        'body',
-      pulldownString: 'Body',
-      title:          'Body',
-      oneLiner:       'The frame under the face. 60 days.',
-      color:          AppColors.accent,
+      pulldownString: 'Debloat',
+      title:          'The Debloat Protocol',
+      oneLiner:       'Sharper face by tomorrow. A different face in 60 days.',
+      color:          AppColors.brand,
     ),
   ];
 }

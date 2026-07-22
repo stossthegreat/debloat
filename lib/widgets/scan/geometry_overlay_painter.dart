@@ -1512,7 +1512,7 @@ class GeometryOverlayPainter extends CustomPainter {
           color: Color(0xFFF7F7F9),
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          fontStyle: FontStyle.italic,
+          
           letterSpacing: 0.6,
         ),
       ),

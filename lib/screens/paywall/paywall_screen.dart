@@ -14,7 +14,7 @@ import '../../services/purchase_service.dart';
 import '../../services/review_prompt_service.dart';
 import '../../theme/app_colors.dart';
 
-/// ImHim Looks paywall — "paywall-final" carousel.
+/// Debloat OS paywall — "paywall-final" carousel.
 ///
 /// v376 — THE LOOKS-APP STORY. A swipeable four-panel story
 /// (Looks → Body → Protocols → Him). The Game orb panel and the Rizz
@@ -62,15 +62,13 @@ enum _Tier { weekly, annual, rescue }
 // Per-panel header copy — (headline, subhead). Every pair sells an
 // OUTCOME, not a feature.
 const List<(String, String)> _copy = [
-  ("Meet the man you're capable of becoming.", 'Same genetics. Better decisions.'),
-  ('Your body. One committed year from now.',
-      'Rendered from your own photo · 3 AI renders a week, face or body.'),
-  ('Fix what can actually be fixed.', 'Your highest-impact improvements. Ranked.'),
-  ('60 days. One decision.', 'Become the man you met on day one.'),
+  ('Meet the face under the bloat.', 'Same bones. Zero retention.'),
+  ('Fix what can actually be fixed.', 'Bloat clears in 24–72 hours. We remove the cause.'),
+  ('60 days. One decision.', 'The drained face becomes the default face.'),
 ];
 
 // Classified progress-tracker section labels, one per panel.
-const List<String> _sections = ['LOOKS', 'BODY', 'PROTOCOLS', 'HIM'];
+const List<String> _sections = ['SCAN', 'SYSTEM', 'DRAINED'];
 
 // Neon green used for the projected score + the final HIM pulse. The
 // mock uses a brighter green than the app's signalGreen, so it's local.
@@ -82,7 +80,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
   bool _purchasing = false;
 
   final PageController _pager = PageController();
-  static const int _panelCount = 4;
+  static const int _panelCount = 3;
   int _page = 0;
   final Set<int> _visited = {0};
 
@@ -465,7 +463,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
                   physics: const BouncingScrollPhysics(),
                   children: [
                     const _PhotoPanel(),
-                    const _BodyPanel(),
                     const _ProtoPanel(),
                     _LadderPanel(
                         runToken:
@@ -770,61 +767,19 @@ class _ScoreLabel extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  PANEL 2 — BODY BEFORE/AFTER
-// ══════════════════════════════════════════════════════════════════════
-
-/// The body transformation panel. The bundled graphic
-/// (assets/marketing/body_beforeafter.jpg, 914×778 — the SAME crop as
-/// the face slide's beforeafter.jpg) is the full Body-tab verdict
-/// composition supplied by the founder: before/after pair with baked
-/// NOW / COMMITTED labels, the 62 → +28 → 90 score strip and the
-/// verdict line. Everything is IN the image, so this panel draws no
-/// overlays of its own — just the image at the exact size/rounding of
-/// the face slide before it.
-class _BodyPanel extends StatelessWidget {
-  const _BodyPanel();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      child: Center(
-        child: AspectRatio(
-          aspectRatio: 914 / 778,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Image.asset(
-              'assets/marketing/body_beforeafter.jpg',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const ColoredBox(
-                color: _tile,
-                child: Center(
-                  child: Icon(Icons.fitness_center_rounded,
-                      size: 56, color: Color(0xFF3A3A40)),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════
-//  PANEL 3 — PROTOCOL LIST
+//  PANEL 2 — PROTOCOL LIST
 // ══════════════════════════════════════════════════════════════════════
 
 class _ProtoPanel extends StatelessWidget {
   const _ProtoPanel();
 
   static const _rows = <(String, String, String)>[
-    ('🔥', 'Debloat', 'Less puffiness. Visible changes can begin within days.'),
-    ('🗿', 'Jaw', 'Build a sharper, more defined profile.'),
-    ('👁', 'Eye Area', 'Look more awake, healthier and more attractive.'),
-    ('✨', 'Skin', 'Clearer skin. Better texture. Better first impressions.'),
-    ('💇', 'Hair', 'The right cut, style and long-term hair plan.'),
-    ('💪', 'Body', 'Shred, build or recomp — the frame under the face.'),
+    ('🧊', 'Morning flush', 'Ice dunk + lymph drain. Visible within days.'),
+    ('🧂', 'Sodium control', 'The #1 driver of facial water retention, capped.'),
+    ('🥑', 'Potassium target', 'The counter-ion that flushes the sodium out.'),
+    ('💧', 'Hydration engine', '2.5–3L daily — the flush signal.'),
+    ('🍞', 'Glycogen watch', 'Every gram of carbs binds 3g of water. Managed.'),
+    ('😴', 'Night drain', 'Elevated back-sleep + 7–9h. Cortisol face, gone.'),
   ];
 
   @override
@@ -894,7 +849,7 @@ class _ProtoRow extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  PANEL 4 — ASCENSION LADDER
+//  PANEL 3 — ASCENSION LADDER
 // ══════════════════════════════════════════════════════════════════════
 
 class _LadderPanel extends StatefulWidget {

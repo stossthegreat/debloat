@@ -97,23 +97,6 @@ class PaywallGate {
     return used >= LocalStoreService.kRendersPerWeek;
   }
 
-  // ── Rizz screenshot gate ────────────────────────────────────────────────
-  /// v238 — Pro users get 15 screenshot rizz analyses per week
-  /// (resets Monday). Free users keep the legacy "1 free ever" rule
-  /// so the first-time conversion funnel still works.
-  static Future<bool> rizzScreenshotCapReached() async {
-    if (!(await isPro())) {
-      return LocalStoreService.rizzScreenshotFreeUsed();
-    }
-    return LocalStoreService.screenshotRizzCapReached();
-  }
-
-  // ── Rizz LINES + CHAT (paywalled outright for free users) ─────────────
-  /// Bro: "the other two rizz cards i.e lines and chat are locked."
-  /// No free preview. Pro only.
-  static Future<bool> rizzLinesLocked() async => !(await isPro());
-  static Future<bool> rizzChatLocked()  async => !(await isPro());
-
   // ── Looks streaks / protocols (Pro-only) ──────────────────────────────
   /// Bro v4: "they can't use the streaks for looks unless they pay."
   /// The 60-day protocol system + the streak chip + protocol check-ins

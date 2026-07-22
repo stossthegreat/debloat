@@ -5,22 +5,22 @@ import 'local_store_service.dart';
 
 /// THE ASCENSION ENGINE — one source of truth for the three numbers the
 /// whole app reconciles around: the daily STREAK (the flame), the
-/// ASCENSION DAY (how far up the Observer → ImHim Looks ladder you've climbed),
+/// ASCENSION DAY (how far up the Observer → Debloat OS ladder you've climbed),
 /// and the CONSISTENCY score (how fully you're doing each day's missions).
 ///
 /// The model (locked with bro):
 ///
 ///   • STREAK — consecutive calendar days you showed up. "Showing up" =
-///     completing AT LEAST ONE of the five daily missions. Do 1 of 5 and
-///     the flame is safe; only a full ZERO-day breaks it. There is no
-///     freeze/grace — miss a whole day and it resets. It is the same
-///     number on every masthead (Looks / Rizz / Ascend).
+///     completing AT LEAST ONE daily mission (protocol check-in / scan /
+///     mirror render). There is no freeze/grace — miss a whole day and
+///     it resets. It is the same number on every masthead
+///     (Looks / Ascend).
 ///
 ///   • ASCENSION DAY — the TOTAL number of distinct days you've ever
 ///     shown up. It is earned, never free: it only climbs on days you do
 ///     the work, and it NEVER goes backward (a broken streak doesn't cost
 ///     you your day). Day thresholds drive the rank ladder (Observer 1,
-///     Initiate 10, Contender 20, Dangerous 30, Magnetic 45, ImHim Looks 60).
+///     Initiate 10, Contender 20, Dangerous 30, Magnetic 45, Debloat OS 60).
 ///     Clamped to 1..60 for display.
 ///
 ///   • CONSISTENCY — a rolling 7-day mission-completion rate. Each day
@@ -30,12 +30,9 @@ import 'local_store_service.dart';
 ///     the honest "you're only part-showing-up" signal. Missing missions
 ///     never breaks the streak, it just drags this down.
 ///
-/// The five daily missions (mirrors the Ascend tab exactly):
-///   1. PROTOCOL  — `looks_done_ymd` (scan / protocol check-in)
-///   2. ROLEPLAY  — `game_done_ymd`
-///   3. SCAN      — a scan captured today (derived from scan history)
-///   4. PICKUP    — `pickup_line_done_ymd`
-///   5. READ      — `rizz_done_ymd`
+/// The daily mission set IS the debloat checklist (via
+/// DailyMissionService); the flame stays alive the moment any one of
+/// the day-stamped flags below lands.
 ///
 /// [refresh] returns just the `(streak, longest)` pair for the mastheads.
 /// [progress] returns the full [AscensionSnapshot] the Ascend tab needs.
@@ -49,14 +46,12 @@ class StreakService {
   static const int ascensionTotalDays = 60;
 
   /// Mission flags stamped with today's YMD by each mission screen.
-  /// Any ONE of these landing today keeps the flame alive.
+  /// Any ONE of these landing today keeps the flame alive. Legacy
+  /// flags from removed surfaces stay listed so an existing user's
+  /// historical active days survive the pivot.
   static const _doneFlags = <String>[
-    'looks_done_ymd',
-    'game_done_ymd',
-    'rizz_done_ymd',
-    'pickup_line_done_ymd',
-    'render_done_ymd',
-    'rizz_chat_done_ymd',
+    'looks_done_ymd',   // stamped by checklist first-tick + protocol log
+    'render_done_ymd',  // stamped by THE MIRROR render
   ];
 
   static int _ymd(DateTime d) => d.year * 10000 + d.month * 100 + d.day;
@@ -87,11 +82,6 @@ class StreakService {
     try {
       for (final s in await LocalStoreService.loadScans()) {
         days.add(_ymd(s.takenAt));
-      }
-    } catch (_) {}
-    try {
-      for (final g in await LocalStoreService.loadGameScores()) {
-        days.add(_ymd(g.takenAt));
       }
     } catch (_) {}
 

@@ -24,7 +24,7 @@ import '../../theme/app_typography.dart';
 /// the placeholder dissolves into the maxed render. Same psychological
 /// beat as the Mirror tab's inline tryon.
 class HeroCard extends StatefulWidget {
-  static const Color accentRed   = Color(0xFFE8222A);
+  static const Color accentRed   = Color(0xFF22D3EE);
   static const Color projectedGreen = Color(0xFF00FF85);
 
   final int currentScore;
@@ -197,10 +197,10 @@ class _HeroCardState extends State<HeroCard>
             child: Text(widget.tagline,
               textAlign: TextAlign.center,
               maxLines: 3, overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.playfairDisplay(
+              style: GoogleFonts.spaceGrotesk(
                 color: Colors.white,
                 fontSize: 26, letterSpacing: -0.4,
-                fontStyle: FontStyle.italic,
+                
                 fontWeight: FontWeight.w500, height: 1.25,
               )),
           ).animate().fadeIn(delay: 1900.ms, duration: 500.ms),
@@ -535,10 +535,10 @@ class _ScoreTransition extends StatelessWidget {
               width: 100,
               child: Text('$shownCurrent',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.playfairDisplay(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 68, height: 1.0, letterSpacing: -2.0,
                   color: Colors.white.withValues(alpha: 0.62),
-                  fontStyle: FontStyle.italic,
+                  
                   fontWeight: FontWeight.w500,
                 )),
             ),
@@ -567,14 +567,14 @@ class _ScoreTransition extends StatelessWidget {
                   // green Playfair sizing so the layout doesn't shift.
                   child: Text(hideProjected ? '?' : '$projectedScore',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.playfairDisplay(
+                    style: GoogleFonts.spaceGrotesk(
                       fontSize: 82, height: 1.0, letterSpacing: -2.4,
                       // Bro v6: "make the potential number green
                       // nothing else added." This is the only score
                       // colour change — current stays white-dim,
                       // arrow stays red.
                       color: HeroCard.projectedGreen,
-                      fontStyle: FontStyle.italic,
+                      
                       fontWeight: FontWeight.w700,
                     )),
                 ),

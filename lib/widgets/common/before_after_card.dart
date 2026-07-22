@@ -187,7 +187,7 @@ class _BeforeAfterCardState extends State<BeforeAfterCard> {
                       maxLines: 2, overflow: TextOverflow.ellipsis,
                       style: AppTypography.bodySmall.copyWith(
                         color: AppColors.textPrimary, fontSize: 11.5, height: 1.4,
-                        fontStyle: FontStyle.italic)),
+                        )),
                   ),
                 ),
             ],

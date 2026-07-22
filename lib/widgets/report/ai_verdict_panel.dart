@@ -62,7 +62,7 @@ class AiVerdictPanel extends StatelessWidget {
                 style: AppTypography.label.copyWith(
                   color: AppColors.textTertiary,
                   fontSize: 10, letterSpacing: 1.6,
-                  fontStyle: FontStyle.italic,
+                  
                   fontWeight: FontWeight.w600,
                 )),
             ],
@@ -183,7 +183,7 @@ class _VerdictTile extends StatelessWidget {
                 color: AppColors.textPrimary,
                 fontSize: 18, height: 1.2,
                 letterSpacing: -0.3,
-                fontStyle: FontStyle.italic,
+                
                 fontWeight: FontWeight.w800,
               )),
           ],
@@ -254,7 +254,7 @@ class _FastestWinTile extends StatelessWidget {
                 color: AppColors.textPrimary,
                 fontSize: 18, height: 1.2,
                 letterSpacing: -0.3,
-                fontStyle: FontStyle.italic,
+                
                 fontWeight: FontWeight.w800,
               )),
           ],
@@ -411,11 +411,11 @@ class _PotentialTile extends StatelessWidget {
           )),
         const SizedBox(height: 2),
         Text('$value',
-          style: GoogleFonts.playfairDisplay(
+          style: GoogleFonts.spaceGrotesk(
             color: color,
             fontSize: 32, height: 1.0,
             letterSpacing: -1.4,
-            fontStyle: FontStyle.italic,
+            
             fontWeight: FontWeight.w800,
           )),
       ],

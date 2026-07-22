@@ -3,39 +3,33 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/app_colors.dart';
 
-/// The ImHim Looks wordmark. "Mirror" in white, "ly" in red, italic
-/// editorial Playfair — the same letterforms the rest of the app uses
-/// for its title display. Splash, paywall, settings, share card,
-/// masthead, intro reel, onboarding manifesto all render this.
-///
-/// Why italic Playfair: it's the existing brand voice (luxury
-/// fragrance / editorial). The red tail keeps the two-tone brand
-/// punch the ImHim Looks-era mark had.
-class MirrorlyWordmark extends StatelessWidget {
+/// The Debloat OS wordmark. "Debloat" in white, "OS" in brand cyan —
+/// Space Grotesk, tight tracking, no italic. Reads like a system boot
+/// logo. Splash, paywall, settings, share cards, masthead, intro reel,
+/// onboarding all render this.
+class DebloatWordmark extends StatelessWidget {
   final double fontSize;
   final double letterSpacing;
   final FontWeight fontWeight;
   final TextAlign? textAlign;
-  /// When true the wordmark renders without italic — the only place
-  /// we'd want that is small-caps tracking labels. Default: italic.
+  /// Kept for call-site compatibility — the mark never italicises.
   final bool italic;
 
-  const MirrorlyWordmark({
+  const DebloatWordmark({
     super.key,
     this.fontSize       = 36,
-    this.letterSpacing  = -1.0,
-    this.fontWeight     = FontWeight.w800,
+    this.letterSpacing  = -1.2,
+    this.fontWeight     = FontWeight.w700,
     this.textAlign,
-    this.italic         = true,
+    this.italic         = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final base = GoogleFonts.playfairDisplay(
+    final base = GoogleFonts.spaceGrotesk(
       fontSize:    fontSize,
       height:      1.0,
       letterSpacing: letterSpacing,
-      fontStyle:   italic ? FontStyle.italic : FontStyle.normal,
       fontWeight:  fontWeight,
     );
     return RichText(
@@ -43,20 +37,17 @@ class MirrorlyWordmark extends StatelessWidget {
       text: TextSpan(
         style: base.copyWith(color: Colors.white),
         children: [
-          // The lockup: "ImHim" big (Im white, Him red) + "Looks"
-          // small beside it — the brand mark on every surface.
-          const TextSpan(text: 'Im'),
+          const TextSpan(text: 'Debloat'),
           TextSpan(
-            text: 'Him',
-            style: base.copyWith(color: AppColors.red),
-          ),
-          TextSpan(
-            text: '  Looks',
+            text: ' OS',
             style: base.copyWith(
-              color: Colors.white.withValues(alpha: 0.72),
-              fontSize: fontSize * 0.42,
-              letterSpacing: 0.2,
-              fontWeight: FontWeight.w600,
+              color: AppColors.brand,
+              shadows: [
+                Shadow(
+                  color: AppColors.brand.withValues(alpha: 0.55),
+                  blurRadius: fontSize * 0.45,
+                ),
+              ],
             ),
           ),
         ],
@@ -64,3 +55,8 @@ class MirrorlyWordmark extends StatelessWidget {
     );
   }
 }
+
+/// Legacy alias — every pre-rebrand call-site referenced
+/// [MirrorlyWordmark]; keep the old name resolving to the new mark so
+/// nothing churns. New code should use [DebloatWordmark].
+typedef MirrorlyWordmark = DebloatWordmark;

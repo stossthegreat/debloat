@@ -98,7 +98,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
       padding: const EdgeInsets.fromLTRB(Sp.lg, Sp.lg, Sp.lg, Sp.xxl),
       children: [
         // Masthead — title + heartbeat dot, with a SHARE button +
-        // CLOSE X on the right. SHARE renders the ImHim Progress
+        // CLOSE X on the right. SHARE renders the Debloat Progress
         // receipt off-screen (DAY hero, streak, per-surface scores)
         // and opens the system share sheet so the user can post their
         // glow-up arc in one tap. CLOSE bails back to wherever pushed
@@ -141,7 +141,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
         const SizedBox(height: Sp.lg),
 
-        // ── IMHIM LOOKS HERO. Photo pair → IMHIM LOOKS SCORE →
+        // ── DEBLOAT HERO. Photo pair → DEBLOAT SCORE →
         // Looks + Consistency chips beneath → italic hard-hitting
         // line on top. v379: pure looks — the Auralay TRAINING block
         // (Aura score, drill counts, curriculum) is gone.
@@ -152,7 +152,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         if (hasScans) const SizedBox(height: Sp.lg),
 
         if (hasScans) ...[
-          // Score-over-time chart (ImHim's face-score timeline)
+          // Score-over-time chart (the app's face-score timeline)
           _ChartCard(scans: sorted)
             .animate().fadeIn(duration: 400.ms),
 
@@ -186,10 +186,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  /// Fire the ImHim Looks Progress share card — LOOKS ONLY (v379).
+  /// Fire the Debloat OS Progress share card — LOOKS ONLY (v379).
   /// Day + streak come from StreakService (the one source of truth,
   /// so the card matches the flame and DAY N/60 everywhere else);
-  /// the IMHIM LOOKS SCORE composite is Looks + Consistency, same
+  /// the DEBLOAT SCORE composite is Looks + Consistency, same
   /// formula as the in-app hero. No game, no aura, no drills.
   Future<void> _shareProgress(
       List<ScanRecord> sortedScans,
@@ -205,18 +205,18 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
     int day = 1;
     int streak = 0;
-    int? imhimNow;
-    int? imhimDelta;
+    int? debloatNow;
+    int? debloatDelta;
     try {
       final snap = await StreakService.progress();
       day    = snap.ascensionDay;
       streak = snap.streak;
-      final imhim = AscensionService.imhimScoreFromComponents(
+      final imhim = AscensionService.debloatScoreFromComponents(
         looks: aestheticNow ?? 0,
         consistency: snap.consistency,
       );
-      imhimNow   = imhim;
-      imhimDelta = await AscensionService.weeklyDeltaFor(imhim);
+      debloatNow   = imhim;
+      debloatDelta = await AscensionService.weeklyDeltaFor(imhim);
     } catch (_) {
       // Prefs unhappy — fall through with nulls so the share card
       // hides the hero number rather than render garbage.
@@ -233,8 +233,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
       drillsCount:    0,
       aestheticNow:   aestheticNow,
       aestheticDelta: aestheticDelta,
-      imhimNow:       imhimNow,
-      imhimDelta:     imhimDelta,
+      debloatNow:       debloatNow,
+      debloatDelta:     debloatDelta,
       // BEFORE = oldest scan photo, NOW = newest — the same pair the
       // Progress screen renders. sortedScans is oldest → newest.
       beforePhotoPath: sortedScans.isNotEmpty
@@ -322,7 +322,7 @@ class _ProgressLocked extends StatelessWidget {
         Text('"No vibes.\nOnly numbers."',
           style: AppTypography.h1.copyWith(
             fontSize: 22, height: 1.3, letterSpacing: -0.4,
-            fontStyle: FontStyle.italic,
+            
             fontWeight: FontWeight.w600,
           ))
           .animate().fadeIn(duration: 420.ms)
@@ -956,7 +956,7 @@ class _ProgressCloseButton extends StatelessWidget {
 /// Stack (top → bottom):
 ///   1. Hard-hitting identity line (italic Playfair, rotates daily
 ///      via AscensionService.todayMessageFor so it never stales).
-///   2. IMHIM LOOKS SCORE composite — 84pt italic numeral in red, "/100"
+///   2. DEBLOAT SCORE composite — 84pt italic numeral in red, "/100"
 ///      anchor and weekly delta arrow beneath. Looks + Consistency
 ///      only; the game input is dead since the looks pivot.
 ///   3. BEFORE / AFTER face pair — first scan capturedImagePath vs
@@ -973,7 +973,7 @@ class _ProgressImhimHero extends StatefulWidget {
 }
 
 class _ProgressImhimHeroState extends State<_ProgressImhimHero> {
-  int  _imhim       = 0;
+  int  _debloatScore       = 0;
   int  _delta       = 0;
   int  _day         = 1;
   int  _consistency = 0;
@@ -991,12 +991,12 @@ class _ProgressImhimHeroState extends State<_ProgressImhimHero> {
     try { p = await ProtocolService.loadActive(); } catch (_) {}
     final looks = widget.scans.isEmpty ? 0 : widget.scans.last.score;
     final snap = await StreakService.progress();
-    final imhim = AscensionService.imhimScoreFromComponents(
+    final imhim = AscensionService.debloatScoreFromComponents(
       looks: looks, consistency: snap.consistency);
     final delta = await AscensionService.weeklyDeltaFor(imhim);
     if (!mounted) return;
     setState(() {
-      _imhim = imhim;
+      _debloatScore = imhim;
       _delta = delta;
       _day = snap.ascensionDay;
       _consistency = snap.consistency;
@@ -1057,30 +1057,30 @@ class _ProgressImhimHeroState extends State<_ProgressImhimHero> {
           if (line.isNotEmpty) ...[
             Text(line,
               textAlign: TextAlign.center,
-              style: GoogleFonts.playfairDisplay(
+              style: GoogleFonts.spaceGrotesk(
                 color: AppColors.textPrimary,
                 fontSize: 16, height: 1.35,
                 letterSpacing: -0.4,
-                fontStyle: FontStyle.italic,
+                
                 fontWeight: FontWeight.w600,
               )),
             const SizedBox(height: 18),
           ],
 
-          // ── IMHIM LOOKS SCORE numeral hero.
-          Text('IMHIM LOOKS SCORE',
+          // ── DEBLOAT SCORE numeral hero.
+          Text('DEBLOAT SCORE',
             style: GoogleFonts.inter(
               color: AppColors.red,
               fontSize: 10.5, letterSpacing: 3.2,
               fontWeight: FontWeight.w900,
             )),
           const SizedBox(height: 4),
-          Text('${_ready ? _imhim : 0}',
-            style: GoogleFonts.playfairDisplay(
+          Text('${_ready ? _debloatScore : 0}',
+            style: GoogleFonts.spaceGrotesk(
               color: Colors.white,
               fontSize: 84, height: 1,
               letterSpacing: -2.6,
-              fontStyle: FontStyle.italic,
+              
               fontWeight: FontWeight.w900,
             )),
           const SizedBox(height: 2),
@@ -1230,11 +1230,11 @@ class _ProgressStatChip extends StatelessWidget {
             )),
           const SizedBox(width: 8),
           Text('$value',
-            style: GoogleFonts.playfairDisplay(
+            style: GoogleFonts.spaceGrotesk(
               color: Colors.white,
               fontSize: 22, height: 1,
               letterSpacing: -0.8,
-              fontStyle: FontStyle.italic,
+              
               fontWeight: FontWeight.w900,
             )),
         ],

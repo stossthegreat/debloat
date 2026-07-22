@@ -7,7 +7,7 @@ import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
 
 /// Modal disclosure asking the user to permit transmission of their
-/// selfie photo to the third-party AI providers ImHim Looks uses to
+/// selfie photo to the third-party AI providers Debloat OS uses to
 /// generate the analysis and renders.
 ///
 /// Required by App Store guideline 5.1.2(i): the user must be told
@@ -87,12 +87,11 @@ class AiConsentDialog extends StatelessWidget {
                   fontSize: 11, letterSpacing: 2.4,
                   fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
-              Text('ImHim Looks uses AI to power your scans, live voice '
-                   'roleplay, and Rizz replies. The data each feature '
+              Text('Debloat OS uses AI to power your scans and '
+                   'renders. The data each feature '
                    'needs is sent over an encrypted connection to our '
                    'AI providers. Face geometry is computed on your '
-                   'device first, and dating-app screenshots are read '
-                   'on your device (OCR) first.',
+                   'device first.',
                 style: GoogleFonts.inter(
                   color: AppColors.textPrimary,
                   fontSize: 14, height: 1.5,
@@ -101,16 +100,14 @@ class AiConsentDialog extends StatelessWidget {
 
               _Bullet(
                 head: 'WHAT IS SENT',
-                body: 'Your selfie photo (scans), your voice during '
-                      'live roleplay and voice drills, and the '
-                      'screenshots or text you submit in Rizz. Nothing '
+                body: 'Your selfie photo (scans and renders). Nothing '
                       'else — no name, email, contacts, location, or '
                       'tracking IDs.'),
               const SizedBox(height: 12),
               _Bullet(
                 head: 'WHO RECEIVES IT',
-                body: 'OpenAI (analysis, ratings, voice roleplay, and '
-                      'Rizz replies) and Replicate (rendered "after" '
+                body: 'OpenAI (analysis and ratings) and '
+                      'Replicate (rendered "after" '
                       'previews). Each processes your data for one '
                       'request only and excludes it from training '
                       'under their standard API terms.'),
@@ -118,7 +115,7 @@ class AiConsentDialog extends StatelessWidget {
               _Bullet(
                 head: 'EQUAL PROTECTION',
                 body: 'Both providers contractually guarantee the '
-                      'same or equal privacy protection ImHim Looks '
+                      'same or equal privacy protection Debloat OS '
                       'gives you here: encrypted in transit, no '
                       'long-term retention, no training, no '
                       'advertising or resale.'),
@@ -130,9 +127,9 @@ class AiConsentDialog extends StatelessWidget {
                       'Policy.'),
 
               const SizedBox(height: 18),
-              Text('Tap ALLOW to use ImHim Looks\'s AI features with OpenAI '
+              Text('Tap ALLOW to use Debloat OS\'s AI features with OpenAI '
                    'and Replicate. Tap CANCEL to keep everything on '
-                   'this device — scans, roleplay, and Rizz cannot run '
+                   'this device — scans and renders cannot run '
                    'without permission.',
                 style: GoogleFonts.inter(
                   color: AppColors.textSecondary,

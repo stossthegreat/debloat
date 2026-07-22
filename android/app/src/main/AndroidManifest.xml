@@ -13,23 +13,12 @@
          permission. Without it: paywall buttons appear to work but no
          purchase sheet ever opens on Android. -->
     <uses-permission android:name="com.android.vending.BILLING" />
-    <!-- Auralay graft: Eyes voice drills + Game tab voice surfaces.
-         RECORD_AUDIO is requested at runtime; MODIFY_AUDIO_SETTINGS lets
-         the `record` plugin force the speakerphone on so playback isn't
-         routed to the earpiece during a drill; WAKE_LOCK keeps the
-         screen alive during sessions (consumed by wakelock_plus);
-         FOREGROUND_SERVICE / FOREGROUND_SERVICE_MICROPHONE are required
-         by record_android 1.5+ on Android 14+ so a backgrounded drill
-         doesn't get killed mid-recording. -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- WAKE_LOCK keeps the screen alive during the face scan
+         (consumed by wakelock_plus). -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-feature android:name="android.hardware.camera.any" android:required="true" />
-    <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <application
-        android:label="ImHim-Looks"
+        android:label="Debloat OS"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -60,16 +49,6 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- Play Console upload-key fingerprints, embedded in the AAB. -->
-        <meta-data
-            android:name="com.mirrorly.PLAY_UPLOAD_KEY_SHA1"
-            android:value="C2:27:D7:BE:A2:38:70:40:16:6A:E3:D9:BD:23:39:8D:60:DC:08:DE" />
-        <meta-data
-            android:name="com.mirrorly.PLAY_UPLOAD_KEY_SHA256"
-            android:value="76:E1:49:7A:35:36:DD:9A:02:8C:DB:46:5F:F8:D2:38:18:C0:FC:40:A2:55:53:C5:C7:AB:CF:2B:A7:5C:BD:ED" />
-        <meta-data
-            android:name="asset_statements"
-            android:resource="@string/asset_statements" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

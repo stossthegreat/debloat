@@ -9,7 +9,6 @@ import '../../models/scan_record.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/mirrorly_wordmark.dart';
-import '../../widgets/common/mirrorly_components.dart';
 import '../../widgets/report/aspect_protocol_cards.dart';
 
 /// TRANSFORM tab — the change engine, tab index 1.
@@ -82,11 +81,11 @@ class TransformTabScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 22),
                 child: Text(
-                  'See the after. Then build it.',
+                  'See the drained you. Then build it.',
                   style: GoogleFonts.inter(
                     color: AppColors.textSecondary,
                     fontSize: 15, height: 1.35,
-                    fontStyle: FontStyle.italic,
+                    
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -165,18 +164,18 @@ class _ScanFirstCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   )),
               const SizedBox(height: 10),
-              Text('Scan first.\nThen we transform it.',
-                  style: GoogleFonts.playfairDisplay(
+              Text('Scan first.\nThen we drain it.',
+                  style: GoogleFonts.spaceGrotesk(
                     color: AppColors.textPrimary,
                     fontSize: 26, height: 1.15,
                     letterSpacing: -0.5,
-                    fontStyle: FontStyle.italic,
+                    
                     fontWeight: FontWeight.w800,
                   )),
               const SizedBox(height: 8),
               Text(
-                'The glow-up render and the 60-day protocols are built '
-                'from your face scan. Thirty seconds.',
+                'The drained-face render and the 60-day Debloat '
+                'Protocol are built from your face scan. Thirty seconds.',
                 style: AppTypography.bodySmall.copyWith(
                   color: AppColors.textSecondary,
                   fontSize: 13, height: 1.4,
@@ -252,17 +251,17 @@ class _MirrorHeroCard extends StatelessWidget {
                               fontWeight: FontWeight.w800,
                             )),
                           const SizedBox(height: 8),
-                          Text('See what could\nchange.',
-                            style: GoogleFonts.playfairDisplay(
+                          Text('See yourself\nfully drained.',
+                            style: GoogleFonts.spaceGrotesk(
                               color: AppColors.textPrimary,
                               fontSize: 20, height: 1.1,
                               letterSpacing: -0.4,
-                              fontStyle: FontStyle.italic,
+                              
                               fontWeight: FontWeight.w800,
                             )),
                           const SizedBox(height: 6),
                           Text(
-                            'AI that knows your face.',
+                            'AI renders your face at zero bloat.',
                             style: AppTypography.bodySmall.copyWith(
                               color: AppColors.textSecondary,
                               fontSize: 12.5, height: 1.35,
@@ -286,7 +285,7 @@ class _MirrorHeroCard extends StatelessWidget {
                           Container(width: 1, color: Colors.white),
                           Expanded(child: _half(
                             asset: 'assets/marketing/after.jpg',
-                            label: 'FIXED',
+                            label: 'DRAINED',
                           )),
                         ],
                       ),

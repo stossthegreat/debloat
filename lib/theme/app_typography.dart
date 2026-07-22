@@ -2,34 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
-/// ImHim Looks typography — editorial. Serif for display (luxury fragrance ad
-/// energy), sans for body (modern, clinical), mono for measurements
-/// (scanner/diagnostic feel).
+/// Debloat OS typography — engineered. Space Grotesk for display (system /
+/// diagnostic energy), Inter for body (modern, clinical), Space Grotesk
+/// for measurements (scanner readout feel).
 abstract final class AppTypography {
-  // ── Editorial display (serif) ────────────────────────────────────────────
-  // Playfair Display — high-contrast serif, sophisticated, reads like
-  // Chanel / Armani / high-fashion editorial.
+  // ── System display (grotesk) ─────────────────────────────────────────────
+  // Space Grotesk — engineered, technical, reads like a diagnostic OS.
 
-  static TextStyle get displayXL => GoogleFonts.playfairDisplay(
-    fontSize: 64, fontWeight: FontWeight.w700,
-    letterSpacing: -2.5, color: AppColors.textPrimary, height: 1.02,
-    fontStyle: FontStyle.italic,
+  static TextStyle get displayXL => GoogleFonts.spaceGrotesk(
+    fontSize: 60, fontWeight: FontWeight.w700,
+    letterSpacing: -2.2, color: AppColors.textPrimary, height: 1.02,
   );
 
-  static TextStyle get display => GoogleFonts.playfairDisplay(
-    fontSize: 48, fontWeight: FontWeight.w700,
-    letterSpacing: -1.8, color: AppColors.textPrimary, height: 1.06,
+  static TextStyle get display => GoogleFonts.spaceGrotesk(
+    fontSize: 46, fontWeight: FontWeight.w700,
+    letterSpacing: -1.6, color: AppColors.textPrimary, height: 1.06,
   );
 
-  static TextStyle get h1 => GoogleFonts.playfairDisplay(
-    fontSize: 34, fontWeight: FontWeight.w700,
-    letterSpacing: -1.0, color: AppColors.textPrimary, height: 1.1,
-  );
-
-  static TextStyle get h1Italic => GoogleFonts.playfairDisplay(
-    fontSize: 34, fontWeight: FontWeight.w500,
+  static TextStyle get h1 => GoogleFonts.spaceGrotesk(
+    fontSize: 32, fontWeight: FontWeight.w700,
     letterSpacing: -0.8, color: AppColors.textPrimary, height: 1.1,
-    fontStyle: FontStyle.italic,
+  );
+
+  /// Kept for call-site compatibility — same face as [h1], lighter weight.
+  static TextStyle get h1Italic => GoogleFonts.spaceGrotesk(
+    fontSize: 32, fontWeight: FontWeight.w500,
+    letterSpacing: -0.6, color: AppColors.textPrimary, height: 1.1,
   );
 
   // ── Sans (body / UI) — Inter ─────────────────────────────────────────────

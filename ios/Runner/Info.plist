@@ -5,15 +5,11 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>NSCameraUsageDescription</key>
-	<string>ImHim Looks uses your camera to capture a selfie for analysis, and during Eyes training drills to measure eye contact, blink rate and head stillness in real time. Before any photo leaves the device for AI analysis you'll be asked permission in-app. Manage in Settings.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>ImHim Looks uses your microphone in the Eyes and Game tabs to record your voice during rhetoric drills, Lucien's roleplay scenes, and live free-flow conversations. Audio is sent securely to OpenAI for transcription and the in-character reply, then discarded. Manage in Settings.</string>
+	<string>Debloat OS uses your camera to capture a selfie for the face scan. Before any photo leaves the device for AI analysis you'll be asked permission in-app. Manage in Settings.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>ImHim Looks saves your before/after transformations to your photo library so you can share them.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>ImHim Looks reads the screenshot you select so the RIZZ tab can extract the messages on-device and generate three reply options. The screenshot never leaves your device — only the extracted text is sent for generation.</string>
+	<string>Debloat OS saves your before/after images to your photo library so you can share them.</string>
 	<key>CFBundleDisplayName</key>
-	<string>ImHim-Looks</string>
+	<string>Debloat OS</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -21,7 +17,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>ImHim-Looks</string>
+	<string>Debloat OS</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -53,24 +49,6 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<!--
-		URL Types — registers the "imhim://" custom scheme. The
-		ImHim LooksShare Share Extension deep-links into this scheme after
-		writing the screenshot to the App Group, which surfaces the
-		main Runner app + sends Flutter the "new shared screenshot
-		landed" signal via ShareIntakeService.
-	-->
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>com.mirrorly.app</string>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>imhim</string>
-			</array>
 		</dict>
 	</array>
 </dict>

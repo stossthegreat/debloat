@@ -1,17 +1,12 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import 'config/dev_flags.dart';
 import 'navigation/app_router.dart';
-import 'providers/auralay_app_provider.dart';
 import 'services/analytics_service.dart';
 import 'services/daily_nudge_service.dart';
 import 'services/local_store_service.dart';
 import 'services/notification_service.dart';
 import 'services/purchase_service.dart';
-import 'services/share_intake_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -64,19 +59,6 @@ void main() async {
     await LocalStoreService.resetBypassSubscribedOnce();
   }
 
-  // v181 one-shot — clear the stale gameFreeUsed bool that v171..v178
-  // dispose() over-eagerly burnt for testers who only briefly held
-  // the orb and then tab-switched. After this runs once, the flag
-  // only flips at legitimate session-end (60s timer expiry / manual
-  // end). See LocalStoreService.migrateGameFreeUsedFlagOnce.
-  await LocalStoreService.migrateGameFreeUsedFlagOnce();
-
-  // Share Extension intake — listen for incoming screenshots from
-  // the iOS Share Sheet (ios/MirrorlyShare/ShareViewController.swift).
-  // Calling wire() before runApp guarantees we don't miss the cold-
-  // start MethodChannel event when the user shares directly into us.
-  ShareIntakeService.instance.wire();
-
   runApp(const MirrorApp());
 }
 
@@ -88,8 +70,6 @@ class MirrorApp extends StatefulWidget {
 }
 
 class _MirrorAppState extends State<MirrorApp> with WidgetsBindingObserver {
-  late final StreamSubscription<SharedScreenshot> _shareSub;
-
   @override
   void initState() {
     super.initState();
@@ -97,34 +77,10 @@ class _MirrorAppState extends State<MirrorApp> with WidgetsBindingObserver {
     // AnalyticsRouteObserver wired into appRouter so every backgrounding
     // event carries the screen the user was looking at when they bailed.
     WidgetsBinding.instance.addObserver(this);
-
-    // Listen for incoming shared screenshots from the iOS Share
-    // Extension. The intake service was already wired in main() so
-    // we don't miss the cold-start event; here we subscribe to the
-    // BROADCAST stream and push the navigation as soon as bytes land.
-    _shareSub = ShareIntakeService.instance.stream.listen(_onSharedScreenshot);
-
-    // Cold-start sweep — if the app was launched directly via the
-    // share extension (URL scheme), the boot sequence has likely
-    // already raced past the MethodChannel event. Pull whatever's
-    // pending after the first frame so the navigation still happens.
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final shot = await ShareIntakeService.instance.pullPending();
-      if (shot != null) _onSharedScreenshot(shot);
-    });
-  }
-
-  void _onSharedScreenshot(SharedScreenshot shot) {
-    // Route to /rizz with the screenshot bytes in `extra`. The
-    // RizzReplyScreen reads `extra` on init and auto-fires the
-    // existing OCR + reply pipeline as if the user had picked the
-    // image with the in-app picker.
-    appRouter.go('/rizz', extra: SharedScreenshotPayload(bytes: shot.bytes));
   }
 
   @override
   void dispose() {
-    _shareSub.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -161,19 +117,11 @@ class _MirrorAppState extends State<MirrorApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    // ChangeNotifierProvider wraps the app so the Auralay-imported state
-    // (Aura score, current day, gaze streak) is reachable from the
-    // Progress tab + the Eyes/Game session screens. ImHim's own state
-    // continues to live in SharedPreferences-backed static services
-    // (LocalStoreService, PurchaseService, etc.) — no migration needed.
-    return ChangeNotifierProvider(
-      create: (_) => AuralayAppProvider()..load(),
-      child: MaterialApp.router(
-        title: 'MIRROR',
-        debugShowCheckedModeBanner: false,
-        theme: buildAppTheme(),
-        routerConfig: appRouter,
-      ),
+    return MaterialApp.router(
+      title: 'Debloat OS',
+      debugShowCheckedModeBanner: false,
+      theme: buildAppTheme(),
+      routerConfig: appRouter,
     );
   }
 }

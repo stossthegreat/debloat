@@ -16,12 +16,6 @@ enum ProTier { none, weekly, annual }
 class LocalStoreService {
   static const _kScans        = 'scans.v1';
   static const _kGenerations  = 'generations.v1';
-  /// Per-session Lucien scorecard history. Each entry is the score
-  /// the AI returned at the end of a Free Flow session, with the
-  /// epoch-millis timestamp of when it was scored. Powers the
-  /// "GAME · OVER TIME" chart on the Progress page so the user can
-  /// see their roleplay arc, not just the latest number.
-  static const _kGameScores   = 'game.scores.v1';
   static const _kActiveProto  = 'protocol.active.v1';
   static const _kSubscribed   = 'subscription.active.v1';
   static const _kOnboarded    = 'onboarded.v1';
@@ -37,17 +31,6 @@ class LocalStoreService {
   ///   'f' → women's beauty
   ///   null → unspecified (backend defaults to general)
   static const _kUserGender   = 'user.gender.v1';
-  /// Free-tier allowance flags for the Auralay Eyes + Game tabs. A
-  /// non-subscribed user gets exactly ONE eye-contact lesson and ONE
-  /// Free Flow live conversation; both are consumed on first open and
-  /// thereafter route to the paywall. Subscribers / kBypassPaywall
-  /// ignore these entirely.
-  static const _kEyesFreeUsed = 'eyes.free.used.v1';
-  static const _kGameFreeUsed = 'game.free.used.v1';
-  /// Free-tier RIZZ allowance — ONE screenshot rizz upload before paywall.
-  /// LINES + CHAT cards are LOCKED for free users entirely; only the
-  /// screenshot generator gets a single free preview.
-  static const _kRizzScreenshotFreeUsed = 'rizz.screenshot.free.used.v1';
   /// Free-tier SCAN allowance — ONE scan, period. The onboarding
   /// face-scan is the only free scan a non-pro user will ever do;
   /// every subsequent scan attempt routes straight to the paywall
@@ -94,21 +77,8 @@ class LocalStoreService {
 
   static const _kScanWeekBucket        = 'caps.scan.week_bucket.v1';
   static const _kScanWeekCount         = 'caps.scan.week_count.v1';
-  // Voice + render + screenshot caps live in weekly buckets.
-  // Legacy month-bucket keys stay defined below so the existing
-  // read paths keep returning sensible values for old data, but
-  // the new gates use the week-bucket keys exclusively.
-  static const _kVoiceWeekBucket       = 'caps.voice.week_bucket.v1';
-  static const _kVoiceWeekMs           = 'caps.voice.week_ms.v1';
   static const _kRenderWeekBucket      = 'caps.render.week_bucket.v1';
   static const _kRenderWeekCount       = 'caps.render.week_count.v1';
-  static const _kScreenshotWeekBucket  = 'caps.screenshot.week_bucket.v1';
-  static const _kScreenshotWeekCount   = 'caps.screenshot.week_count.v1';
-  // v350 — eye-contact lessons: 3 per rolling window (Pro allowance,
-  // folded into the ascension plan). Same per-user anchor + window as
-  // every other cap.
-  static const _kEyeWeekBucket         = 'caps.eyes.week_bucket.v1';
-  static const _kEyeWeekCount          = 'caps.eyes.week_count.v1';
 
   // ── Scans ────────────────────────────────────────────────────────────────
   static Future<List<ScanRecord>> loadScans() async {
@@ -141,36 +111,6 @@ class LocalStoreService {
   static Future<void> clearScans() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kScans);
-  }
-
-  // ── Game scores (Lucien scorecards over time) ────────────────────────────
-  static Future<List<GameScoreEntry>> loadGameScores() async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(_kGameScores) ?? const [];
-    return list.map((s) {
-      try {
-        final m = jsonDecode(s) as Map<String, dynamic>;
-        return GameScoreEntry(
-          score:   (m['score']  as num).toInt(),
-          takenAt: DateTime.fromMillisecondsSinceEpoch(m['ts'] as int),
-        );
-      } catch (_) { return null; }
-    }).whereType<GameScoreEntry>().toList()
-      ..sort((a, b) => a.takenAt.compareTo(b.takenAt));
-  }
-
-  static Future<void> saveGameScore(int score) async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(_kGameScores) ?? const <String>[];
-    final entry = jsonEncode({
-      'score': score.clamp(0, 100),
-      'ts':    DateTime.now().millisecondsSinceEpoch,
-    });
-    final updated = [...list, entry];
-    final trimmed = updated.length > 200
-        ? updated.sublist(updated.length - 200)
-        : updated;
-    await prefs.setStringList(_kGameScores, trimmed);
   }
 
   // ── Generations (AI-rendered images) ─────────────────────────────────────
@@ -328,67 +268,6 @@ class LocalStoreService {
     await prefs.setBool(_kBypassSubResetV375, true);
   }
 
-  // ── Free-tier allowance: Eyes + Game (Auralay tabs) ─────────────────────
-  /// True once the free eye-contact lesson has been opened. Set the
-  /// moment the session screen is pushed so a free user gets exactly
-  /// one, even if they back out.
-  static Future<bool> eyesFreeUsed() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_kEyesFreeUsed) ?? false;
-  }
-
-  static Future<void> markEyesFreeUsed() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kEyesFreeUsed, true);
-  }
-
-  /// True once the user has consumed their ONE free Free Flow live
-  /// conversation. Flips when _endAndScore runs the post-session
-  /// upsell modal (60-second timer expiry OR user-pressed end button
-  /// OR voice-cap), which is the only legitimate "session ended" beat.
-  /// Mid-session bails (back-tap, tab switch, brief press) do NOT
-  /// flip this flag — see free_flow_screen.dart's dispose() which
-  /// intentionally no longer writes it.
-  ///
-  /// v179 misadventure: I changed this to read the scored-session
-  /// list and made markGameFreeUsed a no-op. That worked for pro
-  /// users (whose _persistGame path writes a real scorecard), but
-  /// free users skip _persistGame entirely — their session-end
-  /// branch (line ~845 of free_flow_screen.dart) returns BEFORE
-  /// the scoring call so it can show the Lucien upsell modal
-  /// instead. Net result: free users could replay forever, no
-  /// paywall ever fired, the 60-second timer never started ticking
-  /// on the second character pick. v181 reverts to the bool flag
-  /// and explicitly stops marking it on dispose().
-  static Future<bool> gameFreeUsed() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_kGameFreeUsed) ?? false;
-  }
-
-  static Future<void> markGameFreeUsed() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kGameFreeUsed, true);
-  }
-
-  /// One-shot v181 migration — clears the gameFreeUsed bool ONCE
-  /// for users coming off v171..v178 builds, where the dispose()
-  /// path inside FreeFlowScreen over-eagerly marked the flag on any
-  /// brief orb-press + tab switch. Those users were never able to
-  /// kick off a free session again until v179 (which broke the
-  /// other direction). v181 reverts the gate to the bool while
-  /// flushing the stale value once so honest first-time users on
-  /// the new build still get their 60-second pass.
-  ///
-  /// Safe to call on every launch — it persists its own
-  /// "already migrated" marker and is a no-op on subsequent boots.
-  static const _kGameFreeUsedV181Migrated = 'caps.game.flag_migrated_v181.v1';
-  static Future<void> migrateGameFreeUsedFlagOnce() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool(_kGameFreeUsedV181Migrated) ?? false) return;
-    await prefs.remove(_kGameFreeUsed);
-    await prefs.setBool(_kGameFreeUsedV181Migrated, true);
-  }
-
   /// True once the user has consumed their ONE free face scan. The
   /// onboarding scan is the only free scan; after that every scan
   /// attempt by a non-pro user routes to the paywall. Marked at the
@@ -402,19 +281,6 @@ class LocalStoreService {
   static Future<void> markScanFreeUsed() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kScanFreeUsed, true);
-  }
-
-  /// True once the free Rizz screenshot generation has been consumed.
-  /// One free screenshot rizz per non-pro user; LINES and CHAT cards
-  /// are paywalled outright with no free preview.
-  static Future<bool> rizzScreenshotFreeUsed() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_kRizzScreenshotFreeUsed) ?? false;
-  }
-
-  static Future<void> markRizzScreenshotFreeUsed() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kRizzScreenshotFreeUsed, true);
   }
 
   // ── Cached subscription tier ───────────────────────────────────────────
@@ -563,114 +429,6 @@ class LocalStoreService {
     final now = DateTime.now();
     await prefs.setInt(
         'render_done_ymd', now.year * 10000 + now.month * 100 + now.day);
-  }
-
-  // ── Weekly screenshot-rizz cap ─────────────────────────────────────────
-  /// v238 — Pro users get 15 screenshot rizz analyses per rolling
-  /// 7-day window from the user's own anchor.
-  static Future<int> screenshotRizzThisWeek() async {
-    if (kBypassPaywall) return 0; // v373 — no caps while testing
-    final prefs = await SharedPreferences.getInstance();
-    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
-    final stored = prefs.getInt(_kScreenshotWeekBucket) ?? 0;
-    if (stored != bucket) return 0;
-    return prefs.getInt(_kScreenshotWeekCount) ?? 0;
-  }
-
-  static Future<void> markScreenshotRizzUsed() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
-    final stored = prefs.getInt(_kScreenshotWeekBucket) ?? 0;
-    final count  = stored == bucket
-        ? (prefs.getInt(_kScreenshotWeekCount) ?? 0) + 1
-        : 1;
-    await prefs.setInt(_kScreenshotWeekBucket, bucket);
-    await prefs.setInt(_kScreenshotWeekCount,  count);
-  }
-
-  // ── Weekly voice-time cap (Pro AI roleplay) ────────────────────────────
-  /// v238 — voice cap moved from 40 min/month to 18 min/week. Tracked
-  /// as elapsed milliseconds so a 30-second hold counts at real
-  /// granularity, not as a full minute.
-  ///
-  /// v278 — bucket switched from the global ISO-week (Monday reset)
-  /// to a per-user rolling 7-day window. Same 18min cap, but resets
-  /// 7 days after each user's anchor — not at every global Monday
-  /// midnight. Closes the most expensive bleed in the app:
-  /// OpenAI Realtime at ~$0.04-0.05/min meant the Sunday-to-Monday
-  /// double-dip cost ~$1.60+ per week per exploiter.
-  static Future<int> voiceMsThisWeek() async {
-    if (kBypassPaywall) return 0; // v373 — no caps while testing
-    final prefs = await SharedPreferences.getInstance();
-    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
-    final stored = prefs.getInt(_kVoiceWeekBucket) ?? 0;
-    if (stored != bucket) return 0;
-    return prefs.getInt(_kVoiceWeekMs) ?? 0;
-  }
-
-  /// Add to the voice elapsed-ms bucket for THIS window. Caller
-  /// passes the duration of the just-completed session segment; the
-  /// bucket auto-resets if the user's 7-day window rolled over.
-  static Future<void> addVoiceMs(int deltaMs) async {
-    if (deltaMs <= 0) return;
-    final prefs = await SharedPreferences.getInstance();
-    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
-    final stored = prefs.getInt(_kVoiceWeekBucket) ?? 0;
-    final base = stored == bucket
-        ? (prefs.getInt(_kVoiceWeekMs) ?? 0)
-        : 0;
-    await prefs.setInt(_kVoiceWeekBucket, bucket);
-    await prefs.setInt(_kVoiceWeekMs,     base + deltaMs);
-  }
-
-  /// True when the Pro user has used up their weekly voice allowance.
-  static Future<bool> voiceCapReached() async {
-    final ms = await voiceMsThisWeek();
-    return ms >= kVoiceMinutesPerWeek * 60 * 1000;
-  }
-
-  /// True when the Pro user has used up their weekly screenshot rizz
-  /// allowance. Used by the Rizz tab's screenshot-upload gate.
-  static Future<bool> screenshotRizzCapReached() async {
-    final used = await screenshotRizzThisWeek();
-    return used >= kScreenshotsPerWeek;
-  }
-
-  // ── Weekly eye-contact lesson cap (Pro) ────────────────────────────────
-  /// v350 — how many eye-contact lessons the Pro user has completed
-  /// THIS window. Resets on the user's own rolling window rollover.
-  static Future<int> eyeLessonsThisWeek() async {
-    if (kBypassPaywall) return 0; // v373 — no caps while testing
-    final prefs = await SharedPreferences.getInstance();
-    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
-    final stored = prefs.getInt(_kEyeWeekBucket) ?? 0;
-    if (stored != bucket) return 0;
-    return prefs.getInt(_kEyeWeekCount) ?? 0;
-  }
-
-  /// Increment the weekly eye-contact lesson count AND stamp today as
-  /// the last eye-contact completion day (drives the Ascend "EYE
-  /// CONTACT" mission tick + the daily streak). Called once per scored
-  /// gaze session from EyesSessionScreen.
-  static Future<void> markEyeLessonUsed() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bucket = _rollingBucket(await _capAnchor(prefs), await _windowMs(prefs));
-    final stored = prefs.getInt(_kEyeWeekBucket) ?? 0;
-    final count  = stored == bucket
-        ? (prefs.getInt(_kEyeWeekCount) ?? 0) + 1
-        : 1;
-    await prefs.setInt(_kEyeWeekBucket, bucket);
-    await prefs.setInt(_kEyeWeekCount,  count);
-    final now = DateTime.now();
-    await prefs.setInt(
-        'eyes_done_ymd', now.year * 10000 + now.month * 100 + now.day);
-  }
-
-  /// True when the Pro user has used up their weekly eye-contact
-  /// lesson allowance (3/week).
-  static Future<bool> eyeLessonsCapReached() async {
-    final used = await eyeLessonsThisWeek();
-    return used >= kEyeLessonsPerWeek;
   }
 
   // ── Onboarding (has the user completed first-run?) ──────────────────────

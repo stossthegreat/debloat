@@ -756,7 +756,7 @@ class _GenerateImageButton extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: rendering ? null : const LinearGradient(
               begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: [Color(0xFFE8222A), Color(0xFFB31018)],
+              colors: [Color(0xFF22D3EE), Color(0xFF0E7490)],
             ),
             color: rendering ? AppColors.surface2 : null,
             borderRadius: BorderRadius.circular(Rd.md),
@@ -861,7 +861,7 @@ class _InlineBeforeAfter extends StatelessWidget {
                     projectedScore: 0,
                     tagline:        caption ?? 'Same face. Better execution.',
                     microProofs:    _proofsFromTraits(traits),
-                    text: 'Same face. imhim.app',
+                    text: 'Same face. Debloat OS.',
                   ),
                   icon: const Icon(Icons.ios_share_rounded, size: 14),
                   label: Text('SHARE',

@@ -20,27 +20,17 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/mirrorly_wordmark.dart';
 import '../../widgets/common/mirrorly_components.dart';
-// v366 — THE LOOKS PIVOT. ImHim Looks is a pure looks app now:
-// LOOKS / TRANSFORM / BODY / ASCEND. Game + Aura are parked exactly
-// like Rizz was — screens/routes stay in the codebase for a one-line
-// restore (or a second app), they're just out of the nav.
-// import '../eyes/eyes_tab_screen.dart';
-// import '../eyes/eye_contact_tab_screen.dart';
-// import '../game/game_tab_screen.dart';
-// import '../rizz/rizz_tab_screen.dart';
-import '../body/body_tab_screen.dart';
+// DEBLOAT OS. Four surfaces, one promise per tab:
+//   SCAN / DEBLOAT / MIRROR / ASCEND.
+import '../debloat/debloat_tab_screen.dart';
 import 'ascend_screen.dart';
 import 'transform_tab_screen.dart';
 
 /// The hub. Four surfaces, one promise per tab:
-///   0. HOME (Ascend) — streak, daily missions, gap to potential
-///   1. LOOKS         — face scan + report + Mirror chat link
-///   2. PRESENCE      — eye contact + voice training
-///   3. GAME          — Lucien roleplay + Free Flow
-///
-/// Mirror tab folded into LOOKS (chat reachable via a "Talk to your
-/// advisor" link). Progress folded into HOME (the Ascend dashboard
-/// is the progress story). Five tabs → four.
+///   0. SCAN    — face scan + bloat read
+///   1. DEBLOAT — the daily checklist system
+///   2. MIRROR  — the Debloat Protocol + AI drained-face render
+///   3. ASCEND  — streak, daily missions, gap to potential
 class HomeScreen extends StatefulWidget {
   /// Optional initial tab.
   final int? initialTab;
@@ -64,13 +54,6 @@ class _HomeScreenState extends State<HomeScreen> {
   /// the Looks tab.
   Map<String, Protocol> _activeProtocols = const {};
   bool _loading = true;
-  // Pillar scores, each /10. Read on _reload from the same places the
-  // individual tabs already write to:
-  //   - LOOKS  ← latest scan.score (out of 100)
-  //   - AURA   ← AuralayAppProvider auraScore SharedPref (out of 100)
-  //   - GAME   ← Free Flow / Council best score SharedPref (out of 100)
-  int _looksScore = 0;
-  int _auraScore  = 0;
   int _dayStreak  = 0;
   int _longestStreak = 0;
   // Earned ascension day (total days shown up, 1..60) + rolling 7-day
@@ -79,27 +62,18 @@ class _HomeScreenState extends State<HomeScreen> {
   int _ascensionDay = 1;
   int _consistency  = 0;
   // v289 — raw 0-100 versions surfaced separately because the
-  // Ascend tab's IMHIM LOOKS-score formula needs the original precision;
+  // Ascend tab's DEBLOAT-score formula needs the original precision;
   // the /10 fields above stay around for the home-tab pillar tiles
   // that have always rendered out of 10.
   int _looksScore100 = 0;
   // Today's quota-aware mission set from DailyMissionService — rotates
   // daily, only offers what the weekly allowances can actually complete.
   List<DailyMission> _dailyMissions = const [];
-  // Today\'s Ascension — which pillars have a completion logged TODAY.
-  // Each session screen writes its `<pillar>_done_ymd` int (year*10000 +
+  // Today\'s Ascension — has the LOOKS pillar logged a completion TODAY?
+  // The scan/protocol flows write `looks_done_ymd` (year*10000 +
   // month*100 + day) to SharedPreferences when a rep lands; here we
-  // read each and compare against today\'s YMD.
+  // read it and compare against today\'s YMD.
   bool _looksDoneToday = false;
-  bool _auraDoneToday  = false;
-  /// v289 — Rizz pillar completion-today flag. Written by
-  /// `rizz_reply_screen` whenever a generation lands successfully.
-  /// Drives the Rizz row of the Ascend tab's pillar missions panel.
-  bool _rizzDoneToday  = false;
-  /// v301 — Pickup-line daily flag. Written by `pickup_line_screen`
-  /// the moment the user copies a line. Drives the DROP A LINE
-  /// daily mission row on the Ascend tab.
-  bool _pickupLineDoneToday = false;
   /// v302 — Pro / paid state. Drives the POTENTIAL-score lock on
   /// THE READ card so free users see a blacked-out value with a
   /// lock affordance; flipped to true the moment Pro is detected.
@@ -113,12 +87,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // v281 — FOUR tabs: LOOKS / GAME / RIZZ / ASCEND. Ascend
-    // restored from the v281 retention rebuild — the daily-ritual
-    // flame + missions + rank surface lives at index 3 so existing
-    // index references (initialTab=1 from report → Game, etc.)
-    // keep working. Legacy deep links with index > 3 fall back to
-    // LOOKS so older shortcuts don't crash.
+    // FOUR tabs: SCAN / DEBLOAT / MIRROR / ASCEND. Legacy deep links
+    // with an out-of-range index fall back to SCAN so older shortcuts
+    // don't crash.
     final t = widget.initialTab ?? 0;
     _tab = (t >= 0 && t < 4) ? t : 0;
     _reload();
@@ -151,18 +122,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final prefs    = await SharedPreferences.getInstance();
 
     // ── DAILY STREAK ─────────────────────────────────────────────────────
-    // Centralised in StreakService so the Looks / Rizz / Ascend surfaces
-    // all read the same number. A day counts the moment ANY daily mission
-    // is done (scan-or-protocol / roleplay / rizz / pickup). The old
-    // "triple streak" required the AURA pillar, whose only completion path
-    // was the now-removed Eyes tab — so it was permanently stuck at 0.
+    // Centralised in StreakService so the Looks / Ascend surfaces all
+    // read the same number. A day counts the moment the daily looks
+    // mission (scan or protocol check-in) is done.
     final today    = _todayYmd();
     final looksOk  = (prefs.getInt('looks_done_ymd') ?? 0) == today;
-    final auraOk   = (prefs.getInt('aura_done_ymd')  ?? 0) == today;
-    // v289 — read the Rizz daily flag stamped by rizz_reply_screen.
-    final rizzOk   = (prefs.getInt('rizz_done_ymd')  ?? 0) == today;
-    // v301 — pickup-line daily flag from pickup_line_screen._copy.
-    final pickupOk = (prefs.getInt('pickup_line_done_ymd') ?? 0) == today;
     // v302 — Pro flag for the POTENTIAL lock on THE READ card.
     final pro = await PaywallGate.isPro();
     // One call for the whole ascension triad — streak, earned day, and
@@ -183,19 +147,12 @@ class _HomeScreenState extends State<HomeScreen> {
       _protocol        = protocol;
       _activeProtocols = all;
       _loading         = false;
-      // /100 → /10 across the board so the Ascend pillars read the
-      // same scale the Eyes / Game share cards do. Each pillar reads
-      // its SharedPreferences key written by the corresponding flow
-      // — looks_score (report screen, GPT honest headline), aura_score
-      // (scripted or Selene gaze sessions), game_score (Free Flow).
-      // Bro: pillars must reflect the LATEST attempt. The persist
-      // sites now always overwrite with the most recent score, so
-      // here we just read and divide. latest?.score is the legacy
-      // fallback for users whose first scan landed before the
-      // looks_score key existed.
+      // Raw /100 value feeds the Ascend tab's DEBLOAT-score
+      // formula. looks_score is written by the report screen (GPT
+      // honest headline); latest?.score is the legacy fallback for
+      // users whose first scan landed before the looks_score key
+      // existed.
       final looksRaw = prefs.getInt('looks_score') ?? latest?.score ?? 0;
-      _looksScore    = (looksRaw / 10).round().clamp(0, 10);
-      _auraScore     = ((prefs.getInt('aura_score') ?? 0) / 10).round().clamp(0, 10);
       _looksScore100 = looksRaw.clamp(0, 100);
       // Daily streak from StreakService — the single source every
       // masthead + the Ascend panel now read.
@@ -205,9 +162,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _consistency   = snap.consistency;
       _dailyMissions = dailyMissions;
       _looksDoneToday = looksOk;
-      _auraDoneToday  = auraOk;
-      _rizzDoneToday  = rizzOk;
-      _pickupLineDoneToday = pickupOk;
       _isPro = pro;
     });
   }
@@ -216,19 +170,19 @@ class _HomeScreenState extends State<HomeScreen> {
     HapticFeedback.selectionClick();
     setState(() => _tab = i);
     // Tab-switch analytics — paired with the router observer's
-    // screen_view event so we can rebuild the LOOKS / GAME / RIZZ
-    // / ASCEND funnel without having to dedupe screen_views by
-    // source.
-    const tabNames = ['looks', 'body', 'transform', 'ascend'];
+    // screen_view event so we can rebuild the SCAN / DEBLOAT /
+    // MIRROR / ASCEND funnel without having to dedupe screen_views
+    // by source.
+    const tabNames = ['scan', 'debloat', 'mirror', 'ascend'];
     if (i >= 0 && i < tabNames.length) {
       // ignore: discarded_futures
       AnalyticsService.tabOpened(tabNames[i]);
     }
-    // Re-read scan + pillar prefs + advance the streak whenever the user
-    // returns to the Looks OR Ascend tab — keeps the masthead flame and
-    // the Ascend streak panel live the moment they finish a mission
-    // elsewhere in the app.
-    if (i == 0 || i == 3) {
+    // Re-read scan + pillar prefs + advance the streak whenever the
+    // user returns to the Scan, Debloat, OR Ascend tab — keeps the
+    // masthead flame and the Ascend streak panel live the moment they
+    // finish a mission elsewhere in the app.
+    if (i == 0 || i == 1 || i == 3) {
       // ignore: discarded_futures
       _reload();
     }
@@ -261,20 +215,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   isPro:            _isPro,
                   onRefresh:        _reload,
                 ),
-                // v371 — tab order: LOOKS / BODY / TRANSFORM / ASCEND.
-                // The two SCANS sit side by side (face, body); Transform
-                // is the change engine for both.
-                const BodyTabScreen(),
+                // Tab 1 — DEBLOAT: the daily checklist system. Every
+                // toggle calls back into _reload so the flame + the
+                // Ascend consistency stay live.
+                DebloatTabScreen(
+                  dayStreak: _dayStreak,
+                  onChanged: _reload,
+                ),
+                // Tab 2 — MIRROR: the Debloat Protocol + AI render.
                 TransformTabScreen(
                   latest:          _latest,
                   activeProtocols: _activeProtocols,
                   dayStreak:       _dayStreak,
                   onRefresh:       _reload,
                 ),
-                // v281 — ASCEND restored as tab index 3. Pulls
-                // the protocol + scan history + per-pillar
-                // completion booleans from this screen's state so
-                // it never has to spin up its own service layer.
+                // ASCEND — tab index 3. Pulls the protocol + scan
+                // history + completion booleans from this screen's
+                // state so it never has to spin up its own service
+                // layer.
                 AscendScreen(
                   onJumpToTab:          _switchTab,
                   activeProtocols:      _activeProtocols,
@@ -288,8 +246,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   consistency:          _consistency,
                   dailyMissions:        _dailyMissions,
                   looksDoneToday:       _looksDoneToday,
-                  rizzDoneToday:        _rizzDoneToday,
-                  pickupLineDoneToday:  _pickupLineDoneToday,
                   looksScore100:        _looksScore100,
                 ),
               ],
@@ -297,11 +253,11 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: _NavBar(
         index: _tab,
         onTap: _switchTab,
-        // v298 — pending dot on Ascend tab when the user has an
-        // open daily action. Right now the canonical "do this"
-        // signal is whether today's protocol is still un-logged;
-        // tapping the tab routes them to the missions panel where
-        // they clear it.
+        // v298 — pending dot on Ascend tab (index 3) when the user
+        // has an open daily action. The canonical "do this" signal
+        // is whether today's protocol is still un-logged; tapping
+        // the tab routes them to the missions panel where they
+        // clear it.
         ascendPending: !_looksDoneToday,
       ),
     );
@@ -351,7 +307,7 @@ class _ScanHubTab extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: Sp.xl),
           children: [
             // ── Masthead — replaced the old "Looks" title with the
-            //    ImHim Looks wordmark and the brand subhead "The guy she
+            //    Debloat OS wordmark and the brand subhead "The guy she
             //    can't ignore." Subhead sits tight against the
             //    wordmark so it reads as one editorial header.
             Padding(
@@ -377,11 +333,11 @@ class _ScanHubTab extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
               child: Text(
-                'Looks get attention. Game keeps it.',
+                'Find the face under the bloat.',
                 style: GoogleFonts.inter(
                   color: AppColors.textSecondary,
                   fontSize: 15, height: 1.35,
-                  fontStyle: FontStyle.italic,
+                  
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -401,8 +357,9 @@ class _ScanHubTab extends StatelessWidget {
 
               const DisplayBlock(
                 lineOne: 'Your face.',
-                lineTwo: 'Measured.',
-                subhead: 'Real geometry. Not filters. Not guesses.',
+                lineTwo: 'De-bloated.',
+                subhead: 'Real geometry. We measure how much water is '
+                    'hiding your jawline.',
               ),
 
               const SizedBox(height: Sp.lg),
@@ -434,28 +391,6 @@ class _ScanHubTab extends StatelessWidget {
                   onTap: () => context.push('/scan'),
                 ),
               ).animate().fadeIn(delay: 160.ms, duration: 400.ms),
-
-              const SizedBox(height: Sp.lg),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-                child: const LockStrip(
-                  label: 'After the scan, unlock',
-                  highlight: 'Aura  ·  Game',
-                  badges: [
-                    LockBadge(
-                      icon: Icons.remove_red_eye_outlined,
-                      label: 'Aura',
-                      color: AppColors.accent,
-                    ),
-                    LockBadge(
-                      icon: Icons.local_fire_department_rounded,
-                      label: 'Game',
-                      color: AppColors.red,
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(delay: 260.ms, duration: 400.ms),
             ],
 
             // ─────────────────────────────────────────────────────────────
@@ -616,15 +551,15 @@ class _HopeCard extends StatelessWidget {
           const SizedBox(height: 12),
 
           // 3. Manifesto — single line, red italic Playfair, the mission.
-          Text('Bones are not the ceiling. Execution is.',
+          Text('Bloat is not your face. Drain it.',
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.playfairDisplay(
+            style: GoogleFonts.spaceGrotesk(
               color: AppColors.red,
               fontSize: 14, height: 1.15,
               letterSpacing: -0.2,
-              fontStyle: FontStyle.italic,
+              
               fontWeight: FontWeight.w800,
             )),
         ],
@@ -706,11 +641,11 @@ class _HopeCard extends StatelessWidget {
         Transform.translate(
           offset: Offset(0, isNow ? -4 : 0),
           child: Text(shown,
-            style: GoogleFonts.playfairDisplay(
+            style: GoogleFonts.spaceGrotesk(
               color: mainColor,
               fontSize: 48, height: 0.95,
               letterSpacing: -2.0,
-              fontStyle: FontStyle.italic,
+              
               fontWeight: FontWeight.w900,
               shadows: isNow || locked
                   ? null
@@ -874,12 +809,12 @@ class _PathFlow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _step(1, 'Face first', 'Maxx your looks',
+        _step(1, 'Scan', 'Measure the bloat',
             active: !stepDone, done: stepDone),
         const SizedBox(height: 18),
-        _step(2, 'Aura next', 'Train eye contact & voice'),
+        _step(2, 'The system', 'The daily checklist that drains it'),
         const SizedBox(height: 18),
-        _step(3, 'Game after', 'Real roleplay with Lucien'),
+        _step(3, 'The mirror', 'See yourself fully drained'),
       ],
     );
   }
@@ -1071,127 +1006,6 @@ class _SplitDivider extends StatelessWidget {
       Container(width: 1, color: AppColors.surface3);
 }
 
-// ── Active protocol card ────────────────────────────────────────────────────
-class _ActiveProtocolCard extends StatelessWidget {
-  final Protocol protocol;
-  const _ActiveProtocolCard({required this.protocol});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        // Pass the axis so the protocol screen loads THIS specific
-        // run (not whichever legacy "active" comes back first). Each
-        // tile maps to one axis-keyed protocol slot.
-        onTap: () => context.push('/protocol', extra: {
-          'pulldown': protocol.targetAxis,
-        }),
-        borderRadius: BorderRadius.circular(Rd.xl),
-        child: Container(
-          padding: const EdgeInsets.all(Sp.md),
-          decoration: BoxDecoration(
-            color: AppColors.surface1,
-            borderRadius: BorderRadius.circular(Rd.xl),
-            border: Border.all(color: AppColors.divider, width: 0.8),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text('PROTOCOL · DAY ${protocol.currentDay} / ${protocol.lengthDays}',
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.textTertiary, letterSpacing: 2.4, fontSize: 9)),
-                  const Spacer(),
-                  // Streak chip — colour follows live / at-risk / broken so
-                  // the home hub reflects whether the run is live without
-                  // having to open the protocol screen.
-                  _StreakChip(protocol: protocol),
-                  const SizedBox(width: 8),
-                  Icon(Icons.arrow_forward_rounded,
-                    size: 14, color: AppColors.textSecondary),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(protocol.title,
-                style: AppTypography.h1.copyWith(fontSize: 22, letterSpacing: -0.4)),
-              const SizedBox(height: 4),
-              Text('Targeting ${protocol.targetAxis.toLowerCase()}. '
-                   '${protocol.completedDays.length} days logged.',
-                style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textSecondary, fontSize: 12.5)),
-              const SizedBox(height: Sp.sm),
-              Stack(
-                children: [
-                  Container(
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface3,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  FractionallySizedBox(
-                    widthFactor: protocol.progress,
-                    child: Container(
-                      height: 3,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [
-                          AppColors.divider,
-                          AppColors.red,
-                        ]),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (!protocol.completedToday) ...[
-                const SizedBox(height: Sp.sm),
-                Text('• Today\'s check-in pending',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.signalAmber, fontSize: 11.5,
-                    fontWeight: FontWeight.w600)),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-
-// ── Streak chip — miniature flame+number lockup for the home protocol card ─
-class _StreakChip extends StatelessWidget {
-  final Protocol protocol;
-  const _StreakChip({required this.protocol});
-
-  @override
-  Widget build(BuildContext context) {
-    final streak = protocol.effectiveStreak;
-    if (streak <= 0 && protocol.streakStatus == StreakStatus.fresh) {
-      return const SizedBox.shrink();
-    }
-    final color = switch (protocol.streakStatus) {
-      StreakStatus.live    => AppColors.red,
-      StreakStatus.atRisk  => AppColors.signalAmber,
-      StreakStatus.broken  => AppColors.textMuted,
-      StreakStatus.fresh   => AppColors.textTertiary,
-    };
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.local_fire_department, size: 13, color: color),
-        const SizedBox(width: 2),
-        Text('$streak',
-          style: AppTypography.measurement.copyWith(
-            color: color, fontSize: 12, fontWeight: FontWeight.w800)),
-      ],
-    );
-  }
-}
-
 // ── Bottom nav ──────────────────────────────────────────────────────────────
 class _NavBar extends StatelessWidget {
   final int index;
@@ -1210,25 +1024,13 @@ class _NavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // ── Tab roster ────────────────────────────────────────────────────────
-    // Four tabs. HOME is the Ascend dashboard (streak + missions + gap).
-    // LOOKS is the renamed Scan tab (Mirror chat folded inside it).
-    // PRESENCE is the renamed Eyes tab. GAME is unchanged. Each tab does
-    // ONE thing — no five-tab sprawl, no shouting for attention.
-    // Three tabs: LOOKS / GAME / RIZZ. ASCEND folded (streak badge
-    // moved to the Looks masthead). AURA stays commented — easy
-    // restore later by adding the entry back here + un-commenting
-    // the EyesTabScreen line in the IndexedStack.
-    // v281 — Ascend (the daily flame + missions retention surface)
-    // added as a 4th tab. Kept at index 3 (last position) so the
-    // pre-existing index map (Looks=0, Game=1, Rizz=2) stays
-    // valid for every legacy caller of initialTab + onJumpToTab.
+    // Four tabs: SCAN / DEBLOAT / MIRROR / ASCEND. Each tab does ONE
+    // thing — the reading, the daily system, the render, the program.
     final items = const <({String label, IconData icon, bool italic})>[
-      // v371 — LOOKS / BODY / TRANSFORM / ASCEND (scans together,
-      // then the change engine, then the program).
-      (label: 'Looks',     icon: Icons.face_retouching_natural_outlined, italic: true),
-      (label: 'Body',      icon: Icons.accessibility_new_rounded,        italic: true),
-      (label: 'Transform', icon: Icons.auto_awesome_rounded,             italic: true),
-      (label: 'Ascend',    icon: Icons.local_fire_department_rounded,    italic: true),
+      (label: 'Scan',    icon: Icons.center_focus_strong_rounded,   italic: false),
+      (label: 'Debloat', icon: Icons.water_drop_outlined,           italic: false),
+      (label: 'Mirror',  icon: Icons.auto_awesome_rounded,          italic: false),
+      (label: 'Ascend',  icon: Icons.local_fire_department_rounded, italic: false),
     ];
     // v303 — bottom nav rebuilt in the Skeletal-PT pattern bro
     // pointed at: each tab is its own block, the ACTIVE block fills
@@ -1337,7 +1139,7 @@ class _NavBlock extends StatelessWidget {
                   color: fg,
                   fontSize: 13, height: 1,
                   letterSpacing: -0.2,
-                  fontStyle: FontStyle.italic,
+                  
                   fontWeight: FontWeight.w800,
                 )),
             ],

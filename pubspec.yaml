@@ -1,7 +1,7 @@
-name: mirror
-description: "ImHim Looks — Look sharp. Speak sharp. Own every room."
+name: debloat_os
+description: "Debloat OS — the face under the bloat."
 publish_to: 'none'
-version: 1.2.2+380
+version: 1.0.0+1
 
 environment:
   sdk: ^3.8.0
@@ -21,25 +21,6 @@ dependencies:
   # in scan_screen.dart, populating canonical MediaPipe indices from ML
   # Kit contour data. No third-party iOS face-mesh dependency.
   google_mlkit_face_mesh_detection: ^0.4.2
-  # Google ML Kit text recognition — free, on-device OCR. Powers the
-  # RIZZ tab's screenshot → 3 replies flow: user drops a Hinge / Tinder
-  # screenshot, ML Kit extracts the text, the backend rewrites it as
-  # three options. Zero network cost for the OCR step, no GPT vision
-  # tokens burned on UI chrome.
-  #
-  # Pinned to 0.15.1 because that's the version sitting on
-  # google_mlkit_commons ^0.11.x — the same commons family
-  # google_mlkit_face_mesh_detection 0.4.2 requires. Older 0.11/0.13
-  # text-recognition releases pulled commons ^0.6.x / ^0.10.x and the
-  # solver couldn't pick a single commons that satisfied both. 0.15.1
-  # is what `flutter pub get` itself recommended.
-  google_mlkit_text_recognition: ^0.15.1
-  # image_picker — opens the system gallery or camera to grab a
-  # screenshot for the RIZZ tab. Photo bytes are handed straight to
-  # ML Kit on-device OCR; nothing leaves the device until the user
-  # taps GENERATE.
-  image_picker: ^1.1.2
-  provider: ^6.1.2
   http: ^1.2.0
   image: ^4.2.0
   shared_preferences: ^2.2.3
@@ -67,27 +48,10 @@ dependencies:
   timezone: ^0.9.4
 
   # ── AURALAY GRAFT (Eyes + Game tabs + voice AI) ─────────────────────────
-  # Auralay imported its full charisma-training stack into Mirrorly:
-  # gaze lessons (Eyes tab), Lucien voice roleplay (Game tab), shared
-  # progress in the Progress tab.
-  smooth_page_indicator: ^1.2.0+3
-  # Mic recording for charisma drills + realtime voice. Pinned the same
-  # way Auralay pinned camera 0.10.5+5 — moving versions breaks iOS.
-  record: ^5.2.1
-  # Played-back TTS clips from /v1/diablo/speak + /v1/villain/* /scene/turn.
-  audioplayers: ^6.1.0
-  # Low-latency PCM playback for OpenAI Realtime API audio deltas (the
-  # Game tab Free Flow + Council voice surfaces stream PCM, not MP3).
-  flutter_pcm_sound: ^3.0.0
-  # WebSocket transport for the OpenAI Realtime API. Dart-only, no native.
-  web_socket_channel: ^3.0.1
-  # Keeps the screen on during eye-contact drills + voice sessions.
+  # Keeps the screen on during the face scan.
   wakelock_plus: ^1.2.1
-  # Secure storage for the creator/diablo unlock flags (mirrors Auralay).
-  flutter_secure_storage: ^9.2.4
-  # In-app review prompt. Tracks 3 milestones (first scan, first Free
-  # Flow, first eye-contact lesson) — when all three are done, the
-  # review dialog fires once asking for stars + comments. On 4-5 stars
+  # In-app review prompt. Fires once after the first scan, asking for
+  # stars + comments. On 4-5 stars
   # we open the App Store / Play Store write-review page; on 1-3 stars
   # we keep the feedback in-app so reviewers can flag the negatives
   # before they hit the public store.
@@ -99,28 +63,12 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.1
 
-# record 5.2.1 transitively pulls record_linux 0.7.2, which doesn't
-# implement `startStream` — a method added in record_platform_interface
-# 1.5.0 (which 5.2.1 also accepts). The Dart frontend compiles every
-# referenced library regardless of target platform, so the iOS archive
-# build fails in record_linux.dart with "missing implementations".
-# Pinning record_linux to 1.x picks up the implementation matching the
-# modern interface. iOS only links record_darwin, so this has zero
-# runtime impact on iOS/Android — it just lets kernel_snapshot succeed.
-# (Lifted verbatim from Auralay where this same fix was shipped.)
-dependency_overrides:
-  record_linux: ^1.0.0
 
 flutter:
   uses-material-design: true
   assets:
     - assets/icons/appstore.png
     - assets/icons/playstore.png
-    # Auralay-imported assets — MediaPipe FaceLandmarker model directory
-    # (download .task file at runtime via assets/models/README.txt) +
-    # voice coach clips for charisma drills (assets/voice/README.txt).
-    - assets/models/
-    - assets/voice/
     # Mirror-tab pre-scan before/after pair. Declared as a directory
     # so the build doesn't fail when the JPEGs haven't been dropped
     # yet — Flutter bundles whatever exists in the folder, and the
@@ -130,23 +78,9 @@ flutter:
     # per assets/marketing/README.md and they auto-bundle on next
     # build — no pubspec edit needed.
     - assets/marketing/
-    # Onboarding intro-reel visuals (screens 4-7). Declared as a
-    # directory so the build never breaks before the JPEGs land; the
-    # reel's Image.asset errorBuilder shows a clean placeholder until
-    # then. Drop looks/game/messages/future.jpg per
-    # assets/onboarding/README.md — they auto-bundle on next build.
-    - assets/onboarding/
-    # Character renders — Lucien + roleplay women + gaze partners +
-    # free-flow hero + scan split. Declared as directories so the
-    # build never breaks before the JPEGs land. Every tab uses
-    # Image.asset with an errorBuilder that falls back to a glyph,
-    # so missing files render gracefully. See the README.md inside
-    # each folder for the exact filenames and art-direction brief.
-    - assets/characters/lucien/
-    - assets/characters/women/
-    - assets/eyes/
-    - assets/eyes/partners/
-    - assets/game/
+    # Scan-tab visual. Declared as a directory so the build never
+    # breaks before the JPEG lands; Image.asset errorBuilders fall
+    # back to a glyph when a file is missing.
     - assets/scan/
 
 # Generates every iOS + Android launcher icon from two master PNGs.
@@ -164,7 +98,7 @@ flutter_launcher_icons:
   ios: true
   image_path_ios:           "assets/icons/appstore.png"
   image_path_android:       "assets/icons/playstore.png"
-  adaptive_icon_background: "#000000"
+  adaptive_icon_background: "#05090B"
   adaptive_icon_foreground: "assets/icons/playstore.png"
   remove_alpha_ios: true
   min_sdk_android: 23

@@ -25,7 +25,7 @@ import '../../theme/app_colors.dart';
 ///   LOOKS open the door.
 ///   Yours aren't maxed. Yet.
 ///   ─ beat ─
-///   ImHim Looks gives you both. 🔥❤️
+///   Debloat OS gives you both. 🔥❤️
 ///   [BEGIN]
 class IntroReelScreen extends StatefulWidget {
   /// Route to advance to when the user taps BEGIN or SKIP.
@@ -275,7 +275,7 @@ class _Word extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(text,
       textAlign: TextAlign.center,
-      style: GoogleFonts.playfairDisplay(
+      style: GoogleFonts.spaceGrotesk(
         color: color,
         fontSize: size,
         height: 1.05,
@@ -348,7 +348,7 @@ class _BeginButton extends StatelessWidget {
 /// One sentence + its styling. [words] is the flat list of words
 /// that reveal one by one. Per-word colour / weight overrides via
 /// [redIndices] (those render in brand red) and [boldIndices] (those
-/// render extra-heavy non-italic — used for LOOKS / GAME / ImHim Looks).
+/// render extra-heavy non-italic — used for LOOKS / GAME / Debloat OS).
 class _Line {
   final List<String> words;
   /// Optional small-caps eyebrow above the line.
@@ -357,7 +357,7 @@ class _Line {
   final bool italic;
   /// Word indices that render in brand red instead of white.
   final List<int> redIndices;
-  /// Word indices that render bold non-italic (LOOKS / GAME / ImHim Looks).
+  /// Word indices that render bold non-italic (LOOKS / GAME / Debloat OS).
   final List<int> boldIndices;
   /// Trailing icons that pop after the last word — 🔥 ❤️ on the
   /// finale line.
@@ -392,64 +392,63 @@ class _Line {
 const _lines = <_Line>[
   // 1. The hook.
   _Line(
-    ['Every', 'man', 'knows', 'that', 'guy.'],
+    ['Your', 'face', 'is', 'not', 'your', 'face.'],
     size: 38,
     bigBreath: true,
   ),
 
-  // 2-4. The triplet — what every guy wants to BE.
+  // 2-4. The triplet — what's actually hiding it.
   _Line(
-    ['The', 'guy', 'she', 'notices.'],
-    size: 42,
-    redIndices: [3], // "notices."
-  ),
-  _Line(
-    ['The', 'guy', 'she', 'remembers.'],
-    size: 42,
-    redIndices: [3], // "remembers."
-  ),
-  _Line(
-    ['The', 'guy', 'she', 'chooses.'],
+    ['It\'s', 'water.'],
     size: 46,
-    redIndices: [3], // "chooses."
+    redIndices: [1], // "water."
+  ),
+  _Line(
+    ['It\'s', 'sodium.'],
+    size: 46,
+    redIndices: [1], // "sodium."
+  ),
+  _Line(
+    ['It\'s', 'bloat.'],
+    size: 52,
+    redIndices: [1], // "bloat."
     bigBreath: true,
   ),
 
-  // 5-6. The reframe — luck vs trained.
+  // 5-6. The reframe — genetics vs retention.
   _Line(
-    ['Most', 'men', 'think', 'it\'s', 'luck.'],
+    ['You', 'think', 'it\'s', 'genetics.'],
     size: 36,
   ),
   _Line(
-    ['It\'s', 'not.'],
-    size: 56,
-    redIndices: [0, 1],
+    ['It\'s', 'retention.'],
+    size: 52,
+    redIndices: [1],
     bigBreath: true,
   ),
 
-  // 7-9. The truth — she judges the looks first, and yours have
-  // untapped room. Brutal, then the hope hinge.
+  // 7-9. The truth — it clears fast, then the hope hinge.
   _Line(
-    ['She', 'sees', 'you', 'before', 'she', 'hears', 'you.'],
+    ['Bloat', 'clears', 'in', '24', 'to', '72', 'hours.'],
     size: 36,
   ),
   _Line(
-    ['LOOKS', 'open', 'the', 'door.'],
-    size: 50,
-    boldIndices: [0],          // LOOKS bold non-italic
+    ['Once', 'you', 'remove', 'the', 'cause.'],
+    size: 44,
+    boldIndices: [0],
     tightSpacing: true,
   ),
   _Line(
-    ['Yours', 'aren\'t', 'maxed.', 'Yet.'],
-    size: 46,
-    redIndices: [3],           // "Yet." — the hinge from brutal to hope
+    ['Your', 'jawline', 'is', 'under', 'there.'],
+    size: 44,
+    redIndices: [4],           // "there." — the hinge from brutal to hope
     bigBreath: true,
   ),
 
   // 10. The promise + icons + CTA.
   _Line(
-    ['ImHim Looks', 'maxes', 'them.'],
-    eyebrow: 'SCAN · TRANSFORM · ASCEND',
+    ['Debloat OS', 'drains', 'it.'],
+    eyebrow: 'SCAN · SYSTEM · MIRROR · ASCEND',
     size: 44,
     boldIndices: [0],
     redIndices:  [0],

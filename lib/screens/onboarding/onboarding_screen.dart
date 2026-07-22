@@ -83,7 +83,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   Row(
                     children: [
                       // Bumped from 22 → 30 so the onboarding scan +
-                      // score + mirror pages all read as ImHim Looks from
+                      // score + mirror pages all read as Debloat OS from
                       // the first frame of a screen recording — was
                       // previously almost invisible against the
                       // 44pt page headlines.
@@ -193,7 +193,7 @@ class _PageShell extends StatelessWidget {
           const SizedBox(height: 14),
 
           Text(headlineA,
-            style: GoogleFonts.playfairDisplay(
+            style: GoogleFonts.spaceGrotesk(
               color: Colors.white,
               fontSize: 44, height: 1.02,
               letterSpacing: -1.6,
@@ -202,11 +202,11 @@ class _PageShell extends StatelessWidget {
               .slideY(begin: 0.06, end: 0, curve: Curves.easeOutCubic),
 
           Text(headlineB,
-            style: GoogleFonts.playfairDisplay(
+            style: GoogleFonts.spaceGrotesk(
               color: AppColors.red,
               fontSize: 44, height: 1.02,
               letterSpacing: -1.6,
-              fontStyle: FontStyle.italic,
+              
               fontWeight: FontWeight.w700,
             )).animate().fadeIn(delay: 200.ms, duration: 420.ms)
               .slideY(begin: 0.06, end: 0, curve: Curves.easeOutCubic),
@@ -245,9 +245,10 @@ class _PageScan extends StatelessWidget {
   Widget build(BuildContext context) {
     return _PageShell(
       eyebrow:   '01 · THE SCAN',
-      headlineA: 'We map every',
-      headlineB: 'millimetre.',
-      sub:       'One selfie. Sixteen surgical measurements in six seconds.',
+      headlineA: 'We measure',
+      headlineB: 'the bloat.',
+      sub:       'One selfie. Sixteen measurements. We find exactly where '
+                 'water is hiding your face.',
       card: _ProofCard(
         header: 'WHAT WE MEASURE',
         hero: Container(
@@ -263,9 +264,9 @@ class _PageScan extends StatelessWidget {
         ),
         heroLabel: 'PRECISION\nFACE MAPPING',
         rows: const [
-          ('CANTHAL TILT', '2.4°'),
-          ('JAW ANGLE',    '118°'),
-          ('SYMMETRY',     '87 / 100'),
+          ('JAW ANGLE',   '118°'),
+          ('CHEEK FULLNESS', 'HIGH'),
+          ('BLOAT READ',  '62 / 100'),
         ],
       ),
     );
@@ -286,8 +287,8 @@ class _PageScore extends StatelessWidget {
       eyebrow:   '02 · THE SCORE',
       headlineA: 'Two scores.',
       headlineB: 'Both honest.',
-      sub:       'Your bone structure and your real-world looks, measured '
-                 'separately. No flattery.',
+      sub:       'Your bone structure and your current bloated state, '
+                 'measured separately. The gap between them is water.',
       card: const _TwoScoreCard(bones: 74, looks: 58),
     );
   }
@@ -305,10 +306,10 @@ class _PageMirror extends StatelessWidget {
   Widget build(BuildContext context) {
     return _PageShell(
       eyebrow:   '03 · THE MIRROR',
-      headlineA: 'The AI that',
-      headlineB: 'knows your face.',
-      sub:       'It reads your bones, tells you what suits you, and renders '
-                 'you wearing it.',
+      headlineA: 'See yourself',
+      headlineB: 'fully drained.',
+      sub:       'The AI renders YOUR face with zero bloat — the version '
+                 'the daily system builds.',
       card: const _MirrorCard(),
     );
   }
@@ -406,10 +407,10 @@ class _ProofRow extends StatelessWidget {
             fontSize: 12, letterSpacing: 1.8,
             fontWeight: FontWeight.w700)),
         Text(value,
-          style: GoogleFonts.playfairDisplay(
+          style: GoogleFonts.spaceGrotesk(
             color: Colors.white,
             fontSize: 18, height: 1,
-            fontStyle: FontStyle.italic,
+            
             fontWeight: FontWeight.w600)),
       ],
     );
@@ -483,7 +484,7 @@ class _ScoreCol extends StatelessWidget {
             fontWeight: FontWeight.w800)),
         const SizedBox(height: 10),
         Text('$value',
-          style: GoogleFonts.playfairDisplay(
+          style: GoogleFonts.spaceGrotesk(
             color: tint,
             fontSize: 64, height: 1,
             letterSpacing: -2.2,
@@ -598,10 +599,10 @@ class _MirrorCard extends StatelessWidget {
                   ),
                   TextSpan(
                     text: '124°',
-                    style: GoogleFonts.playfairDisplay(
+                    style: GoogleFonts.spaceGrotesk(
                       color: AppColors.red,
                       fontSize: 15, height: 1,
-                      fontStyle: FontStyle.italic,
+                      
                       fontWeight: FontWeight.w700)),
                   TextSpan(
                     text: ' — soft side. A mid-fade with 4cm textured crop, '
@@ -620,7 +621,7 @@ class _MirrorCard extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 begin: Alignment.topLeft, end: Alignment.bottomRight,
-                colors: [Color(0xFFE8222A), Color(0xFFB31018)],
+                colors: [Color(0xFF22D3EE), Color(0xFF0E7490)],
               ),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(

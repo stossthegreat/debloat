@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mirror/models/protocol.dart';
+import 'package:debloat_os/models/protocol.dart';
 
 /// Exercises the streak state machine on [Protocol.withTodayChecked] across
 /// every branch that matters for retention correctness.

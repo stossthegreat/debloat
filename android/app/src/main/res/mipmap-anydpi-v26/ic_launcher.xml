@@ -1,17 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Adaptive launcher icon for Android 8.0+.
-
-  The flutter_launcher_icons generator wraps the foreground drawable in a
-  16% inset by default. Combined with the ~10% internal padding of our
-  master playstore.png, the logo was getting drawn at ~74% of the icon
-  canvas — which is why it looked "minimised" inside its squircle.
-
-  Inset removed: foreground fills the full 108dp canvas. The master
-  PNG's own padding acts as the safe zone. Net visible coverage in the
-  inner 66% guaranteed-safe area: close to 100% of the face-mesh glyph.
--->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
   <background android:drawable="@color/ic_launcher_background"/>
-  <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+  <foreground>
+      <inset
+          android:drawable="@drawable/ic_launcher_foreground"
+          android:inset="16%" />
+  </foreground>
 </adaptive-icon>

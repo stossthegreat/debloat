@@ -10,37 +10,49 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/mirrorly_wordmark.dart';
 
-/// ── Onboarding manifesto screen ────────────────────────────────────────
+/// ── Onboarding manifesto + profile screen ──────────────────────────────
 ///
-/// Was the men's/women's gender picker. Bro: "this is a men's app, we
-/// need to stay on task — take that off and put the manifesto." Now
-/// the screen opens the funnel with the three-pillar promise the user
-/// is buying into.
+/// Opens the funnel with the Debloat OS promise, then asks the one
+/// question the AI needs before it can render the drained version of
+/// the user's face: MALE or FEMALE. The choice feeds every render
+/// prompt downstream (Nano Banana needs it to reconstruct the face
+/// correctly), so Continue stays locked until one is picked.
 ///
 /// Class name kept so the existing `/onboarding/gender` route + the
-/// Settings → "Glow-up style" deep link don't break — both just land
-/// here now. userGender pinned to 'm' on Continue so every downstream
-/// surface (analysis tone, render prompts, voice persona) keeps its
-/// male coding.
-///
-/// v170 update — bro: "fill it up more, make the writing a bit bigger,
-/// follow dark black background." Wordmark → 52, headline → 38, pillar
-/// eyebrow → 13, pillar body → 26. Subtle red glow wash from the top.
-/// Same continue button at the bottom.
-class GenderPickScreen extends StatelessWidget {
+/// Settings deep link don't break — both land here.
+class GenderPickScreen extends StatefulWidget {
   /// Reuse mode: when true (opened from Settings), shows a back arrow
-  /// and pops on Continue instead of pushing /scan.
+  /// and pops on Continue instead of pushing the consent screen.
   final bool fromSettings;
 
   const GenderPickScreen({super.key, this.fromSettings = false});
 
+  @override
+  State<GenderPickScreen> createState() => _GenderPickScreenState();
+}
+
+class _GenderPickScreenState extends State<GenderPickScreen> {
+  String? _gender; // 'm' | 'f'
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-select the stored value when re-opened from Settings.
+    // ignore: discarded_futures
+    LocalStoreService.userGender().then((g) {
+      if (mounted && g != null) setState(() => _gender = g);
+    });
+  }
+
   Future<void> _continue(BuildContext context) async {
+    final g = _gender;
+    if (g == null) return;
     HapticFeedback.mediumImpact();
-    await LocalStoreService.setUserGender('m');
+    await LocalStoreService.setUserGender(g);
     await LocalStoreService.setOnboarded(true);
-    AnalyticsService.tabOpened('onboarding_manifesto_continue');
+    AnalyticsService.tabOpened('onboarding_gender_$g');
     if (!context.mounted) return;
-    if (fromSettings) {
+    if (widget.fromSettings) {
       context.pop();
     } else {
       // New users pass through the AI-data consent screen before the
@@ -56,9 +68,8 @@ class GenderPickScreen extends StatelessWidget {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Subtle red glow wash from the top to give the dark black
-          // background a sense of depth without competing with the
-          // copy. Sits behind the Scaffold's normal body.
+          // Cyan glow wash from the top — depth without competing
+          // with the copy.
           Positioned.fill(
             child: IgnorePointer(
               child: DecoratedBox(
@@ -67,7 +78,7 @@ class GenderPickScreen extends StatelessWidget {
                     center: const Alignment(0, -1.1),
                     radius: 1.2,
                     colors: [
-                      AppColors.red.withValues(alpha: 0.18),
+                      AppColors.brand.withValues(alpha: 0.16),
                       Colors.black,
                     ],
                     stops: const [0.0, 0.6],
@@ -82,7 +93,7 @@ class GenderPickScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (fromSettings)
+                  if (widget.fromSettings)
                     Align(
                       alignment: Alignment.centerLeft,
                       child: IconButton(
@@ -92,26 +103,22 @@ class GenderPickScreen extends StatelessWidget {
                       ),
                     )
                   else
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 10),
 
-                  // Wordmark — bigger, breathes.
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 16),
                   const Center(
-                    child: MirrorlyWordmark(fontSize: 56, letterSpacing: -1.6),
+                    child: DebloatWordmark(fontSize: 50, letterSpacing: -1.6),
                   ),
 
-                  const SizedBox(height: 38),
+                  const SizedBox(height: 30),
 
-                  // Headline — italic Playfair, scaled up so it owns
-                  // the upper third of the screen.
-                  Text('So you want\nto be him?',
+                  Text('Under the bloat\nis your real face.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.playfairDisplay(
+                    style: GoogleFonts.spaceGrotesk(
                       color: AppColors.textPrimary,
-                      fontSize: 38, height: 1.1,
-                      letterSpacing: -0.6,
-                      fontStyle: FontStyle.italic,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 34, height: 1.12,
+                      letterSpacing: -0.8,
+                      fontWeight: FontWeight.w700,
                     ))
                     .animate().fadeIn(duration: 460.ms)
                     .slideY(begin: 0.04, end: 0,
@@ -120,44 +127,85 @@ class GenderPickScreen extends StatelessWidget {
                   const Spacer(),
 
                   const _Pillar(
-                    eyebrow: 'LOOKS',
-                    line: 'We show you exactly\nwhat to fix.',
+                    eyebrow: 'SCAN',
+                    line: 'See how much bloat\nis hiding your face.',
                     delayMs: 220,
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 24),
                   const _Pillar(
-                    eyebrow: 'GAME',
-                    line: 'Live roleplay until\neverything you say lands.',
+                    eyebrow: 'SYSTEM',
+                    line: 'The daily checklist\nthat drains it.',
                     delayMs: 400,
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 24),
                   const _Pillar(
-                    eyebrow: 'RIZZ',
-                    line: 'Never run out of\nthings to say.',
+                    eyebrow: 'MIRROR',
+                    line: 'The AI shows you\nthe drained you.',
                     delayMs: 580,
                   ),
 
-                  const Spacer(flex: 2),
+                  const Spacer(),
 
-                  // Continue CTA — same red button, bigger touch target.
-                  Material(
-                    color: AppColors.red,
-                    borderRadius: BorderRadius.circular(16),
-                    child: InkWell(
-                      onTap: () => _continue(context),
+                  // ── The one question the AI needs ──
+                  Text('SO THE AI RENDERS YOU RIGHT',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.textTertiary,
+                      fontSize: 9.5, letterSpacing: 2.8,
+                      fontWeight: FontWeight.w900,
+                    )).animate().fadeIn(delay: 700.ms, duration: 460.ms),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: _GenderCard(
+                        label: 'MALE',
+                        icon: Icons.male_rounded,
+                        selected: _gender == 'm',
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() => _gender = 'm');
+                        },
+                      )),
+                      const SizedBox(width: 12),
+                      Expanded(child: _GenderCard(
+                        label: 'FEMALE',
+                        icon: Icons.female_rounded,
+                        selected: _gender == 'f',
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() => _gender = 'f');
+                        },
+                      )),
+                    ],
+                  ).animate().fadeIn(delay: 760.ms, duration: 460.ms),
+
+                  const SizedBox(height: 18),
+
+                  // Continue CTA — locked until a profile is picked.
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    opacity: _gender == null ? 0.35 : 1.0,
+                    child: Material(
+                      color: AppColors.brand,
                       borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        alignment: Alignment.center,
-                        child: Text('CONTINUE',
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontSize: 14.5, letterSpacing: 3.4,
-                            fontWeight: FontWeight.w900,
-                          )),
+                      child: InkWell(
+                        onTap: _gender == null
+                            ? null
+                            : () => _continue(context),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          alignment: Alignment.center,
+                          child: Text('BOOT THE SYSTEM',
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF03181C),
+                              fontSize: 14.5, letterSpacing: 3.4,
+                              fontWeight: FontWeight.w900,
+                            )),
+                        ),
                       ),
                     ),
-                  ).animate().fadeIn(delay: 780.ms, duration: 460.ms),
+                  ).animate().fadeIn(delay: 860.ms, duration: 460.ms),
 
                   const SizedBox(height: 14),
                 ],
@@ -170,9 +218,68 @@ class GenderPickScreen extends StatelessWidget {
   }
 }
 
-/// One pillar row — red eyebrow above an italic Playfair line. v170
-/// scales it up: 13pt eyebrow + 26pt body so the three lines own the
-/// middle of the screen instead of disappearing at the edges.
+/// One selectable profile card — brand-bordered when active.
+class _GenderCard extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+  const _GenderCard({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.brand.withValues(alpha: 0.14)
+                : AppColors.surface1,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? AppColors.brand : AppColors.surface3,
+              width: selected ? 1.4 : 0.8),
+            boxShadow: selected
+                ? [BoxShadow(
+                    color: AppColors.brand.withValues(alpha: 0.25),
+                    blurRadius: 18)]
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon,
+                size: 26,
+                color: selected ? AppColors.brand : AppColors.textTertiary),
+              const SizedBox(height: 6),
+              Text(label,
+                style: AppTypography.label.copyWith(
+                  color: selected
+                      ? AppColors.brand
+                      : AppColors.textSecondary,
+                  fontSize: 11, letterSpacing: 2.8,
+                  fontWeight: FontWeight.w900,
+                )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One pillar row — cyan eyebrow above a grotesk line.
 class _Pillar extends StatelessWidget {
   final String eyebrow;
   final String line;
@@ -201,17 +308,16 @@ class _Pillar extends StatelessWidget {
         children: [
           Text(eyebrow,
             style: AppTypography.label.copyWith(
-              color: AppColors.red,
-              fontSize: 13, letterSpacing: 3.6,
+              color: AppColors.brand,
+              fontSize: 12, letterSpacing: 3.6,
               fontWeight: FontWeight.w900,
             )),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(line,
-            style: GoogleFonts.playfairDisplay(
+            style: GoogleFonts.spaceGrotesk(
               color: AppColors.textPrimary,
-              fontSize: 26, height: 1.2,
+              fontSize: 23, height: 1.2,
               letterSpacing: -0.4,
-              fontStyle: FontStyle.italic,
               fontWeight: FontWeight.w700,
             )),
         ],
