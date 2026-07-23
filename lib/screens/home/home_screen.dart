@@ -21,15 +21,15 @@ import '../../theme/app_typography.dart';
 import '../../widgets/common/mirrorly_wordmark.dart';
 import '../../widgets/common/mirrorly_components.dart';
 // DEBLOAT OS. Four surfaces, one promise per tab:
-//   SCAN / DEBLOAT / MIRROR / ASCEND.
+//   SCAN / DEBLOAT / FOOD / ASCEND.
 import '../debloat/debloat_tab_screen.dart';
+import '../food/food_tab_screen.dart';
 import 'ascend_screen.dart';
-import 'transform_tab_screen.dart';
 
 /// The hub. Four surfaces, one promise per tab:
 ///   0. SCAN    — face scan + bloat read
 ///   1. DEBLOAT — the daily checklist system
-///   2. MIRROR  — the Debloat Protocol + AI drained-face render
+///   2. FOOD    — scan meals that cause puffiness (sodium + bloat grade)
 ///   3. ASCEND  — streak, daily missions, gap to potential
 class HomeScreen extends StatefulWidget {
   /// Optional initial tab.
@@ -173,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // screen_view event so we can rebuild the SCAN / DEBLOAT /
     // MIRROR / ASCEND funnel without having to dedupe screen_views
     // by source.
-    const tabNames = ['scan', 'debloat', 'mirror', 'ascend'];
+    const tabNames = ['scan', 'debloat', 'food', 'ascend'];
     if (i >= 0 && i < tabNames.length) {
       // ignore: discarded_futures
       AnalyticsService.tabOpened(tabNames[i]);
@@ -222,13 +222,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   dayStreak: _dayStreak,
                   onChanged: _reload,
                 ),
-                // Tab 2 — MIRROR: the Debloat Protocol + AI render.
-                TransformTabScreen(
-                  latest:          _latest,
-                  activeProtocols: _activeProtocols,
-                  dayStreak:       _dayStreak,
-                  onRefresh:       _reload,
-                ),
+                // Tab 2 — FOOD: scan a meal, grade it for facial bloat
+                // (sodium load + bloat metric grid). Self-contained; owns
+                // its own capture + backend call + result persistence.
+                const FoodTabScreen(),
                 // ASCEND — tab index 3. Pulls the protocol + scan
                 // history + completion booleans from this screen's
                 // state so it never has to spin up its own service
@@ -1029,7 +1026,7 @@ class _NavBar extends StatelessWidget {
     final items = const <({String label, IconData icon, bool italic})>[
       (label: 'Scan',    icon: Icons.center_focus_strong_rounded,   italic: false),
       (label: 'Debloat', icon: Icons.water_drop_outlined,           italic: false),
-      (label: 'Mirror',  icon: Icons.auto_awesome_rounded,          italic: false),
+      (label: 'Food',    icon: Icons.restaurant_rounded,            italic: false),
       (label: 'Ascend',  icon: Icons.local_fire_department_rounded, italic: false),
     ];
     // v303 — bottom nav rebuilt in the Skeletal-PT pattern bro

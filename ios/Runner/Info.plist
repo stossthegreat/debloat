@@ -8,6 +8,8 @@
 	<string>Debloat OS uses your camera to capture a selfie for the face scan. Before any photo leaves the device for AI analysis you'll be asked permission in-app. Manage in Settings.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Debloat OS saves your before/after images to your photo library so you can share them.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Debloat OS lets you pick a photo of a meal from your library to grade it for facial bloat and sodium load.</string>
 	<key>CFBundleDisplayName</key>
 	<string>Debloat OS</string>
 	<key>CFBundleExecutable</key>

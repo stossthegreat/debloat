@@ -29,6 +29,7 @@ import '../../services/share_service.dart';
 import '../../widgets/common/fullscreen_image.dart';
 import '../../widgets/report/ai_verdict_panel.dart';
 import '../../widgets/report/aspect_protocol_cards.dart';
+import '../../widgets/report/debloat_gauges_card.dart';
 import '../../widgets/report/hero_card.dart';
 import '../../widgets/report/hidden_depth_panel.dart';
 import '../../widgets/report/per_trait_scores.dart';
@@ -709,6 +710,15 @@ class _ReportScreenState extends State<ReportScreen> {
             isGenerating:     _generatingHero,
             onGenerate:       () => _generateHero(a),
           ),
+
+          const SizedBox(height: Sp.md),
+
+          // ── 1b · DEBLOAT READOUT — clean ring gauges directly under the
+          // AI drained-twin image. Derived on-device from the scan
+          // geometry (no backend). This is the "debloat stat circle
+          // gauges" that make the card read as a bloat diagnostic.
+          DebloatGaugesCard(geometry: widget.geometry)
+            .animate().fadeIn(delay: 300.ms, duration: 500.ms),
 
           const SizedBox(height: Sp.lg),
 
