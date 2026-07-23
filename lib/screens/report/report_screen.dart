@@ -1033,7 +1033,10 @@ class _ReportScreenState extends State<ReportScreen> {
                   HapticFeedback.selectionClick();
                   // ignore: discarded_futures
                   AnalyticsService.reportDoneTapped();
-                  context.go('/home', extra: {'initialTab': 1});
+                  // Land on the Debloat checklist tab (index 2 after the
+                  // Food-first nav reorder) so the user starts the daily
+                  // system right after their read.
+                  context.go('/home', extra: {'initialTab': 2});
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
