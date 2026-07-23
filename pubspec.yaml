@@ -1,7 +1,7 @@
 name: debloat_os
 description: "Debloat OS — the face under the bloat."
 publish_to: 'none'
-version: 1.0.0+6
+version: 1.0.0+8
 
 environment:
   sdk: ^3.8.0
@@ -86,6 +86,11 @@ flutter:
     # breaks before the JPEG lands; Image.asset errorBuilders fall
     # back to a glyph when a file is missing.
     - assets/scan/
+    # Onboarding funnel imagery (welcome carousel + gender cards).
+    # Directory declared so images auto-bundle the moment they're
+    # dropped in; every reference has an emoji/placeholder fallback so
+    # the build never breaks before the art lands. See the README.
+    - assets/onboarding/
 
 # Generates every iOS + Android launcher icon from two master PNGs.
 # Run after dropping new masters:  dart run flutter_launcher_icons

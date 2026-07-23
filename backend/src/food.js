@@ -70,7 +70,27 @@ One short sentence, actionable, debloat-framed. e.g. "Drink 500ml water before b
 ## IF THE PHOTO ISN'T FOOD
 If the image clearly contains no food or drink, return name:"No food detected" and overallScore:0 and empty-ish stats (all score 0, rating "moderate"), betterSwap null, tip "Point the camera at a meal or drink."
 
-Output MUST be valid JSON. No markdown. No text outside the object.`;
+## EXACT OUTPUT SHAPE — copy this structure precisely. Use the keys "label", "score" (a number 0-100), and "rating" for EVERY stat. Never leave a score null or 0 for real food.
+{
+  "name": "Fried potato wedges",
+  "verdict": "High bloat risk",
+  "overallScore": 30,
+  "sodiumMg": 950,
+  "sodiumPctDaily": 41,
+  "puffinessRisk": "High",
+  "stats": [
+    { "label": "Bloating Potential", "score": 72, "rating": "bad" },
+    { "label": "Inflammation", "score": 60, "rating": "moderate" },
+    { "label": "Digestion", "score": 45, "rating": "moderate" },
+    { "label": "Skin Health", "score": 38, "rating": "bad" },
+    { "label": "Fluid Balance", "score": 40, "rating": "moderate" },
+    { "label": "Sodium Risk", "score": 80, "rating": "bad" }
+  ],
+  "betterSwap": { "from": "Fried wedges", "to": "Baked potato" },
+  "tip": "Drink 500ml water before bed to flush the sodium."
+}
+
+Output MUST be valid JSON with EXACTLY this shape. No markdown. No text outside the object.`;
 
   const userPrompt = 'Grade this meal/drink for facial bloat. Output the JSON per spec above. Estimate sodium for the portion actually shown in the photo.';
 
@@ -108,53 +128,108 @@ Output MUST be valid JSON. No markdown. No text outside the object.`;
 }
 
 // Defensive normalization so the client always gets a well-formed shape
-// even if the model drifts on a field.
+// even when the model drifts on field names/structure. This is the fix for
+// the "grid shows all zeros" bug: GPT-4o sometimes returns the stats under
+// different keys (`value` instead of `score`, `name` instead of `label`),
+// as an object keyed by label instead of an array, or omits a couple. We
+// tolerate all of that and, as a last resort, DERIVE any still-missing
+// score from the overall/sodium read so the grid is never blank.
 function normalize(p) {
   const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(n) || 0)));
   const RATINGS = new Set(['bad', 'moderate', 'good', 'great']);
-  const wantLabels = [
-    'Bloating Potential', 'Inflammation', 'Digestion',
-    'Skin Health', 'Fluid Balance', 'Sodium Risk',
+
+  // Each metric: canonical label, key words to fuzzy-match on, and whether
+  // a LOW score is the good outcome (drives derived rating + fallback).
+  const METRICS = [
+    { label: 'Bloating Potential', keys: ['bloat'],                    lowGood: true  },
+    { label: 'Inflammation',       keys: ['inflam'],                   lowGood: true  },
+    { label: 'Digestion',          keys: ['digest'],                   lowGood: false },
+    { label: 'Skin Health',        keys: ['skin'],                     lowGood: false },
+    { label: 'Fluid Balance',      keys: ['fluid', 'hydrat', 'water'], lowGood: false },
+    { label: 'Sodium Risk',        keys: ['sodium', 'salt'],           lowGood: true  },
   ];
 
-  const byLabel = {};
-  if (Array.isArray(p.stats)) {
-    for (const s of p.stats) {
-      if (s && typeof s.label === 'string') byLabel[s.label.trim().toLowerCase()] = s;
+  // Flatten whatever the model gave us into a list of {label, raw}.
+  const rawStats = [];
+  const src = p.stats ?? p.breakdown ?? p.metrics ?? p.grid;
+  if (Array.isArray(src)) {
+    for (const s of src) {
+      if (s && typeof s === 'object') {
+        const lbl = String(s.label ?? s.name ?? s.title ?? s.metric ?? '');
+        rawStats.push({ label: lbl, raw: s });
+      }
+    }
+  } else if (src && typeof src === 'object') {
+    // object keyed by label → { "Bloating Potential": 72 | {score,rating} }
+    for (const [k, v] of Object.entries(src)) {
+      rawStats.push({ label: k, raw: (v && typeof v === 'object') ? v : { score: v } });
     }
   }
-  const stats = wantLabels.map((label) => {
-    const s = byLabel[label.toLowerCase()] || {};
-    let rating = String(s.rating || '').toLowerCase();
-    if (!RATINGS.has(rating)) rating = 'moderate';
-    return { label, score: clamp(s.score, 0, 100), rating };
+
+  const readScore = (o) => {
+    const cand = o.score ?? o.value ?? o.points ?? o.rating_score ?? o.number;
+    const n = Number(cand);
+    return Number.isFinite(n) ? clamp(n, 0, 100) : null;
+  };
+  const readRating = (o) => {
+    const r = String(o.rating ?? o.level ?? o.severity ?? o.grade ?? '').toLowerCase();
+    return RATINGS.has(r) ? r : null;
+  };
+
+  const overall = clamp(p.overallScore ?? p.score ?? p.overall, 0, 100);
+
+  const stats = METRICS.map((m) => {
+    // fuzzy match: first raw stat whose label contains any key word.
+    const hit = rawStats.find((rs) => {
+      const l = rs.label.toLowerCase();
+      return m.keys.some((k) => l.includes(k));
+    });
+    let score = hit ? readScore(hit.raw) : null;
+    let rating = hit ? readRating(hit.raw) : null;
+
+    // Fallback: derive a plausible score from the overall read so the grid
+    // never renders as blank zeros. lowGood metrics invert the overall.
+    if (score == null) {
+      score = m.lowGood ? clamp(100 - overall, 0, 100) : overall;
+    }
+    // Derive rating from the score + direction if the model didn't give one.
+    if (rating == null) {
+      const good = m.lowGood ? (100 - score) : score;
+      rating = good >= 80 ? 'great' : good >= 60 ? 'good' : good >= 40 ? 'moderate' : 'bad';
+    }
+    return { label: m.label, score, rating };
   });
 
-  const sodiumMg = clamp(p.sodiumMg, 0, 20000);
-  const sodiumPctDaily = p.sodiumPctDaily != null
-    ? clamp(p.sodiumPctDaily, 0, 999)
+  const sodiumMg = clamp(p.sodiumMg ?? p.sodium ?? p.sodiumMilligrams, 0, 20000);
+  const sodiumPctDaily = (p.sodiumPctDaily ?? p.sodiumPercent) != null
+    ? clamp(p.sodiumPctDaily ?? p.sodiumPercent, 0, 999)
     : clamp((sodiumMg / 2300) * 100, 0, 999);
 
-  let risk = String(p.puffinessRisk || '').trim();
+  let risk = String(p.puffinessRisk ?? p.risk ?? p.bloatRisk ?? '').trim();
   if (!/^(low|moderate|high)$/i.test(risk)) risk = 'Moderate';
   risk = risk.charAt(0).toUpperCase() + risk.slice(1).toLowerCase();
 
   let swap = null;
-  if (p.betterSwap && typeof p.betterSwap === 'object') {
-    const from = String(p.betterSwap.from || '').trim();
-    const to = String(p.betterSwap.to || '').trim();
+  const rawSwap = p.betterSwap ?? p.swap ?? p.substitution;
+  if (rawSwap && typeof rawSwap === 'object') {
+    const from = String(rawSwap.from ?? rawSwap.instead ?? '').trim();
+    const to = String(rawSwap.to ?? rawSwap.better ?? '').trim();
     if (from && to) swap = { from, to };
   }
 
+  const name = String(
+    p.name ?? p.food ?? p.dish ?? p.meal ?? p.foodName ?? p.title ?? 'Your meal'
+  ).trim().slice(0, 60);
+
   return {
-    name: String(p.name || 'Your meal').trim().slice(0, 60),
-    verdict: String(p.verdict || 'Moderate').trim().slice(0, 32),
-    overallScore: clamp(p.overallScore, 0, 100),
+    name: name || 'Your meal',
+    verdict: String(p.verdict ?? p.summary ?? 'Moderate').trim().slice(0, 32) || 'Moderate',
+    overallScore: overall,
     sodiumMg,
     sodiumPctDaily,
     puffinessRisk: risk,
     stats,
     betterSwap: swap,
-    tip: String(p.tip || '').trim().slice(0, 200),
+    tip: String(p.tip ?? p.advice ?? '').trim().slice(0, 200),
   };
 }

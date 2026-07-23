@@ -87,13 +87,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // FOUR tabs: FOOD (0) / SCAN (1) / DEBLOAT (2) / ASCEND (3). Food
-    // leads the nav, but the app opens on SCAN by default (index 1) —
-    // the core loop is still the face scan. Callers that want a
-    // specific tab pass initialTab; anything out of range falls back
-    // to SCAN so older deep links don't crash.
-    final t = widget.initialTab ?? 1;
-    _tab = (t >= 0 && t < 4) ? t : 1;
+    // FOUR tabs: SCAN (0) / FOOD (1) / DEBLOAT (2) / ASCEND (3). Scan
+    // leads the nav and is the default landing tab. Callers that want a
+    // specific tab pass initialTab; anything out of range falls back to
+    // SCAN so older deep links don't crash.
+    final t = widget.initialTab ?? 0;
+    _tab = (t >= 0 && t < 4) ? t : 0;
     _reload();
     // Fire the App Store review prompt if the user has now used
     // all three pillars (scan + Free Flow + eye-contact lesson).
@@ -172,19 +171,19 @@ class _HomeScreenState extends State<HomeScreen> {
     HapticFeedback.selectionClick();
     setState(() => _tab = i);
     // Tab-switch analytics — paired with the router observer's
-    // screen_view event so we can rebuild the FOOD / SCAN / DEBLOAT /
+    // screen_view event so we can rebuild the SCAN / FOOD / DEBLOAT /
     // ASCEND funnel without having to dedupe screen_views by source.
-    const tabNames = ['food', 'scan', 'debloat', 'ascend'];
+    const tabNames = ['scan', 'food', 'debloat', 'ascend'];
     if (i >= 0 && i < tabNames.length) {
       // ignore: discarded_futures
       AnalyticsService.tabOpened(tabNames[i]);
     }
     // Re-read scan + pillar prefs + advance the streak whenever the
-    // user returns to the Scan (1), Debloat (2), OR Ascend (3) tab —
+    // user returns to the Scan (0), Debloat (2), OR Ascend (3) tab —
     // keeps the masthead flame and the Ascend streak panel live the
-    // moment they finish a mission elsewhere in the app. Food (0) is
+    // moment they finish a mission elsewhere in the app. Food (1) is
     // self-contained and needs no reload.
-    if (i == 1 || i == 2 || i == 3) {
+    if (i == 0 || i == 2 || i == 3) {
       // ignore: discarded_futures
       _reload();
     }
@@ -206,15 +205,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ? const _Splash()
           : IndexedStack(
               index: _tab,
-              // Tab roster order: FOOD (0) · SCAN (1) · DEBLOAT (2) ·
-              // ASCEND (3). Food leads the nav; the app still opens on
-              // SCAN by default (see initialTab fallback in initState).
+              // Tab roster order: SCAN (0) · FOOD (1) · DEBLOAT (2) ·
+              // ASCEND (3). Scan (the face read) leads; Food sits second.
               children: [
-                // Tab 0 — FOOD: scan a meal, grade it for facial bloat
-                // (sodium load + bloat metric grid). Self-contained; owns
-                // its own capture + backend call + result persistence.
-                const FoodTabScreen(),
-                // Tab 1 — SCAN hub: face scan + bloat read. Streak badge
+                // Tab 0 — SCAN hub: face scan + bloat read. Streak badge
                 // on the masthead keeps the loop visible.
                 _ScanHubTab(
                   latest:           _latest,
@@ -224,6 +218,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   isPro:            _isPro,
                   onRefresh:        _reload,
                 ),
+                // Tab 1 — FOOD: scan a meal, grade it for facial bloat
+                // (sodium load + bloat metric grid). Self-contained; owns
+                // its own capture + backend call + result persistence.
+                const FoodTabScreen(),
                 // Tab 2 — DEBLOAT: the daily checklist system. Every
                 // toggle calls back into _reload so the flame + the
                 // Ascend consistency stay live.
@@ -1028,8 +1026,8 @@ class _NavBar extends StatelessWidget {
     // Four tabs: SCAN / DEBLOAT / MIRROR / ASCEND. Each tab does ONE
     // thing — the reading, the daily system, the render, the program.
     final items = const <({String label, IconData icon, bool italic})>[
-      (label: 'Food',    icon: Icons.restaurant_rounded,            italic: false),
       (label: 'Scan',    icon: Icons.center_focus_strong_rounded,   italic: false),
+      (label: 'Food',    icon: Icons.restaurant_rounded,            italic: false),
       (label: 'Debloat', icon: Icons.water_drop_outlined,           italic: false),
       (label: 'Ascend',  icon: Icons.local_fire_department_rounded, italic: false),
     ];

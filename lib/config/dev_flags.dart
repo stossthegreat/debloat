@@ -47,10 +47,16 @@
 /// in the limits back up, I'm gonna put in distribution." Every
 /// paywall is live again and all five weekly cap counters count for
 /// real (the LocalStoreService guards deactivate with this flag).
-const kBypassPaywall = false;
+///
+/// TESTING PHASE — flipped back to TRUE per bro: "turn all limits off
+/// the app we're in testing phase but leave it so we can flick back on."
+/// Every paywall + all five weekly cap counters (scans / renders /
+/// voice / screenshots / food) are OFF while testing. To RE-LOCK for
+/// distribution, flip this single line back to `false`.
+const kBypassPaywall = true;
 
 /// Human-readable build tag shown tiny on the paywall so we can instantly
 /// tell which build is actually installed on-device (TestFlight lag has
 /// repeatedly made us debug a stale build). Bump this with every pubspec
 /// build-number bump.
-const kBuildTag = 'v1.0.0+6';
+const kBuildTag = 'v1.0.0+8';

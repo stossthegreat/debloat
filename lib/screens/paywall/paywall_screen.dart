@@ -513,7 +513,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                                         AlwaysStoppedAnimation(Colors.white)),
                               )
                             : Text(
-                                'BECOME HIM',
+                                'DRAIN THE BLOAT',
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 16,
@@ -863,12 +863,16 @@ class _LadderPanel extends StatefulWidget {
 }
 
 class _LadderPanelState extends State<_LadderPanel> {
+  // The debloat identity ladder — mirrors AscensionService's ranks
+  // (the Ascend tab's "THE MAN YOU ARE BUILDING" progression) so the
+  // paywall promises the exact journey the app delivers.
   static const _rungs = [
-    'OBSERVER',
-    'INITIATE',
-    'CONTENDER',
-    'DANGEROUS',
-    'HIM'
+    'BOOTED',
+    'FLUSHING',
+    'DRAINING',
+    'DEFINED',
+    'CHISELED',
+    'DRAINED',
   ];
 
   int _lit = 0; // number of rungs currently lit
