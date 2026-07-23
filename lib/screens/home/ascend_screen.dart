@@ -327,8 +327,8 @@ class _AscendScreenState extends State<AscendScreen> {
           ? 'fully drained. see it tomorrow morning.'
           : 'the daily checklist. every tick shows in the mirror.',
       done: clTotal > 0 && clDone >= clTotal,
-      // Debloat tab — where the checklist lives.
-      onTap: () => w.onJumpToTab(1),
+      // Debloat tab (index 2) — where the checklist lives.
+      onTap: () => w.onJumpToTab(2),
     );
 
     final active = w.activeProtocols;
@@ -354,10 +354,11 @@ class _AscendScreenState extends State<AscendScreen> {
       checklistRow,
       AscendMission(
         title: 'COMMIT THE DEBLOAT PROTOCOL',
-        hint: 'the 60-day run. it starts on the Mirror tab.',
+        hint: 'the 60-day run. tap to start it.',
         done: false,
-        // Mirror tab — where the protocol is committed.
-        onTap: () => w.onJumpToTab(2),
+        // The Mirror tab is gone (now Food) — commit the protocol on
+        // the dedicated protocol screen directly.
+        onTap: () => context.push('/protocol'),
       ),
     ];
   }

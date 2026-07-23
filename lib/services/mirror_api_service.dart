@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/face_geometry.dart';
+import '../models/food_analysis.dart';
 import '../models/mirror_analysis.dart';
 import 'local_store_service.dart';
 
@@ -193,6 +194,39 @@ class MirrorApiService {
         return url;
       },
     );
+  }
+
+  /// FOOD SCAN — grade a meal photo for facial bloat. Posts the raw
+  /// image to /food; the backend runs GPT-4o Vision and returns the
+  /// sodium load + graded metric grid. Unlike [scan], food scans do NOT
+  /// retry forever — a food photo is cheap to re-take, and the user
+  /// should get a quick, honest failure rather than a 3-minute spinner.
+  /// One quick retry on transient failure, then throw.
+  static Future<FoodAnalysis> analyseFood({
+    required Uint8List imageBytes,
+  }) async {
+    final body = jsonEncode({'imageBase64': base64Encode(imageBytes)});
+    Object? lastErr;
+    for (var attempt = 1; attempt <= 2; attempt++) {
+      try {
+        final response = await http.post(
+          Uri.parse('${ApiConfig.backendBaseUrl}/food'),
+          headers: {'Content-Type': 'application/json'},
+          body: body,
+        ).timeout(const Duration(seconds: 45));
+        if (response.statusCode != 200) {
+          throw Exception('Backend ${response.statusCode}: ${response.body}');
+        }
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        return FoodAnalysis.fromJson(decoded);
+      } catch (err) {
+        lastErr = err;
+        // ignore: avoid_print
+        print('[food] attempt $attempt failed: $err');
+        if (attempt < 2) await Future.delayed(const Duration(seconds: 2));
+      }
+    }
+    throw Exception('food scan failed: $lastErr');
   }
 
   /// Infinite retry with exponential backoff.

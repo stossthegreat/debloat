@@ -4,6 +4,7 @@ import cors from 'cors';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyse } from './analyse.js';
+import { analyseFood } from './food.js';
 import { maximize } from './maximize.js';
 import { tryOn } from './tryon.js';
 import { chat } from './chat.js';
@@ -124,6 +125,21 @@ app.post('/scan', async (req, res) => {
   } catch (err) {
     console.error(`[/scan] unexpected error after ${Date.now() - t0}ms:`, err);
     res.status(500).json({ error: err.message, stage: 'unexpected' });
+  }
+});
+
+// ── Food scan: GPT-4o Vision grades a meal photo for FACIAL BLOAT.
+// Returns { name, verdict, overallScore, sodiumMg, sodiumPctDaily,
+// puffinessRisk, stats[], betterSwap, tip }. See food.js for the shape.
+app.post('/food', async (req, res) => {
+  try {
+    const { imageBase64 } = req.body;
+    if (!imageBase64) return res.status(400).json({ error: 'imageBase64 required' });
+    const result = await analyseFood({ imageBase64 });
+    res.json(result);
+  } catch (err) {
+    console.error('[/food] error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

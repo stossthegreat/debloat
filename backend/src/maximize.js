@@ -4,70 +4,50 @@ import crypto from 'node:crypto';
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  MODEL CHOICE — April 2026 research verdict
+//  THE DEBLOAT TWIN — what this file does now
 // ─────────────────────────────────────────────────────────────────────────────
-// Kontext Max was producing "uglier / older / different person" outputs. The
-// root cause is structural, not prompt-level:
-//   1. Flux has a documented +2.18 year age bias on males (arxiv 2502.03420).
-//   2. Kontext's identity is a SOFT prompt bias, not a face-embedding lock —
-//      every edit re-synthesises the full face.
-//   3. Flux's portrait prior over-smooths skin, which kills cheek-shadow and
-//      reads as "older / less attractive."
-// Fix = (a) use a model whose portrait prior isn't beauty-retouched, AND
-//       (b) post-pass a face-swap from the ORIGINAL selfie back onto the edit
-//           output — a GEOMETRIC identity lock that no prompt can outperform.
+// Debloat OS has ONE hero render: the user's OWN face, drained of bloat.
+// Not a haircut. Not a grooming glow-up. The literal job is to show the user
+// what they look like with the facial water-retention, puffiness, and soft
+// submental/orbital fat removed — the face that is already there, under the
+// bloat.
 //
-// Primary edit model: Google's Nano Banana (Gemini 2.5 Flash Image). Google's
-// DeepMind marketing for this model: "locks onto your facial features, skin
-// tone, and expression before making any change." Best-in-class for hair /
-// beard edits where the face must stay recognisable.
+// WHY THE OLD PIPELINE NEVER DEBLOATED
+// ------------------------------------
+// The previous version ran a Stage-3 face-swap that pasted the ORIGINAL
+// selfie's face geometry back onto the edit output. That was an identity
+// lock for haircut edits — but for a debloat edit it is fatal: swapping the
+// original (bloated) face back on top REVERTS the exact thing we just did.
+// The de-puffing was being undone in the last step, every time. So the swap
+// is gone. Identity is held by the edit model's native subject-lock plus a
+// tightly-scoped prompt that changes ONLY soft tissue, never bone / hair /
+// scene.
 //
-// Post-pass: cdingram/face-swap on Replicate (buffalo_l + inswapper_128).
-// Takes the edit output + the original selfie, pastes the original face's
-// geometry onto the new haircut, blends. ~$0.01/img, ~4s.
-//
-// Net cost: Nano Banana Flash ($0.039) + face swap ($0.01) ≈ $0.05 / twin
-// vs Kontext Max $0.08 — CHEAPER AND BETTER.
-const EDIT_MODEL = 'google/nano-banana';         // primary — Gemini 2.5 Flash Image
-const SWAP_MODEL = 'cdingram/face-swap';         // identity-lock post-pass
+// MODEL
+// -----
+// Google's Nano Banana (Gemini 2.5 Flash Image). DeepMind's own line: it
+// "locks onto your facial features, skin tone, and expression before making
+// any change." That native identity clamp is exactly what a soft-tissue-only
+// edit needs — we want the SAME person, minus the water. ~$0.039 / render.
+const EDIT_MODEL = 'google/nano-banana';         // Gemini 2.5 Flash Image
 
 /**
- * Generate the Maximized Twin — ONE hero change, identity-locked.
+ * Generate the Debloat Twin — the user's face with facial bloat drained.
  *
- * Architecture:
- *   Stage 1: pick the single hero change from brief.improve. Hair > Beard >
- *            other grooming. Skin is NEVER the hero and is never sent to the
- *            edit model. (Flux/Nano Banana both smooth skin as a side effect
- *            — which is how we got "uglier/older" outputs.)
- *   Stage 2: call Nano Banana with a descriptor-first prompt that positively
- *            preserves face/bones/age so the model clamps identity.
- *   Stage 3: face-swap post-pass using the ORIGINAL selfie as the face
- *            source. This is the geometric identity guarantee — no prompt
- *            can drift the face when we literally paste the original face
- *            geometry back at the end.
+ * Single-stage, identity-locked, soft-tissue-only. `brief` is accepted for
+ * backward-compat with the /scan chain but is intentionally ignored: the
+ * edit is ALWAYS "drain the bloat," never a haircut or grooming change.
  *
  * Returns { url, editUrl, prompt, seed, heroChange, model, intermediateUrls }.
  */
-export async function maximize({ imageBase64, brief }) {
-  const improve = Array.isArray(brief?.improve) ? brief.improve : [];
-
-  // Rank fixes: hair(0) > beard(1) > other-grooming(2). Skin(3) filtered out.
-  const ranked = improve
-    .map((s, i) => ({ s: String(s || '').trim(), pri: classify(s), idx: i }))
-    .filter(r => r.s.length > 0 && r.pri <= 2)
-    .sort((a, b) => a.pri - b.pri || a.idx - b.idx);
-
-  const heroChange = ranked.length > 0
-    ? ranked[0].s
-    : 'a cleanly styled, modern haircut that suits the face shape';
-
-  const prompt = buildPrompt(heroChange);
+export async function maximize({ imageBase64, brief } = {}) {
+  const prompt = buildPrompt();
   const seed   = deterministicSeed(imageBase64);
   const inputDataUri = `data:image/jpeg;base64,${imageBase64}`;
 
-  console.log(`[maximize] heroChange="${heroChange}" (ranked=${ranked.length})`);
+  console.log('[maximize] debloat render — single-stage, no face-swap');
 
-  // Stage 1+2 — primary edit via Nano Banana. Retry on EVERY error
+  // Primary (and only) edit via Nano Banana. Retry on EVERY error
   // (not just transient): content-moderation false-positives, weird
   // Replicate 4xxs on valid payloads, and unclassified failures all
   // used to throw here and cascade up to a "Server hiccup" screen.
@@ -76,36 +56,16 @@ export async function maximize({ imageBase64, brief }) {
   const editStart = Date.now();
   const editUrl = await runWithRetry(
     () => runEdit({ imageDataUri: inputDataUri, prompt }),
-    { label: 'edit', maxAttempts: 5, retryAll: true },
+    { label: 'debloat', maxAttempts: 5, retryAll: true },
   );
-  console.log(`[maximize] edit ok: ${Date.now() - editStart}ms`);
-
-  // Stage 3 — face-swap original → edit (identity guarantee).
-  // Retried on all errors. If all retries fail we fall back to the
-  // edit output rather than crashing the whole /scan — identity will
-  // drift slightly but the user still gets a usable twin, which is
-  // infinitely better than an empty hero card.
-  let finalUrl = editUrl;
-  const swapStart = Date.now();
-  try {
-    finalUrl = await runWithRetry(
-      () => runFaceSwap({
-        editedUrl:   editUrl,
-        originalUri: inputDataUri,
-      }),
-      { label: 'swap', maxAttempts: 4, retryAll: true },
-    );
-    console.log(`[maximize] swap ok: ${Date.now() - swapStart}ms`);
-  } catch (e) {
-    console.warn(`[maximize] swap FAILED after retries (${Date.now() - swapStart}ms): ${String(e?.message ?? e)}`);
-  }
+  console.log(`[maximize] debloat ok: ${Date.now() - editStart}ms`);
 
   return {
-    url:              finalUrl,
+    url:              editUrl,
     editUrl,
     prompt,
     seed,
-    heroChange,
+    heroChange:       'debloat',
     model:            EDIT_MODEL,
     intermediateUrls: [],
   };
@@ -118,9 +78,9 @@ export async function maximize({ imageBase64, brief }) {
  *     reports, Replicate's upstream is not always stable)
  *   · Network timeouts, ECONNRESET, ETIMEDOUT, socket hang up
  *
- * Does NOT retry on:
- *   · 4xx other than 429 (client errors — our payload is broken)
- *   · Content-policy refusals
+ * With retryAll (used here), retries EVERY error. Trade-off: a genuinely
+ * broken payload wastes all attempts — but we'd rather waste retries than
+ * throw a recoverable failure up to the user.
  *
  * Backoff: respects Retry-After hint if present, else exponential
  * (3s, 6s, 12s) capped at 30s.
@@ -133,12 +93,6 @@ async function runWithRetry(fn, { label, maxAttempts = 3, retryAll = false } = {
     } catch (err) {
       lastErr = err;
       const msg = String(err?.message ?? err);
-      // retryAll = retry every error, not just the ones we classified
-      // as transient. Trade-off: a genuinely broken payload will waste
-      // all attempts — but we'd rather waste retries than throw a
-      // recoverable failure up to the user. For the ones we DO know
-      // are transient, the wait honours Retry-After; for everything
-      // else we use a plain exponential schedule.
       const transient = isTransient(msg);
       const shouldRetry = retryAll || transient;
       if (!shouldRetry || attempt >= maxAttempts) {
@@ -179,74 +133,66 @@ function isTransient(msg) {
 }
 
 /**
- * Classify an improve item so we can rank it:
- *   0 = HAIR  (hero if present)
- *   1 = BEARD (hero if hair absent)
- *   2 = OTHER grooming (brows, teeth, glasses, lashes)
- *   3 = SKIN — never sent to the model
+ * THE DEBLOAT PROMPT — soft-tissue only, identity-locked.
+ *
+ * Six ordered beats, tuned for Nano Banana (Gemini 2.5 Flash Image):
+ *
+ *   1. Subject naming        — "The exact same person in this photo"
+ *   2. The ONE job           — drain facial bloat / water retention
+ *   3. Where the bloat lives  — cheeks, jawline, under-eyes, submental,
+ *                               overall roundness/puffiness (named zones so
+ *                               the model knows precisely what to reduce)
+ *   4. Reveal, don't reshape  — the point is to UNCOVER the bone that is
+ *                               already there under the water, NOT to carve
+ *                               new bone. This keeps it believable and keeps
+ *                               it the same person.
+ *   5. Identity preserve      — bones, age, ethnicity, hair, expression,
+ *                               skin tone exactly as-is
+ *   6. Scene preserve         — lighting, background, framing, pose
+ *
+ * The framing is deliberately "the same face after perfect sleep, zero
+ * sodium, and full hydration — every drop of water weight gone." That
+ * mental model produces a de-puffed, sharper, drained version of the SAME
+ * face rather than a different, thinner person. "Subtle but clearly
+ * visible" keeps it from either doing nothing or going full ozempic-gaunt.
  */
-function classify(s) {
-  const x = String(s || '').toLowerCase();
-  if (/\b(hair(?!\s*line)|fade|crop|cut|hairline|fringe|buzz|taper|undercut|quiff|pomp|part|bangs)\b/.test(x)) return 0;
-  if (/\b(beard|stubble|goatee|moustache|facial hair)\b/.test(x)) return 1;
-  if (/\b(brow|eyebrow|teeth|whiten|glasses|frame|lash)\b/.test(x)) return 2;
-  return 3; // skin / tone / pore / blemish → drop
-}
-
-/**
- * Descriptor-first prompt. Five ordered beats, tuned for Nano Banana
- * (Gemini 2.5 Flash Image):
- *
- *   1. Subject naming                — "The person in this photo"
- *   2. The ONE hero change           — "Give them [heroChange]"
- *   3. Grooming baseline (ALWAYS)    — clean healthy skin, styled hair,
- *                                      neat facial hair if present
- *   4. Identity preserve clause      — bones / proportions / age / ethnicity
- *   5. Environment preserve clause   — lighting, background, pose
- *
- * Why the grooming baseline (new in this version): one of two things is
- * always true of the user — (a) the hero change IS grooming, in which
- * case the baseline reinforces it, or (b) the hero is non-grooming
- * (glasses, expression), in which case we still want the twin to look
- * their best instead of keeping original bed hair / stubble. The model
- * pairs a skin cleanup + fresh styling with the hero without bleeding
- * into bone reshaping when the identity clause is specific.
- *
- * "Apparent age" sits at the top of the preserve clause — documented
- * fix for Flux/Gemini's +2y male age-drift (arxiv 2502.03420). Without
- * it, the model nudges older even when the hero change is neutral.
- *
- * "Clean natural skin texture" (vs. the old "do not smooth the skin")
- * tells the model to clean up acne, redness, uneven tone WITHOUT going
- * airbrushed/plastic — which was the old failure mode.
- */
-function buildPrompt(heroChange) {
+function buildPrompt() {
   return (
-    `The person in this photo. Give them ${heroChange}. ` +
+    // 1 + 2 — subject + the single job
+    `The exact same person in this photo, shown after their face has been ` +
+    `completely de-bloated — drained of all water retention and facial ` +
+    `puffiness, as if after perfect sleep, zero sodium, and full hydration. ` +
 
-    // Grooming baseline — applied on every twin regardless of hero
-    `At the same time, make them look their absolute best: ` +
-    `clean, clear, healthy skin with even tone — no acne, no blemishes, ` +
-    `no redness, no visible pores — but keep natural skin texture ` +
-    `(not airbrushed, not plastic, not smoothed). ` +
-    `Give them freshly-cut and cleanly-styled hair. ` +
-    `If they have facial hair, keep it neatly groomed with clean lines ` +
-    `and a tight neckline. Groomed eyebrows, no stragglers. ` +
+    // 3 — where the bloat lives (named zones)
+    `Remove the facial bloat and soft water-weight puffiness from the ` +
+    `cheeks, along the jawline and under the chin (submental area), and ` +
+    `the puffy under-eye bags. Reduce the overall roundness and swelling ` +
+    `of the face. Deflate the puffiness so the face looks tighter, leaner, ` +
+    `drained, and more sculpted. ` +
 
-    // Identity preserve — non-negotiable, positively framed
-    `Keep their apparent age, face shape, bone structure, jawline, ` +
-    `cheekbones, nose shape, eye shape, eye colour, lip shape, ` +
-    `expression, and ethnicity — exactly as in the original. ` +
-    `Do not reshape any bones. Do not age the face. Do not alter ` +
-    `identity. ` +
+    // 4 — reveal, don't reshape (this is what keeps identity + realism)
+    `Reveal the cheekbones, the jawline, and the chin definition that are ` +
+    `already there underneath the bloat — do NOT carve or add new bone, ` +
+    `only uncover the existing bone structure by removing the water and ` +
+    `soft fat sitting on top of it. Bring back a clean, defined jaw line ` +
+    `and a flatter under-eye area. The change should be subtle but clearly ` +
+    `visible — the same face, minus every drop of bloat. ` +
 
-    // Environment preserve — no scene drift
-    `Keep the same lighting, background, framing, camera angle, and ` +
-    `pose. Natural shadows. Photorealistic.`
+    // 5 — identity preserve
+    `Keep it unmistakably the SAME person: same apparent age, same bone ` +
+    `structure and face shape, same nose, same eye shape and eye colour, ` +
+    `same lips, same expression, same hairstyle and hair, same facial ` +
+    `hair, same ethnicity, and the same natural skin tone and skin ` +
+    `texture. Do not beautify, do not airbrush, do not change the ` +
+    `haircut, do not slim it into a different, thinner person. ` +
+
+    // 6 — scene preserve
+    `Keep the same lighting, background, framing, camera angle, and pose. ` +
+    `Natural shadows. Photorealistic.`
   );
 }
 
-// ─── Stage 1+2 — primary edit ────────────────────────────────────────────────
+// ─── Primary edit ─────────────────────────────────────────────────────────────
 async function runEdit({ imageDataUri, prompt }) {
   // Nano Banana accepts `image_input` as an ARRAY (supports up to 14 refs).
   // png output avoids jpg compression artifacts on skin.
@@ -257,20 +203,6 @@ async function runEdit({ imageDataUri, prompt }) {
     output_format: 'png',
   };
   const output = await replicate.run(EDIT_MODEL, { input });
-  return extractUrl(output);
-}
-
-// ─── Stage 3 — face-swap post-pass (GEOMETRIC identity lock) ─────────────────
-// The identity guarantee no prompt can deliver. Takes:
-//   - editedUrl   : the Nano Banana output (has the new hair, drifted face)
-//   - originalUri : the user's actual selfie (has the correct face)
-// Pastes the original face geometry onto the edited output, blends.
-async function runFaceSwap({ editedUrl, originalUri }) {
-  const input = {
-    input_image: editedUrl,     // target (has the new hair/beard)
-    swap_image:  originalUri,   // source (has the correct face)
-  };
-  const output = await replicate.run(SWAP_MODEL, { input });
   return extractUrl(output);
 }
 

@@ -29,6 +29,7 @@ import '../../services/share_service.dart';
 import '../../widgets/common/fullscreen_image.dart';
 import '../../widgets/report/ai_verdict_panel.dart';
 import '../../widgets/report/aspect_protocol_cards.dart';
+import '../../widgets/report/debloat_gauges_card.dart';
 import '../../widgets/report/hero_card.dart';
 import '../../widgets/report/hidden_depth_panel.dart';
 import '../../widgets/report/per_trait_scores.dart';
@@ -710,6 +711,15 @@ class _ReportScreenState extends State<ReportScreen> {
             onGenerate:       () => _generateHero(a),
           ),
 
+          const SizedBox(height: Sp.md),
+
+          // ── 1b · DEBLOAT READOUT — clean ring gauges directly under the
+          // AI drained-twin image. Derived on-device from the scan
+          // geometry (no backend). This is the "debloat stat circle
+          // gauges" that make the card read as a bloat diagnostic.
+          DebloatGaugesCard(geometry: widget.geometry)
+            .animate().fadeIn(delay: 300.ms, duration: 500.ms),
+
           const SizedBox(height: Sp.lg),
 
           // ── 2 · AI VERDICT — same inset as the per-trait card below.
@@ -1023,7 +1033,10 @@ class _ReportScreenState extends State<ReportScreen> {
                   HapticFeedback.selectionClick();
                   // ignore: discarded_futures
                   AnalyticsService.reportDoneTapped();
-                  context.go('/home', extra: {'initialTab': 1});
+                  // Land on the Debloat checklist tab (index 2 after the
+                  // Food-first nav reorder) so the user starts the daily
+                  // system right after their read.
+                  context.go('/home', extra: {'initialTab': 2});
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(

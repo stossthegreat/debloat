@@ -1,5 +1,5 @@
 abstract final class ApiConfig {
-  static const String backendBaseUrl = 'https://mirrorly-production.up.railway.app';
+  static const String backendBaseUrl = 'https://debloat-production.up.railway.app';
 
   // The Auralay backend lives in [AuralayDevFlags.apiBaseUrl] — the Eyes +
   // Game tabs and every Realtime/villain/presence service read from that
