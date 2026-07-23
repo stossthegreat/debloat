@@ -27,28 +27,26 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // Gating order:
     //
-    // 0) FIRST EVER LAUNCH (no gender, never onboarded) → play the
-    //    cinematic INTRO REEL. It pushes /onboarding/gender after BEGIN
-    //    so the rest of the funnel proceeds as designed.
+    // 0) NOT ONBOARDED → always play the cinematic INTRO REEL, which
+    //    leads into the full onboarding funnel. This must key off the
+    //    ONBOARDED flag alone, NOT gender: the funnel sets gender at
+    //    step 3, so gating on gender used to make a user who quit
+    //    mid-funnel skip the entire reel + funnel on the next launch
+    //    (they'd get dumped straight to /scan). The onboarded flag is
+    //    only set when the funnel actually completes, so onboarding
+    //    correctly replays until the user finishes it.
     //
-    // 1) Has the user picked Men's / Women's? If NOT — even if they've
-    //    already completed onboarding on a previous version of the app
-    //    — send them to /onboarding/gender and force a pick. Without
-    //    this every analysis + render downstream stays male-coded for
-    //    women, which is brand-killing.
+    // 1) ONBOARDED but no gender (legacy installs from before the
+    //    gender pick existed) → force a gender pick so downstream
+    //    analysis/render isn't mis-coded.
     //
-    // 2) Otherwise, returning user → /home.
-    //
-    // 3) Otherwise, fresh install (no onboarded flag, no gender) →
-    //    /onboarding/gender too. Same destination as case 1 but the
-    //    gender screen also serves as the entry funnel for first
-    //    launches.
-    if (!hasGender && !onboarded) {
+    // 2) ONBOARDED with gender → returning user → /home.
+    if (!onboarded) {
       context.go('/intro');
     } else if (!hasGender) {
       context.go('/onboarding/gender');
     } else {
-      context.go(onboarded ? '/home' : '/scan');
+      context.go('/home');
     }
   }
 

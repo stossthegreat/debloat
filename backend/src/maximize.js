@@ -173,24 +173,28 @@ function buildPrompt(heroChange) {
     `If they have facial hair, keep it neatly groomed with clean lines ` +
     `and a tight neckline. Groomed eyebrows, no stragglers. ` +
 
-    // 3 — THE DEBLOAT LAYER (on top of the glow-up)
-    `On top of that, completely DE-BLOAT the face: drain all the facial ` +
-    `water retention and puffiness so it looks like they slept perfectly, ` +
-    `ate zero sodium, and are fully hydrated. Remove the soft puffiness ` +
-    `from the cheeks, along the jawline and under the chin (submental area), ` +
-    `and de-puff the under-eye bags. Reduce the overall roundness and ` +
-    `swelling so the face reads tighter, leaner, and more sculpted. Reveal ` +
-    `the cheekbones, the jawline, and the chin definition that are already ` +
-    `there underneath the bloat — do NOT carve or add new bone, only uncover ` +
-    `the existing bone structure by removing the water and soft fat sitting ` +
-    `on top of it. The debloat should be subtle but clearly visible. ` +
+    // 3 — THE DEBLOAT LAYER (the whole point of the app — make it strong)
+    `Now DRAMATICALLY de-bloat and de-puff the entire face — this is the ` +
+    `most important change and it must be strong and obvious. Remove ALL ` +
+    `facial water retention, bloat, and soft puffiness completely, as if ` +
+    `this person lost every pound of water weight and facial fat and is at ` +
+    `their leanest. HOLLOW OUT THE CHEEKS: reduce the buccal fat so the ` +
+    `cheekbones stand out and a clear hollow appears just beneath them. ` +
+    `Carve out a sharp, chiselled, clearly-defined jawline and a defined ` +
+    `chin. Tighten the area under the chin and the neck — remove any ` +
+    `submental fullness, soft double-chin, or jaw softness. Fully flatten ` +
+    `and de-puff the under-eye bags. Slim the overall width and roundness ` +
+    `of the face so it reads lean, sculpted, angular, and completely ` +
+    `drained. Think "shredded, dehydrated, photo-shoot-ready face." Make ` +
+    `the before→after transformation big and unmistakable. ` +
 
-    // 4 — identity + scene preserve
-    `Keep it unmistakably the SAME person: same apparent age, same bone ` +
-    `structure and face shape, same nose, same eye shape and eye colour, ` +
-    `same lip shape, same expression, same ethnicity, and the same natural ` +
-    `skin tone. Do not reshape any bones. Do not age the face. Do not turn ` +
-    `them into a different, thinner person. ` +
+    // 4 — identity + scene preserve (leaner, but still clearly them)
+    `Despite the strong slimming, it must still be recognisably the SAME ` +
+    `person: keep their underlying bone structure, apparent age, nose ` +
+    `shape, eye shape and eye colour, lip shape, expression, hairstyle, ` +
+    `facial hair, ethnicity, and natural skin tone. Do not change who they ` +
+    `are — only drain the bloat and fat to reveal a leaner, sharper version ` +
+    `of this exact face. ` +
     `Keep the same lighting, background, framing, camera angle, and pose. ` +
     `Natural shadows. Photorealistic.`
   );
