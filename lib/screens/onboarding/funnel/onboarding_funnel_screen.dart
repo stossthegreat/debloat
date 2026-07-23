@@ -629,7 +629,10 @@ class _ShockStatStep extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          const BeforeAfterSlider(),
+          // Same before/after visual as the paywall (beforeafter.jpg,
+          // 914×778 with the split baked in) so onboarding and paywall
+          // tell one consistent story.
+          const _PaywallBeforeAfter(),
           const SizedBox(height: 20),
           RichText(
             text: TextSpan(
@@ -653,6 +656,59 @@ class _ShockStatStep extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The exact before/after asset the paywall uses — a single combined
+/// image (914×778) with the split baked in. Shown here so the onboarding
+/// promise and the paywall promise are visually identical.
+class _PaywallBeforeAfter extends StatelessWidget {
+  const _PaywallBeforeAfter();
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 914 / 778,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/marketing/beforeafter.jpg',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: Onb.card,
+                alignment: Alignment.center,
+                child: const Icon(Icons.face_rounded,
+                  color: Onb.grey, size: 56)),
+            ),
+            Positioned(
+              top: 0, left: 0, right: 0,
+              child: Container(
+                padding: const EdgeInsets.only(top: 8, bottom: 16),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xB3000000), Color(0x00000000)]),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(child: _baLabel('BLOATED', Onb.danger)),
+                    Expanded(child: _baLabel('DEBLOATED', Onb.success)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _baLabel(String t, Color c) => Center(
+    child: Text(t, style: GoogleFonts.inter(
+      color: c, fontSize: 11, letterSpacing: 1.4, fontWeight: FontWeight.w800)),
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
