@@ -60,11 +60,14 @@ class DebloatStatsService {
   static DebloatReadout compute(FaceGeometry g) {
     // ── Raw definition axes (0..1), reusing the calibrated curves so the
     //    debloat card never contradicts the aesthetics score. ────────────
-    final jawDef   = _jawAxis(g.jawWidthRatio);          // wide/square = drained jaw
-    final cheekDef = _cheekAxis(g.fwhr, g.faceLengthRatio); // round face = puffy cheeks
-    final sym      = (g.symmetryScore / 100).clamp(0.0, 1.0); // bloat skews symmetry
-    final midThird = _midThirdAxis(g.facialThirdMid);    // mid-face swelling
-    final chin     = _chinAxis(g.chinProjection);        // submental fullness
+    // Every axis is passed through _fin() so a NaN/Infinity from a low-
+    // confidence scan can never reach .round() (which throws on NaN and
+    // would crash the whole report screen).
+    final jawDef   = _fin(_jawAxis(g.jawWidthRatio));       // wide/square = drained jaw
+    final cheekDef = _fin(_cheekAxis(g.fwhr, g.faceLengthRatio)); // round = puffy cheeks
+    final sym      = _fin((g.symmetryScore / 100).clamp(0.0, 1.0)); // bloat skews symmetry
+    final midThird = _fin(_midThirdAxis(g.facialThirdMid)); // mid-face swelling
+    final chin     = _fin(_chinAxis(g.chinProjection));     // submental fullness
 
     // Under-eye puffiness has no single direct measure — blend symmetry
     // (fluid pools unevenly) with mid-third fullness, then nudge by a
@@ -80,12 +83,12 @@ class DebloatStatsService {
 
     // Overall drained score — hero ring. Same weighting family as fluid
     // but with under-eye folded in, landing 0..100.
-    final overall = (100 *
+    final overall = _fin(100 *
             (0.30 * jawDef +
              0.24 * cheekDef +
              0.16 * fluid +
              0.16 * underEye +
-             0.14 * chin))
+             0.14 * chin), 50.0)
         .clamp(0.0, 100.0)
         .round();
 
@@ -106,8 +109,13 @@ class DebloatStatsService {
     return DebloatReadout(overall: overall, waterMl: waterMl, stats: stats);
   }
 
+  /// Sanitise a value: return it if finite, else the fallback. Guards
+  /// every score against NaN/Infinity so .round() can never throw.
+  static double _fin(double v, [double fallback = 0.5]) =>
+      v.isFinite ? v : fallback;
+
   static DebloatStat _stat(String label, double axis0to1) {
-    final score = (axis0to1 * 100).clamp(0.0, 100.0).round();
+    final score = (_fin(axis0to1) * 100).clamp(0.0, 100.0).round();
     return DebloatStat(label: label, score: score, tier: _tier(score));
   }
 

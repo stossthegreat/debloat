@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -10,14 +12,17 @@ import 'onboarding_kit.dart';
 
 /// THE DEPUFF FUNNEL — the masterful emotional onboarding.
 ///
-/// A single PageView drives every step so the progress bar, back arrow, and
-/// shared answers all live in one place. This file is Part 1 (hook &
-/// qualify); it ends by routing into the AI-consent → scan flow. Parts 2–4
-/// (lifestyle inputs, belief-building, plan-ready) extend the [_steps]
-/// list.
+/// A single PageView drives all 15 steps so the progress bar, back arrow,
+/// and shared answers all live in one place:
 ///
-/// Total planned funnel length is [_kPlannedSteps] so the progress bar
-/// grows realistically even while later parts are still being built.
+///   0–2  Welcome carousel (Face Scan / Food / Routines)
+///   3    Gender      4  Name       5  Shock stat + before/after
+///   6    Social proof 7 Goals      8  Water intake (glass fill)
+///   9    Sleep       10 Pain points 11 Struggles
+///   12   Empathy 89% 13 Identity fork 14 Routine value graph
+///
+/// The last step hands off to AI-consent → scan → report (the results /
+/// plan-ready payoff) → paywall.
 class OnboardingFunnelScreen extends StatefulWidget {
   const OnboardingFunnelScreen({super.key});
 
@@ -30,13 +35,16 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
   int _i = 0;
 
   // The full designed funnel length (used only to scale the progress bar).
-  static const int _kPlannedSteps = 18;
+  static const int _kPlannedSteps = 15;
 
   // Answers held in memory during the funnel; persisted on each change so a
   // mid-funnel kill doesn't lose them.
   String? _gender;              // 'm' | 'f'
   String _name = '';
   final Set<String> _goals = {};
+  double _water = 2.5;          // litres/day
+  double _sleep = 6.5;          // hours/night
+  final Set<String> _struggles = {};
 
   @override
   void dispose() {
@@ -52,7 +60,7 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         duration: const Duration(milliseconds: 380),
         curve: Curves.easeOutCubic);
     } else {
-      _finishPartOne();
+      _finishFunnel();
     }
   }
 
@@ -66,9 +74,10 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
     }
   }
 
-  Future<void> _finishPartOne() async {
-    // Hand off into the existing AI-consent → scan flow. (Parts 2–4 will
-    // slot in ahead of this hand-off as they're built.)
+  Future<void> _finishFunnel() async {
+    // Hand off into the AI-consent → scan → report flow. The scan is the
+    // payoff the whole funnel builds toward; the report IS the results /
+    // plan-ready screen, and it routes on to the paywall.
     await LocalStoreService.setOnboarded(true);
     if (!mounted) return;
     context.go('/onboarding/consent');
@@ -192,6 +201,72 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
           await OnboardingStore.setGoals(_goals.toList());
           _next();
         },
+      ),
+
+      // 8 · WATER INTAKE (glass fill)
+      _WaterStep(
+        progress: _progressFor(here()),
+        initial: _water,
+        onBack: _back,
+        onNext: (v) async {
+          _water = v;
+          await OnboardingStore.setWaterLitres(v);
+          _next();
+        },
+      ),
+
+      // 9 · SLEEP HOURS
+      _SleepStep(
+        progress: _progressFor(here()),
+        initial: _sleep,
+        onBack: _back,
+        onNext: (v) async {
+          _sleep = v;
+          await OnboardingStore.setSleepHours(v);
+          _next();
+        },
+      ),
+
+      // 10 · PAIN-POINT REPORT
+      _PainPointsStep(
+        progress: _progressFor(here()),
+        onBack: _back,
+        onNext: _next,
+      ),
+
+      // 11 · STRUGGLES (multi-select)
+      _StrugglesStep(
+        progress: _progressFor(here()),
+        selected: _struggles,
+        onBack: _back,
+        onToggle: (g) => setState(() {
+          _struggles.contains(g) ? _struggles.remove(g) : _struggles.add(g);
+        }),
+        onNext: () async {
+          await OnboardingStore.setStruggles(_struggles.toList());
+          _next();
+        },
+      ),
+
+      // 12 · EMPATHY / 89% PROOF
+      _EmpathyStep(
+        progress: _progressFor(here()),
+        onBack: _back,
+        onNext: _next,
+      ),
+
+      // 13 · IDENTITY FORK
+      _IdentityForkStep(
+        progress: _progressFor(here()),
+        onBack: _back,
+        onNext: _next,
+      ),
+
+      // 14 · ROUTINE VALUE GRAPH → hands off to the scan
+      _RoutineGraphStep(
+        progress: _progressFor(here()),
+        onBack: _back,
+        onNext: _next, // last step → _next() calls _finishFunnel()
       ),
     ];
   }
@@ -744,4 +819,681 @@ class _GoalsStep extends StatelessWidget {
       ),
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  8 · WATER INTAKE (glass fill)
+// ═══════════════════════════════════════════════════════════════════════════
+class _WaterStep extends StatefulWidget {
+  final double progress;
+  final double initial;
+  final VoidCallback onBack;
+  final ValueChanged<double> onNext;
+  const _WaterStep({
+    required this.progress,
+    required this.initial,
+    required this.onBack,
+    required this.onNext,
+  });
+  @override
+  State<_WaterStep> createState() => _WaterStepState();
+}
+
+class _WaterStepState extends State<_WaterStep> {
+  late double _v = widget.initial;
+
+  @override
+  Widget build(BuildContext context) {
+    return OnbScaffold(
+      progress: widget.progress,
+      onBack: widget.onBack,
+      footer: OnbCta(label: 'Continue', onTap: () => widget.onNext(_v)),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          const OnbHeadline(
+            text: 'How much water do you ',
+            emphasis: 'drink daily?',
+            sub: 'Proper hydration is what tells the body to release '
+                'retained fluid.'),
+          const SizedBox(height: 28),
+          Text('${_v.toStringAsFixed(1)}L',
+            style: GoogleFonts.poppins(
+              color: Onb.primaryLite, fontSize: 56, height: 1,
+              fontWeight: FontWeight.w800, letterSpacing: -2)),
+          const SizedBox(height: 20),
+          // Glass fill
+          SizedBox(
+            width: 120, height: 170,
+            child: CustomPaint(
+              painter: _GlassPainter(fill: ((_v - 0.5) / 3.5).clamp(0.0, 1.0))),
+          ),
+          const SizedBox(height: 20),
+          SliderTheme(
+            data: SliderThemeData(
+              activeTrackColor: Onb.primary,
+              inactiveTrackColor: Onb.card,
+              thumbColor: Colors.white,
+              overlayColor: Onb.primary.withValues(alpha: 0.2),
+              trackHeight: 6,
+            ),
+            child: Slider(
+              value: _v, min: 0.5, max: 4.0, divisions: 35,
+              onChanged: (x) => setState(() => _v = x)),
+          ),
+          Text('Drag to set your daily intake',
+            style: GoogleFonts.inter(
+              color: Onb.grey, fontSize: 13, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+}
+
+class _GlassPainter extends CustomPainter {
+  final double fill;
+  const _GlassPainter({required this.fill});
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    // trapezoid glass: wider at top
+    final topInset = w * 0.06, botInset = w * 0.18;
+    final path = Path()
+      ..moveTo(topInset, 0)
+      ..lineTo(w - topInset, 0)
+      ..lineTo(w - botInset, h)
+      ..lineTo(botInset, h)
+      ..close();
+    // liquid
+    final liqTop = h * (1 - fill);
+    canvas.save();
+    canvas.clipPath(path);
+    final liq = Paint()..color = const Color(0xFF6C4CF5).withValues(alpha: 0.85);
+    canvas.drawRect(Rect.fromLTRB(0, liqTop, w, h), liq);
+    final liqLite = Paint()..color = const Color(0xFFA78BFA).withValues(alpha: 0.5);
+    canvas.drawRect(Rect.fromLTRB(0, liqTop, w, liqTop + 8), liqLite);
+    canvas.restore();
+    // outline
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..color = const Color(0xFF2A2444);
+    canvas.drawPath(path, stroke);
+  }
+  @override
+  bool shouldRepaint(_GlassPainter old) => old.fill != fill;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  9 · SLEEP HOURS
+// ═══════════════════════════════════════════════════════════════════════════
+class _SleepStep extends StatefulWidget {
+  final double progress;
+  final double initial;
+  final VoidCallback onBack;
+  final ValueChanged<double> onNext;
+  const _SleepStep({
+    required this.progress,
+    required this.initial,
+    required this.onBack,
+    required this.onNext,
+  });
+  @override
+  State<_SleepStep> createState() => _SleepStepState();
+}
+
+class _SleepStepState extends State<_SleepStep> {
+  late double _v = widget.initial;
+
+  @override
+  Widget build(BuildContext context) {
+    return OnbScaffold(
+      progress: widget.progress,
+      onBack: widget.onBack,
+      footer: OnbCta(label: 'Continue', onTap: () => widget.onNext(_v)),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          const OnbHeadline(
+            text: 'How many hours do you ',
+            emphasis: 'sleep?',
+            sub: 'Short sleep spikes cortisol — the hormone behind '
+                '"cortisol face" puffiness.'),
+          const SizedBox(height: 36),
+          Container(
+            width: 150, height: 150,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const RadialGradient(
+                colors: [Onb.cardSel, Onb.card]),
+              border: Border.all(color: Onb.primary.withValues(alpha: 0.4)),
+            ),
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.nightlight_round, color: Onb.primaryLite, size: 30),
+                const SizedBox(height: 6),
+                Text('${_v.toStringAsFixed(0)}h',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white, fontSize: 40, height: 1,
+                    fontWeight: FontWeight.w800, letterSpacing: -1)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          SliderTheme(
+            data: SliderThemeData(
+              activeTrackColor: Onb.primary,
+              inactiveTrackColor: Onb.card,
+              thumbColor: Colors.white,
+              overlayColor: Onb.primary.withValues(alpha: 0.2),
+              trackHeight: 6,
+            ),
+            child: Slider(
+              value: _v, min: 3, max: 10, divisions: 7,
+              onChanged: (x) => setState(() => _v = x)),
+          ),
+          Text('Drag to set your average night',
+            style: GoogleFonts.inter(
+              color: Onb.grey, fontSize: 13, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  10 · PAIN-POINT REPORT
+// ═══════════════════════════════════════════════════════════════════════════
+class _PainPointsStep extends StatelessWidget {
+  final double progress;
+  final VoidCallback onBack, onNext;
+  const _PainPointsStep({
+    required this.progress,
+    required this.onBack,
+    required this.onNext,
+  });
+
+  static const _cards = <({String title, String body, String sev, bool major, String emoji})>[
+    (title: 'Morning puffiness ruins your look',
+     body: 'You wake up looking tired and softer than you are.',
+     sev: 'MAJOR IMPACT', major: true, emoji: '😪'),
+    (title: 'Soft features read as less defined',
+     body: 'Water weight hides the jaw and cheekbones you already have.',
+     sev: 'SIGNIFICANT', major: false, emoji: '😕'),
+    (title: 'A blurred jawline hurts first impressions',
+     body: 'People read sharpness as discipline. Bloat blurs it.',
+     sev: 'MAJOR IMPACT', major: true, emoji: '💼'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return OnbScaffold(
+      progress: progress,
+      onBack: onBack,
+      footer: OnbCta(label: 'Fix My Bloating', onTap: onNext),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          Center(
+            child: Container(
+              width: 66, height: 66,
+              decoration: BoxDecoration(
+                color: Onb.danger.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+                border: Border.all(color: Onb.danger.withValues(alpha: 0.5))),
+              child: const Icon(Icons.warning_amber_rounded,
+                color: Onb.danger, size: 32),
+            ),
+          ),
+          const SizedBox(height: 18),
+          const OnbHeadline(
+            text: 'Hidden bloating is\n',
+            emphasis: 'sabotaging your looks',
+            size: 25),
+          const SizedBox(height: 8),
+          Text('Your face reads less defined than it actually is.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              color: Onb.grey, fontSize: 14.5, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 22),
+          for (final c in _cards) ...[
+            _PainCard(card: c),
+            const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PainCard extends StatelessWidget {
+  final ({String title, String body, String sev, bool major, String emoji}) card;
+  const _PainCard({required this.card});
+  @override
+  Widget build(BuildContext context) {
+    final accent = card.major ? Onb.danger : const Color(0xFFF9A825);
+    return Container(
+      decoration: BoxDecoration(
+        color: Onb.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Onb.cardBorder),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 4, decoration: BoxDecoration(
+              color: accent,
+              borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)))),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(card.title,
+                      style: GoogleFonts.inter(
+                        color: Colors.white, fontSize: 15,
+                        height: 1.25, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 4),
+                    Text(card.body,
+                      style: GoogleFonts.inter(
+                        color: Onb.grey, fontSize: 13, height: 1.35,
+                        fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(100)),
+                      child: Text(card.sev,
+                        style: GoogleFonts.inter(
+                          color: accent, fontSize: 10, letterSpacing: 0.8,
+                          fontWeight: FontWeight.w800)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 14),
+              child: Center(child: Text(card.emoji, style: const TextStyle(fontSize: 26))),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  11 · STRUGGLES (multi-select)
+// ═══════════════════════════════════════════════════════════════════════════
+class _StrugglesStep extends StatelessWidget {
+  final double progress;
+  final Set<String> selected;
+  final ValueChanged<String> onToggle;
+  final VoidCallback onBack, onNext;
+  const _StrugglesStep({
+    required this.progress,
+    required this.selected,
+    required this.onToggle,
+    required this.onBack,
+    required this.onNext,
+  });
+
+  static const _opts = <({String emoji, String label})>[
+    (emoji: '☹️', label: 'Low confidence in how I look'),
+    (emoji: '👥', label: 'I feel less confident in social situations'),
+    (emoji: '🧠', label: 'I think about it multiple times a day'),
+    (emoji: '😕', label: 'Skin issues — acne, dark circles'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final n = selected.length;
+    return OnbScaffold(
+      progress: progress,
+      onBack: onBack,
+      footer: OnbCta(label: 'Continue', enabled: n > 0, onTap: n > 0 ? onNext : null),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          const OnbHeadline(
+            text: 'What are you ',
+            emphasis: 'struggling with?',
+            align: TextAlign.start,
+            sub: 'Select all that apply — be honest with yourself.'),
+          const SizedBox(height: 22),
+          for (final o in _opts) ...[
+            OnbMultiRow(
+              emoji: o.emoji, label: o.label,
+              selected: selected.contains(o.label),
+              onTap: () => onToggle(o.label)),
+            const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  12 · EMPATHY / 89% PROOF
+// ═══════════════════════════════════════════════════════════════════════════
+class _EmpathyStep extends StatelessWidget {
+  final double progress;
+  final VoidCallback onBack, onNext;
+  const _EmpathyStep({
+    required this.progress,
+    required this.onBack,
+    required this.onNext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OnbScaffold(
+      progress: progress,
+      onBack: onBack,
+      footer: OnbCta(label: 'Continue', onTap: onNext),
+      child: Column(
+        children: [
+          const SizedBox(height: 16),
+          const OnbHeadline(text: 'We get it.', size: 30),
+          const SizedBox(height: 28),
+          SizedBox(
+            width: 190, height: 190,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CustomPaint(
+                  size: const Size(190, 190),
+                  painter: _RingArcPainter(progress: 0.89, color: Onb.primary)),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('89%',
+                      style: GoogleFonts.poppins(
+                        color: Onb.primaryLite, fontSize: 46, height: 1,
+                        fontWeight: FontWeight.w800, letterSpacing: -2)),
+                    Text('of users',
+                      style: GoogleFonts.inter(
+                        color: Onb.grey, fontSize: 13, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Onb.card,
+              borderRadius: BorderRadius.circular(100),
+              border: Border.all(color: Onb.cardBorder)),
+            child: Text('feel more attractive & confident',
+              style: GoogleFonts.inter(
+                color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
+          ),
+          const SizedBox(height: 14),
+          Text('after 28 days of following their personal plan.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              color: Onb.grey, fontSize: 14, height: 1.4, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RingArcPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  const _RingArcPainter({required this.progress, required this.color});
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = (Offset.zero & size).center;
+    final r = (math.min(size.width, size.height) - 14) / 2;
+    final track = Paint()
+      ..style = PaintingStyle.stroke..strokeWidth = 13
+      ..strokeCap = StrokeCap.round..color = Onb.card;
+    canvas.drawArc(Rect.fromCircle(center: c, radius: r), -math.pi/2, math.pi*2, false, track);
+    final arc = Paint()
+      ..style = PaintingStyle.stroke..strokeWidth = 13
+      ..strokeCap = StrokeCap.round..color = color;
+    canvas.drawArc(Rect.fromCircle(center: c, radius: r), -math.pi/2, math.pi*2*progress, false, arc);
+  }
+  @override
+  bool shouldRepaint(_RingArcPainter old) => old.progress != progress;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  13 · IDENTITY FORK
+// ═══════════════════════════════════════════════════════════════════════════
+class _IdentityForkStep extends StatelessWidget {
+  final double progress;
+  final VoidCallback onBack, onNext;
+  const _IdentityForkStep({
+    required this.progress,
+    required this.onBack,
+    required this.onNext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OnbScaffold(
+      progress: progress,
+      onBack: onBack,
+      footer: OnbCta(label: 'That\'s the one', onTap: onNext),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          const OnbHeadline(
+            text: 'Which one do you ',
+            emphasis: 'want to be?',
+            sub: 'Same face. Drag the last screen to see the difference.'),
+          const SizedBox(height: 22),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _ForkCard(
+                asset: 'assets/marketing/before.jpg',
+                tag: 'Bloated now', color: Onb.danger,
+                bullets: const [
+                  'Wake up puffy',
+                  'Soft, blurred jaw',
+                  'Camera-shy',
+                ])),
+              const SizedBox(width: 12),
+              Expanded(child: _ForkCard(
+                asset: 'assets/marketing/after.jpg',
+                tag: 'Your glow-up', color: Onb.success,
+                bullets: const [
+                  'Wake up drained',
+                  'Sharp, defined jaw',
+                  'Turn heads',
+                ])),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ForkCard extends StatelessWidget {
+  final String asset, tag;
+  final Color color;
+  final List<String> bullets;
+  const _ForkCard({
+    required this.asset,
+    required this.tag,
+    required this.color,
+    required this.bullets,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Onb.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withValues(alpha: 0.55), width: 1.4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+            child: AspectRatio(
+              aspectRatio: 3 / 4,
+              child: Image.asset(asset, fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: Onb.bg,
+                  child: Icon(Icons.face_rounded, color: color, size: 48))),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(100)),
+                  child: Text(tag.toUpperCase(),
+                    style: GoogleFonts.inter(
+                      color: color, fontSize: 9.5, letterSpacing: 0.8,
+                      fontWeight: FontWeight.w800)),
+                ),
+                const SizedBox(height: 10),
+                for (final b in bullets) Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.circle, color: color, size: 6),
+                      const SizedBox(width: 7),
+                      Expanded(child: Text(b,
+                        style: GoogleFonts.inter(
+                          color: Colors.white, fontSize: 12.5, height: 1.25,
+                          fontWeight: FontWeight.w600))),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  14 · ROUTINE VALUE GRAPH → hands off to the scan
+// ═══════════════════════════════════════════════════════════════════════════
+class _RoutineGraphStep extends StatelessWidget {
+  final double progress;
+  final VoidCallback onBack, onNext;
+  const _RoutineGraphStep({
+    required this.progress,
+    required this.onBack,
+    required this.onNext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OnbScaffold(
+      progress: progress,
+      onBack: onBack,
+      footer: OnbCta(label: 'Scan my face', onTap: onNext),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          RichText(
+            text: TextSpan(
+              style: GoogleFonts.poppins(
+                color: Onb.primaryLite, fontSize: 28, height: 1.15,
+                fontWeight: FontWeight.w800, letterSpacing: -0.5),
+              children: const [
+                TextSpan(text: 'A real routine drains you '),
+                TextSpan(text: '4× faster.',
+                  style: TextStyle(color: Colors.white)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text('Most people never know which routine actually suits '
+              'their face. Yours is built from your scan.',
+            style: GoogleFonts.inter(
+              color: Onb.grey, fontSize: 15, height: 1.45,
+              fontWeight: FontWeight.w500)),
+          const SizedBox(height: 28),
+          Container(
+            height: 220,
+            padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
+            decoration: BoxDecoration(
+              color: Onb.card,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Onb.cardBorder)),
+            child: CustomPaint(
+              size: Size.infinite,
+              painter: _CurvePainter()),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _pill('Now', Onb.grey),
+              _pill('Your glow-up', Onb.primary),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pill(String t, Color c) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    decoration: BoxDecoration(
+      color: c.withValues(alpha: 0.16),
+      borderRadius: BorderRadius.circular(100),
+      border: Border.all(color: c.withValues(alpha: 0.5))),
+    child: Text(t, style: GoogleFonts.inter(
+      color: c == Onb.grey ? Onb.grey : Onb.primaryLite,
+      fontSize: 12.5, fontWeight: FontWeight.w700)),
+  );
+}
+
+class _CurvePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    // rising curve bottom-left → top-right
+    final path = Path()
+      ..moveTo(0, h * 0.9)
+      ..cubicTo(w * 0.4, h * 0.88, w * 0.6, h * 0.5, w, h * 0.1);
+    final fill = Path.from(path)
+      ..lineTo(w, h)..lineTo(0, h)..close();
+    canvas.drawPath(fill, Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        colors: [Color(0x556C4CF5), Color(0x006C4CF5)],
+      ).createShader(Rect.fromLTWH(0, 0, w, h)));
+    canvas.drawPath(path, Paint()
+      ..style = PaintingStyle.stroke..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round..color = const Color(0xFF6C4CF5));
+    // start + end dots
+    canvas.drawCircle(Offset(0, h * 0.9), 6, Paint()..color = const Color(0xFF9A9AB0));
+    canvas.drawCircle(Offset(w, h * 0.1), 7, Paint()..color = const Color(0xFFA78BFA));
+  }
+  @override
+  bool shouldRepaint(_CurvePainter old) => false;
 }
