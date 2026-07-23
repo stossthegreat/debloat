@@ -103,6 +103,21 @@ class AnalyticsService {
   /// catch, leaving every event call a silent no-op until config lands.
   /// Lets local builds compile without the secrets in tree.
   static Future<void> init() async {
+    // Guard: when no real Firebase project is linked yet, the options in
+    // DefaultFirebaseOptions are placeholders ('unconfigured'). Passing a
+    // malformed googleAppID to Firebase.initializeApp() does NOT throw a
+    // catchable Dart error on iOS — FirebaseCore raises an uncaught
+    // Objective-C NSException ("Configuration fails ... invalid
+    // GOOGLE_APP_ID") that terminates the app on cold launch, before
+    // control ever returns to this try/catch. So we must detect the
+    // placeholder and skip init entirely, leaving every event a no-op.
+    if (_optionsAreUnconfigured(DefaultFirebaseOptions.currentPlatform)) {
+      // ignore: avoid_print
+      print('[Analytics] Firebase options unconfigured — skipping init. '
+          'Analytics disabled (no-op) until a real project is linked.');
+      _fa = null;
+      return;
+    }
     try {
       // Pass FirebaseOptions explicitly. The iOS plist exists on disk
       // but isn't registered in the Xcode project as a bundle resource,
@@ -129,6 +144,16 @@ class AnalyticsService {
   }
 
   static FirebaseAnalytics? get instance => _fa;
+
+  /// True when the compiled Firebase options are still the placeholders
+  /// shipped in firebase_options.dart (no real project linked). Any of
+  /// the core identifiers being empty or the literal 'unconfigured'
+  /// sentinel means Firebase must NOT be initialised — a malformed
+  /// googleAppID hard-crashes the app on iOS.
+  static bool _optionsAreUnconfigured(FirebaseOptions o) {
+    bool bad(String v) => v.isEmpty || v == 'unconfigured';
+    return bad(o.apiKey) || bad(o.appId) || bad(o.projectId);
+  }
 
   // ── Internal helper ────────────────────────────────────────────────
 
