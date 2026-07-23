@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -31,17 +30,32 @@ class FaceEvolutionCard extends StatefulWidget {
   State<FaceEvolutionCard> createState() => _FaceEvolutionCardState();
 }
 
-class _FaceEvolutionCardState extends State<FaceEvolutionCard> {
+class _FaceEvolutionCardState extends State<FaceEvolutionCard>
+    with SingleTickerProviderStateMixin {
   late List<ScanRecord> _photoScans;
   int _selected = 0;      // index into _photoScans (the RIGHT image)
   double _split = 0.5;    // 0..1 divider position
   bool _playing = false;
-  Timer? _playTimer;
+  late final AnimationController _reveal;
 
   @override
   void initState() {
     super.initState();
     _recompute();
+    _reveal = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 2600))
+      ..addListener(() {
+        // Ease the divider from the Day-1 side across to the selected
+        // face — a smooth 60fps reveal of the drained result over the
+        // bloated original.
+        setState(() => _split =
+            0.06 + 0.88 * Curves.easeInOutCubic.transform(_reveal.value));
+      })
+      ..addStatusListener((s) {
+        if (s == AnimationStatus.completed && mounted) {
+          setState(() => _playing = false);
+        }
+      });
   }
 
   @override
@@ -62,7 +76,7 @@ class _FaceEvolutionCardState extends State<FaceEvolutionCard> {
 
   @override
   void dispose() {
-    _playTimer?.cancel();
+    _reveal.dispose();
     super.dispose();
   }
 
@@ -74,22 +88,18 @@ class _FaceEvolutionCardState extends State<FaceEvolutionCard> {
     setState(() => _selected = i.clamp(0, _photoScans.length - 1));
   }
 
-  Future<void> _watchEvolution() async {
+  void _watchEvolution() {
     if (_photoScans.length < 2 || _playing) return;
     HapticFeedback.mediumImpact();
-    setState(() { _playing = true; _selected = 0; _split = 0.5; });
-    var i = 0;
-    _playTimer?.cancel();
-    _playTimer = Timer.periodic(const Duration(milliseconds: 1000), (t) {
-      if (!mounted) return;
-      i++;
-      if (i >= _photoScans.length) {
-        t.cancel();
-        setState(() { _playing = false; _selected = _photoScans.length - 1; });
-        return;
-      }
-      setState(() => _selected = i);
+    // Pin the right image to the LATEST scan, start the divider hard-left
+    // (all Day 1 showing), then sweep it across to reveal the drained
+    // face. Loop once, stop.
+    setState(() {
+      _playing = true;
+      _selected = _photoScans.length - 1;
+      _split = 0.06;
     });
+    _reveal.forward(from: 0);
   }
 
   @override

@@ -198,9 +198,8 @@ class _AscendScreenState extends State<AscendScreen> {
                     _MastheadStreakBadge(days: widget.dayStreak),
                     const SizedBox(width: 8),
                   ],
-                  _MastheadProgressChip(
-                    onTap: () => context.push('/progress')),
-                  const SizedBox(width: 8),
+                  // Old progress-screen chip removed — THIS tab is now the
+                  // Progress surface (Face Evolution + score + streak).
                   _MastheadSettingsCog(
                     onTap: () => context.push('/settings')),
                 ],

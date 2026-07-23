@@ -320,9 +320,8 @@ class _ScanHubTab extends StatelessWidget {
                     _StreakBadge(days: dayStreak),
                     const SizedBox(width: 8),
                   ],
-                  _ProgressIconChip(
-                      onTap: () => context.push('/progress')),
-                  const SizedBox(width: 8),
+                  // Progress chip removed — the Progress tab now owns scan
+                  // history + the Face Evolution reveal.
                   _MastheadCog(
                       onTap: () => context.push('/settings')),
                 ],
