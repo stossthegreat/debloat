@@ -9,7 +9,6 @@ import '../screens/onboarding/gender_pick_screen.dart';
 import '../screens/onboarding/intro_reel_screen.dart';
 import '../screens/onboarding/funnel/onboarding_funnel_screen.dart';
 import '../screens/paywall/paywall_screen.dart';
-import '../screens/progress/progress_screen.dart';
 import '../screens/protocol/protocol_screen.dart';
 import '../screens/scan/scan_screen.dart';
 import '../screens/report/report_screen.dart';
@@ -89,20 +88,8 @@ final appRouter = GoRouter(
         return ProtocolScreen(startPulldown: startPulldown);
       },
     ),
-    // Progress page — direct deep-link reachable from the Looks tab
-    // top-right "chart" icon. ProgressScreen reads the scan history
-    // itself; the constructor params are kept null because nothing
-    // in the body actually reads `latest`/`protocol`, and onReload
-    // is a no-op here (pull-to-refresh just re-runs the screen's
-    // own _loadAll).
-    GoRoute(
-      path: '/progress',
-      builder: (_, __) => ProgressScreen(
-        latest:   null,
-        protocol: null,
-        onReload: () async {},
-      ),
-    ),
+    // Old /progress page removed — the Progress TAB now owns scan
+    // history, score logging, and the Face Evolution reveal.
     GoRoute(path: '/terms',    builder: (_, __) => LegalScreen(doc: termsDoc)),
     GoRoute(path: '/privacy',  builder: (_, __) => LegalScreen(doc: privacyDoc)),
     GoRoute(
