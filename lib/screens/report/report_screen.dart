@@ -27,9 +27,11 @@ import '../../theme/app_typography.dart';
 import '../../services/review_prompt_service.dart';
 import '../../services/share_service.dart';
 import '../../widgets/common/fullscreen_image.dart';
+import '../../services/debloat_report_service.dart';
 import '../../widgets/report/ai_verdict_panel.dart';
 import '../../widgets/report/aspect_protocol_cards.dart';
 import '../../widgets/report/debloat_gauges_card.dart';
+import '../../widgets/report/debloat_report_cards.dart';
 import '../../widgets/report/hero_card.dart';
 import '../../widgets/report/hidden_depth_panel.dart';
 import '../../widgets/report/per_trait_scores.dart';
@@ -584,6 +586,9 @@ class _ReportScreenState extends State<ReportScreen> {
   Widget _buildReport(MirrorAnalysis a) {
     final score = ScoringService.compute(widget.geometry);
     final traits = TraitBuilderService.build(widget.geometry);
+    // On-device debloat read (AI verdict lines, projected points, cause
+    // bars). Always available; the GPT verdict can refine it later.
+    final dr = DebloatReportService.compute(widget.geometry);
     final potential = _potentialDelta(score.value);
     final projected = (score.value + potential).clamp(0, 100);
     final correctionsCount = a.report.fixes.isNotEmpty
@@ -638,12 +643,12 @@ class _ReportScreenState extends State<ReportScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('YOUR ANALYSIS', style: AppTypography.label.copyWith(
+                    Text('YOUR DEBLOAT READ', style: AppTypography.label.copyWith(
                       color: AppColors.textTertiary, letterSpacing: 2.5))
                       .animate().fadeIn(duration: 400.ms),
                     const SizedBox(height: Sp.xs),
-                    Text('Down to the millimetre.',
-                      style: AppTypography.h1.copyWith(fontSize: 28))
+                    Text("Here's what's puffing you up.",
+                      style: AppTypography.h1.copyWith(fontSize: 26))
                       .animate().fadeIn(delay: 100.ms, duration: 400.ms),
                   ],
                 ),
@@ -688,15 +693,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.lg),
 
-          // ── 0 · DUAL-SCORE HERO — normal inset.
-          _DualScoreHero(
-            honest:    _honest,
-            geometry:  score.value,
-          ),
-
-          const SizedBox(height: Sp.md),
-
-          // ── 1 · HERO CARD — normal inset.
+          // ── 1 · HERO CARD (before/after debloat render) — normal inset.
           HeroCard(
             currentScore:     _honest?.score ?? score.value,
             projectedScore:   projected,
@@ -722,45 +719,34 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.lg),
 
-          // ── 2 · AI VERDICT — same inset as the per-trait card below.
-          // v216a: the previous Transform.translate(-Sp.lg) + SizedBox
-          // (width: screen) trick left-bled the panel without widening
-          // it (SizedBox can't override the parent's tighter constraint),
-          // so the four tiles rendered flush-left with an Sp.lg×2 dead
-          // strip on the right. Drop the wrapper so the verdict panel
-          // sits at the same Sp.lg gutter as PerTraitScores beneath it.
-          if (_honest?.verdict != null) ...[
-            AiVerdictPanel(
-              verdict: _honest!.verdict!,
-              extraStrengths: _buildExtraStrengths(),
-            ).animate().fadeIn(delay: 1450.ms, duration: 500.ms),
-            const SizedBox(height: Sp.lg),
-          ],
+          // ── 2 · AI VERDICT (debloat read — prefer GPT vision, else
+          //        the on-device read so it always populates) ──────────
+          AiVerdictCard(
+            holding: a.report.aiHolding.isNotEmpty
+                ? a.report.aiHolding : dr.verdictHolding,
+            effect: a.report.aiEffect.isNotEmpty
+                ? a.report.aiEffect : dr.verdictEffect,
+            projectedPoints: a.report.aiPoints > 0
+                ? a.report.aiPoints : dr.projectedPoints,
+          ).animate().fadeIn(delay: 400.ms, duration: 500.ms),
 
-          // ── 3 · PER-TRAIT SCORES — normal inset.
-          PerTraitScores(
-            honest:   _honest,
-            geometry: widget.geometry,
-          ).animate().fadeIn(delay: 1500.ms, duration: 500.ms),
+          const SizedBox(height: Sp.lg),
 
-          const SizedBox(height: Sp.md),
+          // ── 3 · BIGGEST WIN ─────────────────────────────────────────
+          const BiggestWinCard()
+            .animate().fadeIn(delay: 500.ms, duration: 500.ms),
 
-          // ── 4 · GEOMETRY BREAKDOWN — normal inset.
-          TraitGrid(traits: traits)
-            .animate().fadeIn(delay: 1700.ms, duration: 500.ms),
+          const SizedBox(height: Sp.lg),
 
-          const SizedBox(height: Sp.md),
+          // ── 4 · WHAT'S CAUSING IT ───────────────────────────────────
+          CausesCard(causes: dr.causes)
+            .animate().fadeIn(delay: 600.ms, duration: 500.ms),
 
-          HiddenDepthPanel(geometry: widget.geometry)
-            .animate().fadeIn(delay: 1850.ms, duration: 500.ms),
+          const SizedBox(height: Sp.lg),
 
-          const SizedBox(height: Sp.xl),
-
-          // ── 5 · 60-DAY ASPECT PROTOCOLS — normal inset.
-          AspectProtocolCards(
-            geometry:       widget.geometry,
-            savedImagePath: _savedImagePath,
-          ).animate().fadeIn(delay: 2100.ms, duration: 400.ms),
+          // ── 5 · FASTEST WINS ────────────────────────────────────────
+          const FastestWinsCard()
+            .animate().fadeIn(delay: 700.ms, duration: 500.ms),
 
           const SizedBox(height: Sp.xl),
 

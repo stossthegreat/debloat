@@ -14,6 +14,7 @@ import '../../services/share_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/mirrorly_wordmark.dart';
+import '../../widgets/progress/face_evolution_card.dart';
 
 /// v281 — ASCENSION home tab.
 ///
@@ -163,8 +164,6 @@ class _AscendScreenState extends State<AscendScreen> {
     final missionsDone   = missions.where((m) => m.done).length;
     final todayMsg       = AscensionService.todayMessageFor(
       day: day, streak: widget.dayStreak);
-    final milestones     = _buildMilestones();
-    final finalUnlocked  = AscensionService.finalFormUnlockedFor(day);
     final longestStreak  = widget.longestStreak > widget.dayStreak
         ? widget.longestStreak
         : widget.dayStreak;
@@ -207,6 +206,18 @@ class _AscendScreenState extends State<AscendScreen> {
                 ],
               ),
             ),
+
+            const SizedBox(height: Sp.lg),
+
+            // ── FACE EVOLUTION — the premium, addictive centrepiece.
+            // Replaces the old Ascension Record + Drained Certified
+            // sections. Reuses the retained per-scan selfies to let the
+            // user scrub + share their face getting leaner over time.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+              child: FaceEvolutionCard(scans: widget.allScans),
+            ).animate().fadeIn(duration: 500.ms)
+              .slideY(begin: 0.03, end: 0, curve: Curves.easeOut),
 
             const SizedBox(height: Sp.lg),
 
@@ -281,21 +292,8 @@ class _AscendScreenState extends State<AscendScreen> {
               longest: longestStreak,
             ).animate().fadeIn(delay: 520.ms, duration: 400.ms),
 
-            const SizedBox(height: Sp.lg),
-
-            // ── 7 — ASCENSION RECORD. Timeline of milestones.
-            _RecordTimeline(milestones: milestones)
-              .animate().fadeIn(delay: 600.ms, duration: 400.ms),
-
-            const SizedBox(height: Sp.lg),
-
-            // ── 8 — FINAL FORM. Locked premium reward / unlocked
-            // certificate generator.
-            _FinalFormCard(
-              unlocked:    finalUnlocked,
-              daysLeft:    daysLeft,
-              onGenerate:  finalUnlocked ? _generateCertificate : null,
-            ).animate().fadeIn(delay: 680.ms, duration: 400.ms),
+            // ── ASCENSION RECORD + DRAINED CERTIFIED removed — replaced
+            //    by the FACE EVOLUTION card at the top of this tab.
 
             const SizedBox(height: Sp.xl),
           ],

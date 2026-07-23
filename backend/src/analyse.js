@@ -198,8 +198,24 @@ position relevant to THIS user. Skip levers that don't apply.
     "preserve": ["<identity anchor tied to a measurement>", "<...>", "<...>"]
   },
 
-  "verdict": "<2–3 sentences. Honest overall read. The gap between measured potential and current presentation. The ONE change that collapses the most of that gap. Cite a measurement.>"
+  "verdict": "<2–3 sentences. Honest overall read. The gap between measured potential and current presentation. The ONE change that collapses the most of that gap. Cite a measurement.>",
+
+  "aiVerdict": {
+    "holding": "<ONE sentence. Where is THIS face holding water / bloat right now? Look at the photo — name the specific puffy zones (midface, under-eye, jawline, under the chin / submental, cheeks, neck). Plain, direct. e.g. 'Your face is holding water around the midface and under-eye area.'>",
+    "effect": "<ONE sentence. How that bloat is softening their definition. e.g. 'This is softening your jawline and reducing your overall facial definition.'>",
+    "points": "<integer 12–44. Projected improvement to their appearance after the FULL debloat protocol — bigger when they look more bloated now.>"
+  },
+
+  "causes": [
+    { "label": "Water Retention", "pct": "<0-100, how much water the face is visibly holding>" },
+    { "label": "Sleep",           "pct": "<0-100, likelihood poor sleep is contributing>" },
+    { "label": "Sodium",          "pct": "<0-100, likely dietary sodium load>" },
+    { "label": "Hydration",       "pct": "<0-100, how much low hydration is contributing>" },
+    { "label": "Cortisol",        "pct": "<0-100, stress/cortisol contribution>" }
+  ]
 }
+
+DEBLOAT LENS: this is a facial-DEBLOAT app. The two fields above (aiVerdict + causes) are the hero of the results screen — read the PHOTO for facial water retention and puffiness and answer them specifically for THIS face. The five cause percentages should vary believably per person (not all the same, not round fives).
 
 ALL banned words MUST be avoided. ALL observations MUST cite numbers. ALL recommendations MUST be specific.
 

@@ -55,6 +55,13 @@ class Report {
   final List<Fix> fixes;
   final String verdict;
 
+  /// DEBLOAT AI VERDICT — GPT-vision read of where the face holds water.
+  /// Empty / 0 when the backend hasn't been redeployed with the debloat
+  /// fields yet; the results screen falls back to an on-device read.
+  final String aiHolding;
+  final String aiEffect;
+  final int    aiPoints;
+
   const Report({
     required this.oneLineVerdict,
     required this.strongest,
@@ -62,18 +69,30 @@ class Report {
     required this.boneReading,
     required this.fixes,
     required this.verdict,
+    this.aiHolding = '',
+    this.aiEffect  = '',
+    this.aiPoints  = 0,
   });
 
-  factory Report.fromJson(Map<String, dynamic> j) => Report(
-    oneLineVerdict: j['oneLineVerdict'] as String? ?? '',
-    strongest:      j['strongest']      as String? ?? '',
-    pulldown:       j['pulldown']       as String? ?? '',
-    boneReading:    j['boneReading']    as String? ?? '',
-    fixes: ((j['fixes'] as List?) ?? [])
-        .map((e) => Fix.fromJson(e as Map<String, dynamic>))
-        .toList(),
-    verdict: j['verdict'] as String? ?? '',
-  );
+  factory Report.fromJson(Map<String, dynamic> j) {
+    final av = j['aiVerdict'];
+    final avMap = av is Map<String, dynamic> ? av : const <String, dynamic>{};
+    return Report(
+      oneLineVerdict: j['oneLineVerdict'] as String? ?? '',
+      strongest:      j['strongest']      as String? ?? '',
+      pulldown:       j['pulldown']       as String? ?? '',
+      boneReading:    j['boneReading']    as String? ?? '',
+      fixes: ((j['fixes'] as List?) ?? [])
+          .map((e) => Fix.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      verdict: j['verdict'] as String? ?? '',
+      aiHolding: (avMap['holding'] as String? ?? '').trim(),
+      aiEffect:  (avMap['effect']  as String? ?? '').trim(),
+      aiPoints:  (avMap['points'] is num)
+          ? (avMap['points'] as num).toInt()
+          : int.tryParse('${avMap['points'] ?? ''}') ?? 0,
+    );
+  }
 }
 
 @immutable

@@ -94,8 +94,11 @@ class GeometryOverlayPainter extends CustomPainter {
   });
 
   // ── Palette ───────────────────────────────────────────────────────────────
-  static const _cGold    = Color(0xFFD4A96A);
-  static const _cGoldHi  = Color(0xFFFFE6B0);
+  // Debloat rebrand: the old gold anchor accents are recoloured to deep /
+  // ice blue so the whole scan reads as one cool blue system (no gold).
+  // Names kept so the ~dozen call-sites don't churn.
+  static const _cGold    = Color(0xFF0EA5E9); // was gold → deep blue
+  static const _cGoldHi  = Color(0xFF7DD3FC); // was gold-hi → ice blue
   static const _cCyan    = Color(0xFF38BDF8);
   static const _cCyanHi  = Color(0xFF8FE9FF);
   static const _cMagenta = Color(0xFFFF4D9E);

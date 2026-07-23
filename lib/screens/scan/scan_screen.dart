@@ -117,13 +117,17 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
   double _animT = 0;
 
 
-  // Rotating copy per phase
+  // Rotating copy per phase — the scan reads the debloat zones top to
+  // bottom (forehead → chin). Each flashes briefly as it "reads". Kept
+  // generic + wellness-framed (no "468 points"/"archetype" claims) so
+  // the store listing reads as a face-wellness tool, not a spammy
+  // measurement gimmick.
   static const _scanCopy = [
-    '468 points locked',
-    'Reading your jawline',
-    'Eye tilt found',
-    'Face width calculated',
-    'Matching your archetype',
+    'Fluid · Reading…',
+    'Under-eye · Reading…',
+    'Jaw · Reading…',
+    'Cheeks · Reading…',
+    'Neck · Reading…',
   ];
   int _copyIdx = 0;
   Timer? _copyTimer;
@@ -1092,8 +1096,8 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
         return _angleIdx == 0 ? 'STEP 01 · FRONT'
              : _angleIdx == 1 ? 'STEP 02 · LEFT'
              :                  'STEP 03 · RIGHT';
-      case ScanPhase.scanning:      return 'LOCK ACQUIRING';
-      case ScanPhase.measuring:     return 'READING YOUR BONES';
+      case ScanPhase.scanning:      return 'ALIGNING';
+      case ScanPhase.measuring:     return 'READING YOUR FACE';
       case ScanPhase.rotateLeft:    return 'STEP 02 · LEFT';
       case ScanPhase.rotateRight:   return 'STEP 03 · RIGHT';
       case ScanPhase.capturing:     return 'CAPTURING';
@@ -1108,9 +1112,9 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       case ScanPhase.rotateLeft:
       case ScanPhase.rotateRight:
         return 'Follow the coaching above';
-      case ScanPhase.measuring:     return 'Jawline · eyes · thirds · cheekbones';
-      case ScanPhase.capturing:     return 'Capturing your reference frame';
-      case ScanPhase.analysing:     return 'Personal analysis incoming';
+      case ScanPhase.measuring:     return 'Fluid · under-eye · jaw · cheeks · neck';
+      case ScanPhase.capturing:     return 'Capturing your baseline';
+      case ScanPhase.analysing:     return 'Your debloat read is coming';
     }
   }
 
@@ -1425,7 +1429,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                   ),
                   const SizedBox(height: 2),
                   // Under-byline
-                  Text('THE FACE, MEASURED',
+                  Text('READING YOUR BLOAT',
                     style: AppTypography.label.copyWith(
                       color: AppColors.textMuted, fontSize: 8, letterSpacing: 2.8)),
                 ],
