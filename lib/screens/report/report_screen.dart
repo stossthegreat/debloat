@@ -719,11 +719,15 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.lg),
 
-          // ── 2 · AI VERDICT (debloat read — GPT vision / on-device) ──
+          // ── 2 · AI VERDICT (debloat read — prefer GPT vision, else
+          //        the on-device read so it always populates) ──────────
           AiVerdictCard(
-            holding:         dr.verdictHolding,
-            effect:          dr.verdictEffect,
-            projectedPoints: dr.projectedPoints,
+            holding: a.report.aiHolding.isNotEmpty
+                ? a.report.aiHolding : dr.verdictHolding,
+            effect: a.report.aiEffect.isNotEmpty
+                ? a.report.aiEffect : dr.verdictEffect,
+            projectedPoints: a.report.aiPoints > 0
+                ? a.report.aiPoints : dr.projectedPoints,
           ).animate().fadeIn(delay: 400.ms, duration: 500.ms),
 
           const SizedBox(height: Sp.lg),

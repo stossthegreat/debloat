@@ -59,4 +59,4 @@ const kBypassPaywall = true;
 /// tell which build is actually installed on-device (TestFlight lag has
 /// repeatedly made us debug a stale build). Bump this with every pubspec
 /// build-number bump.
-const kBuildTag = 'v1.0.0+12';
+const kBuildTag = 'v1.0.0+13';
