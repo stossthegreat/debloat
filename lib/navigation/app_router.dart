@@ -7,7 +7,7 @@ import '../screens/legal/legal_screen.dart';
 import '../screens/onboarding/ai_consent_screen.dart';
 import '../screens/onboarding/gender_pick_screen.dart';
 import '../screens/onboarding/intro_reel_screen.dart';
-import '../screens/onboarding/onboarding_screen.dart';
+import '../screens/onboarding/funnel/onboarding_funnel_screen.dart';
 import '../screens/paywall/paywall_screen.dart';
 import '../screens/progress/progress_screen.dart';
 import '../screens/protocol/protocol_screen.dart';
@@ -26,8 +26,11 @@ final appRouter = GoRouter(
   observers: [AnalyticsRouteObserver()],
   routes: [
     GoRoute(path: '/',           builder: (_, __) => const SplashScreen()),
-    GoRoute(path: '/intro',      builder: (_, __) => const IntroReelScreen()),
-    GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
+    // Intro reel → the DePuff emotional funnel (Part 1: hook & qualify).
+    GoRoute(path: '/intro',
+        builder: (_, __) => const IntroReelScreen(next: '/onboarding')),
+    GoRoute(path: '/onboarding',
+        builder: (_, __) => const OnboardingFunnelScreen()),
     // Pre-scan gender pick. First-launch users get routed here from
     // splash; existing users can re-open it from Settings → Glow-up
     // style with `extra: {'fromSettings': true}`.
