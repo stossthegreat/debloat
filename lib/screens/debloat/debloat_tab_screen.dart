@@ -371,28 +371,35 @@ class _Row extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Check square — brand-filled when done.
+              // Leading icon tile — shows the protocol's own glyph, and
+              // morphs into a brand-filled check the moment it's ticked.
               AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
+                duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOut,
-                width: 26, height: 26,
+                width: 40, height: 40,
                 margin: const EdgeInsets.only(top: 1),
                 decoration: BoxDecoration(
-                  color: isDone ? AppColors.brand : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
+                  color: isDone
+                      ? AppColors.brand
+                      : AppColors.brand.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isDone ? AppColors.brand : AppColors.surface3,
-                    width: 1.4),
+                    color: isDone
+                        ? AppColors.brand
+                        : AppColors.brand.withValues(alpha: 0.30),
+                    width: 1.2),
                   boxShadow: isDone
                       ? [BoxShadow(
-                          color: AppColors.brand.withValues(alpha: 0.4),
-                          blurRadius: 12)]
+                          color: AppColors.brand.withValues(alpha: 0.45),
+                          blurRadius: 14)]
                       : null,
                 ),
-                child: isDone
-                    ? const Icon(Icons.check_rounded,
-                        size: 18, color: Color(0xFF03181C))
-                    : null,
+                alignment: Alignment.center,
+                child: Icon(
+                  isDone ? Icons.check_rounded : item.icon,
+                  size: isDone ? 22 : 20,
+                  color: isDone ? const Color(0xFF03181C) : AppColors.brand,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
