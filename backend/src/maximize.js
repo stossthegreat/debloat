@@ -4,48 +4,60 @@ import crypto from 'node:crypto';
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  THE DEBLOAT TWIN — what this file does now
+//  THE MAXED + DEBLOATED TWIN
 // ─────────────────────────────────────────────────────────────────────────────
-// Debloat OS has ONE hero render: the user's OWN face, drained of bloat.
-// Not a haircut. Not a grooming glow-up. The literal job is to show the user
-// what they look like with the facial water-retention, puffiness, and soft
-// submental/orbital fat removed — the face that is already there, under the
-// bloat.
+// The hero render shows the user their best self: the grooming glow-up they
+// always had — fresh hair, clear skin, neat facial hair — AND their face
+// drained of bloat (de-puffed, sharper jaw, hollowed cheeks). Both at once.
 //
-// WHY THE OLD PIPELINE NEVER DEBLOATED
-// ------------------------------------
-// The previous version ran a Stage-3 face-swap that pasted the ORIGINAL
-// selfie's face geometry back onto the edit output. That was an identity
-// lock for haircut edits — but for a debloat edit it is fatal: swapping the
-// original (bloated) face back on top REVERTS the exact thing we just did.
-// The de-puffing was being undone in the last step, every time. So the swap
-// is gone. Identity is held by the edit model's native subject-lock plus a
-// tightly-scoped prompt that changes ONLY soft tissue, never bone / hair /
-// scene.
+// WHY NO FACE-SWAP
+// ----------------
+// The original pipeline ran a Stage-3 face-swap that pasted the ORIGINAL
+// selfie's face back onto the edit output to lock identity for haircut edits.
+// But that swap REVERTS everything done to the face itself — both the debloat
+// AND the skin cleanup — because it pastes the original (bloated, original-
+// skin) face region back on top. Only the hair survived. That's why the twin
+// "did nothing" once we asked it to debloat. So the swap is gone. Identity is
+// held by Nano Banana's native subject-lock + a prompt that explicitly
+// preserves bone structure, age, and ethnicity while it grooms + drains.
 //
 // MODEL
 // -----
 // Google's Nano Banana (Gemini 2.5 Flash Image). DeepMind's own line: it
 // "locks onto your facial features, skin tone, and expression before making
-// any change." That native identity clamp is exactly what a soft-tissue-only
-// edit needs — we want the SAME person, minus the water. ~$0.039 / render.
-const EDIT_MODEL = 'google/nano-banana';         // Gemini 2.5 Flash Image
+// any change." Best-in-class identity retention for exactly this kind of
+// same-person edit. ~$0.039 / render.
+const EDIT_MODEL = 'google/nano-banana';
 
 /**
- * Generate the Debloat Twin — the user's face with facial bloat drained.
+ * Generate the hero twin — grooming glow-up + facial debloat in one edit.
  *
- * Single-stage, identity-locked, soft-tissue-only. `brief` is accepted for
- * backward-compat with the /scan chain but is intentionally ignored: the
- * edit is ALWAYS "drain the bloat," never a haircut or grooming change.
+ * `brief.improve` (from the GPT analysis) supplies the single grooming hero
+ * change (hair > beard > other grooming). Skin is always cleaned up and the
+ * face is always de-bloated on top, regardless of the brief. Single-stage,
+ * identity-locked, no face-swap.
  *
  * Returns { url, editUrl, prompt, seed, heroChange, model, intermediateUrls }.
  */
 export async function maximize({ imageBase64, brief } = {}) {
-  const prompt = buildPrompt();
+  const improve = Array.isArray(brief?.improve) ? brief.improve : [];
+
+  // Rank grooming fixes: hair(0) > beard(1) > other-grooming(2). Skin(3) is
+  // handled by the always-on baseline, not as a hero.
+  const ranked = improve
+    .map((s, i) => ({ s: String(s || '').trim(), pri: classify(s), idx: i }))
+    .filter(r => r.s.length > 0 && r.pri <= 2)
+    .sort((a, b) => a.pri - b.pri || a.idx - b.idx);
+
+  const heroChange = ranked.length > 0
+    ? ranked[0].s
+    : 'a cleanly styled, modern haircut that suits the face shape';
+
+  const prompt = buildPrompt(heroChange);
   const seed   = deterministicSeed(imageBase64);
   const inputDataUri = `data:image/jpeg;base64,${imageBase64}`;
 
-  console.log('[maximize] debloat render — single-stage, no face-swap');
+  console.log(`[maximize] maxed+debloat render — hero="${heroChange}" (no face-swap)`);
 
   // Primary (and only) edit via Nano Banana. Retry on EVERY error
   // (not just transient): content-moderation false-positives, weird
@@ -56,34 +68,25 @@ export async function maximize({ imageBase64, brief } = {}) {
   const editStart = Date.now();
   const editUrl = await runWithRetry(
     () => runEdit({ imageDataUri: inputDataUri, prompt }),
-    { label: 'debloat', maxAttempts: 5, retryAll: true },
+    { label: 'maximize', maxAttempts: 5, retryAll: true },
   );
-  console.log(`[maximize] debloat ok: ${Date.now() - editStart}ms`);
+  console.log(`[maximize] ok: ${Date.now() - editStart}ms`);
 
   return {
     url:              editUrl,
     editUrl,
     prompt,
     seed,
-    heroChange:       'debloat',
+    heroChange,
     model:            EDIT_MODEL,
     intermediateUrls: [],
   };
 }
 
 /**
- * Generic retry wrapper for Replicate calls. Retries on:
- *   · HTTP 429 (rate limit)
- *   · HTTP 5xx (transient server errors — the #1 source of "Server hiccup"
- *     reports, Replicate's upstream is not always stable)
- *   · Network timeouts, ECONNRESET, ETIMEDOUT, socket hang up
- *
- * With retryAll (used here), retries EVERY error. Trade-off: a genuinely
- * broken payload wastes all attempts — but we'd rather waste retries than
- * throw a recoverable failure up to the user.
- *
- * Backoff: respects Retry-After hint if present, else exponential
- * (3s, 6s, 12s) capped at 30s.
+ * Generic retry wrapper for Replicate calls. With retryAll (used here),
+ * retries EVERY error. Backoff honours a Retry-After hint if present, else
+ * exponential (3s, 6s, 12s) capped at 30s.
  */
 async function runWithRetry(fn, { label, maxAttempts = 3, retryAll = false } = {}) {
   let lastErr;
@@ -112,14 +115,12 @@ async function runWithRetry(fn, { label, maxAttempts = 3, retryAll = false } = {
 
 function isTransient(msg) {
   const m = msg.toLowerCase();
-  // HTTP status code matches
   if (/\b(429|500|502|503|504)\b/.test(m))           return true;
   if (m.includes('too many requests'))               return true;
   if (m.includes('internal server error'))           return true;
   if (m.includes('bad gateway'))                     return true;
   if (m.includes('service unavailable'))             return true;
   if (m.includes('gateway timeout'))                 return true;
-  // Network / socket level
   if (m.includes('etimedout'))                       return true;
   if (m.includes('econnreset'))                      return true;
   if (m.includes('econnrefused'))                    return true;
@@ -127,66 +128,69 @@ function isTransient(msg) {
   if (m.includes('network socket disconnected'))     return true;
   if (m.includes('network error'))                   return true;
   if (m.includes('timeout'))                         return true;
-  // Replicate-specific prediction failures that are often transient
   if (m.includes('prediction failed') && m.includes('overloaded')) return true;
   return false;
 }
 
 /**
- * THE DEBLOAT PROMPT — soft-tissue only, identity-locked.
- *
- * Six ordered beats, tuned for Nano Banana (Gemini 2.5 Flash Image):
- *
- *   1. Subject naming        — "The exact same person in this photo"
- *   2. The ONE job           — drain facial bloat / water retention
- *   3. Where the bloat lives  — cheeks, jawline, under-eyes, submental,
- *                               overall roundness/puffiness (named zones so
- *                               the model knows precisely what to reduce)
- *   4. Reveal, don't reshape  — the point is to UNCOVER the bone that is
- *                               already there under the water, NOT to carve
- *                               new bone. This keeps it believable and keeps
- *                               it the same person.
- *   5. Identity preserve      — bones, age, ethnicity, hair, expression,
- *                               skin tone exactly as-is
- *   6. Scene preserve         — lighting, background, framing, pose
- *
- * The framing is deliberately "the same face after perfect sleep, zero
- * sodium, and full hydration — every drop of water weight gone." That
- * mental model produces a de-puffed, sharper, drained version of the SAME
- * face rather than a different, thinner person. "Subtle but clearly
- * visible" keeps it from either doing nothing or going full ozempic-gaunt.
+ * Classify an improve item so we can rank the grooming hero:
+ *   0 = HAIR, 1 = BEARD, 2 = OTHER grooming, 3 = SKIN (baseline, not hero).
  */
-function buildPrompt() {
+function classify(s) {
+  const x = String(s || '').toLowerCase();
+  if (/\b(hair(?!\s*line)|fade|crop|cut|hairline|fringe|buzz|taper|undercut|quiff|pomp|part|bangs)\b/.test(x)) return 0;
+  if (/\b(beard|stubble|goatee|moustache|facial hair)\b/.test(x)) return 1;
+  if (/\b(brow|eyebrow|teeth|whiten|glasses|frame|lash)\b/.test(x)) return 2;
+  return 3;
+}
+
+/**
+ * THE PROMPT — grooming glow-up + facial debloat, identity-locked.
+ *
+ * Four beats:
+ *   1. Subject + the grooming hero change (hair / beard / grooming)
+ *   2. Grooming baseline — clean skin, styled hair, neat facial hair (always)
+ *   3. THE DEBLOAT LAYER — drain facial water/puffiness, reveal the jaw and
+ *      cheekbones already there (this is what makes it a Debloat render, not
+ *      just a glow-up)
+ *   4. Identity + scene preserve
+ *
+ * The debloat is framed as REVEALING existing bone by removing soft water-
+ * weight, never carving new bone — that keeps it the same person, believable,
+ * and un-revertable (no face-swap runs after this).
+ */
+function buildPrompt(heroChange) {
   return (
-    // 1 + 2 — subject + the single job
-    `The exact same person in this photo, shown after their face has been ` +
-    `completely de-bloated — drained of all water retention and facial ` +
-    `puffiness, as if after perfect sleep, zero sodium, and full hydration. ` +
+    // 1 — subject + grooming hero
+    `The person in this photo. Give them ${heroChange}. ` +
 
-    // 3 — where the bloat lives (named zones)
-    `Remove the facial bloat and soft water-weight puffiness from the ` +
-    `cheeks, along the jawline and under the chin (submental area), and ` +
-    `the puffy under-eye bags. Reduce the overall roundness and swelling ` +
-    `of the face. Deflate the puffiness so the face looks tighter, leaner, ` +
-    `drained, and more sculpted. ` +
+    // 2 — grooming baseline (the glow-up they always had)
+    `At the same time, make them look their absolute best: ` +
+    `clean, clear, healthy skin with even tone — no acne, no blemishes, ` +
+    `no redness, no visible pores — but keep natural skin texture ` +
+    `(not airbrushed, not plastic, not smoothed). ` +
+    `Give them freshly-cut, cleanly-styled hair. ` +
+    `If they have facial hair, keep it neatly groomed with clean lines ` +
+    `and a tight neckline. Groomed eyebrows, no stragglers. ` +
 
-    // 4 — reveal, don't reshape (this is what keeps identity + realism)
-    `Reveal the cheekbones, the jawline, and the chin definition that are ` +
-    `already there underneath the bloat — do NOT carve or add new bone, ` +
-    `only uncover the existing bone structure by removing the water and ` +
-    `soft fat sitting on top of it. Bring back a clean, defined jaw line ` +
-    `and a flatter under-eye area. The change should be subtle but clearly ` +
-    `visible — the same face, minus every drop of bloat. ` +
+    // 3 — THE DEBLOAT LAYER (on top of the glow-up)
+    `On top of that, completely DE-BLOAT the face: drain all the facial ` +
+    `water retention and puffiness so it looks like they slept perfectly, ` +
+    `ate zero sodium, and are fully hydrated. Remove the soft puffiness ` +
+    `from the cheeks, along the jawline and under the chin (submental area), ` +
+    `and de-puff the under-eye bags. Reduce the overall roundness and ` +
+    `swelling so the face reads tighter, leaner, and more sculpted. Reveal ` +
+    `the cheekbones, the jawline, and the chin definition that are already ` +
+    `there underneath the bloat — do NOT carve or add new bone, only uncover ` +
+    `the existing bone structure by removing the water and soft fat sitting ` +
+    `on top of it. The debloat should be subtle but clearly visible. ` +
 
-    // 5 — identity preserve
+    // 4 — identity + scene preserve
     `Keep it unmistakably the SAME person: same apparent age, same bone ` +
     `structure and face shape, same nose, same eye shape and eye colour, ` +
-    `same lips, same expression, same hairstyle and hair, same facial ` +
-    `hair, same ethnicity, and the same natural skin tone and skin ` +
-    `texture. Do not beautify, do not airbrush, do not change the ` +
-    `haircut, do not slim it into a different, thinner person. ` +
-
-    // 6 — scene preserve
+    `same lip shape, same expression, same ethnicity, and the same natural ` +
+    `skin tone. Do not reshape any bones. Do not age the face. Do not turn ` +
+    `them into a different, thinner person. ` +
     `Keep the same lighting, background, framing, camera angle, and pose. ` +
     `Natural shadows. Photorealistic.`
   );
@@ -194,8 +198,6 @@ function buildPrompt() {
 
 // ─── Primary edit ─────────────────────────────────────────────────────────────
 async function runEdit({ imageDataUri, prompt }) {
-  // Nano Banana accepts `image_input` as an ARRAY (supports up to 14 refs).
-  // png output avoids jpg compression artifacts on skin.
   const input = {
     prompt,
     image_input:   [imageDataUri],
