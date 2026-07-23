@@ -173,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Tab-switch analytics — paired with the router observer's
     // screen_view event so we can rebuild the SCAN / FOOD / DEBLOAT /
     // ASCEND funnel without having to dedupe screen_views by source.
-    const tabNames = ['scan', 'food', 'debloat', 'ascend'];
+    const tabNames = ['scan', 'food', 'debloat', 'progress'];
     if (i >= 0 && i < tabNames.length) {
       // ignore: discarded_futures
       AnalyticsService.tabOpened(tabNames[i]);
@@ -1026,10 +1026,10 @@ class _NavBar extends StatelessWidget {
     // Four tabs: SCAN / DEBLOAT / MIRROR / ASCEND. Each tab does ONE
     // thing — the reading, the daily system, the render, the program.
     final items = const <({String label, IconData icon, bool italic})>[
-      (label: 'Scan',    icon: Icons.center_focus_strong_rounded,   italic: false),
-      (label: 'Food',    icon: Icons.restaurant_rounded,            italic: false),
-      (label: 'Debloat', icon: Icons.water_drop_outlined,           italic: false),
-      (label: 'Ascend',  icon: Icons.local_fire_department_rounded, italic: false),
+      (label: 'Scan',     icon: Icons.center_focus_strong_rounded, italic: false),
+      (label: 'Food',     icon: Icons.restaurant_rounded,          italic: false),
+      (label: 'Debloat',  icon: Icons.water_drop_outlined,         italic: false),
+      (label: 'Progress', icon: Icons.insights_rounded,            italic: false),
     ];
     // v303 — bottom nav rebuilt in the Skeletal-PT pattern bro
     // pointed at: each tab is its own block, the ACTIVE block fills
