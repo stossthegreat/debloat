@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/protocol.dart';
 import '../../models/scan_record.dart';
 import '../../services/analytics_service.dart';
+import '../../services/debloat_report_service.dart';
+import '../../services/debloat_stats_service.dart';
 import '../../services/local_store_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/paywall_gate.dart';
@@ -344,39 +346,72 @@ class _ScanHubTab extends StatelessWidget {
             const SizedBox(height: 4),
 
             // ─────────────────────────────────────────────────────────────
-            //  PRE-SCAN — the full conversion column: display headline +
-            //  1-2-3 path + Current vs Optimised split + BEGIN SCAN CTA
-            //  + AFTER UNLOCK strip. This is the first-impression sell.
-            //  Hidden the moment the user has scanned — they don't need
-            //  to be sold on something they've done.
+            //  PRE-SCAN — a hard-hitting, distinct first impression. Big
+            //  hook headline, a LOCKED "Debloat Read" teaser card (the
+            //  same card the post-scan state reveals), what-we-read rows,
+            //  then the CTA. Deliberately unlike the old looksmax pitch.
             // ─────────────────────────────────────────────────────────────
             if (!hasScan) ...[
-              const SizedBox(height: Sp.md),
+              const SizedBox(height: Sp.lg),
 
-              const DisplayBlock(
-                lineOne: 'Your face.',
-                lineTwo: 'De-bloated.',
-                subhead: 'Real geometry. We measure how much water is '
-                    'hiding your jawline.',
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+                child: RichText(
+                  text: TextSpan(
+                    style: GoogleFonts.spaceGrotesk(
+                      color: AppColors.textPrimary,
+                      fontSize: 32, height: 1.12,
+                      fontWeight: FontWeight.w800, letterSpacing: -1),
+                    children: [
+                      const TextSpan(text: 'Your face is\nholding '),
+                      TextSpan(text: 'water.',
+                        style: const TextStyle(color: AppColors.brand)),
+                    ],
+                  ),
+                ),
+              ).animate().fadeIn(duration: 400.ms),
+
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+                child: Text(
+                  'Scan to see how much — and exactly where it\'s hiding '
+                  'your jawline.',
+                  style: GoogleFonts.inter(
+                    color: AppColors.textSecondary,
+                    fontSize: 15, height: 1.4, fontWeight: FontWeight.w500),
+                ),
               ),
 
               const SizedBox(height: Sp.lg),
 
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-                child: IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(child: _PathFlow(stepDone: false)),
-                      const SizedBox(width: Sp.md),
-                      const Expanded(child: _OptimisedSplitCard()),
-                    ],
-                  ),
+                child: const _DebloatReadCard(
+                  currentLabel: 'Facial Bloat',
+                  percent: 0,
+                  locked: true,
                 ),
-              ).animate().fadeIn(duration: 400.ms)
-                .slideY(begin: 0.04, end: 0, duration: 400.ms,
-                    curve: Curves.easeOut),
+              ).animate().fadeIn(delay: 120.ms, duration: 450.ms)
+                .slideY(begin: 0.03, end: 0, curve: Curves.easeOut),
+
+              const SizedBox(height: Sp.lg),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+                child: Column(
+                  children: const [
+                    _ReadRow(icon: Icons.opacity_rounded,
+                      title: 'Fluid retention', body: 'How much water your face is holding.'),
+                    SizedBox(height: 12),
+                    _ReadRow(icon: Icons.visibility_outlined,
+                      title: 'Under-eye + cheeks', body: 'Where the puffiness is softening your look.'),
+                    SizedBox(height: 12),
+                    _ReadRow(icon: Icons.architecture_rounded,
+                      title: 'Jaw definition', body: 'The jawline hiding under the bloat.'),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 220.ms, duration: 450.ms),
 
               const SizedBox(height: Sp.lg),
 
@@ -388,38 +423,29 @@ class _ScanHubTab extends StatelessWidget {
                   meta: 'Takes 30 seconds',
                   onTap: () => context.push('/scan'),
                 ),
-              ).animate().fadeIn(delay: 160.ms, duration: 400.ms),
+              ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
             ],
 
             // ─────────────────────────────────────────────────────────────
-            //  POST-SCAN — clean. Only the things a returning user cares
-            //  about: their score, their active protocol, talk to the
-            //  advisor about it, and a low-key rescan link. None of the
-            //  "first impression" scaffolding above.
+            //  POST-SCAN — the DEBLOAT READ card (current bloat →
+            //  projected definition) + rescan.
             // ─────────────────────────────────────────────────────────────
             if (hasScan) ...[
               const SizedBox(height: Sp.lg),
 
-              // HOPE — the only score card on this tab. Bro: "the score
-              // card ABOVE the hope card is redundant — potential now
-              // shows before/after; remove it." So _LatestSnapshot is
-              // gone; _HopeCard carries the read entirely.
-              if (latest!.projectedDelta > 0)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-                  child: _HopeCard(
-                    current:   latest!.score,
-                    projected: (latest!.score + latest!.projectedDelta)
-                                  .clamp(0, 100),
-                    archetype: latest!.archetypeName,
-                    pro:       isPro,
-                  ),
-                ).animate().fadeIn(duration: 400.ms),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+                child: _DebloatReadCard(
+                  currentLabel:
+                      '${DebloatStatsService.compute(latest!.geometry).tier} Facial Bloat',
+                  percent:
+                      DebloatReportService.compute(latest!.geometry).projectedPoints,
+                  locked: false,
+                ),
+              ).animate().fadeIn(duration: 400.ms),
 
               const SizedBox(height: Sp.lg),
 
-              // RESCAN FACE — the obvious primary action a returning
-              // user sees.
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
                 child: PrimaryCta(
@@ -432,14 +458,209 @@ class _ScanHubTab extends StatelessWidget {
                   },
                 ),
               ).animate().fadeIn(delay: 120.ms, duration: 400.ms),
-
-              // v366 — THE MIRROR hero + the protocol streak tiles
-              // moved to the TRANSFORM tab. Looks is now purely the
-              // rating surface: score, rescan, done.
             ],
           ],
         ),
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  THE DEBLOAT READ card — the Scan tab's hero. Post-scan it shows the
+//  user's current bloat tier → projected sharper definition with the
+//  estimated % gain. Pre-scan (locked) it teases the same card so the
+//  first impression sells the read they're about to get.
+// ═══════════════════════════════════════════════════════════════════════════
+class _DebloatReadCard extends StatelessWidget {
+  final String currentLabel; // e.g. "Moderate Facial Bloat"
+  final int percent;         // estimated definition gain
+  final bool locked;
+  const _DebloatReadCard({
+    required this.currentLabel,
+    required this.percent,
+    required this.locked,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(Rd.xl),
+        border: Border.all(
+          color: AppColors.signalGreen.withValues(alpha: 0.5), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.signalGreen.withValues(alpha: 0.16),
+            blurRadius: 26, spreadRadius: -6, offset: const Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(width: 6, height: 6,
+                decoration: const BoxDecoration(
+                  color: AppColors.signalGreen, shape: BoxShape.circle)),
+              const SizedBox(width: 8),
+              Text('THE DEBLOAT READ',
+                style: AppTypography.label.copyWith(
+                  color: AppColors.signalGreen,
+                  fontSize: 11, letterSpacing: 2.8, fontWeight: FontWeight.w900)),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _readCol(
+                  eyebrow: 'CURRENT',
+                  title: locked ? '???\nFacial Bloat' : currentLabel,
+                  glyph: _FaceGlyph(
+                    color: AppColors.signalAmber, bloated: true),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 46),
+                child: Icon(Icons.arrow_forward_rounded,
+                  color: AppColors.textTertiary, size: 24),
+              ),
+              Expanded(
+                child: _readCol(
+                  eyebrow: 'PROJECTED',
+                  title: 'Sharper\nFacial Definition',
+                  glyph: _FaceGlyph(
+                    color: AppColors.signalGreen, bloated: false),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.signalGreen.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(100),
+                border: Border.all(
+                  color: AppColors.signalGreen.withValues(alpha: 0.45))),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(locked ? Icons.lock_rounded : Icons.trending_up_rounded,
+                    color: AppColors.signalGreen, size: 17),
+                  const SizedBox(width: 8),
+                  Text(locked
+                      ? 'Scan to reveal your read'
+                      : '+$percent% Facial Definition',
+                    style: GoogleFonts.inter(
+                      color: AppColors.signalGreen,
+                      fontSize: 15, fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: Text('Estimated improvement after protocol.',
+              style: GoogleFonts.inter(
+                color: AppColors.textTertiary,
+                fontSize: 13, fontWeight: FontWeight.w500)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _readCol({
+    required String eyebrow,
+    required String title,
+    required Widget glyph,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(eyebrow,
+          style: AppTypography.label.copyWith(
+            color: AppColors.textTertiary,
+            fontSize: 10, letterSpacing: 1.8, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        Text(title,
+          style: GoogleFonts.spaceGrotesk(
+            color: AppColors.textPrimary,
+            fontSize: 20, height: 1.15,
+            fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+        const SizedBox(height: 16),
+        glyph,
+      ],
+    );
+  }
+}
+
+/// Face-in-brackets glyph — amber (bloated) or green (defined).
+class _FaceGlyph extends StatelessWidget {
+  final Color color;
+  final bool bloated;
+  const _FaceGlyph({required this.color, required this.bloated});
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 88, height: 88,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Icon(Icons.crop_free, size: 88,
+            color: color.withValues(alpha: 0.9)),
+          Icon(bloated ? Icons.face_rounded : Icons.face_retouching_natural,
+            size: 42, color: color),
+        ],
+      ),
+    );
+  }
+}
+
+/// A "what we read" row for the pre-scan hero.
+class _ReadRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String body;
+  const _ReadRow({required this.icon, required this.title, required this.body});
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 42, height: 42,
+          decoration: BoxDecoration(
+            color: AppColors.brand.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.brand.withValues(alpha: 0.3))),
+          alignment: Alignment.center,
+          child: Icon(icon, color: AppColors.brand, size: 20),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                style: GoogleFonts.inter(
+                  color: AppColors.textPrimary,
+                  fontSize: 15, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 2),
+              Text(body,
+                style: GoogleFonts.inter(
+                  color: AppColors.textSecondary,
+                  fontSize: 13, height: 1.35, fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

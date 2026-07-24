@@ -127,7 +127,6 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
     'Under-eye · Reading…',
     'Jaw · Reading…',
     'Cheeks · Reading…',
-    'Neck · Reading…',
   ];
   int _copyIdx = 0;
   Timer? _copyTimer;
@@ -1112,7 +1111,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       case ScanPhase.rotateLeft:
       case ScanPhase.rotateRight:
         return 'Follow the coaching above';
-      case ScanPhase.measuring:     return 'Fluid · under-eye · jaw · cheeks · neck';
+      case ScanPhase.measuring:     return 'Fluid · under-eye · jaw · cheeks';
       case ScanPhase.capturing:     return 'Capturing your baseline';
       case ScanPhase.analysing:     return 'Your debloat read is coming';
     }

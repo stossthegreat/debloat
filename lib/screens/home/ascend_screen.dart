@@ -281,36 +281,10 @@ class _AscendScreenState extends State<AscendScreen> {
       onTap: () => w.onJumpToTab(2),
     );
 
-    final active = w.activeProtocols;
-    if (active.isNotEmpty) {
-      return [
-        checklistRow,
-        for (final p in active.values)
-          AscendMission(
-            title: '${p.targetAxis.toUpperCase()} · LOG DAY ${p.currentDay}',
-            hint: p.completedToday
-                ? 'banked. another day deeper.'
-                : 'today\'s reps. the work that compounds.',
-            done: p.completedToday,
-            onTap: () => context.push('/protocol', extra: {
-              'pulldown': p.targetAxis,
-            }),
-          ),
-      ];
-    }
-
-    // No protocol committed yet — checklist + commit.
-    return [
-      checklistRow,
-      AscendMission(
-        title: 'COMMIT THE DEBLOAT PROTOCOL',
-        hint: 'the 60-day run. tap to start it.',
-        done: false,
-        // The Mirror tab is gone (now Food) — commit the protocol on
-        // the dedicated protocol screen directly.
-        onTap: () => context.push('/protocol'),
-      ),
-    ];
+    // The daily debloat checklist IS the protocol now — it lives on the
+    // Debloat tab. No separate "commit protocol" mission (that routed to
+    // the old standalone protocol screen); the one row points at the tab.
+    return [checklistRow];
   }
 
   /// v290 — which scan milestone (if any) is currently in window
