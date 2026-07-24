@@ -15,6 +15,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/mirrorly_wordmark.dart';
 import '../../widgets/progress/face_evolution_card.dart';
+import '../../widgets/progress/progress_extras.dart';
 
 /// v281 — ASCENSION home tab.
 ///
@@ -153,17 +154,9 @@ class _AscendScreenState extends State<AscendScreen> {
   @override
   Widget build(BuildContext context) {
     final day            = widget.ascensionDay;
-    final daysLeft       = AscensionService.daysRemainingFor(day);
     final rank           = AscensionService.rankFor(day);
-    final consistency    = widget.consistency;
-    final debloatScore     = AscensionService.debloatScoreFromComponents(
-      looks:       widget.looksScore100,
-      consistency: consistency,
-    );
     final missions       = _buildMissions();
     final missionsDone   = missions.where((m) => m.done).length;
-    final todayMsg       = AscensionService.todayMessageFor(
-      day: day, streak: widget.dayStreak);
     final longestStreak  = widget.longestStreak > widget.dayStreak
         ? widget.longestStreak
         : widget.dayStreak;
@@ -206,93 +199,53 @@ class _AscendScreenState extends State<AscendScreen> {
               ),
             ),
 
+            const SizedBox(height: Sp.md),
+
+            // ── 60-DAY SEMICIRCLE — compact arc at the top, fills toward
+            //    day 60 off the earned ascension day (streak-driven).
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+              child: SemiCircleDay(
+                day: day,
+                total: AscensionService.totalDays,
+                rankLabel: rank.label),
+            ).animate().fadeIn(duration: 450.ms),
+
             const SizedBox(height: Sp.lg),
 
             // ── FACE EVOLUTION — the premium, addictive centrepiece.
-            // Replaces the old Ascension Record + Drained Certified
-            // sections. Reuses the retained per-scan selfies to let the
-            // user scrub + share their face getting leaner over time.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
               child: FaceEvolutionCard(scans: widget.allScans),
-            ).animate().fadeIn(duration: 500.ms)
+            ).animate().fadeIn(delay: 120.ms, duration: 500.ms)
               .slideY(begin: 0.03, end: 0, curve: Curves.easeOut),
 
             const SizedBox(height: Sp.lg),
 
-            // ── 1 — HERO. Big flame ring, day count, rank inside.
-            _FlameHero(
-              day:       day,
-              total:     AscensionService.totalDays,
-              rank:      rank,
-              daysLeft:  daysLeft,
-            ).animate().fadeIn(duration: 480.ms)
-              .scale(begin: const Offset(0.92, 0.92),
-                end: const Offset(1, 1), curve: Curves.easeOutBack),
-
-            const SizedBox(height: Sp.lg),
-
-            // ── 2 — DEBLOAT SCORE. One number, one character to
-            // level. Built from Looks + Consistency — nothing else.
-            _MirrorlyScoreHero(
-              score:        debloatScore,
-              delta:        _weeklyDelta,
-              deltaReady:   _deltaLoaded,
-              looks:        widget.looksScore100,
-              consistency:  consistency,
-            ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
-
-            const SizedBox(height: Sp.lg),
-
-            // ── 2b — SCAN MILESTONE. v290 — only renders inside the
-            // two scan windows (Day 22-35 and Day 56-60). Bro's spec:
-            // three scans across the protocol (start / mid / final)
-            // give us the before/after evidence the certificate is
-            // built from. The card prompts the scan in the right
-            // window, then flips to a "captured" pill once the user
-            // has logged a scan inside it. Days outside both windows
-            // collapse the section to zero height — no clutter.
-            if (_scanMilestone(day) != null) ...[
-              _ScanMilestoneCard(
-                milestone: _scanMilestone(day)!,
-                done:      _scanLoggedInWindow(_scanMilestone(day)!.from,
-                                               _scanMilestone(day)!.to),
-                onTap:     () => context.push('/scan'),
-              ).animate().fadeIn(delay: 240.ms, duration: 400.ms),
-              const SizedBox(height: Sp.lg),
-            ],
-
-            // ── 3 — TODAY'S MESSAGE. Single rotating identity line
-            // (v289 replaced Cost of Quitting — fear was a one-shot
-            // drug, identity is the loop).
-            if (todayMsg.isNotEmpty) ...[
-              _TodayMessageCard(line: todayMsg)
-                .animate().fadeIn(delay: 280.ms, duration: 400.ms),
-              const SizedBox(height: Sp.lg),
-            ],
-
-            // ── 4 — TODAY'S ASCENSION. Pillar-mapped missions.
+            // ── TODAY'S DEBLOAT — the daily missions/protocols (pushes the
+            //    protocols, marks days done, keeps the streak).
             _MissionsPanel(
               missions: missions,
               done:     missionsDone,
-            ).animate().fadeIn(delay: 360.ms, duration: 400.ms),
+            ).animate().fadeIn(delay: 240.ms, duration: 400.ms),
 
             const SizedBox(height: Sp.lg),
 
-            // ── 5 — RANK PROGRESSION. The identity ladder.
-            _RankProgression(currentDay: day)
-              .animate().fadeIn(delay: 440.ms, duration: 400.ms),
-
-            const SizedBox(height: Sp.lg),
-
-            // ── 6 — STREAK. Hero treatment per the consultant.
+            // ── STREAK — resets if broken.
             _StreakPanel(
               current: widget.dayStreak,
               longest: longestStreak,
-            ).animate().fadeIn(delay: 520.ms, duration: 400.ms),
+            ).animate().fadeIn(delay: 320.ms, duration: 400.ms),
 
-            // ── ASCENSION RECORD + DRAINED CERTIFIED removed — replaced
-            //    by the FACE EVOLUTION card at the top of this tab.
+            const SizedBox(height: Sp.lg),
+
+            // ── STATS AT THE BOTTOM — debloat score over time + first→
+            //    latest deltas + scan history (the old progress screen's
+            //    retention/logging, rebuilt in debloat metrics).
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+              child: ProgressStats(scans: widget.allScans),
+            ).animate().fadeIn(delay: 400.ms, duration: 400.ms),
 
             const SizedBox(height: Sp.xl),
           ],
