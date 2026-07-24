@@ -53,7 +53,13 @@
 /// Every paywall + all five weekly cap counters (scans / renders /
 /// voice / screenshots / food) are OFF while testing. To RE-LOCK for
 /// distribution, flip this single line back to `false`.
-const kBypassPaywall = true;
+///
+/// LAUNCH LOCK — FALSE per bro: "I want to launch, activate the
+/// paywall." The whole conversion flow depends on this gating:
+/// funnel → scan → processing theatre → PAYWALL → pay → report.
+/// Pro scans cap at 2/week on full gpt-4o; the onboarding scan is
+/// always gpt-4o-mini; food scans are unlimited on gpt-4o-mini.
+const kBypassPaywall = false;
 
 /// Human-readable build tag shown tiny on the paywall so we can instantly
 /// tell which build is actually installed on-device (TestFlight lag has
