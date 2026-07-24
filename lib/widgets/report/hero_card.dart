@@ -103,7 +103,8 @@ class _HeroCardState extends State<HeroCard>
 
   @override
   Widget build(BuildContext context) {
-    final proofs = widget.microProofs.take(3).toList();
+    // Four debloat signals (jawline / cheekbones / under-eye / potential).
+    final proofs = widget.microProofs.take(4).toList();
 
     // No border, no rounded frame, no glow. The card IS the black canvas.
     // Borders read as "UI", not as "editorial", and the user called that

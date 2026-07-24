@@ -22,7 +22,7 @@ import '../../services/notification_service.dart';
 import '../../services/paywall_gate.dart';
 import '../../services/protocol_service.dart';
 import '../../services/scoring_service.dart';
-import '../../services/trait_builder_service.dart';
+import '../../services/debloat_stats_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../services/review_prompt_service.dart';
@@ -565,33 +565,61 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
-  /// Build the 3 micro-proof one-liners shown under the hero + on the share
-  /// card. Pulls the top-3 STRENGTH traits and renders their pre-composed
-  /// emotional heroLine strings — "Your hunter eyes beat 88% of men" reads
-  /// and shares harder than "TOP 12% HUNTER EYES". Falls back to neutral
-  /// but punchy lines when fewer than 3 strengths surfaced.
-  List<String> _buildMicroProofs(List<Trait> traits) {
-    final strengths = traits
-        .where((t) => t.kind == TraitKind.strength)
-        .take(3)
-        .toList();
-    final lines = [
-      for (final t in strengths)
-        t.heroLine.trim().isNotEmpty ? t.heroLine : t.name,
-    ];
-    while (lines.length < 3) {
-      lines.add(const [
-        'Measured profile — 16 geometry points',
-        'Balanced frame — proportions check',
-        'Structured archetype — bones on spec',
-      ][lines.length]);
+  /// The FOUR debloat signals shown under the before/after — on the hero
+  /// card AND the share card. Bro's spec, verbatim: "reduce it to four
+  /// signals only: JAWLINE VISIBILITY · CHEEKBONE DEFINITION · UNDER-EYE
+  /// PUFFINESS · DEBLOAT POTENTIAL." Every qualifier is value-driven off
+  /// the scan geometry (same DebloatStatsService the gauges use) so the
+  /// wording tracks the user's actual read and can't repeat the old
+  /// looks-app lines ("hunter eyes", "bones on spec" — dead).
+  List<String> _buildMicroProofs() {
+    final r = DebloatStatsService.compute(widget.geometry);
+    int zone(String label) {
+      for (final s in r.stats) {
+        if (s.label == label) return s.score;
+      }
+      return r.overall;
     }
-    return lines;
+
+    final jaw   = zone('Jawline');
+    final cheek = zone('Cheekbones');
+    final eye   = zone('Under-Eyes');
+
+    final jawRead = jaw >= 88 ? 'SHARP'
+        : jaw >= 74 ? 'CLEAR'
+        : jaw >= 60 ? 'HIGH POTENTIAL'
+        : jaw >= 45 ? 'OBSCURED BY FLUID'
+        : 'HIDDEN BY FLUID';
+    final cheekRead = cheek >= 88 ? 'STRONG'
+        : cheek >= 74 ? 'VISIBLE'
+        : cheek >= 60 ? 'MODERATE'
+        : cheek >= 45 ? 'REDUCED BY FLUID'
+        : 'MASKED BY FLUID';
+    // Under-eye reads as PUFFINESS, so the scale inverts: a high
+    // drained score = minimal puffiness.
+    final eyeRead = eye >= 88 ? 'MINIMAL'
+        : eye >= 74 ? 'MILD'
+        : eye >= 60 ? 'MODERATE'
+        : eye >= 45 ? 'ELEVATED'
+        : 'HIGH';
+    // Potential runs inverse to the drained score — the more fluid
+    // still trapped, the bigger the visible payoff of draining it.
+    final pot = r.overall < 45 ? 'VERY HIGH'
+        : r.overall < 60 ? 'HIGH'
+        : r.overall < 74 ? 'STRONG'
+        : r.overall < 88 ? 'MODERATE'
+        : 'MAINTAINED';
+
+    return [
+      'JAWLINE VISIBILITY — $jawRead',
+      'CHEEKBONE DEFINITION — $cheekRead',
+      'UNDER-EYE PUFFINESS — $eyeRead',
+      'DEBLOAT POTENTIAL — $pot',
+    ];
   }
 
   Widget _buildReport(MirrorAnalysis a) {
     final score = ScoringService.compute(widget.geometry);
-    final traits = TraitBuilderService.build(widget.geometry);
     // On-device debloat read (AI verdict lines, projected points, cause
     // bars). Always available; the GPT verdict can refine it later.
     final dr = DebloatReportService.compute(widget.geometry);
@@ -601,10 +629,8 @@ class _ReportScreenState extends State<ReportScreen> {
         ? a.report.fixes.length
         : 3;
 
-    // Top-3 strength traits formatted as one-liners for the hero + share
-    // cards. Falls back to neutral copy if the geometry is too dim to
-    // surface 3 strengths (rare — e.g. low-confidence scan).
-    final microProofs = _buildMicroProofs(traits);
+    // The four debloat signals under the before/after (hero + share).
+    final microProofs = _buildMicroProofs();
 
     // The tagline under the before/after on both the results hero and
     // the share card. Priority order:
@@ -679,17 +705,10 @@ class _ReportScreenState extends State<ReportScreen> {
                   currentScore:   _honest?.score ?? score.value,
                   projectedScore: projected,
                   tagline:        tagline,
-                  // First two bullets = the two scores (our moat, named).
-                  // Third bullet = the top strength trait so the card
-                  // still flexes something specific.
-                  microProofs: [
-                    if (_honest != null)
-                      'HONEST LOOKS · ${_honest!.score}/100'
-                    else
-                      'BONES · ${score.value}/100',
-                    'BONE STRUCTURE · ${score.value}/100',
-                    microProofs.isNotEmpty ? microProofs.first : 'MEASURED PROFILE',
-                  ],
+                  // The same four debloat signals the hero shows —
+                  // bro: "make it show under the images on the share
+                  // card." One story, on-screen and shared.
+                  microProofs: microProofs,
                   text: '${_honest?.score ?? score.value} → $projected. '
                         'Same face. Debloat OS.',
                 ),
@@ -845,8 +864,7 @@ class _ReportScreenState extends State<ReportScreen> {
     // Same tagline + proof recipe the unlocked report uses, so the
     // locked variant of HeroCard reads identically except for the
     // after half.
-    final traits     = TraitBuilderService.build(widget.geometry);
-    final microProofs = _buildMicroProofs(traits);
+    final microProofs = _buildMicroProofs();
     final honestNote = (_honest?.note ?? '').trim();
     final tagline = honestNote.isNotEmpty
         ? honestNote
