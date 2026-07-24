@@ -344,6 +344,7 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       _ScienceStep(
         progress: _progressFor(here()),
         gender: _gender,
+        name: _name,
         onBack: _back,
         onNext: _next,
       ),
@@ -359,6 +360,7 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       // 18 · COMMITMENT PLEDGE
       _CommitStep(
         progress: _progressFor(here()),
+        name: _name,
         onBack: _back,
         onNext: _next,
       ),
@@ -633,7 +635,7 @@ class _CalloutLinePainter extends CustomPainter {
 //  the five "hold them" questions bro pulled from the 30-screen list
 //  (familiarity / puffy time / salt habits / photos feeling).
 // ═══════════════════════════════════════════════════════════════════════════
-class _QuickQStep extends StatelessWidget {
+class _QuickQStep extends StatefulWidget {
   final double progress;
   final String headline;
   final String emphasis;
@@ -652,25 +654,45 @@ class _QuickQStep extends StatelessWidget {
   });
 
   @override
+  State<_QuickQStep> createState() => _QuickQStepState();
+}
+
+class _QuickQStepState extends State<_QuickQStep> {
+  // HOLD mechanic: the tap visibly REGISTERS (blue fill + check flash)
+  // for a beat before the page advances — every answer feels banked,
+  // not swallowed. Also blocks double-fire.
+  int? _picked;
+
+  void _tap(int i) {
+    if (_picked != null) return;
+    setState(() => _picked = i);
+    HapticFeedback.mediumImpact();
+    Future.delayed(const Duration(milliseconds: 380), () {
+      if (mounted) widget.onPick(widget.options[i].label);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return OnbScaffold(
-      progress: progress,
-      onBack: onBack,
+      progress: widget.progress,
+      onBack: widget.onBack,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 8),
           OnbHeadline(
-            text: headline,
-            emphasis: emphasis,
+            text: widget.headline,
+            emphasis: widget.emphasis,
             align: TextAlign.start,
-            sub: sub),
+            sub: widget.sub),
           const SizedBox(height: 22),
-          for (final o in options) ...[
-            OnbOptionRow(
-              emoji: o.emoji,
-              label: o.label,
-              onTap: () => onPick(o.label)),
+          for (var i = 0; i < widget.options.length; i++) ...[
+            OnbMultiRow(
+              emoji: widget.options[i].emoji,
+              label: widget.options[i].label,
+              selected: _picked == i,
+              onTap: () => _tap(i)),
             const SizedBox(height: 12),
           ],
         ],
@@ -684,9 +706,11 @@ class _QuickQStep extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════
 class _CommitStep extends StatelessWidget {
   final double progress;
+  final String name;
   final VoidCallback onBack, onNext;
   const _CommitStep({
     required this.progress,
+    required this.name,
     required this.onBack,
     required this.onNext,
   });
@@ -707,9 +731,9 @@ class _CommitStep extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 8),
-          const OnbHeadline(
-            text: 'Make the deal with ',
-            emphasis: 'yourself.',
+          OnbHeadline(
+            text: 'Make the deal, ',
+            emphasis: name.trim().isEmpty ? 'with yourself.' : '${name.trim()}.',
             align: TextAlign.start,
             sub: 'The face changes when the habits do. Three promises:'),
           const SizedBox(height: 24),
@@ -1550,10 +1574,12 @@ class _StrugglesStep extends StatelessWidget {
 class _ScienceStep extends StatelessWidget {
   final double progress;
   final String? gender;
+  final String name;
   final VoidCallback onBack, onNext;
   const _ScienceStep({
     required this.progress,
     required this.gender,
+    required this.name,
     required this.onBack,
     required this.onNext,
   });
@@ -1594,7 +1620,11 @@ class _ScienceStep extends StatelessWidget {
               const Icon(Icons.bolt_rounded, color: Onb.primaryLite, size: 16),
               const SizedBox(width: 8),
               Expanded(
-                child: Text('Your plan removes the cause. The mirror does the rest.',
+                child: Text(
+                  name.trim().isEmpty
+                      ? 'Your plan removes the cause. The mirror does the rest.'
+                      : '${name.trim()} — your plan removes the cause. '
+                        'The mirror does the rest.',
                   style: GoogleFonts.inter(
                     color: Colors.white, fontSize: 13.5, height: 1.35,
                     fontWeight: FontWeight.w700)),
@@ -1850,19 +1880,49 @@ class _RoutineGraphStep extends StatelessWidget {
                 color: Onb.primaryLite, fontSize: 28, height: 1.15,
                 fontWeight: FontWeight.w800, letterSpacing: -0.5),
               children: const [
-                TextSpan(text: 'Tips fade. '),
-                TextSpan(text: 'Systems compound.',
+                TextSpan(text: 'Your plan is '),
+                TextSpan(text: 'almost built.',
                   style: TextStyle(color: Colors.white)),
               ],
             ),
           ),
           const SizedBox(height: 10),
-          Text('Your plan is built from your scan and your answers — '
-              'run it daily and the drain compounds.',
+          Text('Every answer you gave is already inside it. '
+              'One input is missing — your face.',
             style: GoogleFonts.inter(
               color: Onb.grey, fontSize: 15, height: 1.45,
               fontWeight: FontWeight.w500)),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
+          // Completion gap — 90% done, the scan is the missing 10%.
+          Row(
+            children: [
+              Text('PLAN COMPLETENESS',
+                style: GoogleFonts.inter(
+                  color: Onb.grey, fontSize: 10, letterSpacing: 2.0,
+                  fontWeight: FontWeight.w800)),
+              const Spacer(),
+              Text('90%',
+                style: GoogleFonts.poppins(
+                  color: Onb.primaryLite, fontSize: 15,
+                  fontWeight: FontWeight.w800)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(100),
+            child: LinearProgressIndicator(
+              value: 0.9,
+              minHeight: 9,
+              backgroundColor: Onb.card,
+              valueColor: const AlwaysStoppedAnimation(Onb.primary),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text('Missing: your face scan',
+            style: GoogleFonts.inter(
+              color: Onb.primaryLite, fontSize: 12,
+              fontWeight: FontWeight.w700)),
+          const SizedBox(height: 20),
           Container(
             height: 220,
             padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
@@ -1878,8 +1938,8 @@ class _RoutineGraphStep extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _pill('Now', Onb.grey),
-              _pill('Your glow-up', Onb.primary),
+              _pill('Today', Onb.grey),
+              _pill('On the protocol', Onb.primary),
             ],
           ),
         ],
