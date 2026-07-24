@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -21,7 +19,7 @@ import 'onboarding_kit.dart';
 ///   6    Shock stat    7  Goals        8  Water
 ///   9    Sleep        10  Puffy time  11  Salt habits
 ///  12    Pain points  13  Struggles   14  Photos Q
-///  15    Empathy 89%  16  Identity fork
+///  15    Science 24-72h 16 Identity fork
 ///  17    Commitment   18  Routine value graph
 ///
 /// The last step hands off to AI-consent → scan → PROCESSING THEATRE
@@ -122,7 +120,7 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       'welcome_scan', 'welcome_food', 'welcome_routine', 'gender', 'name',
       'familiarity', 'shock_stat', 'goals', 'water', 'sleep',
       'puffy_time', 'salt_habits', 'pain_points', 'struggles',
-      'photos_feeling', 'empathy', 'identity_fork', 'commitment',
+      'photos_feeling', 'science_24_72', 'identity_fork', 'commitment',
       'routine_graph',
     ];
     return (i >= 0 && i < names.length) ? names[i] : 'step_$i';
@@ -142,9 +140,9 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         icon: Icons.center_focus_strong_rounded,
         label: 'Face Scan',
         image: 'assets/onboarding/welcome_scan.jpg',
-        headTop: 'Wake Up',
-        headBottom: 'Less Puffy',
-        sub: 'Drag the line. Same face — just drained.',
+        headTop: 'The Face',
+        headBottom: 'Under The Bloat.',
+        sub: 'Drag the line — same face, drained.',
         cta: 'Continue',
         onBack: _back,
         onNext: _next,
@@ -159,9 +157,9 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         icon: Icons.restaurant_rounded,
         label: 'Food Analysis',
         image: 'assets/onboarding/welcome_food.jpg',
-        headTop: 'Scan Meals.',
-        headBottom: 'Eat Smarter.',
-        sub: 'Spot the foods that puff your face up.',
+        headTop: 'Your Food Is',
+        headBottom: 'Puffing You Up.',
+        sub: 'Scan any plate. We catch the sodium first.',
         cta: 'Continue',
         onBack: _back,
         onNext: _next,
@@ -172,15 +170,18 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       _WelcomeSlide(
         index: here(),
         showProgress: false,
-        icon: Icons.event_available_rounded,
-        label: 'Daily Routines',
+        icon: Icons.checklist_rounded,
+        label: 'The Protocol',
         image: 'assets/onboarding/welcome_routine.jpg',
-        headTop: 'Personalized',
-        headBottom: 'Debloat Plan.',
-        sub: 'A daily routine built for your face.',
+        headTop: 'Your Daily',
+        headBottom: 'Drain Protocol.',
+        sub: 'Morning flush. Intake control. Night drain.',
         cta: 'Get Started',
         onBack: _back,
         onNext: _next,
+        // The protocol list from our old paywall — an in-app style
+        // preview of the actual system, not a stock spa photo.
+        hero: const _ProtocolHero(),
       ),
 
       // 3 · GENDER
@@ -339,9 +340,10 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         onPick: (_) => _next(),
       ),
 
-      // 16 · EMPATHY / 89% PROOF
-      _EmpathyStep(
+      // 16 · THE SCIENCE — 24–72h, with THEIR before/after pair
+      _ScienceStep(
         progress: _progressFor(here()),
+        gender: _gender,
         onBack: _back,
         onNext: _next,
       ),
@@ -989,7 +991,7 @@ class _ShockStatStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final who = gender == 'f' ? 'Women' : 'Men';
+    final who = gender == 'f' ? 'women' : 'men';
     return OnbScaffold(
       progress: progress,
       onBack: onBack,
@@ -1004,10 +1006,10 @@ class _ShockStatStep extends StatelessWidget {
                 color: Colors.white, fontSize: 27, height: 1.15,
                 fontWeight: FontWeight.w800, letterSpacing: -0.5),
               children: [
-                TextSpan(text: '$who are '),
-                const TextSpan(text: '67% more bloated',
+                TextSpan(text: 'Most $who are holding '),
+                const TextSpan(text: 'extra water',
                   style: TextStyle(color: Onb.danger)),
-                const TextSpan(text: ' than they realise.'),
+                const TextSpan(text: ' right now — in the face.'),
               ],
             ),
           ),
@@ -1022,12 +1024,13 @@ class _ShockStatStep extends StatelessWidget {
                 color: Onb.grey, fontSize: 15.5, height: 1.5,
                 fontWeight: FontWeight.w500),
               children: [
-                const TextSpan(text: 'Facial bloating quietly '),
-                TextSpan(text: 'steals your definition',
+                const TextSpan(text: 'Fluid softens the jaw, rounds the '
+                    'cheeks and puffs the under-eyes — '),
+                TextSpan(text: 'hiding definition you already have',
                   style: GoogleFonts.inter(
                     color: Colors.white, fontWeight: FontWeight.w700)),
-                const TextSpan(text: ' — and can make you look up to '),
-                TextSpan(text: '46% less attractive',
+                const TextSpan(text: '. The scan shows exactly '),
+                TextSpan(text: 'where yours is trapped',
                   style: GoogleFonts.inter(
                     color: Onb.danger, fontWeight: FontWeight.w700)),
                 const TextSpan(text: '.'),
@@ -1540,13 +1543,17 @@ class _StrugglesStep extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  12 · EMPATHY / 89% PROOF
+//  THE SCIENCE — 24–72 HOURS. Replaces the fabricated "89% of users" stat
+//  with a claim that is actually true, anchored to THEIR before/after pair
+//  (gender-aware). The number sells because it is real and fast.
 // ═══════════════════════════════════════════════════════════════════════════
-class _EmpathyStep extends StatelessWidget {
+class _ScienceStep extends StatelessWidget {
   final double progress;
+  final String? gender;
   final VoidCallback onBack, onNext;
-  const _EmpathyStep({
+  const _ScienceStep({
     required this.progress,
+    required this.gender,
     required this.onBack,
     required this.onNext,
   });
@@ -1558,74 +1565,129 @@ class _EmpathyStep extends StatelessWidget {
       onBack: onBack,
       footer: OnbCta(label: 'Continue', onTap: onNext),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
-          const OnbHeadline(text: 'We get it.', size: 30),
-          const SizedBox(height: 28),
-          SizedBox(
-            width: 190, height: 190,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CustomPaint(
-                  size: const Size(190, 190),
-                  painter: _RingArcPainter(progress: 0.89, color: Onb.primary)),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('89%',
-                      style: GoogleFonts.poppins(
-                        color: Onb.primaryLite, fontSize: 46, height: 1,
-                        fontWeight: FontWeight.w800, letterSpacing: -2)),
-                    Text('of users',
-                      style: GoogleFonts.inter(
-                        color: Onb.grey, fontSize: 13, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: Onb.card,
-              borderRadius: BorderRadius.circular(100),
-              border: Border.all(color: Onb.cardBorder)),
-            child: Text('feel more attractive & confident',
-              style: GoogleFonts.inter(
-                color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
-          ),
-          const SizedBox(height: 14),
-          Text('after 28 days of following their personal plan.',
-            textAlign: TextAlign.center,
+          const SizedBox(height: 8),
+          Text('24–72',
+            style: GoogleFonts.poppins(
+              color: Onb.primaryLite,
+              fontSize: 62, height: 1, fontWeight: FontWeight.w800,
+              letterSpacing: -2)),
+          Text('HOURS',
             style: GoogleFonts.inter(
-              color: Onb.grey, fontSize: 14, height: 1.4, fontWeight: FontWeight.w500)),
+              color: Onb.grey,
+              fontSize: 13, letterSpacing: 4.5,
+              fontWeight: FontWeight.w800)),
+          const SizedBox(height: 14),
+          Text(
+            'That\u2019s how fast facial water retention starts to clear '
+            'once the cause is removed. Not months in the gym — days of '
+            'running the right system.',
+            style: GoogleFonts.inter(
+              color: Onb.grey, fontSize: 15, height: 1.5,
+              fontWeight: FontWeight.w500)),
+          const SizedBox(height: 18),
+          _PaywallBeforeAfter(female: gender == 'f'),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Icon(Icons.bolt_rounded, color: Onb.primaryLite, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Your plan removes the cause. The mirror does the rest.',
+                  style: GoogleFonts.inter(
+                    color: Colors.white, fontSize: 13.5, height: 1.35,
+                    fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-class _RingArcPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-  const _RingArcPainter({required this.progress, required this.color});
+// ═══════════════════════════════════════════════════════════════════════════
+//  PROTOCOL HERO — welcome slide 3. The protocol list from our old paywall,
+//  drawn as an in-app preview card: six real levers with why-lines. Sells
+//  the SYSTEM, not a stock spa photo.
+// ═══════════════════════════════════════════════════════════════════════════
+class _ProtocolHero extends StatelessWidget {
+  const _ProtocolHero();
+
+  static const _rows = <(IconData, String, String)>[
+    (Icons.ac_unit_rounded,     'Morning flush',   'Ice dunk + lymph drain. Visible within days.'),
+    (Icons.grain_rounded,       'Sodium control',  'The #1 driver of facial water retention, capped.'),
+    (Icons.eco_rounded,         'Potassium target','The counter-ion that flushes sodium out.'),
+    (Icons.water_drop_rounded,  'Hydration engine','2.5–3L daily — the flush signal.'),
+    (Icons.bakery_dining_rounded,'Glycogen watch', 'Each gram of carbs binds 3g of water. Managed.'),
+    (Icons.bedtime_rounded,     'Night drain',     'Elevated sleep + 7–9h. Cortisol face, gone.'),
+  ];
+
   @override
-  void paint(Canvas canvas, Size size) {
-    final c = (Offset.zero & size).center;
-    final r = (math.min(size.width, size.height) - 14) / 2;
-    final track = Paint()
-      ..style = PaintingStyle.stroke..strokeWidth = 13
-      ..strokeCap = StrokeCap.round..color = Onb.card;
-    canvas.drawArc(Rect.fromCircle(center: c, radius: r), -math.pi/2, math.pi*2, false, track);
-    final arc = Paint()
-      ..style = PaintingStyle.stroke..strokeWidth = 13
-      ..strokeCap = StrokeCap.round..color = color;
-    canvas.drawArc(Rect.fromCircle(center: c, radius: r), -math.pi/2, math.pi*2*progress, false, arc);
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [Onb.cardSel, Onb.bg]),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < _rows.length; i++) ...[
+            if (i > 0) const SizedBox(height: 6),
+            Expanded(child: _protoRow(_rows[i], i)),
+          ],
+        ],
+      ),
+    );
   }
-  @override
-  bool shouldRepaint(_RingArcPainter old) => old.progress != progress;
+
+  Widget _protoRow((IconData, String, String) row, int i) {
+    final (icon, title, body) = row;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      decoration: BoxDecoration(
+        color: Onb.card.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Onb.cardBorder, width: 0.8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 30, height: 30,
+            decoration: BoxDecoration(
+              color: Onb.primary.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(9)),
+            alignment: Alignment.center,
+            child: Icon(icon, color: Onb.primaryLite, size: 16),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    color: Colors.white, fontSize: 12.5,
+                    fontWeight: FontWeight.w800)),
+                Text(body,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    color: Onb.grey, fontSize: 10, height: 1.2,
+                    fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+          const Icon(Icons.check_circle_rounded,
+            color: Onb.primaryLite, size: 15),
+        ],
+      ),
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1788,15 +1850,15 @@ class _RoutineGraphStep extends StatelessWidget {
                 color: Onb.primaryLite, fontSize: 28, height: 1.15,
                 fontWeight: FontWeight.w800, letterSpacing: -0.5),
               children: const [
-                TextSpan(text: 'A real routine drains you '),
-                TextSpan(text: '4× faster.',
+                TextSpan(text: 'Tips fade. '),
+                TextSpan(text: 'Systems compound.',
                   style: TextStyle(color: Colors.white)),
               ],
             ),
           ),
           const SizedBox(height: 10),
-          Text('Most people never know which routine actually suits '
-              'their face. Yours is built from your scan.',
+          Text('Your plan is built from your scan and your answers — '
+              'run it daily and the drain compounds.',
             style: GoogleFonts.inter(
               color: Onb.grey, fontSize: 15, height: 1.45,
               fontWeight: FontWeight.w500)),
