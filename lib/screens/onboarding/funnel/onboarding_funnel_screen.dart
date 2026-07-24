@@ -13,17 +13,19 @@ import 'onboarding_kit.dart';
 
 /// THE DEPUFF FUNNEL — the masterful emotional onboarding.
 ///
-/// A single PageView drives all 15 steps so the progress bar, back arrow,
+/// A single PageView drives all 20 steps so the progress bar, back arrow,
 /// and shared answers all live in one place:
 ///
-///   0–2  Welcome carousel (Face Scan / Food / Routines)
-///   3    Gender      4  Name       5  Shock stat + before/after
-///   6    Social proof 7 Goals      8  Water intake (glass fill)
-///   9    Sleep       10 Pain points 11 Struggles
-///   12   Empathy 89% 13 Identity fork 14 Routine value graph
+///   0–2  Welcome carousel (slider / food scan / routine)
+///   3    Gender        4  Name         5  Familiarity
+///   6    Shock stat    7  Social proof 8  Goals
+///   9    Water        10  Sleep       11  Puffy time
+///  12    Salt habits  13  Pain points 14  Struggles
+///  15    Photos Q     16  Empathy 89% 17  Identity fork
+///  18    Commitment   19  Routine value graph
 ///
-/// The last step hands off to AI-consent → scan → report (the results /
-/// plan-ready payoff) → paywall.
+/// The last step hands off to AI-consent → scan → PROCESSING THEATRE
+/// (big fake render/scores loading) → paywall → pay → report.
 class OnboardingFunnelScreen extends StatefulWidget {
   const OnboardingFunnelScreen({super.key});
 
@@ -36,7 +38,7 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
   int _i = 0;
 
   // The full designed funnel length (used only to scale the progress bar).
-  static const int _kPlannedSteps = 15;
+  static const int _kPlannedSteps = 20;
 
   // Answers held in memory during the funnel; persisted on each change so a
   // mid-funnel kill doesn't lose them.
@@ -70,9 +72,8 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       _pc.previousPage(
         duration: const Duration(milliseconds: 320),
         curve: Curves.easeOutCubic);
-    } else {
-      context.go('/intro');
     }
+    // Step 0 has nothing before it any more — the intro reel is gone.
   }
 
   Future<void> _finishFunnel() async {
@@ -119,8 +120,10 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
   static String _stepName(int i) {
     const names = [
       'welcome_scan', 'welcome_food', 'welcome_routine', 'gender', 'name',
-      'shock_stat', 'social_proof', 'goals', 'water', 'sleep', 'pain_points',
-      'struggles', 'empathy', 'identity_fork', 'routine_graph',
+      'familiarity', 'shock_stat', 'social_proof', 'goals', 'water', 'sleep',
+      'puffy_time', 'salt_habits', 'pain_points', 'struggles',
+      'photos_feeling', 'empathy', 'identity_fork', 'commitment',
+      'routine_graph',
     ];
     return (i >= 0 && i < names.length) ? names[i] : 'step_$i';
   }
@@ -200,7 +203,22 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         },
       ),
 
-      // 5 · SHOCK STAT + BEFORE/AFTER
+      // 5 · FAMILIARITY — how deep are they already in?
+      _QuickQStep(
+        progress: _progressFor(here()),
+        onBack: _back,
+        headline: 'How familiar are you with ',
+        emphasis: 'debloating?',
+        sub: 'We calibrate the plan to where you are.',
+        options: const [
+          (emoji: '🌱', label: "New to it — what's water weight?"),
+          (emoji: '🧪', label: 'Tried a few things, nothing stuck'),
+          (emoji: '🎯', label: 'I know my stuff — make it sharper'),
+        ],
+        onPick: (_) => _next(),
+      ),
+
+      // 6 · SHOCK STAT + BEFORE/AFTER
       _ShockStatStep(
         progress: _progressFor(here()),
         gender: _gender,
@@ -259,7 +277,38 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         },
       ),
 
-      // 10 · PAIN-POINT REPORT
+      // 11 · WHEN IS IT WORST?
+      _QuickQStep(
+        progress: _progressFor(here()),
+        onBack: _back,
+        headline: 'When is your face ',
+        emphasis: 'puffiest?',
+        sub: 'Timing tells us what\'s driving the retention.',
+        options: const [
+          (emoji: '🌅', label: 'Mornings — I wake up swollen'),
+          (emoji: '🌙', label: 'Evenings — it builds all day'),
+          (emoji: '📆', label: 'All day, every day'),
+          (emoji: '🎲', label: 'Random — I can\'t predict it'),
+        ],
+        onPick: (_) => _next(),
+      ),
+
+      // 12 · SALT HABITS
+      _QuickQStep(
+        progress: _progressFor(here()),
+        onBack: _back,
+        headline: 'How often do you eat ',
+        emphasis: 'takeaway or restaurant food?',
+        sub: 'Hidden sodium is the #1 bloat trigger.',
+        options: const [
+          (emoji: '🥗', label: 'Rarely — I cook most meals'),
+          (emoji: '🍜', label: '1–2 times a week'),
+          (emoji: '🍔', label: 'Most days, honestly'),
+        ],
+        onPick: (_) => _next(),
+      ),
+
+      // 13 · PAIN-POINT REPORT
       _PainPointsStep(
         progress: _progressFor(here()),
         onBack: _back,
@@ -282,7 +331,22 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         },
       ),
 
-      // 12 · EMPATHY / 89% PROOF
+      // 15 · PHOTOS FEELING
+      _QuickQStep(
+        progress: _progressFor(here()),
+        onBack: _back,
+        headline: 'How do you feel when you see yourself ',
+        emphasis: 'in photos?',
+        sub: 'Be honest — this stays between us.',
+        options: const [
+          (emoji: '😎', label: 'Confident — most angles work'),
+          (emoji: '🤔', label: 'Depends on the day (and the salt)'),
+          (emoji: '🙈', label: 'I avoid photos when I can'),
+        ],
+        onPick: (_) => _next(),
+      ),
+
+      // 16 · EMPATHY / 89% PROOF
       _EmpathyStep(
         progress: _progressFor(here()),
         onBack: _back,
@@ -292,11 +356,19 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       // 13 · IDENTITY FORK
       _IdentityForkStep(
         progress: _progressFor(here()),
+        gender: _gender,
         onBack: _back,
         onNext: _next,
       ),
 
-      // 14 · ROUTINE VALUE GRAPH → hands off to the scan
+      // 18 · COMMITMENT PLEDGE
+      _CommitStep(
+        progress: _progressFor(here()),
+        onBack: _back,
+        onNext: _next,
+      ),
+
+      // 19 · ROUTINE VALUE GRAPH → hands off to the scan
       _RoutineGraphStep(
         progress: _progressFor(here()),
         onBack: _back,
@@ -560,6 +632,150 @@ class _CalloutLinePainter extends CustomPainter {
   bool shouldRepaint(_CalloutLinePainter old) => old.lines != lines;
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  QUICK QUESTION — single-select step. Tap an option → advance. Used for
+//  the five "hold them" questions bro pulled from the 30-screen list
+//  (familiarity / puffy time / salt habits / photos feeling).
+// ═══════════════════════════════════════════════════════════════════════════
+class _QuickQStep extends StatelessWidget {
+  final double progress;
+  final String headline;
+  final String emphasis;
+  final String sub;
+  final List<({String emoji, String label})> options;
+  final ValueChanged<String> onPick;
+  final VoidCallback onBack;
+  const _QuickQStep({
+    required this.progress,
+    required this.headline,
+    required this.emphasis,
+    required this.sub,
+    required this.options,
+    required this.onPick,
+    required this.onBack,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OnbScaffold(
+      progress: progress,
+      onBack: onBack,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          OnbHeadline(
+            text: headline,
+            emphasis: emphasis,
+            align: TextAlign.start,
+            sub: sub),
+          const SizedBox(height: 22),
+          for (final o in options) ...[
+            OnbOptionRow(
+              emoji: o.emoji,
+              label: o.label,
+              onTap: () => onPick(o.label)),
+            const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  COMMITMENT PLEDGE — the deal-making beat right before the scan hand-off.
+// ═══════════════════════════════════════════════════════════════════════════
+class _CommitStep extends StatelessWidget {
+  final double progress;
+  final VoidCallback onBack, onNext;
+  const _CommitStep({
+    required this.progress,
+    required this.onBack,
+    required this.onNext,
+  });
+
+  static const _pledges = [
+    'Run the daily system - 5 minutes a day',
+    'Scan my face so progress is measured, not guessed',
+    'Give it 7 days before I judge anything',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return OnbScaffold(
+      progress: progress,
+      onBack: onBack,
+      footer: OnbCta(label: 'I\'m in — let\'s drain it', onTap: onNext),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          const OnbHeadline(
+            text: 'Make the deal with ',
+            emphasis: 'yourself.',
+            align: TextAlign.start,
+            sub: 'The face changes when the habits do. Three promises:'),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+            decoration: BoxDecoration(
+              color: Onb.card,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: Onb.primary.withValues(alpha: 0.45), width: 1.2),
+            ),
+            child: Column(
+              children: [
+                for (var i = 0; i < _pledges.length; i++) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 26, height: 26,
+                        decoration: BoxDecoration(
+                          color: Onb.primary.withValues(alpha: 0.18),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Onb.primary.withValues(alpha: 0.6),
+                            width: 1.2),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.check_rounded,
+                          color: Onb.primaryLite, size: 15),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 3),
+                          child: Text(_pledges[i],
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 14.5, height: 1.35,
+                              fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (i != _pledges.length - 1) const SizedBox(height: 16),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Center(
+            child: Text('Next: your first face scan.',
+              style: GoogleFonts.inter(
+                color: Onb.grey, fontSize: 13.5,
+                fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Dots extends StatelessWidget {
   final int count, active;
   const _Dots({required this.count, required this.active});
@@ -803,10 +1019,9 @@ class _ShockStatStep extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          // Same before/after visual as the paywall (beforeafter.jpg,
-          // 914×778 with the split baked in) so onboarding and paywall
-          // tell one consistent story.
-          const _PaywallBeforeAfter(),
+          // Same before/after visual as the paywall — the split with the
+          // seam baked in. Gender-aware: women see the female pair.
+          _PaywallBeforeAfter(female: gender == 'f'),
           const SizedBox(height: 20),
           RichText(
             text: TextSpan(
@@ -836,7 +1051,8 @@ class _ShockStatStep extends StatelessWidget {
 /// image (914×778) with the split baked in. Shown here so the onboarding
 /// promise and the paywall promise are visually identical.
 class _PaywallBeforeAfter extends StatelessWidget {
-  const _PaywallBeforeAfter();
+  final bool female;
+  const _PaywallBeforeAfter({this.female = false});
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
@@ -847,7 +1063,9 @@ class _PaywallBeforeAfter extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             Image.asset(
-              'assets/marketing/beforeafter.jpg',
+              female
+                  ? 'assets/marketing/beforeafter_f.jpg'
+                  : 'assets/marketing/beforeafter.jpg',
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(
                 color: Onb.card,
@@ -1506,15 +1724,23 @@ class _RingArcPainter extends CustomPainter {
 // ═══════════════════════════════════════════════════════════════════════════
 class _IdentityForkStep extends StatelessWidget {
   final double progress;
+  final String? gender;
   final VoidCallback onBack, onNext;
   const _IdentityForkStep({
     required this.progress,
+    required this.gender,
     required this.onBack,
     required this.onNext,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Gender-aware pair — women fork between the female faces.
+    final f = gender == 'f';
+    final beforeAsset =
+        f ? 'assets/marketing/before_f.jpg' : 'assets/marketing/before.jpg';
+    final afterAsset =
+        f ? 'assets/marketing/after_f.jpg' : 'assets/marketing/after.jpg';
     return OnbScaffold(
       progress: progress,
       onBack: onBack,
@@ -1531,7 +1757,7 @@ class _IdentityForkStep extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: _ForkCard(
-                asset: 'assets/marketing/before.jpg',
+                asset: beforeAsset,
                 tag: 'Bloated now', color: Onb.danger,
                 bullets: const [
                   'Wake up puffy',
@@ -1540,7 +1766,7 @@ class _IdentityForkStep extends StatelessWidget {
                 ])),
               const SizedBox(width: 12),
               Expanded(child: _ForkCard(
-                asset: 'assets/marketing/after.jpg',
+                asset: afterAsset,
                 tag: 'Your glow-up', color: Onb.success,
                 bullets: const [
                   'Wake up drained',

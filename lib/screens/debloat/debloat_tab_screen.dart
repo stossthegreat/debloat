@@ -113,7 +113,7 @@ class _DebloatTabScreenState extends State<DebloatTabScreen>
                           const SizedBox(width: 8),
                         ],
                         _CircleIcon(
-                          icon: Icons.tune,
+                          icon: Icons.more_horiz_rounded,
                           onTap: () => context.push('/settings'),
                         ),
                       ],
@@ -488,27 +488,32 @@ class _StreakChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.brand,
-        borderRadius: BorderRadius.circular(99),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.brand.withValues(alpha: 0.45),
-            blurRadius: 14),
-        ],
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.brand.withValues(alpha: 0.55), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.local_fire_department_rounded,
-              color: Color(0xFF03181C), size: 18),
+          const Icon(Icons.water_drop_rounded,
+              color: AppColors.brand, size: 14),
           const SizedBox(width: 5),
           Text('$days',
+            style: GoogleFonts.spaceGrotesk(
+              color: Colors.white,
+              fontSize: 15, height: 1,
+              fontWeight: FontWeight.w800,
+            )),
+          const SizedBox(width: 4),
+          Text(days == 1 ? 'DAY' : 'DAYS',
             style: GoogleFonts.inter(
-              color: const Color(0xFF03181C),
-              fontSize: 14, height: 1,
-              fontWeight: FontWeight.w900,
+              color: AppColors.textTertiary,
+              fontSize: 8.5, height: 1,
+              letterSpacing: 1.4,
+              fontWeight: FontWeight.w800,
             )),
         ],
       ),
@@ -533,11 +538,11 @@ class _CircleIcon extends StatelessWidget {
           width: 38, height: 38,
           decoration: BoxDecoration(
             color: AppColors.surface1,
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.surface3, width: 0.6),
           ),
           alignment: Alignment.center,
-          child: Icon(icon, size: 18, color: AppColors.textSecondary),
+          child: Icon(icon, size: 20, color: AppColors.textSecondary),
         ),
       ),
     );

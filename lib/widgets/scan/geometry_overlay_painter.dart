@@ -185,8 +185,8 @@ class GeometryOverlayPainter extends CustomPainter {
         }
         _drawTopTicker(canvas, size,
           progress >= 0.90
-            ? '◆ LOCK ACQUIRED  ·  BLOAT MAPPED'
-            : '◉ READING YOUR BLOAT  ·  FLUID / JAW / CHEEKS');
+            ? 'MAPPED — WATER WEIGHT LOCATED'
+            : 'DRAIN CHECK RUNNING — FLUID · JAW · CHEEKS');
         _drawBottomMeasurementStream(canvas, size);
         break;
 
@@ -203,8 +203,8 @@ class GeometryOverlayPainter extends CustomPainter {
         _drawRotateCue(canvas, size, leftwards: wantLeftCue);
         _drawTopTicker(canvas, size,
           wantLeftCue
-            ? '↺ TURN SLOWLY LEFT · PROFILE INCOMING'
-            : '↻ TURN SLOWLY RIGHT · CAPTURING LAST ANGLE');
+            ? '↺ EASE LEFT — SIDE PASS'
+            : '↻ EASE RIGHT — LAST SIDE PASS');
         break;
 
       case ScanPhase.capturing:
@@ -215,7 +215,7 @@ class GeometryOverlayPainter extends CustomPainter {
         }
         _drawCaptureAperture(canvas, size);
         if (countdown > 0) _drawGlitchCountdown(canvas, size);
-        _drawTopTicker(canvas, size, '▣ CAPTURING REFERENCE FRAME  ·  HOLD STILL');
+        _drawTopTicker(canvas, size, 'FREEZE — LOCKING YOUR BASELINE');
         break;
 
       case ScanPhase.analysing:
@@ -224,7 +224,7 @@ class GeometryOverlayPainter extends CustomPainter {
           _drawBoneStructure(canvas, size, pulseBoost: true);
         }
         _drawAnalysingShockwaves(canvas, size);
-        _drawTopTicker(canvas, size, '◈ COMPOSITING  ·  BUILDING YOUR DEBLOAT READ');
+        _drawTopTicker(canvas, size, 'STITCHING YOUR DRAIN REPORT');
         break;
     }
   }
@@ -1357,13 +1357,13 @@ class GeometryOverlayPainter extends CustomPainter {
 
         // Label — "SCANNING FOREHEAD..." right side, animating in
         _drawBeamLabel(canvas, size, y,
-          text: 'SCANNING $label...',
+          text: 'READING $label…',
           color: _cGoldHi, alpha: 0.95,
           rightSide: true);
       } else if (locked) {
         // Locked — a checkmark + "LOCKED" on left side
         _drawBeamLabel(canvas, size, y,
-          text: '✓ $label',
+          text: '$label — MAPPED',
           color: _cGoldHi, alpha: 0.6,
           rightSide: false);
       }
@@ -1473,10 +1473,10 @@ class GeometryOverlayPainter extends CustomPainter {
     final dir = leftwards ? -1 : 1;
     final arrowPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.0
+      ..strokeWidth = 3.2
       ..strokeCap = StrokeCap.round
-      ..color = _cGoldHi.withValues(alpha: 0.88)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+      ..color = _cWhite.withValues(alpha: 0.92)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 1.5);
     canvas.drawArc(
       Rect.fromCircle(center: Offset.zero, radius: r),
       leftwards ? math.pi * 1.2 : -math.pi * 0.2,
@@ -1502,18 +1502,18 @@ class GeometryOverlayPainter extends CustomPainter {
     canvas.drawLine(tip, p1, headPaint);
     canvas.drawLine(tip, p2, headPaint);
 
-    // Center label
+    // Center label — white on a soft cyan glow (was cyan-on-cyan),
+    // smaller tracking. Same words, same geometry, new dress.
     final tp = TextPainter(
       text: TextSpan(
         text: leftwards ? 'TURN LEFT' : 'TURN RIGHT',
         style: TextStyle(
-          color: _cGoldHi,
-          fontSize: 15,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 4.5,
-          fontFamilyFallback: const ['monospace'],
+          color: _cWhite,
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 3.0,
           shadows: [
-            Shadow(color: _cGold.withValues(alpha: 0.9), blurRadius: 10),
+            Shadow(color: _cCyan.withValues(alpha: 0.9), blurRadius: 12),
           ],
         ),
       ),
@@ -1526,7 +1526,7 @@ class GeometryOverlayPainter extends CustomPainter {
     // Sub-instruction
     final sub = TextPainter(
       text: const TextSpan(
-        text: 'hold — lock acquiring',
+        text: 'keep turning — locking your side profile',
         style: TextStyle(
           color: Color(0xFFF7F7F9),
           fontSize: 12,
@@ -1692,7 +1692,7 @@ class GeometryOverlayPainter extends CustomPainter {
       canvas.scale(scale, scale);
       final tp = TextPainter(
         text: TextSpan(
-          text: '◆ LOCK ◆',
+          text: '— MAPPED —',
           style: TextStyle(
             color: _cGoldHi.withValues(alpha: labelOpacity),
             fontSize: 26,
@@ -1820,7 +1820,7 @@ class GeometryOverlayPainter extends CustomPainter {
     // Small status text near top-left of the bracket
     final tp = TextPainter(
       text: TextSpan(
-        text: 'FACE LOCK ◉',
+        text: '◉ LOCKED IN',
         style: TextStyle(
           color: _cGold.withValues(alpha: 0.85 * intensity),
           fontSize: 8,

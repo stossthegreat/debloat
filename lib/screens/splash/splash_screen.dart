@@ -42,7 +42,10 @@ class _SplashScreenState extends State<SplashScreen> {
     //
     // 2) ONBOARDED with gender → returning user → /home.
     if (!onboarded) {
-      context.go('/intro');
+      // Intro reel KILLED per bro — first launch drops straight into
+      // the new question funnel. (/intro route still exists if we
+      // ever want the reel back.)
+      context.go('/onboarding');
     } else if (!hasGender) {
       context.go('/onboarding/gender');
     } else {

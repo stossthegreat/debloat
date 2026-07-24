@@ -11,7 +11,6 @@ import '../../config/dev_flags.dart';
 import '../../services/analytics_service.dart';
 import '../../services/local_store_service.dart';
 import '../../services/purchase_service.dart';
-import '../../services/review_prompt_service.dart';
 import '../../theme/app_colors.dart';
 
 /// Debloat OS paywall — "paywall-final" carousel.
@@ -92,6 +91,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
   // panel becomes visible so the sub-widget restarts its animation.
   int _ladderRun = 0;
 
+  // 'm' | 'f' | null — picked up from onboarding so the hero split
+  // shows a transformation that matches the user.
+  String? _gender;
+
   @override
   void initState() {
     super.initState();
@@ -125,6 +128,11 @@ class _PaywallScreenState extends State<PaywallScreen> {
     AnalyticsService.paywallShown(
         (widget.context?['afterPurchase'] as String?) ?? 'standalone');
     _loadOfferings();
+    // Gender-aware hero — women see the female before/after split.
+    // ignore: discarded_futures
+    LocalStoreService.userGender().then((g) {
+      if (mounted && g != null) setState(() => _gender = g);
+    });
     // (Auto-tour removed with the old carousel — the new paywall is a
     // single static screen, so there's no PageView to animate.)
     _autoUnlockIfAlreadyPro();
@@ -366,8 +374,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
     } else {
       context.go('/home');
     }
-    // ignore: discarded_futures
-    ReviewPromptService.maybePromptAfterPurchase(context);
+    // Review popup COMMENTED OUT per bro — it can route to the OLD
+    // Mirrorly listing. Re-enable with the Debloat OS App Store ID.
+    // // ignore: discarded_futures
+    // ReviewPromptService.maybePromptAfterPurchase(context);
   }
 
   void _close() {
@@ -587,7 +597,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/marketing/beforeafter.jpg',
+          Image.asset(
+            _gender == 'f'
+                ? 'assets/marketing/beforeafter_f.jpg'
+                : 'assets/marketing/beforeafter.jpg',
             fit: BoxFit.cover,
             alignment: const Alignment(0, -0.3),
             errorBuilder: (_, __, ___) => Container(color: _pvCard,
@@ -658,11 +671,13 @@ class _PaywallScreenState extends State<PaywallScreen> {
   }
 }
 
-// ── Violet paywall palette (matches the target mock) ────────────────────────
-const _pvBg         = Color(0xFF0D0B1A);
-const _pvViolet     = Color(0xFF6C4CF5);
-const _pvVioletLite = Color(0xFFA78BFA);
-const _pvCard       = Color(0xFF16132A);
+// ── Paywall palette — black & blue, matching the app (was violet).
+//    _pvViolet keeps its name to avoid churning ~40 call-sites; it is
+//    now the deep-blue CTA colour, with brand cyan as the accent.
+const _pvBg         = Color(0xFF05090B); // AppColors.base
+const _pvViolet     = Color(0xFF0EA5E9); // deep blue — buttons/CTA
+const _pvVioletLite = Color(0xFF22D3EE); // brand cyan — accents
+const _pvCard       = Color(0xFF0B1114); // AppColors.surface1
 
 /// One of the three hard-hitting outcomes sold under the headline.
 /// A violet icon tile, a bold promise, and the grey benefit line beneath it.

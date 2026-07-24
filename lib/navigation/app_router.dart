@@ -7,6 +7,7 @@ import '../screens/legal/legal_screen.dart';
 import '../screens/onboarding/ai_consent_screen.dart';
 import '../screens/onboarding/gender_pick_screen.dart';
 import '../screens/onboarding/intro_reel_screen.dart';
+import '../screens/onboarding/processing_screen.dart';
 import '../screens/onboarding/funnel/onboarding_funnel_screen.dart';
 import '../screens/paywall/paywall_screen.dart';
 import '../screens/protocol/protocol_screen.dart';
@@ -50,6 +51,19 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/onboarding/consent',
       builder: (_, __) => const AiConsentScreen(),
+    ),
+    // Post-scan processing theatre — big staged "rendering your
+    // debloated face / computing bloat scores" loading beat that sits
+    // between the first scan and the paywall. Routes pro users to
+    // /report, free users to /paywall with the payload stashed.
+    GoRoute(
+      path: '/onboarding/processing',
+      builder: (context, state) {
+        final extra = state.extra is Map<String, dynamic>
+            ? state.extra as Map<String, dynamic>
+            : const <String, dynamic>{};
+        return ProcessingScreen(payload: extra);
+      },
     ),
     GoRoute(
       path: '/paywall',
