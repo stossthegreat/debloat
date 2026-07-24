@@ -292,6 +292,7 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       // 13 · IDENTITY FORK
       _IdentityForkStep(
         progress: _progressFor(here()),
+        gender: _gender,
         onBack: _back,
         onNext: _next,
       ),
@@ -803,10 +804,9 @@ class _ShockStatStep extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          // Same before/after visual as the paywall (beforeafter.jpg,
-          // 914×778 with the split baked in) so onboarding and paywall
-          // tell one consistent story.
-          const _PaywallBeforeAfter(),
+          // Same before/after visual as the paywall — the split with the
+          // seam baked in. Gender-aware: women see the female pair.
+          _PaywallBeforeAfter(female: gender == 'f'),
           const SizedBox(height: 20),
           RichText(
             text: TextSpan(
@@ -836,7 +836,8 @@ class _ShockStatStep extends StatelessWidget {
 /// image (914×778) with the split baked in. Shown here so the onboarding
 /// promise and the paywall promise are visually identical.
 class _PaywallBeforeAfter extends StatelessWidget {
-  const _PaywallBeforeAfter();
+  final bool female;
+  const _PaywallBeforeAfter({this.female = false});
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
@@ -847,7 +848,9 @@ class _PaywallBeforeAfter extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             Image.asset(
-              'assets/marketing/beforeafter.jpg',
+              female
+                  ? 'assets/marketing/beforeafter_f.jpg'
+                  : 'assets/marketing/beforeafter.jpg',
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(
                 color: Onb.card,
@@ -1506,15 +1509,23 @@ class _RingArcPainter extends CustomPainter {
 // ═══════════════════════════════════════════════════════════════════════════
 class _IdentityForkStep extends StatelessWidget {
   final double progress;
+  final String? gender;
   final VoidCallback onBack, onNext;
   const _IdentityForkStep({
     required this.progress,
+    required this.gender,
     required this.onBack,
     required this.onNext,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Gender-aware pair — women fork between the female faces.
+    final f = gender == 'f';
+    final beforeAsset =
+        f ? 'assets/marketing/before_f.jpg' : 'assets/marketing/before.jpg';
+    final afterAsset =
+        f ? 'assets/marketing/after_f.jpg' : 'assets/marketing/after.jpg';
     return OnbScaffold(
       progress: progress,
       onBack: onBack,
@@ -1531,7 +1542,7 @@ class _IdentityForkStep extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: _ForkCard(
-                asset: 'assets/marketing/before.jpg',
+                asset: beforeAsset,
                 tag: 'Bloated now', color: Onb.danger,
                 bullets: const [
                   'Wake up puffy',
@@ -1540,7 +1551,7 @@ class _IdentityForkStep extends StatelessWidget {
                 ])),
               const SizedBox(width: 12),
               Expanded(child: _ForkCard(
-                asset: 'assets/marketing/after.jpg',
+                asset: afterAsset,
                 tag: 'Your glow-up', color: Onb.success,
                 bullets: const [
                   'Wake up drained',

@@ -92,6 +92,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
   // panel becomes visible so the sub-widget restarts its animation.
   int _ladderRun = 0;
 
+  // 'm' | 'f' | null — picked up from onboarding so the hero split
+  // shows a transformation that matches the user.
+  String? _gender;
+
   @override
   void initState() {
     super.initState();
@@ -125,6 +129,11 @@ class _PaywallScreenState extends State<PaywallScreen> {
     AnalyticsService.paywallShown(
         (widget.context?['afterPurchase'] as String?) ?? 'standalone');
     _loadOfferings();
+    // Gender-aware hero — women see the female before/after split.
+    // ignore: discarded_futures
+    LocalStoreService.userGender().then((g) {
+      if (mounted && g != null) setState(() => _gender = g);
+    });
     // (Auto-tour removed with the old carousel — the new paywall is a
     // single static screen, so there's no PageView to animate.)
     _autoUnlockIfAlreadyPro();
@@ -587,7 +596,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/marketing/beforeafter.jpg',
+          Image.asset(
+            _gender == 'f'
+                ? 'assets/marketing/beforeafter_f.jpg'
+                : 'assets/marketing/beforeafter.jpg',
             fit: BoxFit.cover,
             alignment: const Alignment(0, -0.3),
             errorBuilder: (_, __, ___) => Container(color: _pvCard,
