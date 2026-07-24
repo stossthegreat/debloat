@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../services/analytics_service.dart';
+import '../../services/local_store_service.dart';
+import '../../services/onboarding_store.dart';
 import '../../services/paywall_gate.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
@@ -40,6 +42,14 @@ class _ProcessingScreenState extends State<ProcessingScreen>
   late final AnimationController _t;
   bool _routed = false;
 
+  // ── Personalisation (onboarding scan only) ────────────────────────
+  // First scan = the onboarding conversion beat: stage 3 visibly
+  // builds a PERSONAL plan out of their funnel tick-boxes. Rescans
+  // get the generic wording — no stale onboarding echo.
+  bool _firstScan = false;
+  String _name = '';
+  List<String> _answerChips = const [];
+
   static const _totalMs = 9000;
 
   // Stage windows as fractions of the full run.
@@ -51,12 +61,39 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     super.initState();
     // ignore: discarded_futures
     AnalyticsService.onbStep('processing_theatre');
+    _loadPersonalisation();
     _t = AnimationController(
         vsync: this, duration: const Duration(milliseconds: _totalMs))
       ..addStatusListener((s) {
         if (s == AnimationStatus.completed) _route();
       })
       ..forward();
+  }
+
+  Future<void> _loadPersonalisation() async {
+    final prior = await LocalStoreService.loadScans();
+    final first = prior.isEmpty;
+    if (!first) {
+      if (mounted) setState(() => _firstScan = false);
+      return;
+    }
+    final name      = await OnboardingStore.name();
+    final goals     = await OnboardingStore.goals();
+    final water     = await OnboardingStore.waterLitres();
+    final sleep     = await OnboardingStore.sleepHours();
+    final struggles = await OnboardingStore.struggles();
+    if (!mounted) return;
+    setState(() {
+      _firstScan = true;
+      _name = name.trim();
+      _answerChips = [
+        if (goals.isNotEmpty) ...goals.take(2),
+        if (water > 0) '${water.toStringAsFixed(1)}L water / day',
+        if (sleep > 0) '${sleep.toStringAsFixed(0)}h sleep',
+        if (struggles.isNotEmpty)
+          '${struggles.length} struggle${struggles.length == 1 ? '' : 's'} logged',
+      ];
+    });
   }
 
   Future<void> _route() async {
@@ -99,16 +136,23 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     };
   }
 
-  static const _titles = [
-    'RENDERING YOUR\nDEBLOATED FACE',
-    'COMPUTING YOUR\nBLOAT SCORES',
-    'LOCKING YOUR\nDRAIN PLAN',
-  ];
-  static const _subs = [
-    'The AI is drawing the leaner, sharper you — the face under the bloat.',
-    'Jawline · cheeks · under-eye · fluid balance · trapped water.',
-    'Matching your answers to the routine that drains fastest.',
-  ];
+  List<String> get _titles => [
+        'RENDERING YOUR\nDEBLOATED FACE',
+        'COMPUTING YOUR\nBLOAT SCORES',
+        _firstScan
+            ? (_name.isNotEmpty
+                ? 'BUILDING ${_name.toUpperCase()}\u2019S\nPERSONAL PLAN'
+                : 'BUILDING YOUR\nPERSONAL PLAN')
+            : 'UPDATING YOUR\nDRAIN PLAN',
+      ];
+
+  List<String> get _subs => [
+        'The AI is drawing the leaner, sharper you — the face under the bloat.',
+        'Jawline · cheeks · under-eye · fluid balance · trapped water.',
+        _firstScan
+            ? 'Weighing every answer you gave — goals, water, sleep, struggles.'
+            : 'Refreshing your routine against today\u2019s read.',
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -193,9 +237,50 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                     localT: _stage == 1 ? _stageT : (_stage > 1 ? 1 : 0)),
                   const SizedBox(height: 12),
                   _StageRow(
-                    label: 'Personal drain plan',
+                    label: _firstScan
+                        ? 'Personal plan from your answers'
+                        : 'Drain plan update',
                     state: _stage == 2 ? 1 : 0,
                     localT: _stage == 2 ? _stageT : 0),
+
+                  // Onboarding scan only — their actual tick-box answers
+                  // flash in as chips while stage 3 "builds the plan",
+                  // so it visibly comes FROM what they told us.
+                  if (_firstScan && _stage == 2 && _answerChips.isNotEmpty) ...[
+                    const SizedBox(height: 18),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8, runSpacing: 8,
+                      children: [
+                        for (var i = 0; i < _answerChips.length; i++)
+                          if (_stageT > (i + 1) / (_answerChips.length + 1))
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.brand.withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(100),
+                                border: Border.all(
+                                  color: AppColors.brand.withValues(alpha: 0.45),
+                                  width: 0.8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.check_rounded,
+                                    color: AppColors.brand, size: 12),
+                                  const SizedBox(width: 5),
+                                  Text(_answerChips[i],
+                                    style: GoogleFonts.inter(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700)),
+                                ],
+                              ),
+                            ),
+                      ],
+                    ),
+                  ],
 
                   const SizedBox(height: 48),
                 ],

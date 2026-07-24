@@ -95,7 +95,9 @@ Output MUST be valid JSON with EXACTLY this shape. No markdown. No text outside 
   const userPrompt = 'Grade this meal/drink for facial bloat. Output the JSON per spec above. Estimate sodium for the portion actually shown in the photo.';
 
   const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
+    // gpt-4o-mini per bro — food scans are UNLIMITED for subscribers,
+    // so this is the highest-volume endpoint; mini reads a plate fine.
+    model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: systemPrompt },
       {

@@ -10,17 +10,17 @@ import '../../../theme/app_colors.dart';
 ///  system on the app's blue-black base so every step reads as one flow.
 /// ─────────────────────────────────────────────────────────────────────────
 
-/// Funnel accent palette — violet, layered on the app's existing base.
+/// Funnel accent palette — black & blue, matching the app (was violet).
 abstract final class Onb {
   static const bg          = AppColors.base;         // #05090B
-  static const primary     = Color(0xFF6C4CF5);      // violet CTA / fills
-  static const primaryLite = Color(0xFFA78BFA);      // big stats / emphasis
+  static const primary     = Color(0xFF0EA5E9);      // deep blue CTA / fills
+  static const primaryLite = Color(0xFF22D3EE);      // brand cyan emphasis
   static const danger      = Color(0xFFFF5F5F);      // "before" / negative
   static const success     = Color(0xFF4ADE9B);      // "after" / positive
-  static const card        = Color(0xFF16132A);      // option / info card
-  static const cardBorder  = Color(0xFF2A2444);
-  static const cardSel     = Color(0xFF241C4A);      // selected card fill
-  static const grey        = Color(0xFF9A9AB0);      // sub-copy
+  static const card        = Color(0xFF0B1114);      // option / info card
+  static const cardBorder  = Color(0xFF1B2A31);
+  static const cardSel     = Color(0xFF0C1B22);      // selected card fill
+  static const grey        = Color(0xFF9BA6AC);      // sub-copy
 }
 
 /// Full-screen scaffold: base bg, optional top bar (back arrow + progress),
