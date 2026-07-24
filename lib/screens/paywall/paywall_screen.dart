@@ -475,24 +475,24 @@ class _PaywallScreenState extends State<PaywallScreen> {
               child: Column(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(9),
                     child: Image.asset('assets/icons/appstore.png',
-                      width: 40, height: 40,
+                      width: 32, height: 32,
                       errorBuilder: (_, __, ___) => const Icon(
-                        Icons.face_rounded, color: Colors.white, size: 34)),
+                        Icons.face_rounded, color: Colors.white, size: 28)),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   Text('Debloat your face.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
-                      color: Colors.white, fontSize: 28, height: 1.1,
+                      color: Colors.white, fontSize: 24, height: 1.1,
                       fontWeight: FontWeight.w500)),
                   Text('Define your jawline.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
-                      color: Colors.white, fontSize: 28, height: 1.1,
+                      color: Colors.white, fontSize: 24, height: 1.1,
                       fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
                   // Three outcomes — the whole promise, sold hard.
                   Column(
                     children: const [
@@ -500,21 +500,21 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         icon: Icons.face_retouching_natural,
                         title: 'See your face debloated',
                         body: 'AI renders the leaner, sharper you — the face under the bloat.'),
-                      SizedBox(height: 12),
+                      SizedBox(height: 9),
                       _OutcomeRow(
                         icon: Icons.restaurant_rounded,
                         title: 'Scan any meal for bloat',
                         body: 'Point your camera at food — catch the hidden sodium before it puffs you up.'),
-                      SizedBox(height: 12),
+                      SizedBox(height: 9),
                       _OutcomeRow(
                         icon: Icons.water_drop_rounded,
                         title: 'Unlock your drain plan',
                         body: 'The exact daily routine to get there, built for your face.'),
                     ],
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 14),
                   _WeeklyPlanCard(price: price),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Text('$price per week · auto-renews · cancel anytime',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
@@ -531,7 +531,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
             child: Column(
               children: [
                 SizedBox(
-                  width: double.infinity, height: 62,
+                  width: double.infinity, height: 58,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(18),
@@ -591,8 +591,13 @@ class _PaywallScreenState extends State<PaywallScreen> {
   /// The full-bleed before/after hero — our beforeafter.jpg, split down
   /// the middle by a glowing violet beam, with DAY 1 / WEEK 8 chips.
   Widget _heroSplit() {
+    // Adaptive height — the whole paywall (hero + outcomes + plan card
+    // + CTA + links) must fit ONE screen with zero scrolling on a
+    // standard phone. ~31% of screen height, clamped for small/large.
+    final h = (MediaQuery.of(context).size.height * 0.31)
+        .clamp(230.0, 330.0);
     return SizedBox(
-      height: 380,
+      height: h,
       width: double.infinity,
       child: Stack(
         fit: StackFit.expand,
@@ -629,12 +634,12 @@ class _PaywallScreenState extends State<PaywallScreen> {
           ),
           // DAY 1 chip (left)
           Positioned(
-            left: 16, bottom: 96,
+            left: 16, bottom: 64,
             child: _dayChip('DAY 1', filled: false),
           ),
           // WEEK 8 chip (right)
           Positioned(
-            right: 16, bottom: 96,
+            right: 16, bottom: 64,
             child: _dayChip('WEEK 8', filled: true),
           ),
         ],

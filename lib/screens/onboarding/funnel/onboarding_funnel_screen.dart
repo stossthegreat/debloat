@@ -13,16 +13,16 @@ import 'onboarding_kit.dart';
 
 /// THE DEPUFF FUNNEL — the masterful emotional onboarding.
 ///
-/// A single PageView drives all 20 steps so the progress bar, back arrow,
+/// A single PageView drives all 19 steps so the progress bar, back arrow,
 /// and shared answers all live in one place:
 ///
 ///   0–2  Welcome carousel (slider / food scan / routine)
 ///   3    Gender        4  Name         5  Familiarity
-///   6    Shock stat    7  Social proof 8  Goals
-///   9    Water        10  Sleep       11  Puffy time
-///  12    Salt habits  13  Pain points 14  Struggles
-///  15    Photos Q     16  Empathy 89% 17  Identity fork
-///  18    Commitment   19  Routine value graph
+///   6    Shock stat    7  Goals        8  Water
+///   9    Sleep        10  Puffy time  11  Salt habits
+///  12    Pain points  13  Struggles   14  Photos Q
+///  15    Empathy 89%  16  Identity fork
+///  17    Commitment   18  Routine value graph
 ///
 /// The last step hands off to AI-consent → scan → PROCESSING THEATRE
 /// (big fake render/scores loading) → paywall → pay → report.
@@ -38,7 +38,7 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
   int _i = 0;
 
   // The full designed funnel length (used only to scale the progress bar).
-  static const int _kPlannedSteps = 20;
+  static const int _kPlannedSteps = 19;
 
   // Answers held in memory during the funnel; persisted on each change so a
   // mid-funnel kill doesn't lose them.
@@ -120,7 +120,7 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
   static String _stepName(int i) {
     const names = [
       'welcome_scan', 'welcome_food', 'welcome_routine', 'gender', 'name',
-      'familiarity', 'shock_stat', 'social_proof', 'goals', 'water', 'sleep',
+      'familiarity', 'shock_stat', 'goals', 'water', 'sleep',
       'puffy_time', 'salt_habits', 'pain_points', 'struggles',
       'photos_feeling', 'empathy', 'identity_fork', 'commitment',
       'routine_graph',
@@ -222,13 +222,6 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       _ShockStatStep(
         progress: _progressFor(here()),
         gender: _gender,
-        onBack: _back,
-        onNext: _next,
-      ),
-
-      // 6 · SOCIAL PROOF
-      _SocialProofStep(
-        progress: _progressFor(here()),
         onBack: _back,
         onNext: _next,
       ),
@@ -1101,90 +1094,6 @@ class _PaywallBeforeAfter extends StatelessWidget {
     child: Text(t, style: GoogleFonts.inter(
       color: c, fontSize: 11, letterSpacing: 1.4, fontWeight: FontWeight.w800)),
   );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  6 · SOCIAL PROOF
-// ═══════════════════════════════════════════════════════════════════════════
-class _SocialProofStep extends StatelessWidget {
-  final double progress;
-  final VoidCallback onBack, onNext;
-  const _SocialProofStep({
-    required this.progress,
-    required this.onBack,
-    required this.onNext,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return OnbScaffold(
-      progress: progress,
-      onBack: onBack,
-      footer: OnbCta(label: 'Continue', onTap: onNext),
-      child: Column(
-        children: [
-          const SizedBox(height: 24),
-          Text('100,000+',
-            style: GoogleFonts.poppins(
-              color: Onb.primaryLite,
-              fontSize: 52, height: 1, fontWeight: FontWeight.w800,
-              letterSpacing: -2)),
-          const SizedBox(height: 12),
-          const OnbHeadline(
-            text: 'people are already draining the bloat.\n',
-            emphasis: 'Are you?',
-            size: 24),
-          const SizedBox(height: 20),
-          Text('Most users see visible change in 28 days.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              color: Onb.grey, fontSize: 15, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 28),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _AvatarStack(),
-              const SizedBox(width: 12),
-              const Icon(Icons.star_rounded, color: Onb.primaryLite, size: 22),
-              const SizedBox(width: 4),
-              Text('4.9',
-                style: GoogleFonts.poppins(
-                  color: Colors.white, fontSize: 22,
-                  fontWeight: FontWeight.w800)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AvatarStack extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    const colors = [Onb.primary, Onb.primaryLite, Onb.success, Onb.danger, Color(0xFF38BDF8)];
-    return SizedBox(
-      width: 5 * 22.0 + 12,
-      height: 36,
-      child: Stack(
-        children: [
-          for (var i = 0; i < 5; i++)
-            Positioned(
-              left: i * 22.0,
-              child: Container(
-                width: 34, height: 34,
-                decoration: BoxDecoration(
-                  color: colors[i],
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Onb.bg, width: 2)),
-                child: const Icon(Icons.person_rounded,
-                  color: Colors.white70, size: 18),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
