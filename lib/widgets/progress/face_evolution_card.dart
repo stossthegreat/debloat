@@ -13,6 +13,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../models/scan_record.dart';
 import '../../services/analytics_service.dart';
 import '../../services/debloat_stats_service.dart';
+import '../../services/evolution_video_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 
@@ -236,6 +237,8 @@ class _FaceEvolutionCardState extends State<FaceEvolutionCard>
         beforePath: _day1.capturedImagePath!,
         afterPath: _sel.capturedImagePath!,
         afterLabel: _dayLabel(_sel),
+        scoreBefore: DebloatStatsService.compute(_day1.geometry).overall,
+        scoreAfter:  DebloatStatsService.compute(_sel.geometry).overall,
       );
     } finally {
       if (mounted) setState(() => _sharing = false);
@@ -663,27 +666,44 @@ class _FullscreenCompareState extends State<_FullscreenCompare> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  SHARE — exports an ANIMATED reveal clip (Day 1 → now) as a GIF and
-//  shares it. A GIF plays like a short video in iMessage / social and is
-//  built purely with the `image` package (already a dependency), so it
-//  needs no native video encoder. Falls back to a side-by-side JPG, then
-//  to the raw photos, so the share sheet always opens.
+//  SHARE — exports the branded MP4 reveal clip (Day 1 → now) built by
+//  EvolutionVideoService: full DEBLOAT OS wordmark, day chips, glowing
+//  sweep divider, "+N DRAINED SCORE" end card. A real video plays
+//  everywhere — iMessage, IG stories, TikTok, WhatsApp. Falls back to
+//  the GIF reveal, then a side-by-side JPG, then the raw photos, so the
+//  share sheet always opens.
 // ═══════════════════════════════════════════════════════════════════════════
 class FaceEvolutionShare {
   static Future<void> sharePair({
     required String beforePath,
     required String afterPath,
     required String afterLabel,
+    int scoreBefore = 0,
+    int scoreAfter = 0,
   }) async {
     final text = 'My Debloat OS face evolution. Day 1 → $afterLabel 💧→🗿';
     final dir = await getTemporaryDirectory();
     final stamp = DateTime.now().millisecondsSinceEpoch;
     final args = <String, String>{'before': beforePath, 'after': afterPath};
 
-    // 1) Animated GIF reveal — the "video". Encoded in a background
-    //    ISOLATE (compute) so decoding + 14 frames + GIF encoding never
-    //    hangs the UI — the old on-main-thread version froze and the
-    //    share sheet never appeared.
+    // 1) The real thing — branded MP4 via the native H.264 encoder.
+    try {
+      final mp4 = await EvolutionVideoService.buildRevealVideo(
+        beforePath: beforePath,
+        afterPath: afterPath,
+        dayLabel: afterLabel,
+        scoreBefore: scoreBefore,
+        scoreAfter: scoreAfter,
+      );
+      if (mp4 != null) {
+        await Share.shareXFiles(
+          [XFile(mp4, mimeType: 'video/mp4')], text: text);
+        return;
+      }
+    } catch (_) {/* fall through */}
+
+    // 2) Animated GIF reveal — legacy fallback if the native encoder is
+    //    unavailable (e.g. stale build without the channel).
     try {
       final bytes = await compute(encodeRevealGif, args);
       if (bytes != null && bytes.isNotEmpty) {
@@ -695,7 +715,7 @@ class FaceEvolutionShare {
       }
     } catch (_) {/* fall through */}
 
-    // 2) Static side-by-side JPG (also off-thread).
+    // 3) Static side-by-side JPG (also off-thread).
     try {
       final bytes = await compute(encodeJpgPair, args);
       if (bytes != null && bytes.isNotEmpty) {
@@ -707,7 +727,7 @@ class FaceEvolutionShare {
       }
     } catch (_) {/* fall through */}
 
-    // 3) Raw photos — guarantees the share sheet still opens.
+    // 4) Raw photos — guarantees the share sheet still opens.
     try {
       await Share.shareXFiles([
         XFile(beforePath, mimeType: 'image/jpeg'),

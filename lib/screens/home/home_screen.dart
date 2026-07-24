@@ -440,8 +440,10 @@ class _ScanHubTab extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
                 child: _DebloatReadCard(
+                  // Hard line-break so the tier sits on line 1 and "Facial
+                  // Bloat" on line 2 — mirrors the two-line PROJECTED side.
                   currentLabel:
-                      '${DebloatStatsService.compute(latest!.geometry).tier} Facial Bloat',
+                      '${DebloatStatsService.compute(latest!.geometry).tier}\nFacial Bloat',
                   percent:
                       DebloatReportService.compute(latest!.geometry).projectedPoints,
                   locked: false,
@@ -519,27 +521,42 @@ class _DebloatReadCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
+          // Two balanced bands so the card can never tilt: band 1 is the
+          // eyebrow + a FIXED two-line title box on each side (long tiers
+          // ellipsize instead of wrapping to a third line), band 2 is the
+          // two face glyphs + the arrow on one shared centreline.
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: _readCol(
+                child: _titleCol(
                   eyebrow: 'CURRENT',
                   title: locked ? '???\nFacial Bloat' : currentLabel,
-                  glyph: _FaceGlyph(
+                ),
+              ),
+              const SizedBox(width: 32),
+              Expanded(
+                child: _titleCol(
+                  eyebrow: 'PROJECTED',
+                  title: 'Sharper\nDefinition',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Expanded(
+                child: Center(
+                  child: _FaceGlyph(
                     color: AppColors.signalAmber, bloated: true),
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.only(top: 46),
-                child: Icon(Icons.arrow_forward_rounded,
-                  color: AppColors.textTertiary, size: 24),
-              ),
-              Expanded(
-                child: _readCol(
-                  eyebrow: 'PROJECTED',
-                  title: 'Sharper\nFacial Definition',
-                  glyph: _FaceGlyph(
+              const Icon(Icons.arrow_forward_rounded,
+                color: AppColors.textTertiary, size: 24),
+              const Expanded(
+                child: Center(
+                  child: _FaceGlyph(
                     color: AppColors.signalGreen, bloated: false),
                 ),
               ),
@@ -582,10 +599,9 @@ class _DebloatReadCard extends StatelessWidget {
     );
   }
 
-  Widget _readCol({
+  Widget _titleCol({
     required String eyebrow,
     required String title,
-    required Widget glyph,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -595,13 +611,18 @@ class _DebloatReadCard extends StatelessWidget {
             color: AppColors.textTertiary,
             fontSize: 10, letterSpacing: 1.8, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
-        Text(title,
-          style: GoogleFonts.spaceGrotesk(
-            color: AppColors.textPrimary,
-            fontSize: 20, height: 1.15,
-            fontWeight: FontWeight.w800, letterSpacing: -0.5)),
-        const SizedBox(height: 16),
-        glyph,
+        // Fixed two-line box: both sides reserve identical height, so the
+        // glyph row below always sits level no matter how the copy wraps.
+        SizedBox(
+          height: 46,
+          child: Text(title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.spaceGrotesk(
+              color: AppColors.textPrimary,
+              fontSize: 19, height: 1.18,
+              fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+        ),
       ],
     );
   }

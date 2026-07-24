@@ -756,47 +756,21 @@ class _ReportScreenState extends State<ReportScreen> {
 
           const SizedBox(height: Sp.xl),
 
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 52,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: AppColors.accent.withValues(alpha: 0.4)),
-                      foregroundColor: AppColors.textPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(Rd.lg)),
-                    ),
-                    onPressed: () => context.go('/home'),
-                    child: const Text('Done'),
-                  ),
-                ),
+          // Consult button removed per bro — the report ends on one clean
+          // exit. The daily system (Debloat tab) is the next step, not chat.
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: AppColors.accent.withValues(alpha: 0.4)),
+                foregroundColor: AppColors.textPrimary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(Rd.lg)),
               ),
-              const SizedBox(width: Sp.sm),
-              Expanded(
-                child: SizedBox(
-                  height: 52,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.red,
-                      foregroundColor: AppColors.base,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(Rd.lg)),
-                    ),
-                    onPressed: () => context.push(
-                      '/chat',
-                      extra: {
-                        'geometry':  widget.geometry,
-                        'imagePath': _savedImagePath,
-                      },
-                    ),
-                    child: const Text('Consult',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
-                  ),
-                ),
-              ),
-            ],
+              onPressed: () => context.go('/home'),
+              child: const Text('Done'),
+            ),
           ),
           const SizedBox(height: Sp.md),
         ],

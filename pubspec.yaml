@@ -1,7 +1,7 @@
 name: debloat_os
 description: "Debloat OS — the face under the bloat."
 publish_to: 'none'
-version: 1.0.0+22
+version: 1.0.0+23
 
 environment:
   sdk: ^3.8.0
