@@ -1,43 +1,34 @@
 # Onboarding funnel image assets
 
-Drop the generated images here with these **EXACT** filenames — the funnel
-references them by name. Until a file lands, that spot shows a clean,
-on-brand violet placeholder tile (a line-icon + "IMAGE COMING" caption),
-**not** an emoji. The moment you drop the real file in this folder it
-auto-bundles on the next build — no code or pubspec edit needed.
+Status after bro's first art drop (v1.0.0+27):
 
-## Welcome carousel — 3 images (4:5 portrait, ~1080×1350, .jpg)
-These are the first 3 hero screens. Full-bleed, dark violet-black mood so
-they blend into the funnel background.
+## ✅ RECEIVED — live in the app
+- `assets/marketing/before.jpg`      — bloated face (1080×1440)
+- `assets/marketing/after.jpg`       — drained face (1080×1440)
+- `assets/marketing/beforeafter.jpg` — composited split, bloated LEFT /
+                                       drained RIGHT, seam dead-centre
+                                       (paywall hero draws its violet
+                                       beam exactly there) (1096×932)
+- `welcome_food.jpg`                 — plate shot; onboarding overlays
+                                       the sodium callout lines + verdict
+                                       chip in code (1080×1080)
+- `welcome_routine.jpg`              — gua sha + roller (1080×1080)
 
-- **welcome_scan.jpg**    — marble Greek bust, 3/4 profile, glowing violet
-                            wireframe face-mesh with sparkle nodes. Sells
-                            "Face Scan".
-- **welcome_food.jpg**    — clean overhead meal shot (grilled salmon,
-                            greens, avocado — real food, appetising, bright
-                            against dark). Sells "Food Analysis".
-- **welcome_routine.jpg** — rose-quartz gua sha + jade face roller, water
-                            droplets, soft violet light. Sells "Daily
-                            Routines".
+Slide 1 of the welcome carousel no longer uses a static image — it's
+the interactive BeforeAfterSlider over before.jpg/after.jpg, divider
+starting at exactly 50%.
 
-## Gender select — 2 images (3:4 portrait, ~900×1200, .png)
-Shown side-by-side on the "who you are" screen. Ideally cut-out subjects
-fading to transparent at the base so they sit on the card cleanly.
+## 🔜 STILL WANTED (placeholders show until they land)
+- `welcome_scan.jpg`  — 4:5 (~1080×1350) .jpg — marble Greek bust, 3/4
+                        profile, glowing violet wireframe face-mesh.
+                        (Currently unused on slide 1 since the slider
+                        took over, but wired as its fallback and usable
+                        elsewhere.)
+- `gender_male.png`   — 3:4 (~900×1200) .png — male model, neutral top,
+                        calm studio, cut-out fading at base.
+- `gender_female.png` — 3:4 (~900×1200) .png — female model, same
+                        treatment.
 
-- **gender_male.png**     — male model, neutral top, calm studio light.
-- **gender_female.png**   — female model, neutral top, calm studio light.
-
-## Also used by onboarding (already referenced elsewhere)
-The shock-stat + identity-fork screens reuse the marketing before/after art
-from `assets/marketing/`:
-
-- **assets/marketing/beforeafter.jpg** — single combined bloated→debloated
-                            image, split baked in (~914×778). Also the
-                            paywall hero.
-- **assets/marketing/before.jpg**      — bloated face, 3:4 portrait.
-- **assets/marketing/after.jpg**       — same face debloated, 3:4 portrait.
-
----
-**Nothing here blocks the build.** Every reference has a placeholder
-fallback, so you can ship or TestFlight without these and drop the real art
-in whenever it's ready.
+Drop files into this folder (or assets/marketing/ for the pair) with
+these EXACT names — they auto-bundle on the next build, no code edit.
+Nothing here blocks a build; every slot has a clean violet placeholder.
