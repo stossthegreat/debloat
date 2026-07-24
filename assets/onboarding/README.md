@@ -18,16 +18,17 @@ Slide 1 of the welcome carousel no longer uses a static image — it's
 the interactive BeforeAfterSlider over before.jpg/after.jpg, divider
 starting at exactly 50%.
 
+## ✅ RECEIVED — drop 2 (v1.0.0+28)
+- `gender_male.jpg`   — male model portrait, 900×1200 (saved as JPEG,
+                        ~190KB vs 1.4MB PNG — no transparency needed).
+- `gender_female.jpg` — female model portrait, 900×1200.
+
 ## 🔜 STILL WANTED (placeholders show until they land)
 - `welcome_scan.jpg`  — 4:5 (~1080×1350) .jpg — marble Greek bust, 3/4
                         profile, glowing violet wireframe face-mesh.
                         (Currently unused on slide 1 since the slider
                         took over, but wired as its fallback and usable
                         elsewhere.)
-- `gender_male.png`   — 3:4 (~900×1200) .png — male model, neutral top,
-                        calm studio, cut-out fading at base.
-- `gender_female.png` — 3:4 (~900×1200) .png — female model, same
-                        treatment.
 
 Drop files into this folder (or assets/marketing/ for the pair) with
 these EXACT names — they auto-bundle on the next build, no code edit.

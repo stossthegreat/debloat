@@ -614,13 +614,13 @@ class _GenderStep extends StatelessWidget {
             children: [
               Expanded(child: _GenderCard(
                 icon: Icons.male_rounded, label: 'Male',
-                image: 'assets/onboarding/gender_male.png',
+                image: 'assets/onboarding/gender_male.jpg',
                 selected: selected == 'm',
                 onTap: () => onPick('m'))),
               const SizedBox(width: 14),
               Expanded(child: _GenderCard(
                 icon: Icons.female_rounded, label: 'Female',
-                image: 'assets/onboarding/gender_female.png',
+                image: 'assets/onboarding/gender_female.jpg',
                 selected: selected == 'f',
                 onTap: () => onPick('f'))),
             ],
