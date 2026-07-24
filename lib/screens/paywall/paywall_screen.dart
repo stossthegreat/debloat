@@ -483,13 +483,23 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       color: Colors.white, fontSize: 28, height: 1.1,
                       fontWeight: FontWeight.w900)),
                   const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  // Three outcomes — the whole promise, sold hard.
+                  Column(
                     children: const [
-                      _FeatureItem(icon: Icons.center_focus_weak_rounded, label: 'AI scans'),
-                      _FeatureItem(icon: Icons.article_outlined, label: 'Custom plan'),
-                      _FeatureItem(icon: Icons.repeat_rounded, label: 'Daily routine'),
-                      _FeatureItem(icon: Icons.lock_open_rounded, label: 'Cancel anytime'),
+                      _OutcomeRow(
+                        icon: Icons.face_retouching_natural,
+                        title: 'See your face debloated',
+                        body: 'AI renders the leaner, sharper you — the face under the bloat.'),
+                      SizedBox(height: 12),
+                      _OutcomeRow(
+                        icon: Icons.restaurant_rounded,
+                        title: 'Scan any meal for bloat',
+                        body: 'Point your camera at food — catch the hidden sodium before it puffs you up.'),
+                      SizedBox(height: 12),
+                      _OutcomeRow(
+                        icon: Icons.water_drop_rounded,
+                        title: 'Unlock your drain plan',
+                        body: 'The exact daily routine to get there, built for your face.'),
                     ],
                   ),
                   const SizedBox(height: 22),
@@ -654,21 +664,47 @@ const _pvViolet     = Color(0xFF6C4CF5);
 const _pvVioletLite = Color(0xFFA78BFA);
 const _pvCard       = Color(0xFF16132A);
 
-/// One feature in the row under the headline.
-class _FeatureItem extends StatelessWidget {
+/// One of the three hard-hitting outcomes sold under the headline.
+/// A violet icon tile, a bold promise, and the grey benefit line beneath it.
+class _OutcomeRow extends StatelessWidget {
   final IconData icon;
-  final String label;
-  const _FeatureItem({required this.icon, required this.label});
+  final String title;
+  final String body;
+  const _OutcomeRow({
+    required this.icon, required this.title, required this.body});
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: _pvVioletLite, size: 26),
-        const SizedBox(height: 8),
-        Text(label,
-          style: GoogleFonts.inter(
-            color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700)),
+        Container(
+          width: 44, height: 44,
+          decoration: BoxDecoration(
+            color: _pvViolet.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(
+              color: _pvViolet.withValues(alpha: 0.4), width: 1),
+          ),
+          alignment: Alignment.center,
+          child: Icon(icon, color: _pvVioletLite, size: 23),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                style: GoogleFonts.inter(
+                  color: Colors.white, fontSize: 15.5,
+                  height: 1.15, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 3),
+              Text(body,
+                style: GoogleFonts.inter(
+                  color: Colors.white.withValues(alpha: 0.62),
+                  fontSize: 12.5, height: 1.3, fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
       ],
     );
   }
