@@ -1356,16 +1356,16 @@ class _GlassPainter extends CustomPainter {
     final liqTop = h * (1 - fill);
     canvas.save();
     canvas.clipPath(path);
-    final liq = Paint()..color = const Color(0xFF6C4CF5).withValues(alpha: 0.85);
+    final liq = Paint()..color = const Color(0xFF0EA5E9).withValues(alpha: 0.85);
     canvas.drawRect(Rect.fromLTRB(0, liqTop, w, h), liq);
-    final liqLite = Paint()..color = const Color(0xFFA78BFA).withValues(alpha: 0.5);
+    final liqLite = Paint()..color = const Color(0xFF22D3EE).withValues(alpha: 0.5);
     canvas.drawRect(Rect.fromLTRB(0, liqTop, w, liqTop + 8), liqLite);
     canvas.restore();
     // outline
     final stroke = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5
-      ..color = const Color(0xFF2A2444);
+      ..color = const Color(0xFF1B2A31);
     canvas.drawPath(path, stroke);
   }
   @override
@@ -1941,14 +1941,14 @@ class _CurvePainter extends CustomPainter {
     canvas.drawPath(fill, Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        colors: [Color(0x556C4CF5), Color(0x006C4CF5)],
+        colors: [Color(0x550EA5E9), Color(0x000EA5E9)],
       ).createShader(Rect.fromLTWH(0, 0, w, h)));
     canvas.drawPath(path, Paint()
       ..style = PaintingStyle.stroke..strokeWidth = 3.5
-      ..strokeCap = StrokeCap.round..color = const Color(0xFF6C4CF5));
+      ..strokeCap = StrokeCap.round..color = const Color(0xFF0EA5E9));
     // start + end dots
     canvas.drawCircle(Offset(0, h * 0.9), 6, Paint()..color = const Color(0xFF9A9AB0));
-    canvas.drawCircle(Offset(w, h * 0.1), 7, Paint()..color = const Color(0xFFA78BFA));
+    canvas.drawCircle(Offset(w, h * 0.1), 7, Paint()..color = const Color(0xFF22D3EE));
   }
   @override
   bool shouldRepaint(_CurvePainter old) => false;

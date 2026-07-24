@@ -92,10 +92,10 @@ class _ReportScreenState extends State<ReportScreen> {
   // tricking users into thinking they were waiting for the Replicate
   // job that never fires here.
   static const _loadingCopy = [
-    'Reading skin micro-texture',
-    'Comparing structural archetypes',
-    'Locking identity anchors',
-    'Compiling the honest read',
+    'Tracing trapped fluid',
+    'Reading under-eye and cheeks',
+    'Measuring jawline definition',
+    'Compiling your drain report',
   ];
   int  _copyIdx       = 0;
   bool _slowResponse  = false; // flips true after 30s — shows
@@ -366,34 +366,91 @@ class _ReportScreenState extends State<ReportScreen> {
       );
     }
 
-    // Loading state. Bro: "the way it loads people don\'t actually
-    // know if it\'s really loading." Bigger spinner, step counter
-    // ("3 of 5"), an honest "this can take up to a minute" line so
-    // the user knows we\'re working not stuck, and the actual step
-    // text rotates every 2s as before.
-    return Padding(
+    // Loading state — v+32 restyle per bro: "black screen, make it
+    // look sik." Same logic (rotating step copy, honest line, the
+    // 20s STILL WORKING band) — only the dress changed: pure black,
+    // a breathing droplet inside a glowing ring instead of a stock
+    // material spinner, step ticks instead of a counter.
+    return Container(
+      color: Colors.black,
       padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // Breathing droplet — pulses forever while the read runs.
           SizedBox(
-            width: 60, height: 60,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.4,
-              color: AppColors.accent,
-              backgroundColor: AppColors.surface2,
+            width: 120, height: 120,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 110, height: 110,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.brand.withValues(alpha: 0.18),
+                      width: 1),
+                  ),
+                )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .scale(
+                        begin: const Offset(0.9, 0.9),
+                        end: const Offset(1.06, 1.06),
+                        duration: 1400.ms,
+                        curve: Curves.easeInOut),
+                Container(
+                  width: 78, height: 78,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.brand.withValues(alpha: 0.08),
+                    border: Border.all(
+                      color: AppColors.brand.withValues(alpha: 0.55),
+                      width: 1.4),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.brand.withValues(alpha: 0.35),
+                        blurRadius: 30),
+                    ],
+                  ),
+                  child: const Icon(Icons.water_drop_rounded,
+                      color: AppColors.brand, size: 30),
+                )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .scale(
+                        begin: const Offset(1, 1),
+                        end: const Offset(1.1, 1.1),
+                        duration: 900.ms,
+                        curve: Curves.easeInOut),
+              ],
             ),
           ),
-          const SizedBox(height: 28),
-          Text(
-            'STEP ${_copyIdx + 1} OF ${_loadingCopy.length}',
+          const SizedBox(height: 30),
+          Text('DRAIN CHECK',
             style: AppTypography.label.copyWith(
-              color: AppColors.accent,
-              letterSpacing: 3.0, fontSize: 10,
+              color: AppColors.brand,
+              letterSpacing: 4.0, fontSize: 11,
               fontWeight: FontWeight.w900,
-            ),
+            )),
+          const SizedBox(height: 14),
+          // Step ticks — one lozenge per loading step, lit as it runs.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < _loadingCopy.length; i++)
+                Container(
+                  width: i == _copyIdx ? 22 : 8,
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  decoration: BoxDecoration(
+                    color: i == _copyIdx
+                        ? AppColors.brand
+                        : AppColors.surface3,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
             child: Text(_loadingCopy[_copyIdx].toUpperCase(),
@@ -408,8 +465,8 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Reading your face — mesh, geometry, archetype, skin '
-            'texture. The honest read usually lands in 10-20 seconds.',
+            'Reading your face — fluid, under-eye, jaw, cheeks. '
+            'The full read usually lands in 10-20 seconds.',
             textAlign: TextAlign.center,
             style: AppTypography.body.copyWith(
               fontSize: 12,
