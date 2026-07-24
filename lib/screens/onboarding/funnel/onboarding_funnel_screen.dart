@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -21,7 +19,7 @@ import 'onboarding_kit.dart';
 ///   6    Shock stat    7  Goals        8  Water
 ///   9    Sleep        10  Puffy time  11  Salt habits
 ///  12    Pain points  13  Struggles   14  Photos Q
-///  15    Empathy 89%  16  Identity fork
+///  15    Science 24-72h 16 Identity fork
 ///  17    Commitment   18  Routine value graph
 ///
 /// The last step hands off to AI-consent → scan → PROCESSING THEATRE
@@ -122,7 +120,7 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       'welcome_scan', 'welcome_food', 'welcome_routine', 'gender', 'name',
       'familiarity', 'shock_stat', 'goals', 'water', 'sleep',
       'puffy_time', 'salt_habits', 'pain_points', 'struggles',
-      'photos_feeling', 'empathy', 'identity_fork', 'commitment',
+      'photos_feeling', 'science_24_72', 'identity_fork', 'commitment',
       'routine_graph',
     ];
     return (i >= 0 && i < names.length) ? names[i] : 'step_$i';
@@ -142,9 +140,9 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         icon: Icons.center_focus_strong_rounded,
         label: 'Face Scan',
         image: 'assets/onboarding/welcome_scan.jpg',
-        headTop: 'Wake Up',
-        headBottom: 'Less Puffy',
-        sub: 'Drag the line. Same face — just drained.',
+        headTop: 'The Face',
+        headBottom: 'Under The Bloat.',
+        sub: 'Drag the line — same face, drained.',
         cta: 'Continue',
         onBack: _back,
         onNext: _next,
@@ -159,9 +157,9 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         icon: Icons.restaurant_rounded,
         label: 'Food Analysis',
         image: 'assets/onboarding/welcome_food.jpg',
-        headTop: 'Scan Meals.',
-        headBottom: 'Eat Smarter.',
-        sub: 'Spot the foods that puff your face up.',
+        headTop: 'Your Food Is',
+        headBottom: 'Puffing You Up.',
+        sub: 'Scan any plate. We catch the sodium first.',
         cta: 'Continue',
         onBack: _back,
         onNext: _next,
@@ -172,15 +170,18 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       _WelcomeSlide(
         index: here(),
         showProgress: false,
-        icon: Icons.event_available_rounded,
-        label: 'Daily Routines',
+        icon: Icons.checklist_rounded,
+        label: 'The Protocol',
         image: 'assets/onboarding/welcome_routine.jpg',
-        headTop: 'Personalized',
-        headBottom: 'Debloat Plan.',
-        sub: 'A daily routine built for your face.',
+        headTop: 'Your Daily',
+        headBottom: 'Drain Protocol.',
+        sub: 'Morning flush. Intake control. Night drain.',
         cta: 'Get Started',
         onBack: _back,
         onNext: _next,
+        // The protocol list from our old paywall — an in-app style
+        // preview of the actual system, not a stock spa photo.
+        hero: const _ProtocolHero(),
       ),
 
       // 3 · GENDER
@@ -339,9 +340,11 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         onPick: (_) => _next(),
       ),
 
-      // 16 · EMPATHY / 89% PROOF
-      _EmpathyStep(
+      // 16 · THE SCIENCE — 24–72h, with THEIR before/after pair
+      _ScienceStep(
         progress: _progressFor(here()),
+        gender: _gender,
+        name: _name,
         onBack: _back,
         onNext: _next,
       ),
@@ -357,6 +360,7 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       // 18 · COMMITMENT PLEDGE
       _CommitStep(
         progress: _progressFor(here()),
+        name: _name,
         onBack: _back,
         onNext: _next,
       ),
@@ -500,12 +504,14 @@ class _FoodScanHero extends StatelessWidget {
   // (tuned to the cover-cropped 4:5 view of welcome_food.jpg).
   static const _callouts =
       <({Offset chip, Offset dot, bool right, String label, String value})>[
-    (chip: Offset(0.05, 0.06), dot: Offset(0.25, 0.25), right: false,
-     label: 'CUCUMBER', value: '2 MG'),
-    (chip: Offset(0.95, 0.16), dot: Offset(0.82, 0.38), right: true,
-     label: 'AVOCADO', value: '7 MG'),
-    (chip: Offset(0.05, 0.62), dot: Offset(0.47, 0.50), right: false,
-     label: 'SALMON', value: '75 MG'),
+    (chip: Offset(0.05, 0.05), dot: Offset(0.50, 0.15), right: false,
+     label: 'QUINOA', value: '7 MG'),
+    (chip: Offset(0.95, 0.14), dot: Offset(0.80, 0.26), right: true,
+     label: 'SWEET POTATO', value: '36 MG'),
+    (chip: Offset(0.05, 0.60), dot: Offset(0.46, 0.48), right: false,
+     label: 'CHICKEN', value: '74 MG'),
+    (chip: Offset(0.95, 0.74), dot: Offset(0.88, 0.58), right: true,
+     label: 'EGG', value: '62 MG'),
   ];
 
   @override
@@ -559,7 +565,7 @@ class _FoodScanHero extends StatelessWidget {
                     const Icon(Icons.water_drop_rounded,
                       color: Onb.success, size: 14),
                     const SizedBox(width: 6),
-                    Text('PLATE SODIUM ~180 MG · LOW',
+                    Text('PLATE SODIUM ~240 MG · LOW',
                       style: GoogleFonts.inter(
                         color: Onb.success,
                         fontSize: 11, letterSpacing: 1.1,
@@ -631,7 +637,7 @@ class _CalloutLinePainter extends CustomPainter {
 //  the five "hold them" questions bro pulled from the 30-screen list
 //  (familiarity / puffy time / salt habits / photos feeling).
 // ═══════════════════════════════════════════════════════════════════════════
-class _QuickQStep extends StatelessWidget {
+class _QuickQStep extends StatefulWidget {
   final double progress;
   final String headline;
   final String emphasis;
@@ -650,25 +656,45 @@ class _QuickQStep extends StatelessWidget {
   });
 
   @override
+  State<_QuickQStep> createState() => _QuickQStepState();
+}
+
+class _QuickQStepState extends State<_QuickQStep> {
+  // HOLD mechanic: the tap visibly REGISTERS (blue fill + check flash)
+  // for a beat before the page advances — every answer feels banked,
+  // not swallowed. Also blocks double-fire.
+  int? _picked;
+
+  void _tap(int i) {
+    if (_picked != null) return;
+    setState(() => _picked = i);
+    HapticFeedback.mediumImpact();
+    Future.delayed(const Duration(milliseconds: 380), () {
+      if (mounted) widget.onPick(widget.options[i].label);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return OnbScaffold(
-      progress: progress,
-      onBack: onBack,
+      progress: widget.progress,
+      onBack: widget.onBack,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 8),
           OnbHeadline(
-            text: headline,
-            emphasis: emphasis,
+            text: widget.headline,
+            emphasis: widget.emphasis,
             align: TextAlign.start,
-            sub: sub),
+            sub: widget.sub),
           const SizedBox(height: 22),
-          for (final o in options) ...[
-            OnbOptionRow(
-              emoji: o.emoji,
-              label: o.label,
-              onTap: () => onPick(o.label)),
+          for (var i = 0; i < widget.options.length; i++) ...[
+            OnbMultiRow(
+              emoji: widget.options[i].emoji,
+              label: widget.options[i].label,
+              selected: _picked == i,
+              onTap: () => _tap(i)),
             const SizedBox(height: 12),
           ],
         ],
@@ -682,9 +708,11 @@ class _QuickQStep extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════
 class _CommitStep extends StatelessWidget {
   final double progress;
+  final String name;
   final VoidCallback onBack, onNext;
   const _CommitStep({
     required this.progress,
+    required this.name,
     required this.onBack,
     required this.onNext,
   });
@@ -705,12 +733,44 @@ class _CommitStep extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 8),
-          const OnbHeadline(
-            text: 'Make the deal with ',
-            emphasis: 'yourself.',
+          OnbHeadline(
+            text: 'Make the deal, ',
+            emphasis: name.trim().isEmpty ? 'with yourself.' : '${name.trim()}.',
             align: TextAlign.start,
             sub: 'The face changes when the habits do. Three promises:'),
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
+          // The ritual, laid out — ice, gua sha, roller, cucumber water.
+          // The kit shot sits right where they pledge.
+          ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: AspectRatio(
+              aspectRatio: 1200 / 640,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset('assets/onboarding/tools_banner.jpg',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const OnbImagePlaceholder(
+                      icon: Icons.spa_rounded, caption: 'The Kit')),
+                  Positioned(
+                    left: 12, bottom: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.62),
+                        borderRadius: BorderRadius.circular(100)),
+                      child: Text('THE DAILY RITUAL',
+                        style: GoogleFonts.inter(
+                          color: Onb.primaryLite, fontSize: 9.5,
+                          letterSpacing: 1.8, fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
             decoration: BoxDecoration(
@@ -989,7 +1049,7 @@ class _ShockStatStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final who = gender == 'f' ? 'Women' : 'Men';
+    final who = gender == 'f' ? 'women' : 'men';
     return OnbScaffold(
       progress: progress,
       onBack: onBack,
@@ -1004,10 +1064,10 @@ class _ShockStatStep extends StatelessWidget {
                 color: Colors.white, fontSize: 27, height: 1.15,
                 fontWeight: FontWeight.w800, letterSpacing: -0.5),
               children: [
-                TextSpan(text: '$who are '),
-                const TextSpan(text: '67% more bloated',
+                TextSpan(text: 'Most $who are holding '),
+                const TextSpan(text: 'extra water',
                   style: TextStyle(color: Onb.danger)),
-                const TextSpan(text: ' than they realise.'),
+                const TextSpan(text: ' right now — in the face.'),
               ],
             ),
           ),
@@ -1022,12 +1082,13 @@ class _ShockStatStep extends StatelessWidget {
                 color: Onb.grey, fontSize: 15.5, height: 1.5,
                 fontWeight: FontWeight.w500),
               children: [
-                const TextSpan(text: 'Facial bloating quietly '),
-                TextSpan(text: 'steals your definition',
+                const TextSpan(text: 'Fluid softens the jaw, rounds the '
+                    'cheeks and puffs the under-eyes — '),
+                TextSpan(text: 'hiding definition you already have',
                   style: GoogleFonts.inter(
                     color: Colors.white, fontWeight: FontWeight.w700)),
-                const TextSpan(text: ' — and can make you look up to '),
-                TextSpan(text: '46% less attractive',
+                const TextSpan(text: '. The scan shows exactly '),
+                TextSpan(text: 'where yours is trapped',
                   style: GoogleFonts.inter(
                     color: Onb.danger, fontWeight: FontWeight.w700)),
                 const TextSpan(text: '.'),
@@ -1540,13 +1601,19 @@ class _StrugglesStep extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  12 · EMPATHY / 89% PROOF
+//  THE SCIENCE — 24–72 HOURS. Replaces the fabricated "89% of users" stat
+//  with a claim that is actually true, anchored to THEIR before/after pair
+//  (gender-aware). The number sells because it is real and fast.
 // ═══════════════════════════════════════════════════════════════════════════
-class _EmpathyStep extends StatelessWidget {
+class _ScienceStep extends StatelessWidget {
   final double progress;
+  final String? gender;
+  final String name;
   final VoidCallback onBack, onNext;
-  const _EmpathyStep({
+  const _ScienceStep({
     required this.progress,
+    required this.gender,
+    required this.name,
     required this.onBack,
     required this.onNext,
   });
@@ -1558,74 +1625,133 @@ class _EmpathyStep extends StatelessWidget {
       onBack: onBack,
       footer: OnbCta(label: 'Continue', onTap: onNext),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
-          const OnbHeadline(text: 'We get it.', size: 30),
-          const SizedBox(height: 28),
-          SizedBox(
-            width: 190, height: 190,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CustomPaint(
-                  size: const Size(190, 190),
-                  painter: _RingArcPainter(progress: 0.89, color: Onb.primary)),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('89%',
-                      style: GoogleFonts.poppins(
-                        color: Onb.primaryLite, fontSize: 46, height: 1,
-                        fontWeight: FontWeight.w800, letterSpacing: -2)),
-                    Text('of users',
-                      style: GoogleFonts.inter(
-                        color: Onb.grey, fontSize: 13, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: Onb.card,
-              borderRadius: BorderRadius.circular(100),
-              border: Border.all(color: Onb.cardBorder)),
-            child: Text('feel more attractive & confident',
-              style: GoogleFonts.inter(
-                color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
-          ),
-          const SizedBox(height: 14),
-          Text('after 28 days of following their personal plan.',
-            textAlign: TextAlign.center,
+          const SizedBox(height: 8),
+          Text('24–72',
+            style: GoogleFonts.poppins(
+              color: Onb.primaryLite,
+              fontSize: 62, height: 1, fontWeight: FontWeight.w800,
+              letterSpacing: -2)),
+          Text('HOURS',
             style: GoogleFonts.inter(
-              color: Onb.grey, fontSize: 14, height: 1.4, fontWeight: FontWeight.w500)),
+              color: Onb.grey,
+              fontSize: 13, letterSpacing: 4.5,
+              fontWeight: FontWeight.w800)),
+          const SizedBox(height: 14),
+          Text(
+            'That\u2019s how fast facial water retention starts to clear '
+            'once the cause is removed. Not months in the gym — days of '
+            'running the right system.',
+            style: GoogleFonts.inter(
+              color: Onb.grey, fontSize: 15, height: 1.5,
+              fontWeight: FontWeight.w500)),
+          const SizedBox(height: 18),
+          _PaywallBeforeAfter(female: gender == 'f'),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Icon(Icons.bolt_rounded, color: Onb.primaryLite, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  name.trim().isEmpty
+                      ? 'Your plan removes the cause. The mirror does the rest.'
+                      : '${name.trim()} — your plan removes the cause. '
+                        'The mirror does the rest.',
+                  style: GoogleFonts.inter(
+                    color: Colors.white, fontSize: 13.5, height: 1.35,
+                    fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-class _RingArcPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-  const _RingArcPainter({required this.progress, required this.color});
+// ═══════════════════════════════════════════════════════════════════════════
+//  PROTOCOL HERO — welcome slide 3. The protocol list from our old paywall,
+//  drawn as an in-app preview card: six real levers with why-lines. Sells
+//  the SYSTEM, not a stock spa photo.
+// ═══════════════════════════════════════════════════════════════════════════
+class _ProtocolHero extends StatelessWidget {
+  const _ProtocolHero();
+
+  static const _rows = <(IconData, String, String)>[
+    (Icons.ac_unit_rounded,     'Morning flush',   'Ice dunk + lymph drain. Visible within days.'),
+    (Icons.grain_rounded,       'Sodium control',  'The #1 driver of facial water retention, capped.'),
+    (Icons.eco_rounded,         'Potassium target','The counter-ion that flushes sodium out.'),
+    (Icons.water_drop_rounded,  'Hydration engine','2.5–3L daily — the flush signal.'),
+    (Icons.bakery_dining_rounded,'Glycogen watch', 'Each gram of carbs binds 3g of water. Managed.'),
+    (Icons.bedtime_rounded,     'Night drain',     'Elevated sleep + 7–9h. Cortisol face, gone.'),
+  ];
+
   @override
-  void paint(Canvas canvas, Size size) {
-    final c = (Offset.zero & size).center;
-    final r = (math.min(size.width, size.height) - 14) / 2;
-    final track = Paint()
-      ..style = PaintingStyle.stroke..strokeWidth = 13
-      ..strokeCap = StrokeCap.round..color = Onb.card;
-    canvas.drawArc(Rect.fromCircle(center: c, radius: r), -math.pi/2, math.pi*2, false, track);
-    final arc = Paint()
-      ..style = PaintingStyle.stroke..strokeWidth = 13
-      ..strokeCap = StrokeCap.round..color = color;
-    canvas.drawArc(Rect.fromCircle(center: c, radius: r), -math.pi/2, math.pi*2*progress, false, arc);
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [Onb.cardSel, Onb.bg]),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < _rows.length; i++) ...[
+            if (i > 0) const SizedBox(height: 6),
+            Expanded(child: _protoRow(_rows[i], i)),
+          ],
+        ],
+      ),
+    );
   }
-  @override
-  bool shouldRepaint(_RingArcPainter old) => old.progress != progress;
+
+  Widget _protoRow((IconData, String, String) row, int i) {
+    final (icon, title, body) = row;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      decoration: BoxDecoration(
+        color: Onb.card.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Onb.cardBorder, width: 0.8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 30, height: 30,
+            decoration: BoxDecoration(
+              color: Onb.primary.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(9)),
+            alignment: Alignment.center,
+            child: Icon(icon, color: Onb.primaryLite, size: 16),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    color: Colors.white, fontSize: 12.5,
+                    fontWeight: FontWeight.w800)),
+                Text(body,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    color: Onb.grey, fontSize: 10, height: 1.2,
+                    fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+          const Icon(Icons.check_circle_rounded,
+            color: Onb.primaryLite, size: 15),
+        ],
+      ),
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1788,19 +1914,49 @@ class _RoutineGraphStep extends StatelessWidget {
                 color: Onb.primaryLite, fontSize: 28, height: 1.15,
                 fontWeight: FontWeight.w800, letterSpacing: -0.5),
               children: const [
-                TextSpan(text: 'A real routine drains you '),
-                TextSpan(text: '4× faster.',
+                TextSpan(text: 'Your plan is '),
+                TextSpan(text: 'almost built.',
                   style: TextStyle(color: Colors.white)),
               ],
             ),
           ),
           const SizedBox(height: 10),
-          Text('Most people never know which routine actually suits '
-              'their face. Yours is built from your scan.',
+          Text('Every answer you gave is already inside it. '
+              'One input is missing — your face.',
             style: GoogleFonts.inter(
               color: Onb.grey, fontSize: 15, height: 1.45,
               fontWeight: FontWeight.w500)),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
+          // Completion gap — 90% done, the scan is the missing 10%.
+          Row(
+            children: [
+              Text('PLAN COMPLETENESS',
+                style: GoogleFonts.inter(
+                  color: Onb.grey, fontSize: 10, letterSpacing: 2.0,
+                  fontWeight: FontWeight.w800)),
+              const Spacer(),
+              Text('90%',
+                style: GoogleFonts.poppins(
+                  color: Onb.primaryLite, fontSize: 15,
+                  fontWeight: FontWeight.w800)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(100),
+            child: LinearProgressIndicator(
+              value: 0.9,
+              minHeight: 9,
+              backgroundColor: Onb.card,
+              valueColor: const AlwaysStoppedAnimation(Onb.primary),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text('Missing: your face scan',
+            style: GoogleFonts.inter(
+              color: Onb.primaryLite, fontSize: 12,
+              fontWeight: FontWeight.w700)),
+          const SizedBox(height: 20),
           Container(
             height: 220,
             padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
@@ -1816,8 +1972,8 @@ class _RoutineGraphStep extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _pill('Now', Onb.grey),
-              _pill('Your glow-up', Onb.primary),
+              _pill('Today', Onb.grey),
+              _pill('On the protocol', Onb.primary),
             ],
           ),
         ],
