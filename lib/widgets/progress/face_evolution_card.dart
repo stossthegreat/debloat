@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../models/scan_record.dart';
+import '../../services/analytics_service.dart';
 import '../../services/debloat_stats_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
@@ -94,6 +95,8 @@ class _FaceEvolutionCardState extends State<FaceEvolutionCard>
   void _watchEvolution() {
     if (_photoScans.length < 2 || _playing) return;
     HapticFeedback.mediumImpact();
+    // ignore: discarded_futures
+    AnalyticsService.evolutionWatched(_photoScans.length);
     // Pin the right image to the LATEST scan, start the divider hard-left
     // (all Day 1 showing), then sweep it across to reveal the drained
     // face. Loop once, stop.
@@ -210,6 +213,8 @@ class _FaceEvolutionCardState extends State<FaceEvolutionCard>
 
   void _openFullscreen(BuildContext context) {
     HapticFeedback.selectionClick();
+    // ignore: discarded_futures
+    AnalyticsService.evolutionCompared();
     Navigator.of(context).push(MaterialPageRoute(
       fullscreenDialog: true,
       builder: (_) => _FullscreenCompare(
@@ -223,6 +228,8 @@ class _FaceEvolutionCardState extends State<FaceEvolutionCard>
   Future<void> _share(BuildContext context) async {
     if (_sharing) return;
     HapticFeedback.selectionClick();
+    // ignore: discarded_futures
+    AnalyticsService.evolutionShared(_photoScans.length);
     setState(() => _sharing = true);
     try {
       await FaceEvolutionShare.sharePair(

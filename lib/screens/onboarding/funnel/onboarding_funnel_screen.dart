@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../services/analytics_service.dart';
 import '../../../services/local_store_service.dart';
 import '../../../services/onboarding_store.dart';
 import 'onboarding_kit.dart';
@@ -79,6 +80,8 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
     // payoff the whole funnel builds toward; the report IS the results /
     // plan-ready screen, and it routes on to the paywall.
     await LocalStoreService.setOnboarded(true);
+    // ignore: discarded_futures
+    AnalyticsService.onbFunnelDone();
     if (!mounted) return;
     context.go('/onboarding/consent');
   }
@@ -86,6 +89,8 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
   Future<void> _pickGender(String code) async {
     setState(() => _gender = code);
     await LocalStoreService.setUserGender(code);
+    // ignore: discarded_futures
+    AnalyticsService.onbGenderPickedV2(code);
     _next();
   }
 
@@ -98,13 +103,27 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       child: PageView(
         controller: _pc,
         physics: const NeverScrollableScrollPhysics(), // advance via CTAs only
-        onPageChanged: (i) => setState(() => _i = i),
+        onPageChanged: (i) {
+          setState(() => _i = i);
+          // ignore: discarded_futures
+          AnalyticsService.onbStep(_stepName(i));
+        },
         children: steps,
       ),
     );
   }
 
   double _progressFor(int index) => (index + 1) / _kPlannedSteps;
+
+  /// Human-readable step tag for analytics, keyed by page index.
+  static String _stepName(int i) {
+    const names = [
+      'welcome_scan', 'welcome_food', 'welcome_routine', 'gender', 'name',
+      'shock_stat', 'social_proof', 'goals', 'water', 'sleep', 'pain_points',
+      'struggles', 'empathy', 'identity_fork', 'routine_graph',
+    ];
+    return (i >= 0 && i < names.length) ? names[i] : 'step_$i';
+  }
 
   List<Widget> _buildSteps() {
     // NOTE: index positions matter — _progressFor keys off them. Welcome
@@ -199,6 +218,8 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         }),
         onNext: () async {
           await OnboardingStore.setGoals(_goals.toList());
+          // ignore: discarded_futures
+          AnalyticsService.onbGoalsPicked(_goals.toList());
           _next();
         },
       ),
@@ -211,6 +232,8 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         onNext: (v) async {
           _water = v;
           await OnboardingStore.setWaterLitres(v);
+          // ignore: discarded_futures
+          AnalyticsService.onbWaterSet(v);
           _next();
         },
       ),
@@ -223,6 +246,8 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         onNext: (v) async {
           _sleep = v;
           await OnboardingStore.setSleepHours(v);
+          // ignore: discarded_futures
+          AnalyticsService.onbSleepSet(v);
           _next();
         },
       ),
@@ -244,6 +269,8 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         }),
         onNext: () async {
           await OnboardingStore.setStruggles(_struggles.toList());
+          // ignore: discarded_futures
+          AnalyticsService.onbStrugglesPicked(_struggles.toList());
           _next();
         },
       ),

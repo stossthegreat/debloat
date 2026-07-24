@@ -317,4 +317,60 @@ class AnalyticsService {
       _log('review_native_opened');
   static Future<void> reviewDismissed() =>
       _log('review_dismissed');
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  DEBLOAT OS — the new app's surfaces. Clear, self-describing tags so
+  //  the Firebase dashboard reads like a story: onboarding → scan → food →
+  //  debloat checklist → progress.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ── Onboarding funnel — one event per step + the values collected ─────
+  /// Fires on every funnel step. `step` is the step name (welcome_scan,
+  /// gender, name, shock_stat, social_proof, goals, water, sleep,
+  /// pain_points, struggles, empathy, identity_fork, routine_graph).
+  static Future<void> onbStep(String step) =>
+      _log('onb_step', {'step': step});
+  static Future<void> onbGenderPickedV2(String gender) =>
+      _log('onb_gender', {'gender': gender});
+  static Future<void> onbGoalsPicked(List<String> goals) =>
+      _log('onb_goals', {'count': goals.length, 'goals': goals.join('|')});
+  static Future<void> onbWaterSet(double litres) =>
+      _log('onb_water', {'litres': litres});
+  static Future<void> onbSleepSet(double hours) =>
+      _log('onb_sleep', {'hours': hours});
+  static Future<void> onbStrugglesPicked(List<String> s) =>
+      _log('onb_struggles', {'count': s.length});
+  static Future<void> onbFunnelDone() => _log('onb_funnel_done');
+
+  // ── Face scan ─────────────────────────────────────────────────────────
+  /// `source`: 'scan_tab' | 'rescan' | 'onboarding'.
+  static Future<void> scanBegun(String source) =>
+      _log('scan_begun', {'source': source});
+
+  // ── Food tab ──────────────────────────────────────────────────────────
+  /// `source`: 'camera' | 'library'.
+  static Future<void> foodScanStarted(String source) =>
+      _log('food_scan_started', {'source': source});
+  static Future<void> foodScanCompleted({
+    required String name,
+    required int score,
+    required int sodiumMg,
+    required String risk,
+  }) =>
+      _log('food_scan_completed',
+          {'food': name, 'score': score, 'sodium_mg': sodiumMg, 'risk': risk});
+  static Future<void> foodScanFailed() => _log('food_scan_failed');
+
+  // ── Debloat checklist tab ─────────────────────────────────────────────
+  static Future<void> debloatItemToggled(String id, bool done) =>
+      _log('debloat_item_toggled', {'item': id, 'done': done ? 1 : 0});
+  static Future<void> debloatAllDone(int items) =>
+      _log('debloat_all_done', {'items': items});
+
+  // ── Progress tab · Face Evolution ─────────────────────────────────────
+  static Future<void> evolutionWatched(int scans) =>
+      _log('evolution_watched', {'scans': scans});
+  static Future<void> evolutionCompared() => _log('evolution_compared');
+  static Future<void> evolutionShared(int scans) =>
+      _log('evolution_shared', {'scans': scans});
 }

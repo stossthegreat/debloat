@@ -421,7 +421,11 @@ class _ScanHubTab extends StatelessWidget {
                   label: 'Begin Face Scan',
                   icon: Icons.center_focus_strong_rounded,
                   meta: 'Takes 30 seconds',
-                  onTap: () => context.push('/scan'),
+                  onTap: () {
+                    // ignore: discarded_futures
+                    AnalyticsService.scanBegun('scan_tab');
+                    context.push('/scan');
+                  },
                 ),
               ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
             ],
@@ -454,6 +458,8 @@ class _ScanHubTab extends StatelessWidget {
                   meta: 'Takes 30 seconds',
                   onTap: () {
                     HapticFeedback.selectionClick();
+                    // ignore: discarded_futures
+                    AnalyticsService.scanBegun('rescan');
                     context.push('/scan');
                   },
                 ),
