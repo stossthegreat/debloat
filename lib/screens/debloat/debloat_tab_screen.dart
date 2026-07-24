@@ -62,8 +62,13 @@ class _DebloatTabScreenState extends State<DebloatTabScreen>
     final done = await DebloatChecklistService.toggle(id);
     if (!mounted) return;
     setState(() => _done = done);
+    final total = DebloatChecklistService.items.length;
     // ignore: discarded_futures
-    AnalyticsService.tabOpened('debloat_toggle_$id');
+    AnalyticsService.debloatItemToggled(id, done.contains(id));
+    if (done.length >= total) {
+      // ignore: discarded_futures
+      AnalyticsService.debloatAllDone(total);
+    }
     // Let the hub re-read streak + mission state.
     // ignore: discarded_futures
     widget.onChanged?.call();

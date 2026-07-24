@@ -93,15 +93,25 @@ class _FoodTabScreenState extends State<FoodTabScreen> {
         _result  = null;
       });
       // ignore: discarded_futures
-      AnalyticsService.tabOpened('food_scan');
+      AnalyticsService.foodScanStarted(
+          source == ImageSource.camera ? 'camera' : 'library');
       final result = await MirrorApiService.analyseFood(imageBytes: bytes);
       if (!mounted) return;
       setState(() {
         _result  = result;
         _loading = false;
       });
+      // ignore: discarded_futures
+      AnalyticsService.foodScanCompleted(
+        name: result.name,
+        score: result.overallScore,
+        sodiumMg: result.sodiumMg,
+        risk: result.puffinessRisk,
+      );
       await _persist(result, bytes);
     } catch (err) {
+      // ignore: discarded_futures
+      AnalyticsService.foodScanFailed();
       if (!mounted) return;
       setState(() {
         _loading = false;

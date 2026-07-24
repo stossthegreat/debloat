@@ -125,7 +125,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
     AnalyticsService.paywallShown(
         (widget.context?['afterPurchase'] as String?) ?? 'standalone');
     _loadOfferings();
-    _startTour();
+    // (Auto-tour removed with the old carousel — the new paywall is a
+    // single static screen, so there's no PageView to animate.)
     _autoUnlockIfAlreadyPro();
   }
 
@@ -432,141 +433,303 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final raw = _priceFor(_Tier.weekly);
+    final price = raw == _placeholderDash ? '\$4.99' : raw;
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        top: true,
-        bottom: true,
-        child: Column(
-          children: [
-            // Close X — top-left.
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 6, 0, 0),
-                child: _CloseX(onTap: _close),
-              ),
-            ),
-
-            // Header copy — cross-fades on panel change.
-            _Header(page: _page),
-
-            // Carousel — takes all remaining vertical space.
-            Expanded(
-              child: Listener(
-                // Any finger-down on the carousel ends the auto-tour,
-                // exactly like the mock's touchstart handler.
-                onPointerDown: (_) => _stopTour(),
-                child: PageView(
-                  controller: _pager,
-                  onPageChanged: _onPageChanged,
-                  physics: const BouncingScrollPhysics(),
-                  children: [
-                    const _PhotoPanel(),
-                    const _ProtoPanel(),
-                    _LadderPanel(
-                        runToken:
-                            _page == _panelCount - 1 ? _ladderRun : -1),
-                  ],
+      backgroundColor: _pvBg,
+      body: Column(
+        children: [
+          // ── Hero: our before/after, split by a violet beam, DAY 1 /
+          //    WEEK 8 chips, close X overlaid. ─────────────────────────
+          Stack(
+            children: [
+              _heroSplit(),
+              SafeArea(
+                bottom: false,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 2, 0, 0),
+                    child: _CloseX(onTap: _close),
+                  ),
                 ),
               ),
-            ),
+            ],
+          ),
 
-            // Classified progress tracker.
-            _Brief(page: _page, visited: _visited),
-
-            // CTA + price + legal.
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 2, 20, 4),
+          // ── Scrollable middle: logo + headline + features + plan ────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+              physics: const BouncingScrollPhysics(),
               child: Column(
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 62,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.red.withValues(alpha: 0.45),
-                            blurRadius: 30,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.red,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16)),
-                          elevation: 0,
-                        ),
-                        onPressed: _purchasing ? null : _buy,
-                        child: _purchasing
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor:
-                                        AlwaysStoppedAnimation(Colors.white)),
-                              )
-                            : Text(
-                                'DRAIN THE BLOAT',
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 16,
-                                  letterSpacing: 2.6,
-                                ),
-                              ),
-                      ),
-                    ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset('assets/icons/appstore.png',
+                      width: 40, height: 40,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.face_rounded, color: Colors.white, size: 34)),
                   ),
-                  const SizedBox(height: 10),
-                  _priceLine(),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
+                  Text('Debloat your face.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: Colors.white, fontSize: 28, height: 1.1,
+                      fontWeight: FontWeight.w500)),
+                  Text('Define your jawline.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: Colors.white, fontSize: 28, height: 1.1,
+                      fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _LinkButton(
-                          label: 'Terms of Use',
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            context.push('/terms');
-                          }),
-                      _LinkButton(label: 'Restore Purchase', onTap: _restore),
-                      _LinkButton(
-                          label: 'Privacy Policy',
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            context.push('/privacy');
-                          }),
+                    children: const [
+                      _FeatureItem(icon: Icons.center_focus_weak_rounded, label: 'AI scans'),
+                      _FeatureItem(icon: Icons.article_outlined, label: 'Custom plan'),
+                      _FeatureItem(icon: Icons.repeat_rounded, label: 'Daily routine'),
+                      _FeatureItem(icon: Icons.lock_open_rounded, label: 'Cancel anytime'),
                     ],
                   ),
+                  const SizedBox(height: 22),
+                  _WeeklyPlanCard(price: price),
+                  const SizedBox(height: 10),
+                  Text('$price per week · auto-renews · cancel anytime',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 12, fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+
+          // ── Pinned CTA + footer ─────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+            child: Column(
+              children: [
+                SizedBox(
+                  width: double.infinity, height: 62,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _pvViolet.withValues(alpha: 0.45),
+                          blurRadius: 28, spreadRadius: 1),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _pvViolet,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18)),
+                        elevation: 0,
+                      ),
+                      onPressed: _purchasing ? null : _buy,
+                      child: _purchasing
+                          ? const SizedBox(width: 20, height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation(Colors.white)))
+                          : Text('Continue',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w800, fontSize: 18)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _LinkButton(label: 'Terms',
+                      onTap: () { HapticFeedback.selectionClick(); context.push('/terms'); }),
+                    _dot(),
+                    _LinkButton(label: 'Privacy',
+                      onTap: () { HapticFeedback.selectionClick(); context.push('/privacy'); }),
+                    _dot(),
+                    _LinkButton(label: 'Restore', onTap: _restore),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  /// Single price line under the CTA. Carries the three Apple-required
-  /// essentials in one glance — real store price, weekly cadence, and
-  /// the auto-renew / cancel notice. Full disclosure lives in Terms.
-  /// (The on-device build tag was removed for launch — check the build
-  /// number in Settings → TestFlight instead.)
-  Widget _priceLine() {
-    final price = _priceFor(_Tier.weekly);
-    return Text(
-      '$price per week · auto-renews · cancel anytime',
-      textAlign: TextAlign.center,
-      style: GoogleFonts.inter(
-        color: AppColors.textSecondary,
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
+  Widget _dot() => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+    child: Text('·', style: GoogleFonts.inter(
+      color: Colors.white.withValues(alpha: 0.4), fontSize: 16)),
+  );
+
+  /// The full-bleed before/after hero — our beforeafter.jpg, split down
+  /// the middle by a glowing violet beam, with DAY 1 / WEEK 8 chips.
+  Widget _heroSplit() {
+    return SizedBox(
+      height: 380,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/marketing/beforeafter.jpg',
+            fit: BoxFit.cover,
+            alignment: const Alignment(0, -0.3),
+            errorBuilder: (_, __, ___) => Container(color: _pvCard,
+              alignment: Alignment.center,
+              child: const Icon(Icons.face_rounded, color: _pvViolet, size: 72))),
+          // Fade the bottom into the page background.
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, _pvBg],
+                  stops: const [0.55, 1.0]),
+              ),
+            ),
+          ),
+          // Central violet beam.
+          Center(
+            child: Container(
+              width: 2.5,
+              decoration: BoxDecoration(
+                color: _pvVioletLite,
+                boxShadow: [BoxShadow(
+                  color: _pvVioletLite.withValues(alpha: 0.8), blurRadius: 16)]),
+            ),
+          ),
+          // DAY 1 chip (left)
+          Positioned(
+            left: 16, bottom: 96,
+            child: _dayChip('DAY 1', filled: false),
+          ),
+          // WEEK 8 chip (right)
+          Positioned(
+            right: 16, bottom: 96,
+            child: _dayChip('WEEK 8', filled: true),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dayChip(String label, {required bool filled}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: filled ? _pvViolet : Colors.black.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(
+          color: filled ? _pvViolet : Colors.white.withValues(alpha: 0.35),
+          width: 1.4),
+        boxShadow: filled
+            ? [BoxShadow(color: _pvViolet.withValues(alpha: 0.6), blurRadius: 18)]
+            : null,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(filled ? Icons.auto_awesome : Icons.circle_outlined,
+            color: Colors.white, size: 15),
+          const SizedBox(width: 7),
+          Text(label,
+            style: GoogleFonts.inter(
+              color: Colors.white, fontSize: 15,
+              letterSpacing: 1, fontWeight: FontWeight.w800)),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Violet paywall palette (matches the target mock) ────────────────────────
+const _pvBg         = Color(0xFF0D0B1A);
+const _pvViolet     = Color(0xFF6C4CF5);
+const _pvVioletLite = Color(0xFFA78BFA);
+const _pvCard       = Color(0xFF16132A);
+
+/// One feature in the row under the headline.
+class _FeatureItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _FeatureItem({required this.icon, required this.label});
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: _pvVioletLite, size: 26),
+        const SizedBox(height: 8),
+        Text(label,
+          style: GoogleFonts.inter(
+            color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700)),
+      ],
+    );
+  }
+}
+
+/// The single WEEKLY plan card — selected/violet by default (only option).
+class _WeeklyPlanCard extends StatelessWidget {
+  final String price;
+  const _WeeklyPlanCard({required this.price});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 20, 16),
+      decoration: BoxDecoration(
+        color: _pvViolet.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _pvViolet, width: 2),
+        boxShadow: [BoxShadow(
+          color: _pvViolet.withValues(alpha: 0.3), blurRadius: 22, spreadRadius: -4)],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52, height: 52,
+            decoration: BoxDecoration(
+              color: _pvViolet.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(14)),
+            alignment: Alignment.center,
+            child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 26),
+          ),
+          const SizedBox(width: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('WEEKLY',
+                style: GoogleFonts.inter(
+                  color: Colors.white, fontSize: 19,
+                  letterSpacing: 1, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 2),
+              Text('billed weekly',
+                style: GoogleFonts.inter(
+                  color: Colors.white.withValues(alpha: 0.55),
+                  fontSize: 14, fontWeight: FontWeight.w500)),
+            ],
+          ),
+          const Spacer(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(price,
+                style: GoogleFonts.inter(
+                  color: Colors.white, fontSize: 28, height: 1,
+                  fontWeight: FontWeight.w900)),
+              const SizedBox(height: 2),
+              Text('per week',
+                style: GoogleFonts.inter(
+                  color: Colors.white.withValues(alpha: 0.55),
+                  fontSize: 13, fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ],
       ),
     );
   }

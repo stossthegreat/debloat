@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1097524443399",
+    "project_id": "debloat-os",
+    "storage_bucket": "debloat-os.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1097524443399:android:eaf60baf9b6696fc142da2",
+        "android_client_info": {
+          "package_name": "com.debloatos.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDCFP90zG72sbYAvQjVa5nbkxoafTbOUdM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
