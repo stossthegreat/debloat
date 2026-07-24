@@ -504,12 +504,14 @@ class _FoodScanHero extends StatelessWidget {
   // (tuned to the cover-cropped 4:5 view of welcome_food.jpg).
   static const _callouts =
       <({Offset chip, Offset dot, bool right, String label, String value})>[
-    (chip: Offset(0.05, 0.06), dot: Offset(0.25, 0.25), right: false,
-     label: 'CUCUMBER', value: '2 MG'),
-    (chip: Offset(0.95, 0.16), dot: Offset(0.82, 0.38), right: true,
-     label: 'AVOCADO', value: '7 MG'),
-    (chip: Offset(0.05, 0.62), dot: Offset(0.47, 0.50), right: false,
-     label: 'SALMON', value: '75 MG'),
+    (chip: Offset(0.05, 0.05), dot: Offset(0.50, 0.15), right: false,
+     label: 'QUINOA', value: '7 MG'),
+    (chip: Offset(0.95, 0.14), dot: Offset(0.80, 0.26), right: true,
+     label: 'SWEET POTATO', value: '36 MG'),
+    (chip: Offset(0.05, 0.60), dot: Offset(0.46, 0.48), right: false,
+     label: 'CHICKEN', value: '74 MG'),
+    (chip: Offset(0.95, 0.74), dot: Offset(0.88, 0.58), right: true,
+     label: 'EGG', value: '62 MG'),
   ];
 
   @override
@@ -563,7 +565,7 @@ class _FoodScanHero extends StatelessWidget {
                     const Icon(Icons.water_drop_rounded,
                       color: Onb.success, size: 14),
                     const SizedBox(width: 6),
-                    Text('PLATE SODIUM ~180 MG · LOW',
+                    Text('PLATE SODIUM ~240 MG · LOW',
                       style: GoogleFonts.inter(
                         color: Onb.success,
                         fontSize: 11, letterSpacing: 1.1,
@@ -736,7 +738,39 @@ class _CommitStep extends StatelessWidget {
             emphasis: name.trim().isEmpty ? 'with yourself.' : '${name.trim()}.',
             align: TextAlign.start,
             sub: 'The face changes when the habits do. Three promises:'),
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
+          // The ritual, laid out — ice, gua sha, roller, cucumber water.
+          // The kit shot sits right where they pledge.
+          ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: AspectRatio(
+              aspectRatio: 1200 / 640,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset('assets/onboarding/tools_banner.jpg',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const OnbImagePlaceholder(
+                      icon: Icons.spa_rounded, caption: 'The Kit')),
+                  Positioned(
+                    left: 12, bottom: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.62),
+                        borderRadius: BorderRadius.circular(100)),
+                      child: Text('THE DAILY RITUAL',
+                        style: GoogleFonts.inter(
+                          color: Onb.primaryLite, fontSize: 9.5,
+                          letterSpacing: 1.8, fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
             decoration: BoxDecoration(
