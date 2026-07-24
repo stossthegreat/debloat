@@ -202,7 +202,7 @@ LegalDoc get termsDoc => LegalDoc(
       'cancel, and exactly what the subscription unlocks — the same '
       'details presented at the point of purchase.\n\n'
       'PRICE & BILLING\n\n'
-      '• Debloat Pro — \$6.99 USD per week (or the local-currency '
+      '• Debloat Pro — \$4.99 USD per week (or the local-currency '
       'equivalent shown on the paywall), billed weekly.\n'
       '• Payment is charged to your $_appleOrGoogleId at confirmation '
       'of purchase.\n'
@@ -216,12 +216,15 @@ LegalDoc get termsDoc => LegalDoc(
       'cancel the subscription.\n\n'
       'WHAT THE SUBSCRIPTION UNLOCKS\n\n'
       'An active Debloat Pro subscription is required for scans, AI '
-      'renders, and streaks. Each week it includes:\n\n'
-      '• 2 face scans per week.\n'
-      '• 3 AI-rendered "after" images per week (THE MIRROR), and the '
+      'renders, food scans and streaks. Each week it includes:\n\n'
+      '• 2 full face scans per week — the complete AI drain read '
+      '(deep vision model). The allowance resets weekly.\n'
+      '• UNLIMITED food scans — point the camera at any meal for a '
+      'sodium + bloat grade, no weekly cap.\n'
+      '• 3 AI-rendered "debloated" preview images per week; the '
       'allowance resets weekly.\n'
-      '• Streaks + the 60-day Debloat Protocol.\n'
-      '• Two-score rating — geometry + honest-looks (Vision).\n\n'
+      '• The daily drain system, streaks + the 60-day protocol.\n'
+      '• Face Evolution progress tracking and sharing.\n\n'
       'Cancel anytime in your $_storeName settings; access continues '
       'until the end of the paid week. No refund is issued for the '
       'unused portion of the current period.'),
@@ -244,7 +247,7 @@ LegalDoc get termsDoc => LegalDoc(
       '$_storeAccount for billing purposes only.'),
     LegalSection('SUBSCRIPTIONS & AUTO-RENEWAL',
       'Debloat OS offers an auto-renewing subscription:\n\n'
-      '• Debloat Pro Weekly — \$6.99 USD per week (or local '
+      '• Debloat Pro Weekly — \$4.99 USD per week (or local '
       'equivalent), billed weekly until cancelled.\n'
       // Annual tier temporarily withdrawn from sale — the app now
       // offers the weekly subscription only. Re-add this line if the
@@ -252,9 +255,9 @@ LegalDoc get termsDoc => LegalDoc(
       // '• Debloat Pro Annual — \$139.99 USD per year (or local '
       // 'equivalent), billed annually until cancelled.\n'
       '\n'
-      'This subscription unlocks every Debloat Pro feature — scans, '
-      'AI-rendered "after" images, streaks and 60-day protocols, and '
-      'AI chat coaching.\n\n'
+      'This subscription unlocks every Debloat Pro feature — 2 full '
+      'face scans a week, unlimited food scans, AI-rendered '
+      '"debloated" previews, streaks and the 60-day protocol.\n\n'
       'Subscription terms:\n\n'
       '• Payment is charged to your $_appleOrGoogleId at '
       'confirmation of purchase.\n'
@@ -271,12 +274,6 @@ LegalDoc get termsDoc => LegalDoc(
       '• No refund is issued for the unused portion of the current '
       'period. Partial refunds, where offered, are handled by '
       '$_platformAppleStore directly, not by Debloat OS.'),
-    const LegalSection('ONE-TIME CREDIT PACKS',
-      'Credit packs are non-subscription, one-time purchases. '
-      'Debloat OS Rescue Pack — \$9.99 USD (or local equivalent) — '
-      'grants 20 AI-rendered "after" image credits. Credits do not '
-      'expire, but they are non-refundable and non-transferable '
-      'between accounts or devices.'),
     const LegalSection('WHAT WE RENDER — AND WHAT WE DO NOT',
       'Debloat OS renders illustrative previews of grooming and '
       'styling changes applied to your photo. These images are '
@@ -319,7 +316,7 @@ LegalDoc get termsDoc => LegalDoc(
       'social-login data.\n\n'
       'EXACT ROUTE THE PHOTO TAKES\n\n'
       'Step 1 — your phone → Debloat OS\'s backend at '
-      'https://mirrorly-production.up.railway.app, encrypted by '
+      'https://debloat-production.up.railway.app, encrypted by '
       'HTTPS / TLS 1.3. Debloat OS\'s backend does NOT persist the '
       'photo bytes; it forwards them to the relevant AI provider '
       'in-memory and returns the response.\n\n'
@@ -329,13 +326,15 @@ LegalDoc get termsDoc => LegalDoc(
       'rating.\n'
       '• POST /maximize and POST /tryon → Replicate '
       '(api.replicate.com) — Google Nano Banana renders the '
-      '"maximised" preview, cdingram/face-swap locks identity.\n'
+      '"debloated" preview.\n'
+      '• POST /food → OpenAI (api.openai.com) grades your MEAL '
+      'photo for sodium / bloat drivers (no face involved).\n'
       '• POST /chat → OpenAI for the Mirror advisor\'s face-'
       'specific responses.\n\n'
       'WHO RECEIVES IT, BY NAME\n\n'
       '• OpenAI, L.L.C. (San Francisco, CA, USA) — GPT-4o Vision.\n'
       '• Replicate, Inc. (San Francisco, CA, USA) — Nano Banana '
-      '+ cdingram/face-swap.\n'
+      '(Nano Banana render).\n'
       '• Debloat OS\'s own backend on Railway — transient routing '
       'only.\n\n'
       'No other party receives your photo or geometry data.\n\n'
@@ -381,7 +380,7 @@ LegalDoc get termsDoc => LegalDoc(
       '• Generate a written analysis of your facial proportions '
       '(photo sent to OpenAI GPT-4o Vision for one API request).\n'
       '• Generate an illustrative "maximised" preview image (photo '
-      'sent to Replicate Nano Banana + cdingram/face-swap for one '
+      'sent to Replicate (Google Nano Banana) for one '
       'API request).\n'
       '• Persist the photo and the geometry numbers in the app\'s '
       'sandboxed local storage so you can revisit prior scans.\n\n'
@@ -395,7 +394,7 @@ LegalDoc get termsDoc => LegalDoc(
       '• OpenAI (GPT-4o Vision) — to generate analysis text and '
       'cosmetic rating. Default API endpoints exclude inputs from '
       'training and long-term retention.\n'
-      '• Replicate (Google Nano Banana + cdingram/face-swap) — to '
+      '• Replicate (Google Nano Banana) — to '
       'render the "maximised" preview image. API terms exclude '
       'inputs from training and provide for transient processing.\n\n'
       'No other third party receives face data. No advertisers, data '
@@ -428,6 +427,16 @@ LegalDoc get termsDoc => LegalDoc(
       'Debloat OS does not transmit user photos to any other third '
       'party. The on-device geometry numbers stay on-device unless '
       'they accompany the photo on a single API call.'),
+    const LegalSection('FOOD SCANS — MEAL PHOTOS',
+      'The Food tab lets you photograph a meal for a sodium / bloat '
+      'grade. Meal photos follow the same rules as face photos: they '
+      'are sent over HTTPS to our backend, forwarded in-memory to '
+      'OpenAI for one grading request, and never persisted on our '
+      'servers. Grades are ESTIMATES read from a photo — portion '
+      'sizes, hidden ingredients and preparation methods can\'t '
+      'always be seen, so treat every grade as a guide, not a '
+      'nutritional measurement. Food scans are not dietary or '
+      'medical advice. Debloat Pro includes unlimited food scans.'),
     const LegalSection('ACCEPTABLE USE',
       'You agree not to use Debloat OS to scan, analyse, or render a '
       'face that is not your own without that person\'s explicit '
@@ -455,7 +464,7 @@ LegalDoc get termsDoc => LegalDoc(
 LegalDoc get privacyDoc => LegalDoc(
   title: 'Privacy Policy',
   subtitle: 'WHAT WE COLLECT · WHERE IT GOES',
-  lastUpdatedLine: 'Last updated 4 June 2026.',
+  lastUpdatedLine: 'Last updated 24 July 2026.',
   sections: [
     // Explicit, Apple-aligned face-data summary at the very top of
     // the policy. Every bullet App Store guideline 5.1.1(i) asks
@@ -494,7 +503,7 @@ LegalDoc get privacyDoc => LegalDoc(
       'model can produce the written analysis, the honest-looks '
       'score, and the chat / advisor replies.\n'
       '• Replicate, Inc. (San Francisco, CA, USA) — sent the selfie '
-      'so its Nano Banana + face-swap models can render the '
+      'so its Nano Banana model can render the '
       '"maximised" preview image you see at the top of the report.\n'
       'Both are sent over HTTPS / TLS 1.3. No other third party '
       'receives the image.\n\n'
@@ -552,13 +561,12 @@ LegalDoc get privacyDoc => LegalDoc(
       'contacts, IP-based tracking IDs, advertising IDs, '
       'social-login data.\n\n'
       'EXACT ROUTE\n\n'
-      'Phone → Debloat OS backend (mirrorly-production.up.railway'
+      'Phone → Debloat OS backend (debloat-production.up.railway'
       '.app) over HTTPS / TLS 1.3 — backend does NOT persist '
       'photo bytes — backend forwards in-memory to OpenAI '
-      '(api.openai.com, GPT-4o Vision) for /analyse, /rate, '
-      '/chat OR Replicate (api.replicate.com, Nano Banana + '
-      'cdingram/face-swap) for /maximize, /tryon — response '
-      'returns to phone.\n\n'
+      '(api.openai.com, vision models) for /analyse, /rate, '
+      '/food OR Replicate (api.replicate.com, Nano Banana) '
+      'for /maximize — response returns to phone.\n\n'
       'WHO RECEIVES IT\n\n'
       '• OpenAI, L.L.C. (San Francisco, CA, USA).\n'
       '• Replicate, Inc. (San Francisco, CA, USA).\n'
@@ -593,11 +601,19 @@ LegalDoc get privacyDoc => LegalDoc(
       'it will send an image to our servers (e.g. "GENERATE '
       'IMAGE", "SCAN").\n\n'
       'On our servers, temporarily: the single photo you submit to '
-      '/scan, /rate, /tryon, or /maximize for the duration of one '
-      'request (seconds), and the advisor-chat text you submit to '
-      '/chat for the duration of one request. We do not '
-      'attach your photo or chats to a persistent account, '
-      'because there is no account.'),
+      '/analyse, /rate, or /maximize — and the MEAL photo you submit '
+      'to /food — for the duration of one request (seconds). We do '
+      'not attach your photos to a persistent account, because '
+      'there is no account.'),
+    const LegalSection('MEAL PHOTOS (FOOD SCAN)',
+      'When you scan a meal on the Food tab, that photo takes the '
+      'same route as a face scan: phone → our backend '
+      '(debloat-production.up.railway.app, HTTPS/TLS 1.3) → OpenAI '
+      'for ONE grading request → response back to your phone. The '
+      'meal photo is never persisted on our backend, is excluded '
+      'from AI training and long-term retention at OpenAI, and a '
+      'small thumbnail of your scan history is kept on YOUR device '
+      'only. Meal photos contain no face data.'),
     const LegalSection('FACE DATA — WHAT IT IS, WHAT IT ISN\'T',
       'Debloat OS uses on-device computer vision to derive geometric '
       'measurements from your selfie (Apple ML Kit on iOS, Google '
@@ -608,10 +624,10 @@ LegalDoc get privacyDoc => LegalDoc(
       'photo, or unlock anything.\n\n'
       'WHAT DEBLOAT DOES with face data:\n'
       '• Compute and display your geometry score on-device.\n'
-      '• Send the photo to OpenAI (GPT-4o Vision) and Replicate '
-      '(Google Nano Banana, cdingram/face-swap) for the duration '
-      'of one API call to generate your analysis prose and your '
-      '"maximized twin" rendered image.\n'
+      '• Send the photo to OpenAI (vision) and Replicate '
+      '(Google Nano Banana) for the duration of one API call to '
+      'generate your analysis prose and your "debloated" '
+      'rendered preview.\n'
       '• Store the photo + the geometry numbers locally on your '
       'device, in the app sandbox, until you delete the app.\n\n'
       'WHAT DEBLOAT DOES NOT DO with face data:\n'
@@ -632,7 +648,7 @@ LegalDoc get privacyDoc => LegalDoc(
     const LegalSection('WHO PROCESSES YOUR PHOTOS',
       'OpenAI — GPT-4o Vision runs your analysis and honest rating. '
       'Replicate — Google Nano Banana renders your transformation '
-      'images; cdingram/face-swap locks the identity.\n\n'
+      'images.\n\n'
       'All providers process the photo for the duration '
       'of one API request and do not, by '
       'their default API terms, retain or train on the data we '
