@@ -449,39 +449,33 @@ class _PaywallScreenState extends State<PaywallScreen> {
       backgroundColor: _pvBg,
       body: Column(
         children: [
-          // ── Hero: our before/after, split by a violet beam, DAY 1 /
-          //    WEEK 8 chips, close X overlaid. ─────────────────────────
-          Stack(
-            children: [
-              _heroSplit(),
-              SafeArea(
-                bottom: false,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 2, 0, 0),
-                    child: _CloseX(onTap: _close),
-                  ),
-                ),
+          // ── Close X on its own row — the hero sits BELOW it now
+          //    (bro: "take the logo out, bring the image lower"). ──────
+          SafeArea(
+            bottom: false,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 2, 0, 0),
+                child: _CloseX(onTap: _close),
               ),
-            ],
+            ),
           ),
+          const SizedBox(height: 6),
 
-          // ── Scrollable middle: logo + headline + features + plan ────
+          // ── Hero: INTERACTIVE before/after slider — starts at exactly
+          //    50/50, bloated left / future face right. ────────────────
+          _PaywallHeroSlider(female: _gender == 'f'),
+
+          // ── Middle: header + points pushed lower, plan card pulled
+          //    down against the CTA. No logo, no scroll — spacers own
+          //    the whitespace. ──────────────────────────────────────────
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
-              physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(9),
-                    child: Image.asset('assets/icons/appstore.png',
-                      width: 32, height: 32,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.face_rounded, color: Colors.white, size: 28)),
-                  ),
-                  const SizedBox(height: 10),
+                  const Spacer(flex: 3),
                   Text('Debloat your face.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
@@ -492,34 +486,34 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     style: GoogleFonts.inter(
                       color: Colors.white, fontSize: 24, height: 1.1,
                       fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 14),
-                  // Three outcomes — the whole promise, sold hard.
+                  const SizedBox(height: 16),
+                  // Three outcomes — bro's exact copy.
                   Column(
                     children: const [
                       _OutcomeRow(
                         icon: Icons.face_retouching_natural,
-                        title: 'See your face debloated',
-                        body: 'AI renders the leaner, sharper you — the face under the bloat.'),
-                      SizedBox(height: 9),
+                        title: 'SEE YOUR FUTURE FACE',
+                        body: 'Preview the sharper version of you.'),
+                      SizedBox(height: 10),
                       _OutcomeRow(
                         icon: Icons.restaurant_rounded,
-                        title: 'Scan any meal for bloat',
-                        body: 'Point your camera at food — catch the hidden sodium before it puffs you up.'),
-                      SizedBox(height: 9),
+                        title: 'SCAN FOR BLOAT',
+                        body: 'Know what helps or hurts your face.'),
+                      SizedBox(height: 10),
                       _OutcomeRow(
                         icon: Icons.water_drop_rounded,
-                        title: 'Unlock your drain plan',
-                        body: 'The exact daily routine to get there, built for your face.'),
+                        title: 'FOLLOW THE PROTOCOL',
+                        body: 'One plan. One goal. A sharper face.'),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const Spacer(flex: 4),
                   _WeeklyPlanCard(price: price),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text('$price per week · auto-renews · cancel anytime',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 12, fontWeight: FontWeight.w500)),
+                      fontSize: 11.5, fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
@@ -588,92 +582,131 @@ class _PaywallScreenState extends State<PaywallScreen> {
       color: Colors.white.withValues(alpha: 0.4), fontSize: 16)),
   );
 
-  /// The full-bleed before/after hero — our beforeafter.jpg, split down
-  /// the middle by a glowing violet beam, with DAY 1 / WEEK 8 chips.
-  Widget _heroSplit() {
-    // Adaptive height — the whole paywall (hero + outcomes + plan card
-    // + CTA + links) must fit ONE screen with zero scrolling on a
-    // standard phone. ~31% of screen height, clamped for small/large.
-    final h = (MediaQuery.of(context).size.height * 0.31)
-        .clamp(230.0, 330.0);
+}
+
+/// The interactive before/after hero — bloated face LEFT, future face
+/// RIGHT, draggable divider starting at exactly 50/50. Tiny DAY 1
+/// (white) / DAY 60 (blue) labels in the bottom corners — no fat chips.
+class _PaywallHeroSlider extends StatefulWidget {
+  final bool female;
+  const _PaywallHeroSlider({required this.female});
+  @override
+  State<_PaywallHeroSlider> createState() => _PaywallHeroSliderState();
+}
+
+class _PaywallHeroSliderState extends State<_PaywallHeroSlider> {
+  double _t = 0.5; // divider position — starts exactly half way
+
+  @override
+  Widget build(BuildContext context) {
+    final before = widget.female
+        ? 'assets/marketing/before_f.jpg'
+        : 'assets/marketing/before.jpg';
+    final after = widget.female
+        ? 'assets/marketing/after_f.jpg'
+        : 'assets/marketing/after.jpg';
+    final h = (MediaQuery.of(context).size.height * 0.34)
+        .clamp(240.0, 350.0);
+
     return SizedBox(
       height: h,
       width: double.infinity,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.asset(
-            _gender == 'f'
-                ? 'assets/marketing/beforeafter_f.jpg'
-                : 'assets/marketing/beforeafter.jpg',
-            fit: BoxFit.cover,
-            alignment: const Alignment(0, -0.3),
-            errorBuilder: (_, __, ___) => Container(color: _pvCard,
-              alignment: Alignment.center,
-              child: const Icon(Icons.face_rounded, color: _pvViolet, size: 72))),
-          // Fade the bottom into the page background.
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, _pvBg],
-                  stops: const [0.55, 1.0]),
+      child: LayoutBuilder(builder: (context, c) {
+        final w = c.maxWidth;
+        return GestureDetector(
+          onHorizontalDragUpdate: (d) => setState(
+              () => _t = (d.localPosition.dx / w).clamp(0.06, 0.94)),
+          onTapDown: (d) => setState(
+              () => _t = (d.localPosition.dx / w).clamp(0.06, 0.94)),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // AFTER (future face) — the base, revealed on the right.
+              _face(after),
+              // BEFORE (bloated) clipped to the left of the divider.
+              ClipRect(
+                clipper: _PwLeftClipper(_t),
+                child: _face(before),
               ),
-            ),
+              // Fade the bottom into the page background.
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, _pvBg],
+                      stops: const [0.62, 1.0]),
+                  ),
+                ),
+              ),
+              // Divider + drag handle.
+              Positioned(
+                left: w * _t - 1, top: 0, bottom: 0,
+                child: Container(width: 2, color: Colors.white),
+              ),
+              Positioned(
+                left: w * _t - 17, top: 0, bottom: 0,
+                child: Center(
+                  child: Container(
+                    width: 34, height: 34,
+                    decoration: BoxDecoration(
+                      color: _pvBg,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: _pvVioletLite, width: 2),
+                      boxShadow: [BoxShadow(
+                        color: _pvVioletLite.withValues(alpha: 0.6),
+                        blurRadius: 14)],
+                    ),
+                    child: const Icon(Icons.unfold_more_rounded,
+                      color: _pvVioletLite, size: 18),
+                  ),
+                ),
+              ),
+              // Tiny corner labels — white left, blue right. Way smaller
+              // than the old chips, per bro.
+              Positioned(
+                left: 14, bottom: 26,
+                child: _cornerTag('DAY 1', Colors.white),
+              ),
+              Positioned(
+                right: 14, bottom: 26,
+                child: _cornerTag('DAY 60', _pvVioletLite),
+              ),
+            ],
           ),
-          // Central violet beam.
-          Center(
-            child: Container(
-              width: 2.5,
-              decoration: BoxDecoration(
-                color: _pvVioletLite,
-                boxShadow: [BoxShadow(
-                  color: _pvVioletLite.withValues(alpha: 0.8), blurRadius: 16)]),
-            ),
-          ),
-          // DAY 1 chip (left)
-          Positioned(
-            left: 16, bottom: 64,
-            child: _dayChip('DAY 1', filled: false),
-          ),
-          // WEEK 8 chip (right)
-          Positioned(
-            right: 16, bottom: 64,
-            child: _dayChip('WEEK 8', filled: true),
-          ),
-        ],
-      ),
+        );
+      }),
     );
   }
 
-  Widget _dayChip(String label, {required bool filled}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: filled ? _pvViolet : Colors.black.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(
-          color: filled ? _pvViolet : Colors.white.withValues(alpha: 0.35),
-          width: 1.4),
-        boxShadow: filled
-            ? [BoxShadow(color: _pvViolet.withValues(alpha: 0.6), blurRadius: 18)]
-            : null,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(filled ? Icons.auto_awesome : Icons.circle_outlined,
-            color: Colors.white, size: 15),
-          const SizedBox(width: 7),
-          Text(label,
-            style: GoogleFonts.inter(
-              color: Colors.white, fontSize: 15,
-              letterSpacing: 1, fontWeight: FontWeight.w800)),
-        ],
-      ),
-    );
-  }
+  Widget _face(String asset) => Image.asset(
+        asset,
+        fit: BoxFit.cover,
+        alignment: const Alignment(0, -0.35),
+        errorBuilder: (_, __, ___) => Container(
+          color: _pvCard,
+          alignment: Alignment.center,
+          child: const Icon(Icons.face_rounded, color: _pvViolet, size: 60)),
+      );
+
+  Widget _cornerTag(String label, Color color) => Text(label,
+        style: GoogleFonts.inter(
+          color: color, fontSize: 11,
+          letterSpacing: 1.6, fontWeight: FontWeight.w800,
+          shadows: const [
+            Shadow(color: Colors.black87, blurRadius: 6),
+          ],
+        ));
+}
+
+class _PwLeftClipper extends CustomClipper<Rect> {
+  final double t;
+  const _PwLeftClipper(this.t);
+  @override
+  Rect getClip(Size size) => Rect.fromLTRB(0, 0, size.width * t, size.height);
+  @override
+  bool shouldReclip(_PwLeftClipper old) => old.t != t;
 }
 
 // ── Paywall palette — black & blue, matching the app (was violet).
@@ -736,38 +769,40 @@ class _WeeklyPlanCard extends StatelessWidget {
   const _WeeklyPlanCard({required this.price});
   @override
   Widget build(BuildContext context) {
+    // Compact — sits tight against the CTA now, so it stays a plan
+    // line, not a second hero.
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 20, 16),
+      padding: const EdgeInsets.fromLTRB(12, 10, 16, 10),
       decoration: BoxDecoration(
         color: _pvViolet.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _pvViolet, width: 2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _pvViolet, width: 1.6),
         boxShadow: [BoxShadow(
-          color: _pvViolet.withValues(alpha: 0.3), blurRadius: 22, spreadRadius: -4)],
+          color: _pvViolet.withValues(alpha: 0.28), blurRadius: 18, spreadRadius: -4)],
       ),
       child: Row(
         children: [
           Container(
-            width: 52, height: 52,
+            width: 38, height: 38,
             decoration: BoxDecoration(
               color: _pvViolet.withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(14)),
+              borderRadius: BorderRadius.circular(11)),
             alignment: Alignment.center,
-            child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 26),
+            child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 20),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('WEEKLY',
                 style: GoogleFonts.inter(
-                  color: Colors.white, fontSize: 19,
+                  color: Colors.white, fontSize: 15,
                   letterSpacing: 1, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Text('billed weekly',
                 style: GoogleFonts.inter(
                   color: Colors.white.withValues(alpha: 0.55),
-                  fontSize: 14, fontWeight: FontWeight.w500)),
+                  fontSize: 11.5, fontWeight: FontWeight.w500)),
             ],
           ),
           const Spacer(),
@@ -776,13 +811,13 @@ class _WeeklyPlanCard extends StatelessWidget {
             children: [
               Text(price,
                 style: GoogleFonts.inter(
-                  color: Colors.white, fontSize: 28, height: 1,
+                  color: Colors.white, fontSize: 22, height: 1,
                   fontWeight: FontWeight.w900)),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Text('per week',
                 style: GoogleFonts.inter(
                   color: Colors.white.withValues(alpha: 0.55),
-                  fontSize: 13, fontWeight: FontWeight.w500)),
+                  fontSize: 11, fontWeight: FontWeight.w500)),
             ],
           ),
         ],
