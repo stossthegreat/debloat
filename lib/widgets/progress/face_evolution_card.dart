@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -36,6 +38,7 @@ class _FaceEvolutionCardState extends State<FaceEvolutionCard>
   int _selected = 0;      // index into _photoScans (the RIGHT image)
   double _split = 0.5;    // 0..1 divider position
   bool _playing = false;
+  bool _sharing = false;
   late final AnimationController _reveal;
 
   @override
@@ -187,7 +190,9 @@ class _FaceEvolutionCardState extends State<FaceEvolutionCard>
                 onTap: () => _openFullscreen(context))),
               const SizedBox(width: 12),
               Expanded(child: _FillBtn(
-                icon: Icons.ios_share_rounded, label: 'SHARE',
+                icon: Icons.ios_share_rounded,
+                label: _sharing ? 'BUILDING…' : 'SHARE',
+                loading: _sharing,
                 onTap: () => _share(context))),
             ],
           ),
@@ -215,16 +220,19 @@ class _FaceEvolutionCardState extends State<FaceEvolutionCard>
     ));
   }
 
-  void _share(BuildContext context) {
+  Future<void> _share(BuildContext context) async {
+    if (_sharing) return;
     HapticFeedback.selectionClick();
-    // Image-based share of the Day-1 → selected pair. (A cinematic video
-    // export is the next step — it needs a video-encoding package.)
-    FaceEvolutionShare.sharePair(
-      context: context,
-      beforePath: _day1.capturedImagePath!,
-      afterPath: _sel.capturedImagePath!,
-      afterLabel: _dayLabel(_sel),
-    );
+    setState(() => _sharing = true);
+    try {
+      await FaceEvolutionShare.sharePair(
+        beforePath: _day1.capturedImagePath!,
+        afterPath: _sel.capturedImagePath!,
+        afterLabel: _dayLabel(_sel),
+      );
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
   }
 }
 
@@ -533,17 +541,27 @@ class _GhostBtn extends StatelessWidget {
 
 class _FillBtn extends StatelessWidget {
   final IconData icon; final String label; final VoidCallback onTap;
-  const _FillBtn({required this.icon, required this.label, required this.onTap});
+  final bool loading;
+  const _FillBtn({
+    required this.icon, required this.label, required this.onTap,
+    this.loading = false,
+  });
   @override
   Widget build(BuildContext context) => Material(
     color: AppColors.brand,
     borderRadius: BorderRadius.circular(14),
     child: InkWell(
-      onTap: onTap, borderRadius: BorderRadius.circular(14),
+      onTap: loading ? null : onTap, borderRadius: BorderRadius.circular(14),
       child: Container(
         height: 50, alignment: Alignment.center,
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, color: AppColors.base, size: 18),
+          if (loading)
+            const SizedBox(width: 18, height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                valueColor: AlwaysStoppedAnimation(AppColors.base)))
+          else
+            Icon(icon, color: AppColors.base, size: 18),
           const SizedBox(width: 8),
           Text(label, style: GoogleFonts.inter(
             color: AppColors.base, fontSize: 13,
@@ -638,47 +656,121 @@ class _FullscreenCompareState extends State<_FullscreenCompare> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  SHARE — composes a Day-1 → now side-by-side and shares it.
-//  (A cinematic video export is the planned next step; it needs a
-//   video-encoding package.)
+//  SHARE — exports an ANIMATED reveal clip (Day 1 → now) as a GIF and
+//  shares it. A GIF plays like a short video in iMessage / social and is
+//  built purely with the `image` package (already a dependency), so it
+//  needs no native video encoder. Falls back to a side-by-side JPG, then
+//  to the raw photos, so the share sheet always opens.
 // ═══════════════════════════════════════════════════════════════════════════
 class FaceEvolutionShare {
   static Future<void> sharePair({
-    required BuildContext context,
     required String beforePath,
     required String afterPath,
     required String afterLabel,
   }) async {
-    final text = 'My Debloat OS face evolution. Day 1 → $afterLabel';
+    final text = 'My Debloat OS face evolution. Day 1 → $afterLabel 💧→🗿';
+    final dir = await getTemporaryDirectory();
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    final args = <String, String>{'before': beforePath, 'after': afterPath};
+
+    // 1) Animated GIF reveal — the "video". Encoded in a background
+    //    ISOLATE (compute) so decoding + 14 frames + GIF encoding never
+    //    hangs the UI — the old on-main-thread version froze and the
+    //    share sheet never appeared.
     try {
-      final before = img.decodeImage(await File(beforePath).readAsBytes());
-      final after  = img.decodeImage(await File(afterPath).readAsBytes());
-      if (before != null && after != null) {
-        const h = 1000;
-        final b = img.copyResize(before, height: h);
-        final a = img.copyResize(after, height: h);
-        const gap = 8;
-        final canvas = img.Image(
-          width: b.width + a.width + gap, height: h);
-        img.fill(canvas, color: img.ColorRgb8(5, 9, 11));
-        img.compositeImage(canvas, b, dstX: 0, dstY: 0);
-        img.compositeImage(canvas, a, dstX: b.width + gap, dstY: 0);
-        final bytes = img.encodeJpg(canvas, quality: 92);
-        final dir = await getTemporaryDirectory();
-        final f = File(
-          '${dir.path}/evolution_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final bytes = await compute(encodeRevealGif, args);
+      if (bytes != null && bytes.isNotEmpty) {
+        final f = File('${dir.path}/evolution_$stamp.gif');
         await f.writeAsBytes(bytes);
         await Share.shareXFiles(
-          [XFile(f.path, mimeType: 'image/jpeg')], text: '$text 💧→🗿');
+          [XFile(f.path, mimeType: 'image/gif')], text: text);
         return;
       }
-    } catch (_) {/* fall through to raw-file share */}
-    // Fallback: share the two photos directly.
+    } catch (_) {/* fall through */}
+
+    // 2) Static side-by-side JPG (also off-thread).
+    try {
+      final bytes = await compute(encodeJpgPair, args);
+      if (bytes != null && bytes.isNotEmpty) {
+        final f = File('${dir.path}/evolution_$stamp.jpg');
+        await f.writeAsBytes(bytes);
+        await Share.shareXFiles(
+          [XFile(f.path, mimeType: 'image/jpeg')], text: text);
+        return;
+      }
+    } catch (_) {/* fall through */}
+
+    // 3) Raw photos — guarantees the share sheet still opens.
     try {
       await Share.shareXFiles([
         XFile(beforePath, mimeType: 'image/jpeg'),
         XFile(afterPath, mimeType: 'image/jpeg'),
       ], text: text);
     } catch (_) {}
+  }
+}
+
+// ── Isolate entry points (top-level for compute) ────────────────────────────
+
+/// Builds an animated GIF that wipes Day 1 away to reveal the latest scan
+/// — the same reveal the card plays. Runs in a background isolate. Returns
+/// the GIF bytes, or null on any failure.
+Uint8List? encodeRevealGif(Map<String, String> args) {
+  try {
+    final beforeRaw = img.decodeImage(File(args['before']!).readAsBytesSync());
+    final afterRaw  = img.decodeImage(File(args['after']!).readAsBytesSync());
+    if (beforeRaw == null || afterRaw == null) return null;
+
+    const h = 460; // keep the GIF light + fast to encode
+    final bR = img.copyResize(beforeRaw, height: h);
+    final aR = img.copyResize(afterRaw, height: h);
+    final w = bR.width < aR.width ? bR.width : aR.width;
+    final b = img.copyCrop(bR, x: (bR.width - w) ~/ 2, y: 0, width: w, height: h);
+    final a = img.copyCrop(aR, x: (aR.width - w) ~/ 2, y: 0, width: w, height: h);
+    final white = img.ColorRgb8(255, 255, 255);
+
+    const frames = 14;
+    img.Image? gif;
+    for (var i = 0; i < frames; i++) {
+      final t = i / (frames - 1); // 0..1 reveal
+      final frame = img.Image.from(a); // after is the base
+      final cutW = ((1 - t) * w).round();
+      if (cutW > 0) {
+        final beforePart = img.copyCrop(b, x: 0, y: 0, width: cutW, height: h);
+        img.compositeImage(frame, beforePart, dstX: 0, dstY: 0);
+        img.drawLine(frame,
+          x1: cutW, y1: 0, x2: cutW, y2: h, color: white, thickness: 3);
+      }
+      frame.frameDuration = i == frames - 1 ? 1400 : 95; // hold last frame
+      if (gif == null) {
+        gif = frame;
+      } else {
+        gif.addFrame(frame);
+      }
+    }
+    if (gif == null) return null;
+    return Uint8List.fromList(img.encodeGif(gif));
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Side-by-side Day 1 | now JPG, in a background isolate.
+Uint8List? encodeJpgPair(Map<String, String> args) {
+  try {
+    final before = img.decodeImage(File(args['before']!).readAsBytesSync());
+    final after  = img.decodeImage(File(args['after']!).readAsBytesSync());
+    if (before == null || after == null) return null;
+    const h = 900;
+    final b = img.copyResize(before, height: h);
+    final a = img.copyResize(after, height: h);
+    const gap = 8;
+    final canvas = img.Image(width: b.width + a.width + gap, height: h);
+    img.fill(canvas, color: img.ColorRgb8(5, 9, 11));
+    img.compositeImage(canvas, b, dstX: 0, dstY: 0);
+    img.compositeImage(canvas, a, dstX: b.width + gap, dstY: 0);
+    return Uint8List.fromList(img.encodeJpg(canvas, quality: 90));
+  } catch (_) {
+    return null;
   }
 }

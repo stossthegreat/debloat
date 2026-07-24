@@ -18,6 +18,7 @@ import '../../services/face_asset_service.dart';
 import '../../services/honest_rating_service.dart';
 import '../../services/local_store_service.dart';
 import '../../services/mirror_api_service.dart';
+import '../../services/notification_service.dart';
 import '../../services/paywall_gate.dart';
 import '../../services/protocol_service.dart';
 import '../../services/scoring_service.dart';
@@ -198,6 +199,11 @@ class _ReportScreenState extends State<ReportScreen> {
         // ignore: discarded_futures
         ReviewPromptService.maybePromptAfterReport(context);
       }
+      // Ask for notification permission now — the user just got their
+      // results, the highest-intent moment to opt into the streak +
+      // food-scan retention nudges. No-op after the first grant.
+      // ignore: discarded_futures
+      NotificationService.requestPermissionIfNeeded();
       // Reschedule the daily nudge — after a fresh scan the state
       // moves from NO_SCAN to POST_SCAN_NO_GAME (or stays in an
       // active streak), so today's 7:30pm copy needs to update.
