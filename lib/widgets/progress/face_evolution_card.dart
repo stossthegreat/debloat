@@ -638,9 +638,11 @@ class _FullscreenCompareState extends State<_FullscreenCompare> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  SHARE — composes a Day-1 → now side-by-side and shares it.
-//  (A cinematic video export is the planned next step; it needs a
-//   video-encoding package.)
+//  SHARE — exports an ANIMATED reveal clip (Day 1 → now) as a GIF and
+//  shares it. A GIF plays like a short video in iMessage / social and is
+//  built purely with the `image` package (already a dependency), so it
+//  needs no native video encoder. Falls back to a side-by-side JPG, then
+//  to the raw photos, so the share sheet always opens.
 // ═══════════════════════════════════════════════════════════════════════════
 class FaceEvolutionShare {
   static Future<void> sharePair({
@@ -649,7 +651,23 @@ class FaceEvolutionShare {
     required String afterPath,
     required String afterLabel,
   }) async {
-    final text = 'My Debloat OS face evolution. Day 1 → $afterLabel';
+    final text = 'My Debloat OS face evolution. Day 1 → $afterLabel 💧→🗿';
+
+    // 1) Animated GIF reveal — the "video".
+    try {
+      final gif = await _buildRevealGif(beforePath, afterPath);
+      if (gif != null) {
+        final dir = await getTemporaryDirectory();
+        final f = File(
+          '${dir.path}/evolution_${DateTime.now().millisecondsSinceEpoch}.gif');
+        await f.writeAsBytes(gif);
+        await Share.shareXFiles(
+          [XFile(f.path, mimeType: 'image/gif')], text: text);
+        return;
+      }
+    } catch (_) {/* fall through */}
+
+    // 2) Static side-by-side JPG.
     try {
       final before = img.decodeImage(await File(beforePath).readAsBytes());
       final after  = img.decodeImage(await File(afterPath).readAsBytes());
@@ -658,8 +676,7 @@ class FaceEvolutionShare {
         final b = img.copyResize(before, height: h);
         final a = img.copyResize(after, height: h);
         const gap = 8;
-        final canvas = img.Image(
-          width: b.width + a.width + gap, height: h);
+        final canvas = img.Image(width: b.width + a.width + gap, height: h);
         img.fill(canvas, color: img.ColorRgb8(5, 9, 11));
         img.compositeImage(canvas, b, dstX: 0, dstY: 0);
         img.compositeImage(canvas, a, dstX: b.width + gap, dstY: 0);
@@ -669,16 +686,57 @@ class FaceEvolutionShare {
           '${dir.path}/evolution_${DateTime.now().millisecondsSinceEpoch}.jpg');
         await f.writeAsBytes(bytes);
         await Share.shareXFiles(
-          [XFile(f.path, mimeType: 'image/jpeg')], text: '$text 💧→🗿');
+          [XFile(f.path, mimeType: 'image/jpeg')], text: text);
         return;
       }
-    } catch (_) {/* fall through to raw-file share */}
-    // Fallback: share the two photos directly.
+    } catch (_) {/* fall through */}
+
+    // 3) Raw photos.
     try {
       await Share.shareXFiles([
         XFile(beforePath, mimeType: 'image/jpeg'),
         XFile(afterPath, mimeType: 'image/jpeg'),
       ], text: text);
     } catch (_) {}
+  }
+
+  /// Builds an animated GIF that wipes Day 1 away to reveal the latest
+  /// scan — the same reveal the card plays, exported as a shareable clip.
+  static Future<List<int>?> _buildRevealGif(
+      String beforePath, String afterPath) async {
+    final beforeRaw = img.decodeImage(await File(beforePath).readAsBytes());
+    final afterRaw  = img.decodeImage(await File(afterPath).readAsBytes());
+    if (beforeRaw == null || afterRaw == null) return null;
+
+    const h = 560; // keep GIF light
+    final bR = img.copyResize(beforeRaw, height: h);
+    final aR = img.copyResize(afterRaw, height: h);
+    final w = bR.width < aR.width ? bR.width : aR.width;
+    final b = img.copyCrop(bR, x: (bR.width - w) ~/ 2, y: 0, width: w, height: h);
+    final a = img.copyCrop(aR, x: (aR.width - w) ~/ 2, y: 0, width: w, height: h);
+    final white = img.ColorRgb8(255, 255, 255);
+
+    const frames = 22;
+    img.Image? gif;
+    for (var i = 0; i < frames; i++) {
+      final t = i / (frames - 1); // 0..1 reveal
+      final frame = img.Image.from(a); // after is the base
+      final cutW = ((1 - t) * w).round();
+      if (cutW > 0) {
+        final beforePart = img.copyCrop(b, x: 0, y: 0, width: cutW, height: h);
+        img.compositeImage(frame, beforePart, dstX: 0, dstY: 0);
+        img.drawLine(frame,
+          x1: cutW, y1: 0, x2: cutW, y2: h, color: white, thickness: 3);
+      }
+      // Hold the final fully-revealed frame a beat longer.
+      frame.frameDuration = i == frames - 1 ? 1400 : 85;
+      if (gif == null) {
+        gif = frame;
+      } else {
+        gif.addFrame(frame);
+      }
+    }
+    if (gif == null) return null;
+    return img.encodeGif(gif);
   }
 }
