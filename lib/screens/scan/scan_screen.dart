@@ -1058,29 +1058,20 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       }
       await LocalStoreService.markScanUsed();
     } else {
-      // Free path — ONE scan, then paywall forever. Check BEFORE
-      // we route to /report so a free user who got their teaser
-      // and came back for another can't burn through unlimited
-      // half-results.
-      final usedFree = await LocalStoreService.scanFreeUsed();
-      if (usedFree) {
-        if (!mounted) return;
-        // ignore: discarded_futures
-        AnalyticsService.scanBlockedFreeCap();
-        context.go('/paywall', extra: {
-          'afterPurchase': '/report',
-          'imageBytes':    imageBytes,
-          'geometry':      primaryGeom,
-          'extraImages':   extraImages,
-          'source':        'scan_free_capped',
-        });
-        return;
-      }
+      // Free path — no free results at all any more. Bro's flow:
+      // scan → processing theatre → PAYWALL → pay → results. The
+      // theatre routes free users to the paywall with the payload
+      // stashed, so there is nothing to cap here — the wall itself
+      // is the cap. Keep the used-flag write for analytics cohorts.
       await LocalStoreService.markScanFreeUsed();
     }
     if (!mounted) return;
 
-    context.go('/report', extra: {
+    // Everyone lands on the processing theatre — the big "rendering
+    // your debloated face / computing bloat scores" beat. It routes:
+    //   pro  → /report
+    //   free → /paywall (afterPurchase '/report', payload stashed)
+    context.go('/onboarding/processing', extra: {
       'imageBytes':  imageBytes,
       'geometry':    primaryGeom,
       'extraImages': extraImages,

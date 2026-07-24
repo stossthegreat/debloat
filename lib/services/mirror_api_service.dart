@@ -63,10 +63,17 @@ class MirrorApiService {
     // PurchaseService keeps in sync with RevenueCat); avoids a
     // network round-trip in the scan path.
     final isPro = await LocalStoreService.isSubscribed();
+    // Bro: the FIRST scan always runs gpt-4o-mini regardless of Pro —
+    // it fires right after purchase in the onboarding flow, and the
+    // wow-moment there is the render, not the prose. ~10x cheaper on
+    // the single highest-volume call in the app. Every scan after the
+    // first goes back to the isPro model split.
+    final priorScans = await LocalStoreService.loadScans();
+    final firstScan = priorScans.isEmpty;
     final payload = <String, dynamic>{
       'imageBase64': base64Encode(imageBytes),
       'geometry':    _geometryToJson(geometry),
-      'isPro':       isPro,
+      'isPro':       isPro && !firstScan,
       if (gender != null) 'gender': gender,
     };
     if (extraImages.isNotEmpty) {
