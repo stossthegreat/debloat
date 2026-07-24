@@ -141,10 +141,14 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         image: 'assets/onboarding/welcome_scan.jpg',
         headTop: 'Wake Up',
         headBottom: 'Less Puffy',
-        sub: 'Track puffiness. See real progress.',
+        sub: 'Drag the line. Same face — just drained.',
         cta: 'Continue',
         onBack: _back,
         onNext: _next,
+        // Bro: "put the first one in onboarding as a slide that starts
+        // exactly half way." Interactive before/after slider, divider
+        // opening at 50/50 — bloated left, drained right.
+        hero: const BeforeAfterSlider(aspectRatio: 4 / 5),
       ),
       _WelcomeSlide(
         index: here(),
@@ -158,6 +162,9 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
         cta: 'Continue',
         onBack: _back,
         onNext: _next,
+        // The plate with scanner callouts — lines pointing at each food
+        // with its sodium read, verdict chip at the bottom.
+        hero: const _FoodScanHero(),
       ),
       _WelcomeSlide(
         index: here(),
@@ -308,6 +315,11 @@ class _WelcomeSlide extends StatelessWidget {
   final IconData icon;
   final String label, image, headTop, headBottom, sub, cta;
   final VoidCallback onBack, onNext;
+  /// Optional custom hero widget. When set it replaces the static
+  /// Image.asset + label chip entirely (the hero owns its own
+  /// overlays) — used for the interactive before/after slider on
+  /// slide 1 and the sodium-callout food scan on slide 2.
+  final Widget? hero;
   const _WelcomeSlide({
     required this.index,
     required this.showProgress,
@@ -320,6 +332,7 @@ class _WelcomeSlide extends StatelessWidget {
     required this.cta,
     required this.onBack,
     required this.onNext,
+    this.hero,
   });
 
   @override
@@ -363,7 +376,7 @@ class _WelcomeSlide extends StatelessWidget {
                     color: Onb.primary.withValues(alpha: 0.4), width: 1),
                   borderRadius: BorderRadius.circular(26),
                 ),
-                child: Stack(
+                child: hero ?? Stack(
                   fit: StackFit.expand,
                   children: [
                     Image.asset(image, fit: BoxFit.cover,
@@ -409,6 +422,142 @@ class _WelcomeSlide extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The Food-Analysis hero — the real plate photo with scanner-style
+/// callout lines pointing at each food and its sodium read, plus a
+/// plate verdict chip at the bottom. Sells "we see the sodium before
+/// it puffs you up" in one glance.
+class _FoodScanHero extends StatelessWidget {
+  const _FoodScanHero();
+
+  // Chip anchor + food-dot positions as fractions of the hero box
+  // (tuned to the cover-cropped 4:5 view of welcome_food.jpg).
+  static const _callouts =
+      <({Offset chip, Offset dot, bool right, String label, String value})>[
+    (chip: Offset(0.05, 0.06), dot: Offset(0.25, 0.25), right: false,
+     label: 'CUCUMBER', value: '2 MG'),
+    (chip: Offset(0.95, 0.16), dot: Offset(0.82, 0.38), right: true,
+     label: 'AVOCADO', value: '7 MG'),
+    (chip: Offset(0.05, 0.62), dot: Offset(0.47, 0.50), right: false,
+     label: 'SALMON', value: '75 MG'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, c) {
+      final w = c.maxWidth, h = c.maxHeight;
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/onboarding/welcome_food.jpg',
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const OnbImagePlaceholder(
+              icon: Icons.restaurant_rounded, caption: 'Food Analysis')),
+          // Slight darkening so the white callouts always read.
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.12))),
+          CustomPaint(
+            painter: _CalloutLinePainter(lines: [
+              for (final k in _callouts)
+                (
+                  Offset(k.chip.dx * w + (k.right ? -6 : 6),
+                         k.chip.dy * h + 14),
+                  Offset(k.dot.dx * w, k.dot.dy * h),
+                ),
+            ]),
+          ),
+          for (final k in _callouts)
+            Positioned(
+              left:  k.right ? null : k.chip.dx * w,
+              right: k.right ? (1 - k.chip.dx) * w : null,
+              top:   k.chip.dy * h,
+              child: _chip(k.label, k.value),
+            ),
+          // Plate verdict.
+          Positioned(
+            left: 0, right: 0, bottom: 12,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.72),
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(
+                    color: Onb.success.withValues(alpha: 0.6), width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.water_drop_rounded,
+                      color: Onb.success, size: 14),
+                    const SizedBox(width: 6),
+                    Text('PLATE SODIUM ~180 MG · LOW',
+                      style: GoogleFonts.inter(
+                        color: Onb.success,
+                        fontSize: 11, letterSpacing: 1.1,
+                        fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    });
+  }
+
+  Widget _chip(String label, String value) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.72),
+      borderRadius: BorderRadius.circular(9),
+      border: Border.all(
+        color: Colors.white.withValues(alpha: 0.22), width: 0.8),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label,
+          style: GoogleFonts.inter(
+            color: Colors.white, fontSize: 10.5,
+            letterSpacing: 0.8, fontWeight: FontWeight.w800)),
+        const SizedBox(width: 6),
+        Text(value,
+          style: GoogleFonts.inter(
+            color: Onb.primaryLite, fontSize: 10.5,
+            letterSpacing: 0.6, fontWeight: FontWeight.w900)),
+      ],
+    ),
+  );
+}
+
+/// Thin scanner lines from each callout chip to a glowing dot on the
+/// food item it's reading.
+class _CalloutLinePainter extends CustomPainter {
+  final List<(Offset, Offset)> lines;
+  const _CalloutLinePainter({required this.lines});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final line = Paint()
+      ..color = Colors.white.withValues(alpha: 0.85)
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.round;
+    for (final (from, to) in lines) {
+      canvas.drawLine(from, to, line);
+      // Glowing target dot on the food.
+      canvas.drawCircle(to, 7, Paint()
+        ..color = Onb.primaryLite.withValues(alpha: 0.45)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+      canvas.drawCircle(to, 3.2, Paint()..color = Colors.white);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CalloutLinePainter old) => old.lines != lines;
 }
 
 class _Dots extends StatelessWidget {
@@ -465,13 +614,13 @@ class _GenderStep extends StatelessWidget {
             children: [
               Expanded(child: _GenderCard(
                 icon: Icons.male_rounded, label: 'Male',
-                image: 'assets/onboarding/gender_male.png',
+                image: 'assets/onboarding/gender_male.jpg',
                 selected: selected == 'm',
                 onTap: () => onPick('m'))),
               const SizedBox(width: 14),
               Expanded(child: _GenderCard(
                 icon: Icons.female_rounded, label: 'Female',
-                image: 'assets/onboarding/gender_female.png',
+                image: 'assets/onboarding/gender_female.jpg',
                 selected: selected == 'f',
                 onTap: () => onPick('f'))),
             ],

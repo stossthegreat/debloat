@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -6,12 +7,12 @@ import '../../services/debloat_stats_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 
-/// THE DEBLOAT READOUT — the stat block directly under the AI drained-twin
-/// image. v+22 restyle: the circular ring gauges are GONE (that look is
-/// the exact template Apple keeps flagging as spam). The readout is now a
-/// drain panel — a big numeral + tier lockup up top, then one segmented
-/// horizontal drain bar per zone. Same numbers, unmistakably ours.
-/// Everything is derived on-device from the scan geometry — no backend.
+/// THE DEBLOAT READOUT — the clean ring-gauge block that sits directly
+/// under the AI drained-twin image on the results card. One hero ring for
+/// the overall drained score + a small trapped-water chip, then a grid of
+/// per-zone rings (Jawline, Cheekbones, Under-Eyes, Fluid Balance,
+/// Submental, Symmetry). Everything is derived on-device from the scan
+/// geometry — no backend call.
 class DebloatGaugesCard extends StatelessWidget {
   final FaceGeometry geometry;
   const DebloatGaugesCard({super.key, required this.geometry});
@@ -49,92 +50,124 @@ class DebloatGaugesCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // ── Hero — big numeral + tier, water chip on the right ─────────
+          // ── Hero row — big overall ring + water chip + tier ────────────
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text('${r.overall}',
-                style: GoogleFonts.spaceGrotesk(
-                  color: AppColors.textPrimary,
-                  fontSize: 56, height: 1,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -2.5,
-                )),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 9, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _scoreColor(r.overall).withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(7),
-                      border: Border.all(
-                        color: _scoreColor(r.overall).withValues(alpha: 0.5),
-                        width: 0.9),
-                    ),
-                    child: Text(r.tier.toUpperCase(),
-                      style: AppTypography.label.copyWith(
-                        color: _scoreColor(r.overall),
-                        fontSize: 9.5, letterSpacing: 1.8,
-                        fontWeight: FontWeight.w900,
+              _HeroRing(score: r.overall, tier: r.tier),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Overall drained score',
+                      style: GoogleFonts.inter(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5, height: 1.3,
+                        fontWeight: FontWeight.w600,
                       )),
-                  ),
-                  const SizedBox(height: 5),
-                  Text('DRAINED SCORE',
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.textTertiary,
-                      fontSize: 8.5, letterSpacing: 2.0,
-                      fontWeight: FontWeight.w800,
-                    )),
-                ],
-              ),
-              const Spacer(),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _WaterChip(ml: r.waterMl),
-                  const SizedBox(height: 6),
-                  SizedBox(
-                    width: 128,
-                    child: Text(
+                    const SizedBox(height: 10),
+                    _WaterChip(ml: r.waterMl),
+                    const SizedBox(height: 8),
+                    Text(
                       r.waterMl <= 60
                           ? 'Barely any water hiding your jawline.'
                           : 'Est. water weight softening your face.',
-                      textAlign: TextAlign.right,
                       style: GoogleFonts.inter(
                         color: AppColors.textTertiary,
-                        fontSize: 10.5, height: 1.3,
+                        fontSize: 11.5, height: 1.3,
                         fontWeight: FontWeight.w500,
                       )),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
           Container(height: 1, color: AppColors.divider),
           const SizedBox(height: 16),
 
-          // ── Per-zone drain bars ────────────────────────────────────────
-          for (var i = 0; i < r.stats.length; i++) ...[
-            _ZoneBar(stat: r.stats[i]),
-            if (i != r.stats.length - 1) const SizedBox(height: 13),
-          ],
+          // ── Per-zone gauge grid ────────────────────────────────────────
+          LayoutBuilder(
+            builder: (context, c) {
+              const cols = 3;
+              const gap = 12.0;
+              final tileW = (c.maxWidth - gap * (cols - 1)) / cols;
+              return Wrap(
+                spacing: gap,
+                runSpacing: 18,
+                children: [
+                  for (final s in r.stats)
+                    SizedBox(
+                      width: tileW,
+                      child: _ZoneGauge(stat: s),
+                    ),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
   }
 }
 
-/// Maps a 0..100 drained score to the fill colour: cyan when drained,
+/// Maps a 0..100 drained score to the ring colour: cyan when drained,
 /// amber when moderate, soft-red when puffy.
 Color _scoreColor(int score) {
   if (score >= 74) return AppColors.brand;
+  if (score >= 60) return AppColors.signalAmber;
   if (score >= 45) return AppColors.signalAmber;
   return AppColors.signalRed;
+}
+
+// ── Hero ring — large overall drained score ────────────────────────────────
+class _HeroRing extends StatelessWidget {
+  final int score;
+  final String tier;
+  const _HeroRing({required this.score, required this.tier});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _scoreColor(score);
+    return SizedBox(
+      width: 104, height: 104,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CustomPaint(
+            size: const Size(104, 104),
+            painter: _RingPainter(
+              progress: score / 100,
+              color: color,
+              stroke: 9,
+              trackColor: AppColors.surface3,
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('$score',
+                style: GoogleFonts.spaceGrotesk(
+                  color: AppColors.textPrimary,
+                  fontSize: 34, height: 1,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -1.5,
+                )),
+              const SizedBox(height: 2),
+              Text(tier.toUpperCase(),
+                style: AppTypography.label.copyWith(
+                  color: color,
+                  fontSize: 8.5, letterSpacing: 1.6,
+                  fontWeight: FontWeight.w900,
+                )),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Trapped-water chip ──────────────────────────────────────────────────────
@@ -170,80 +203,111 @@ class _WaterChip extends StatelessWidget {
   }
 }
 
-// ── One zone as a segmented drain bar ───────────────────────────────────────
-class _ZoneBar extends StatelessWidget {
+// ── Per-zone small gauge ────────────────────────────────────────────────────
+class _ZoneGauge extends StatelessWidget {
   final DebloatStat stat;
-  const _ZoneBar({required this.stat});
-
-  static const _segments = 10;
+  const _ZoneGauge({required this.stat});
 
   @override
   Widget build(BuildContext context) {
     final color = _scoreColor(stat.score);
-    final filled = (stat.score / 100 * _segments).round().clamp(0, _segments);
-    return Row(
+    return Column(
       children: [
         SizedBox(
-          width: 92,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          width: 60, height: 60,
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              Text(stat.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
-                  color: AppColors.textSecondary,
-                  fontSize: 12, height: 1.1,
-                  fontWeight: FontWeight.w700,
-                )),
-              const SizedBox(height: 2),
-              Text(stat.tier.toUpperCase(),
-                style: AppTypography.label.copyWith(
+              CustomPaint(
+                size: const Size(60, 60),
+                painter: _RingPainter(
+                  progress: stat.score / 100,
                   color: color,
-                  fontSize: 7.5, letterSpacing: 1.1,
-                  fontWeight: FontWeight.w900,
+                  stroke: 5.5,
+                  trackColor: AppColors.surface3,
+                ),
+              ),
+              Text('${stat.score}',
+                style: GoogleFonts.spaceGrotesk(
+                  color: AppColors.textPrimary,
+                  fontSize: 18, height: 1,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
                 )),
             ],
           ),
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Row(
-            children: [
-              for (var i = 0; i < _segments; i++) ...[
-                Expanded(
-                  child: Container(
-                    height: 9,
-                    decoration: BoxDecoration(
-                      color: i < filled
-                          ? color
-                          : AppColors.surface3.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(3),
-                      boxShadow: i < filled
-                          ? [BoxShadow(
-                              color: color.withValues(alpha: 0.35),
-                              blurRadius: 6)]
-                          : null,
-                    ),
-                  ),
-                ),
-                if (i != _segments - 1) const SizedBox(width: 3),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        SizedBox(
-          width: 26,
-          child: Text('${stat.score}',
-            textAlign: TextAlign.right,
-            style: GoogleFonts.spaceGrotesk(
-              color: AppColors.textPrimary,
-              fontSize: 15, height: 1,
-              fontWeight: FontWeight.w800,
-            )),
-        ),
+        const SizedBox(height: 8),
+        Text(stat.label,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.inter(
+            color: AppColors.textSecondary,
+            fontSize: 11.5, height: 1.1,
+            fontWeight: FontWeight.w700,
+          )),
+        const SizedBox(height: 2),
+        Text(stat.tier.toUpperCase(),
+          style: AppTypography.label.copyWith(
+            color: color,
+            fontSize: 8, letterSpacing: 1.2,
+            fontWeight: FontWeight.w900,
+          )),
       ],
     );
   }
+}
+
+// ── Ring painter — rounded-cap arc from 12 o'clock, clockwise ───────────────
+class _RingPainter extends CustomPainter {
+  final double progress; // 0..1
+  final Color color;
+  final double stroke;
+  final Color trackColor;
+  const _RingPainter({
+    required this.progress,
+    required this.color,
+    required this.stroke,
+    required this.trackColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final center = rect.center;
+    final radius = (math.min(size.width, size.height) - stroke) / 2;
+
+    final track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..color = trackColor;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2, math.pi * 2, false, track);
+
+    final p = progress.clamp(0.0, 1.0);
+    if (p > 0) {
+      final arc = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..shader = SweepGradient(
+          startAngle: -math.pi / 2,
+          endAngle: -math.pi / 2 + math.pi * 2,
+          colors: [color.withValues(alpha: 0.7), color],
+          transform: const GradientRotation(-math.pi / 2),
+        ).createShader(Rect.fromCircle(center: center, radius: radius));
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2, math.pi * 2 * p, false, arc);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) =>
+      old.progress != progress ||
+      old.color != color ||
+      old.stroke != stroke;
 }

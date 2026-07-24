@@ -24,6 +24,13 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'mirror-backend' });
 });
 
+// ── Public legal / support pages — the URLs App Store Connect and
+//    RevenueCat ask for. Clean extensionless addresses:
+//      /privacy · /terms · /support
+app.get('/privacy', (_req, res) => res.sendFile(path.join(publicDir, 'privacy.html')));
+app.get('/terms',   (_req, res) => res.sendFile(path.join(publicDir, 'terms.html')));
+app.get('/support', (_req, res) => res.sendFile(path.join(publicDir, 'support.html')));
+
 // ── Vision analysis: GPT-4o takes image(s) + CV measurements → returns brief + advice
 app.post('/analyse', async (req, res) => {
   try {

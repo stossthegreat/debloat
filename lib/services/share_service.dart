@@ -62,7 +62,6 @@ class ShareService {
     final origin = Rect.fromLTWH(
       mq.size.width / 2 - 1, mq.padding.top + 8, 2, 2);
 
-    String? errorMsg;
     try {
       if (!context.mounted) return;
       final card = ShareCard(
@@ -73,15 +72,15 @@ class ShareService {
         tagline:        tagline,
         microProofs:    microProofs,
       );
+      // 12s ceiling — a wedged offscreen render must never pin the
+      // "Composing your card…" dialog on screen forever with no sheet.
       final bytes = await _captureOffscreen(
         context:     context,
         widget:      card,
         logicalSize: const Size(1080, 1920),
         pixelRatio:  2.0,
-      );
-      if (bytes == null) {
-        errorMsg = 'Couldn\'t render the card — try again';
-      } else {
+      ).timeout(const Duration(seconds: 12), onTimeout: () => null);
+      if (bytes != null) {
         if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
         HapticFeedback.mediumImpact();
         await _shareBytes(
@@ -92,19 +91,39 @@ class ShareService {
         );
         return;
       }
+      debugPrint('shareComposed: offscreen card render returned null');
     } catch (e) {
-      errorMsg = 'Share failed: ${e.toString().split('\n').first}';
+      debugPrint('shareComposed: card render failed: $e');
     }
 
-    if (context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMsg),
-          backgroundColor: AppColors.surface2,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    // Card render failed — the share sheet STILL opens, with the raw
+    // scan photo + copy line, instead of dead-ending on a snackbar.
+    if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+    try {
+      if (beforeBytes != null && beforeBytes.isNotEmpty) {
+        final dir = await getTemporaryDirectory();
+        final f = File(
+            '${dir.path}/debloat-${DateTime.now().millisecondsSinceEpoch}.jpg');
+        await f.writeAsBytes(beforeBytes, flush: true);
+        await Share.shareXFiles(
+          [XFile(f.path, mimeType: 'image/jpeg')],
+          text: text ?? tagline,
+          sharePositionOrigin: origin,
+        );
+      } else {
+        await Share.share(text ?? tagline, sharePositionOrigin: origin);
+      }
+    } catch (e) {
+      debugPrint('shareComposed: fallback share failed: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Share failed — try again'),
+            backgroundColor: AppColors.surface2,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 

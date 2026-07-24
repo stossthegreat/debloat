@@ -38,7 +38,8 @@ class ShareCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final proofs = microProofs.take(3).toList();
+    // Four debloat signals (jawline / cheekbones / under-eye / potential).
+    final proofs = microProofs.take(4).toList();
     final hasScores = currentScore > 0 && projectedScore > 0;
 
     return AspectRatio(
