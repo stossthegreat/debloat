@@ -96,7 +96,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
   double _offsetY    = 0;   // same, vertical
   double _yawDeg     = 0;   // head yaw from ML Kit euler angle Y
   bool   _faceInPosition = false; // green-light signal per current phase
-  String _statusText = 'POSITION YOUR FACE IN THE CIRCLE';
+  String _statusText = 'FIT YOUR FACE IN THE FRAME';
   String _statusColor = 'idle'; // idle | adjusting | locked
   double _holdProgress = 0.0; // 0..1, fills the oval stroke when holding
 
@@ -123,10 +123,10 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
   // the store listing reads as a face-wellness tool, not a spammy
   // measurement gimmick.
   static const _scanCopy = [
-    'Fluid · Reading…',
-    'Under-eye · Reading…',
-    'Jaw · Reading…',
-    'Cheeks · Reading…',
+    'Tracing fluid…',
+    'Checking under-eye…',
+    'Mapping jaw…',
+    'Reading cheeks…',
   ];
   int _copyIdx = 0;
   Timer? _copyTimer;
@@ -222,6 +222,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
   /// reopens on the other lens. Guarded against double-taps and no-ops on
   /// single-camera devices. Great for content — point the back cam at a
   /// mate and show them their glow-up.
+  // ignore: unused_element
   Future<void> _flipCamera() async {
     if (_switchingCam || _cameras.length < 2) return;
     _switchingCam = true;
@@ -665,20 +666,20 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       if (frontalLockWanted) {
         // Front — need centered + correct distance + frontal yaw
         if (_bboxArea < 0.10) {
-          nextStatus = 'MOVE CLOSER';
+          nextStatus = 'COME CLOSER';
           nextColor = 'adjusting';
         } else if (_bboxArea > 0.42) {
-          nextStatus = 'MOVE BACK';
+          nextStatus = 'EASE BACK';
           nextColor = 'adjusting';
         } else if (_offsetX.abs() > 0.16 || _offsetY.abs() > 0.20) {
-          nextStatus = 'CENTER YOUR FACE';
+          nextStatus = 'LINE UP THE FRAME';
           nextColor = 'adjusting';
         } else if (_yawDeg.abs() > 12) {
           nextStatus = 'LOOK STRAIGHT AT THE LENS';
           nextColor = 'adjusting';
         } else {
           inPosition = true;
-          nextStatus = 'HOLD STILL';
+          nextStatus = 'STAY FROZEN';
           nextColor = 'locked';
         }
       } else if (leftProfileWanted) {
@@ -693,7 +694,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
           nextColor = 'adjusting';
         } else {
           inPosition = true;
-          nextStatus = _dir('HOLD STILL · LEFT');
+          nextStatus = _dir('STAY FROZEN · LEFT');
           nextColor = 'locked';
         }
       } else if (rightProfileWanted) {
@@ -706,7 +707,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
           nextColor = 'adjusting';
         } else {
           inPosition = true;
-          nextStatus = _dir('HOLD STILL · RIGHT');
+          nextStatus = _dir('STAY FROZEN · RIGHT');
           nextColor = 'locked';
         }
       } else if (_phase == ScanPhase.measuring) {
@@ -1092,15 +1093,15 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
   String get _phaseTitle {
     switch (_phase) {
       case ScanPhase.searching:
-        return _angleIdx == 0 ? 'STEP 01 · FRONT'
-             : _angleIdx == 1 ? 'STEP 02 · LEFT'
-             :                  'STEP 03 · RIGHT';
-      case ScanPhase.scanning:      return 'ALIGNING';
-      case ScanPhase.measuring:     return 'READING YOUR FACE';
-      case ScanPhase.rotateLeft:    return 'STEP 02 · LEFT';
-      case ScanPhase.rotateRight:   return 'STEP 03 · RIGHT';
-      case ScanPhase.capturing:     return 'CAPTURING';
-      case ScanPhase.analysing:     return 'WORKING ON IT';
+        return _angleIdx == 0 ? 'PASS 1 — FACE THE LENS'
+             : _angleIdx == 1 ? 'PASS 2 — LEFT SIDE'
+             :                  'PASS 3 — RIGHT SIDE';
+      case ScanPhase.scanning:      return 'LINING YOU UP';
+      case ScanPhase.measuring:     return 'RUNNING THE DRAIN CHECK';
+      case ScanPhase.rotateLeft:    return 'PASS 2 — LEFT SIDE';
+      case ScanPhase.rotateRight:   return 'PASS 3 — RIGHT SIDE';
+      case ScanPhase.capturing:     return 'FREEZING THE FRAME';
+      case ScanPhase.analysing:     return 'BUILDING YOUR READ';
     }
   }
 
@@ -1110,10 +1111,25 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       case ScanPhase.scanning:
       case ScanPhase.rotateLeft:
       case ScanPhase.rotateRight:
-        return 'Follow the coaching above';
-      case ScanPhase.measuring:     return 'Fluid · under-eye · jaw · cheeks';
-      case ScanPhase.capturing:     return 'Capturing your baseline';
-      case ScanPhase.analysing:     return 'Your debloat read is coming';
+        return 'Follow the cue on screen';
+      case ScanPhase.measuring:     return 'fluid — under-eye — jaw — cheeks — neck';
+      case ScanPhase.capturing:     return 'Locking your baseline frame';
+      case ScanPhase.analysing:     return 'Your drain report is seconds away';
+    }
+  }
+
+  /// Short tag word for the pass chip — human wording, never the raw
+  /// enum name (the old "03 / 05 · MEASURING" read like every scanner
+  /// template out there).
+  String get _phaseTag {
+    switch (_phase) {
+      case ScanPhase.searching:     return 'ALIGN';
+      case ScanPhase.scanning:      return 'SYNC';
+      case ScanPhase.measuring:     return 'DRAIN CHECK';
+      case ScanPhase.rotateLeft:
+      case ScanPhase.rotateRight:   return 'SIDE PASS';
+      case ScanPhase.capturing:     return 'FREEZE';
+      case ScanPhase.analysing:     return 'COMPILE';
     }
   }
 
@@ -1268,24 +1284,41 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
             left: 0, right: 0, bottom: 84,
             child: Column(
               children: [
-                // Index badge — "01 / 05" surgical counter feel
+                // Pass chip — five tick marks + human tag word. Reads
+                // nothing like the old "03 / 05 · MEASURING" pill.
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   margin: const EdgeInsets.only(bottom: 14),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(100),
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(9),
                     border: Border.all(
-                      color: AppColors.red.withValues(alpha: 0.35), width: 0.8),
+                      color: AppColors.brand.withValues(alpha: 0.4), width: 0.8),
                   ),
-                  child: Text(
-                    '${(_phase.index + 1).toString().padLeft(2, '0')} / 05  ·  '
-                    '${_phase.name.toUpperCase()}',
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.red,
-                      fontSize: 9,
-                      letterSpacing: 2.4,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var i = 0; i < 5; i++)
+                        Container(
+                          width: i <= _phase.index ? 10 : 5,
+                          height: 3,
+                          margin: const EdgeInsets.only(right: 3),
+                          decoration: BoxDecoration(
+                            color: i <= _phase.index
+                                ? AppColors.brand
+                                : Colors.white.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      const SizedBox(width: 7),
+                      Text(_phaseTag,
+                        style: AppTypography.label.copyWith(
+                          color: AppColors.brand,
+                          fontSize: 9,
+                          letterSpacing: 2.4,
+                        ),
+                      ),
+                    ],
                   ),
                 ).animate(key: ValueKey(_phase))
                   .fadeIn(duration: 260.ms)
@@ -1332,7 +1365,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                 child: LinearProgressIndicator(
                   value: _progress,
                   backgroundColor: AppColors.surface3.withValues(alpha: 0.5),
-                  valueColor: const AlwaysStoppedAnimation(AppColors.red),
+                  valueColor: const AlwaysStoppedAnimation(AppColors.brand),
                   minHeight: 1.5,
                 ),
               ),
@@ -1359,7 +1392,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                         width: 4, height: 4,
                         margin: const EdgeInsets.only(top: 10),
                         decoration: const BoxDecoration(
-                          color: AppColors.red,
+                          color: AppColors.brand,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -1399,36 +1432,14 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      // Flip camera — front ↔ back. Sits where settings
-                      // used to; lets you point the back cam at someone
-                      // else and scan their face (content gold). Hidden
-                      // on single-camera devices.
-                      if (_cameras.length > 1)
-                        Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: _switchingCam ? null : _flipCamera,
-                            borderRadius: BorderRadius.circular(22),
-                            child: Container(
-                              width: 36, height: 36,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.4),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.red.withValues(alpha: 0.4),
-                                  width: 0.8),
-                              ),
-                              child: const Icon(Icons.flip_camera_ios_rounded,
-                                size: 18, color: AppColors.red),
-                            ),
-                          ),
-                        ),
+                      // Flip-camera button removed per bro — the scan is
+                      // front-cam only now. _flipCamera stays in the file
+                      // (ignore below) in case it ever comes back.
                     ],
                   ),
                   const SizedBox(height: 2),
                   // Under-byline
-                  Text('READING YOUR BLOAT',
+                  Text('FLUID CHECK · LIVE',
                     style: AppTypography.label.copyWith(
                       color: AppColors.textMuted, fontSize: 8, letterSpacing: 2.8)),
                 ],

@@ -15,7 +15,6 @@ import '../../services/local_store_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/paywall_gate.dart';
 import '../../services/protocol_service.dart';
-import '../../services/review_prompt_service.dart';
 import '../../services/daily_mission_service.dart';
 import '../../services/streak_service.dart';
 import '../../theme/app_colors.dart';
@@ -96,12 +95,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final t = widget.initialTab ?? 0;
     _tab = (t >= 0 && t < 4) ? t : 0;
     _reload();
-    // Fire the App Store review prompt if the user has now used
-    // all three pillars (scan + Free Flow + eye-contact lesson).
-    // No-op on every other launch — the service tracks state.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ReviewPromptService.maybePrompt(context);
-    });
+    // Review popup COMMENTED OUT per bro — its "leave a comment"
+    // path still opens the OLD Mirrorly App Store listing
+    // (id6762532788). Re-enable once the Debloat OS listing has its
+    // own ID wired through ReviewPromptService.
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   if (mounted) ReviewPromptService.maybePrompt(context);
+    // });
   }
 
   Future<void> _reload() async {
@@ -950,28 +950,32 @@ class _StreakBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.red,
-        borderRadius: BorderRadius.circular(99),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.red.withValues(alpha: 0.45),
-            blurRadius: 14, spreadRadius: 0),
-        ],
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.brand.withValues(alpha: 0.55), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.local_fire_department_rounded,
-              color: Colors.white, size: 18),
+          const Icon(Icons.water_drop_rounded,
+              color: AppColors.brand, size: 14),
           const SizedBox(width: 5),
           Text('$days',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.spaceGrotesk(
               color: Colors.white,
-              fontSize: 14, height: 1,
-              letterSpacing: 0.2,
-              fontWeight: FontWeight.w900,
+              fontSize: 15, height: 1,
+              fontWeight: FontWeight.w800,
+            )),
+          const SizedBox(width: 4),
+          Text(days == 1 ? 'DAY' : 'DAYS',
+            style: GoogleFonts.inter(
+              color: AppColors.textTertiary,
+              fontSize: 8.5, height: 1,
+              letterSpacing: 1.4,
+              fontWeight: FontWeight.w800,
             )),
         ],
       ),
@@ -1033,12 +1037,12 @@ class _MastheadCog extends StatelessWidget {
           width: 38, height: 38,
           decoration: BoxDecoration(
             color: AppColors.surface1,
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.surface3, width: 0.6),
           ),
           alignment: Alignment.center,
-          child: const Icon(Icons.tune,
-              size: 18, color: AppColors.textSecondary),
+          child: const Icon(Icons.more_horiz_rounded,
+              size: 20, color: AppColors.textSecondary),
         ),
       ),
     );

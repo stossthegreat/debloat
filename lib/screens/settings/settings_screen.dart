@@ -95,15 +95,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
 
-              // ── Rate us ─────────────────────────────────────────────────
-              _SettingTile(
-                icon: Icons.star_rounded,
-                iconColor: AppColors.signalAmber,
-                title: 'Rate us',
-                onTap: () => _rateUs(context),
-              ),
+              // ── Rate us — COMMENTED OUT for now per bro. The App Store
+              // ID (6762532788) still points at the OLD Mirrorly listing,
+              // so "leave a comment" sends users to the wrong app. Bring
+              // this back the moment the Debloat OS listing has its own
+              // ID — just swap the id inside _rateUs and un-comment.
+              // _SettingTile(
+              //   icon: Icons.star_rounded,
+              //   iconColor: AppColors.signalAmber,
+              //   title: 'Rate us',
+              //   onTap: () => _rateUs(context),
+              // ),
 
-              // ── Restore + Manage subscription ──────────────────────────
+              // ── MEMBERSHIP ──────────────────────────────────────────────
+              const _SectionLabel('MEMBERSHIP'),
               _SettingTile(
                 icon: Icons.restore_rounded,
                 title: 'Restore purchases',
@@ -115,7 +120,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: () => _manageSubscription(context),
               ),
 
-              // ── AI render profile (male / female pick) ─────────────────
+              const SizedBox(height: Sp.md),
+              // ── PREFERENCES ─────────────────────────────────────────────
+              const _SectionLabel('PREFERENCES'),
               _SettingTile(
                 icon: Icons.style_outlined,
                 title: 'AI render profile',
@@ -125,22 +132,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       extra: const {'fromSettings': true});
                 },
               ),
-
-              // ── Privacy / AI consent ────────────────────────────────────
               _SettingTile(
                 icon: Icons.cloud_off_outlined,
                 title: 'Revoke AI permission',
                 onTap: () => _revokeAiConsent(context),
               ),
 
-              // ── Contact ─────────────────────────────────────────────────
+              const SizedBox(height: Sp.md),
+              // ── SUPPORT ─────────────────────────────────────────────────
+              const _SectionLabel('SUPPORT'),
               _SettingTile(
                 icon: Icons.mail_outline_rounded,
                 title: 'Contact support',
                 onTap: () => _copyEmail(context),
               ),
-
-              // ── Delete all data — destructive, sits low ────────────────
               _SettingTile(
                 icon: Icons.close_rounded,
                 iconColor: AppColors.signalRed,
@@ -204,6 +209,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// On Android it falls back to the in-app review request which
   /// resolves the bundle id automatically. Either way the user lands
   /// where they can leave a star rating.
+  // ignore: unused_element
   Future<void> _rateUs(BuildContext ctx) async {
     HapticFeedback.selectionClick();
     // ignore: discarded_futures
@@ -404,29 +410,41 @@ class _SettingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = destructive ? AppColors.signalRed : AppColors.textPrimary;
     final resolvedIconColor = iconColor ??
-        (destructive ? AppColors.signalRed : AppColors.textPrimary);
+        (destructive ? AppColors.signalRed : AppColors.brand);
+    // v+30 restyle — hairline-outlined rows with a tinted icon tile and
+    // a trailing chevron (was: solid filled slabs, bare icon, no
+    // chevron). Same actions, different dress.
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
-            color: AppColors.surface1,
-            borderRadius: BorderRadius.circular(16),
+            color: AppColors.surface1.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.surface3, width: 0.8),
           ),
           child: Row(
             children: [
-              Icon(icon, size: 22, color: resolvedIconColor),
-              const SizedBox(width: 14),
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: resolvedIconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, size: 18, color: resolvedIconColor),
+              ),
+              const SizedBox(width: 13),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title, style: AppTypography.body.copyWith(
-                      color: color, fontSize: 16,
+                      color: color, fontSize: 15.5,
                       fontWeight: FontWeight.w600,
                       letterSpacing: -0.1)),
                     if (subtitle != null) ...[
@@ -437,11 +455,33 @@ class _SettingTile extends StatelessWidget {
                   ],
                 ),
               ),
-              if (trailing != null) trailing!,
+              if (trailing != null)
+                trailing!
+              else
+                Icon(Icons.chevron_right_rounded,
+                  size: 20,
+                  color: AppColors.textTertiary.withValues(alpha: 0.7)),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Tiny eyebrow header above each settings section.
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(text,
+        style: AppTypography.label.copyWith(
+          color: AppColors.textTertiary,
+          fontSize: 10, letterSpacing: 2.6,
+          fontWeight: FontWeight.w800)),
     );
   }
 }

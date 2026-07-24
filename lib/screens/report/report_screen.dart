@@ -195,10 +195,14 @@ class _ReportScreenState extends State<ReportScreen> {
       // aha moment we have, and bro shipped the loose gate so this
       // is allowed to fire.
       await ReviewPromptService.markScanDone();
-      if (mounted) {
-        // ignore: discarded_futures
-        ReviewPromptService.maybePromptAfterReport(context);
-      }
+      // Review popup COMMENTED OUT per bro — its "leave a comment"
+      // path still opens the OLD Mirrorly App Store listing
+      // (id6762532788). Re-enable once the Debloat OS listing has
+      // its own ID wired through ReviewPromptService.
+      // if (mounted) {
+      //   // ignore: discarded_futures
+      //   ReviewPromptService.maybePromptAfterReport(context);
+      // }
       // Ask for notification permission now — the user just got their
       // results, the highest-intent moment to opt into the streak +
       // food-scan retention nudges. No-op after the first grant.

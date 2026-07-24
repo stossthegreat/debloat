@@ -45,19 +45,49 @@ class LegalScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
                 children: [
+                  // v+30 restyle — every clause lives in its own
+                  // hairline card with a brand dot, instead of the old
+                  // red-eyebrow wall of text.
                   for (final b in doc.sections) ...[
-                    Text(b.title,
-                      style: GoogleFonts.inter(
-                        color: AppColors.red,
-                        fontSize: 11, letterSpacing: 2.6,
-                        fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 8),
-                    Text(b.body,
-                      style: GoogleFonts.inter(
-                        color: AppColors.textPrimary,
-                        fontSize: 14, height: 1.55,
-                        fontWeight: FontWeight.w400)),
-                    const SizedBox(height: 22),
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 15),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface1.withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: AppColors.surface3, width: 0.8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 5, height: 5,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.brand,
+                                  shape: BoxShape.circle),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(b.title,
+                                  style: GoogleFonts.inter(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 11.5, letterSpacing: 2.2,
+                                    fontWeight: FontWeight.w800)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Text(b.body,
+                            style: GoogleFonts.inter(
+                              color: AppColors.textSecondary,
+                              fontSize: 13.5, height: 1.55,
+                              fontWeight: FontWeight.w400)),
+                        ],
+                      ),
+                    ),
                   ],
                   const SizedBox(height: 12),
                   Text(doc.lastUpdatedLine,
@@ -90,7 +120,8 @@ class LegalScreen extends StatelessWidget {
               child: Container(
                 width: 36, height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.surface1, shape: BoxShape.circle,
+                  color: AppColors.surface1,
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.divider, width: 0.8),
                 ),
                 child: const Icon(Icons.arrow_back_ios_new_rounded,
