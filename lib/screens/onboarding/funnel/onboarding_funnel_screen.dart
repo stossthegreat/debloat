@@ -136,7 +136,7 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       _WelcomeSlide(
         index: here(),
         showProgress: false,
-        emoji: '⛶',
+        icon: Icons.center_focus_strong_rounded,
         label: 'Face Scan',
         image: 'assets/onboarding/welcome_scan.jpg',
         headTop: 'Wake Up',
@@ -149,7 +149,7 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       _WelcomeSlide(
         index: here(),
         showProgress: false,
-        emoji: '🥗',
+        icon: Icons.restaurant_rounded,
         label: 'Food Analysis',
         image: 'assets/onboarding/welcome_food.jpg',
         headTop: 'Scan Meals.',
@@ -162,7 +162,7 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
       _WelcomeSlide(
         index: here(),
         showProgress: false,
-        emoji: '📅',
+        icon: Icons.event_available_rounded,
         label: 'Daily Routines',
         image: 'assets/onboarding/welcome_routine.jpg',
         headTop: 'Personalized',
@@ -305,12 +305,13 @@ class _OnboardingFunnelScreenState extends State<OnboardingFunnelScreen> {
 class _WelcomeSlide extends StatelessWidget {
   final int index;
   final bool showProgress;
-  final String emoji, label, image, headTop, headBottom, sub, cta;
+  final IconData icon;
+  final String label, image, headTop, headBottom, sub, cta;
   final VoidCallback onBack, onNext;
   const _WelcomeSlide({
     required this.index,
     required this.showProgress,
-    required this.emoji,
+    required this.icon,
     required this.label,
     required this.image,
     required this.headTop,
@@ -366,9 +367,8 @@ class _WelcomeSlide extends StatelessWidget {
                   fit: StackFit.expand,
                   children: [
                     Image.asset(image, fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Center(
-                        child: Text(emoji,
-                          style: const TextStyle(fontSize: 84)))),
+                      errorBuilder: (_, __, ___) => OnbImagePlaceholder(
+                        icon: icon, caption: label)),
                     Positioned(
                       left: 14, bottom: 14,
                       child: Container(
@@ -381,7 +381,7 @@ class _WelcomeSlide extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(emoji, style: const TextStyle(fontSize: 15)),
+                            Icon(icon, color: Onb.primaryLite, size: 15),
                             const SizedBox(width: 7),
                             Text(label,
                               style: GoogleFonts.inter(
@@ -464,13 +464,13 @@ class _GenderStep extends StatelessWidget {
           Row(
             children: [
               Expanded(child: _GenderCard(
-                emoji: '🧔', label: 'Male',
+                icon: Icons.male_rounded, label: 'Male',
                 image: 'assets/onboarding/gender_male.png',
                 selected: selected == 'm',
                 onTap: () => onPick('m'))),
               const SizedBox(width: 14),
               Expanded(child: _GenderCard(
-                emoji: '👩', label: 'Female',
+                icon: Icons.female_rounded, label: 'Female',
                 image: 'assets/onboarding/gender_female.png',
                 selected: selected == 'f',
                 onTap: () => onPick('f'))),
@@ -483,11 +483,12 @@ class _GenderStep extends StatelessWidget {
 }
 
 class _GenderCard extends StatelessWidget {
-  final String emoji, label, image;
+  final IconData icon;
+  final String label, image;
   final bool selected;
   final VoidCallback onTap;
   const _GenderCard({
-    required this.emoji,
+    required this.icon,
     required this.label,
     required this.image,
     required this.selected,
@@ -517,11 +518,8 @@ class _GenderCard extends StatelessWidget {
                 child: AspectRatio(
                   aspectRatio: 3 / 4,
                   child: Image.asset(image, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: Onb.bg,
-                      alignment: Alignment.center,
-                      child: Text(emoji,
-                        style: const TextStyle(fontSize: 64)))),
+                    errorBuilder: (_, __, ___) => OnbImagePlaceholder(
+                      icon: icon, caption: label)),
                 ),
               ),
               Padding(
@@ -842,7 +840,7 @@ class _GoalsStep extends StatelessWidget {
   static const _opts = <({String emoji, String label})>[
     (emoji: '🙂', label: 'Boost confidence & self-esteem'),
     (emoji: '❤️', label: 'Get more dates / a relationship'),
-    (emoji: '⛶', label: 'Wake up with a less puffy face'),
+    (emoji: '💧', label: 'Wake up with a less puffy face'),
     (emoji: '💎', label: 'A sharper, more defined jawline'),
   ];
 

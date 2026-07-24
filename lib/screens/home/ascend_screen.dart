@@ -155,11 +155,8 @@ class _AscendScreenState extends State<AscendScreen> {
   Widget build(BuildContext context) {
     final day            = widget.ascensionDay;
     final rank           = AscensionService.rankFor(day);
-    final missions       = _buildMissions();
-    final missionsDone   = missions.where((m) => m.done).length;
-    final longestStreak  = widget.longestStreak > widget.dayStreak
-        ? widget.longestStreak
-        : widget.dayStreak;
+    final clDone         = widget.dailyMissions.where((m) => m.done).length;
+    final clTotal        = widget.dailyMissions.length;
 
     return Scaffold(
       backgroundColor: AppColors.base,
@@ -222,22 +219,20 @@ class _AscendScreenState extends State<AscendScreen> {
 
             const SizedBox(height: Sp.lg),
 
-            // ── TODAY'S DEBLOAT — the daily missions/protocols (pushes the
-            //    protocols, marks days done, keeps the streak).
-            _MissionsPanel(
-              missions: missions,
-              done:     missionsDone,
+            // ── TODAY'S DEBLOAT — one launcher card into the Debloat tab.
+            //    Rebuilt as a drain-meter tile (segmented fill + chevron),
+            //    NOT a checklist row — per bro, the old checkbox look was
+            //    too close to the template apps Apple keeps rejecting.
+            _SystemLauncher(
+              done:  clDone,
+              total: clTotal,
+              onTap: () => widget.onJumpToTab(2),
             ).animate().fadeIn(delay: 240.ms, duration: 400.ms),
 
             const SizedBox(height: Sp.lg),
 
-            // ── STREAK — resets if broken.
-            _StreakPanel(
-              current: widget.dayStreak,
-              longest: longestStreak,
-            ).animate().fadeIn(delay: 320.ms, duration: 400.ms),
-
-            const SizedBox(height: Sp.lg),
+            // Mid-page streak card removed per bro — the masthead flame
+            // chip (top of every tab) is the one streak surface now.
 
             // ── STATS AT THE BOTTOM — debloat score over time + first→
             //    latest deltas + scan history (the old progress screen's
@@ -253,38 +248,6 @@ class _AscendScreenState extends State<AscendScreen> {
         ),
       ),
     );
-  }
-
-  // ── Mission builder ─────────────────────────────────────────────────────
-  //
-  // THE ASCENSION IS THE SYSTEM. Row one is always the daily debloat
-  // checklist (the core loop); a row per committed protocol follows,
-  // each deep-linking into its check-in screen. Every done-flag is
-  // per-day. Copy stays in the leveling-up voice.
-  List<AscendMission> _buildMissions() {
-    final w = widget;
-
-    // Daily checklist row — done/offered from DailyMissionService via
-    // home_screen. The mission list mirrors the checklist items, so
-    // count them here.
-    final clDone  = w.dailyMissions.where((m) => m.done).length;
-    final clTotal = w.dailyMissions.length;
-    final checklistRow = AscendMission(
-      title: clTotal > 0
-          ? 'RUN THE DEBLOAT SYSTEM · $clDone/$clTotal'
-          : 'RUN THE DEBLOAT SYSTEM',
-      hint: clTotal > 0 && clDone >= clTotal
-          ? 'fully drained. see it tomorrow morning.'
-          : 'the daily checklist. every tick shows in the mirror.',
-      done: clTotal > 0 && clDone >= clTotal,
-      // Debloat tab (index 2) — where the checklist lives.
-      onTap: () => w.onJumpToTab(2),
-    );
-
-    // The daily debloat checklist IS the protocol now — it lives on the
-    // Debloat tab. No separate "commit protocol" mission (that routed to
-    // the old standalone protocol screen); the one row points at the tab.
-    return [checklistRow];
   }
 
   /// v290 — which scan milestone (if any) is currently in window
@@ -1023,106 +986,87 @@ class _TodayMessageCard extends StatelessWidget {
 //  SECTION 3 — TODAY'S ASCENSION (missions)
 // ═══════════════════════════════════════════════════════════════════════════
 
-class _MissionsPanel extends StatelessWidget {
-  final List<AscendMission> missions;
+/// TODAY'S DEBLOAT launcher — a drain-meter tile, deliberately unlike a
+/// checkbox list. Segmented fluid bar fills as the day's protocols get
+/// ticked on the Debloat tab; the whole card is one tap into that tab.
+class _SystemLauncher extends StatelessWidget {
   final int done;
-  const _MissionsPanel({required this.missions, required this.done});
+  final int total;
+  final VoidCallback onTap;
+  const _SystemLauncher({
+    required this.done,
+    required this.total,
+    required this.onTap,
+  });
+
   @override
   Widget build(BuildContext context) {
+    final complete = total > 0 && done >= total;
+    final statusLine = total == 0
+        ? 'Open the system and run today\'s protocols.'
+        : complete
+            ? 'Fully drained. See it tomorrow morning.'
+            : '$done of $total protocols done - keep draining.';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
-        decoration: BoxDecoration(
-          color: AppColors.surface1,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(Rd.lg),
+        child: InkWell(
+          onTap: () { HapticFeedback.selectionClick(); onTap(); },
           borderRadius: BorderRadius.circular(Rd.lg),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text('TODAY\'S ASCENSION',
-                  style: GoogleFonts.inter(
-                    color: AppColors.red,
-                    fontSize: 11, letterSpacing: 2.8,
-                    fontWeight: FontWeight.w900,
-                  )),
-                const Spacer(),
-                Text('$done / ${missions.length} COMPLETE',
-                  style: GoogleFonts.inter(
-                    color: AppColors.textSecondary,
-                    fontSize: 11, letterSpacing: 1.8,
-                    fontWeight: FontWeight.w800,
-                  )),
-              ],
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 18, 16, 18),
+            decoration: BoxDecoration(
+              color: AppColors.surface1,
+              borderRadius: BorderRadius.circular(Rd.lg),
+              border: Border.all(
+                color: AppColors.brand.withValues(alpha: 0.30), width: 0.9),
             ),
-            const SizedBox(height: 14),
-            for (var i = 0; i < missions.length; i++) ...[
-              _MissionRow(mission: missions[i]),
-              if (i != missions.length - 1)
-                Divider(
-                  height: 1, thickness: 0.6,
-                  color: AppColors.surface3.withValues(alpha: 0.55),
-                ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MissionRow extends StatelessWidget {
-  final AscendMission mission;
-  const _MissionRow({required this.mission});
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: mission.onTap == null ? null : () {
-          HapticFeedback.selectionClick();
-          mission.onTap!();
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(
-            children: [
-              _MissionCheck(done: mission.done),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(mission.title,
-                      style: GoogleFonts.inter(
-                        color: mission.done
-                          ? AppColors.textSecondary
-                          : AppColors.textPrimary,
-                        fontSize: 15, height: 1.2,
-                        fontWeight: FontWeight.w700,
-                        decoration: mission.done
-                          ? TextDecoration.lineThrough
-                          : TextDecoration.none,
-                      )),
-                    if (mission.hint.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text(mission.hint,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('TODAY\'S DEBLOAT',
                         style: GoogleFonts.inter(
-                          color: AppColors.textTertiary,
-                          fontSize: 12, height: 1.3,
-                          fontWeight: FontWeight.w500,
+                          color: AppColors.brand,
+                          fontSize: 10.5, letterSpacing: 2.8,
+                          fontWeight: FontWeight.w900,
+                        )),
+                      const SizedBox(height: 10),
+                      _DrainSegments(done: done, total: total),
+                      const SizedBox(height: 10),
+                      Text(statusLine,
+                        style: GoogleFonts.inter(
+                          color: complete
+                              ? AppColors.signalGreen
+                              : AppColors.textSecondary,
+                          fontSize: 12.5, height: 1.3,
+                          fontWeight: FontWeight.w600,
                         )),
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              if (mission.onTap != null && !mission.done)
-                const Icon(Icons.chevron_right,
-                  color: AppColors.textTertiary, size: 18),
-            ],
+                const SizedBox(width: 14),
+                Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.brand.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.brand.withValues(alpha: 0.45),
+                      width: 1),
+                  ),
+                  child: Icon(
+                    complete
+                        ? Icons.check_rounded
+                        : Icons.arrow_forward_rounded,
+                    color: AppColors.brand, size: 20),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1130,24 +1074,39 @@ class _MissionRow extends StatelessWidget {
   }
 }
 
-class _MissionCheck extends StatelessWidget {
-  final bool done;
-  const _MissionCheck({required this.done});
+/// The segmented fluid bar - one rounded segment per protocol, filled
+/// segments glow brand-cyan. Reads as a "tank filling", not a checklist.
+class _DrainSegments extends StatelessWidget {
+  final int done;
+  final int total;
+  const _DrainSegments({required this.done, required this.total});
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 24, height: 24,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: done ? AppColors.red : Colors.transparent,
-        border: Border.all(
-          color: done ? AppColors.red : AppColors.surface3,
-          width: 1.5,
-        ),
-      ),
-      child: done
-        ? const Icon(Icons.check_rounded, color: Colors.white, size: 15)
-        : null,
+    final n = total > 0 ? total : 6; // ghost segments pre-load
+    return Row(
+      children: [
+        for (var i = 0; i < n; i++) ...[
+          Expanded(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              height: 10,
+              decoration: BoxDecoration(
+                color: i < done
+                    ? AppColors.brand
+                    : AppColors.surface3.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(5),
+                boxShadow: i < done
+                    ? [BoxShadow(
+                        color: AppColors.brand.withValues(alpha: 0.5),
+                        blurRadius: 8)]
+                    : null,
+              ),
+            ),
+          ),
+          if (i != n - 1) const SizedBox(width: 5),
+        ],
+      ],
     );
   }
 }
@@ -1368,156 +1327,6 @@ class _MilestoneRow extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  SECTION 6 — STREAK
-// ═══════════════════════════════════════════════════════════════════════════
-
-/// v303 — Streak panel rebuilt. Flame icon + numeral are now ONE
-/// lockup. Bro: "the streak is dislocated and a dud. fix it
-/// production grade only fix perfectly." Old layout had the flame
-/// floating up in the label row and the numeral isolated below —
-/// they read as two unrelated things. New layout pins the flame
-/// directly against the number at matching visual weight so the
-/// pair anchors as a single hero element.
-class _StreakPanel extends StatelessWidget {
-  final int current;
-  final int longest;
-  const _StreakPanel({required this.current, required this.longest});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
-        decoration: BoxDecoration(
-          // Warm red radial behind the lockup so the flame reads
-          // as actually glowing on the surface, not a flat icon.
-          gradient: RadialGradient(
-            center: const Alignment(-0.5, -0.2),
-            radius: 1.2,
-            colors: [
-              AppColors.red.withValues(alpha: 0.20),
-              AppColors.surface1,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(Rd.lg),
-          border: Border.all(
-            color: AppColors.red.withValues(alpha: 0.42), width: 0.8),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.red.withValues(alpha: 0.28),
-              blurRadius: 32, spreadRadius: 0),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Eyebrow row: label left, LONGEST right.
-            Row(
-              children: [
-                Text('STREAK',
-                  style: GoogleFonts.inter(
-                    color: AppColors.red,
-                    fontSize: 11, letterSpacing: 3.2,
-                    fontWeight: FontWeight.w900,
-                  )),
-                const Spacer(),
-                Text('LONGEST $longest',
-                  style: GoogleFonts.inter(
-                    color: AppColors.textTertiary,
-                    fontSize: 10, letterSpacing: 1.8,
-                    fontWeight: FontWeight.w800,
-                  )),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            // ── THE LOCKUP — flame, number, "DAY" label, all on
-            // the same baseline at matching visual weight. Stack
-            // gives the flame a soft outer halo before the icon
-            // renders so it reads as glowing, not stamped.
-            SizedBox(
-              height: 100,
-              child: Stack(
-                alignment: Alignment.bottomLeft,
-                children: [
-                  // Halo behind the flame.
-                  Positioned(
-                    left: -6, bottom: 4,
-                    child: Container(
-                      width: 110, height: 110,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(colors: [
-                          AppColors.red.withValues(alpha: 0.42),
-                          Colors.transparent,
-                        ]),
-                      ),
-                    ),
-                  ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Icon(Icons.local_fire_department_rounded,
-                        color: AppColors.red, size: 88),
-                      const SizedBox(width: 6),
-                      // The numeral. Italic Playfair, white, sized
-                      // to match the flame's optical height so the
-                      // pair reads as one unit.
-                      Text('$current',
-                        style: GoogleFonts.spaceGrotesk(
-                          color: Colors.white,
-                          fontSize: 92, height: 1,
-                          letterSpacing: -3.4,
-                          
-                          fontWeight: FontWeight.w900,
-                          shadows: [
-                            Shadow(
-                              color: AppColors.red.withValues(alpha: 0.45),
-                              blurRadius: 18),
-                          ],
-                        )),
-                      const SizedBox(width: 10),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 18),
-                        child: Text(current == 1 ? 'DAY' : 'DAYS',
-                          style: GoogleFonts.inter(
-                            color: AppColors.textSecondary,
-                            fontSize: 14, letterSpacing: 3.0,
-                            fontWeight: FontWeight.w900,
-                          )),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 8),
-            Text(_streakStatusLine(current, longest),
-              style: GoogleFonts.inter(
-                color: AppColors.textSecondary,
-                fontSize: 13, height: 1.4,
-                letterSpacing: 0.3,
-                fontWeight: FontWeight.w600,
-              )),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Honest one-line status, not fake percentile copy. Reads off
-  /// the user's actual numbers.
-  static String _streakStatusLine(int current, int longest) {
-    if (current == 0)                return 'No streak yet. Log today and ignite.';
-    if (current == 1)                return 'Day one. Make it stick.';
-    if (current >= longest)          return 'Best run yet. Don\'t break it.';
-    return 'Longest: $longest. Catch it.';
   }
 }
 

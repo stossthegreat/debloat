@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../models/face_geometry.dart';
+import '../../services/debloat_stats_service.dart';
 import '../../services/face_mesh_service.dart';
 
 /// Multi-angle Face-ID-style scan. Front, then left 3/4, then right 3/4 —
@@ -104,6 +105,28 @@ class GeometryOverlayPainter extends CustomPainter {
   static const _cMagenta = Color(0xFFFF4D9E);
   static const _cWhite   = Color(0xFFFFFFFF);
 
+  // ── Debloat HUD reads ──────────────────────────────────────────────────
+  // Every on-screen label speaks DEBLOAT ONLY (fluid / under-eye / jaw /
+  // cheeks / neck / trapped water). The geometry pipeline underneath is
+  // untouched — we just translate it through DebloatStatsService instead
+  // of quoting raw aesthetics metrics (canthal / FWHR / symmetry), which
+  // have nothing to do with debloat.
+  DebloatReadout? get _liveReadout {
+    final g = geometry;
+    if (g == null) return null;
+    return DebloatStatsService.compute(g);
+  }
+
+  /// Zone score for a HUD label. Before the first geometry pass lands,
+  /// fall back to a gentle idle wobble so the rails don't blink to zero.
+  int _zoneScore(DebloatReadout? r, String label, double idleBase) {
+    if (r == null) return (idleBase + math.sin(animT * 1.7) * 2).round();
+    for (final s in r.stats) {
+      if (s.label == label) return s.score;
+    }
+    return r.overall;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
@@ -148,7 +171,7 @@ class GeometryOverlayPainter extends CustomPainter {
           _drawMeshDots(canvas, size, alphaScale: 1.0);
           _drawMeshTriangleWash(canvas, size);
           _drawBoneStructure(canvas, size, dramatic: true);
-          _drawMeasurementArcs(canvas, size);         // jaw / canthal / FWHR arcs
+          _drawMeasurementArcs(canvas, size);         // decorative zone arcs (no text)
           _drawConstellation(canvas, size);           // twinkling anchor stars
           _drawFeatureBeam(canvas, size);             // sweeping feature scan
           _drawLiveMeasurementLines(canvas, size);    // sci-fi horizontal rails
@@ -162,8 +185,8 @@ class GeometryOverlayPainter extends CustomPainter {
         }
         _drawTopTicker(canvas, size,
           progress >= 0.90
-            ? '◆ LOCK ACQUIRED  ·  EVERY MM MAPPED'
-            : '◉ YOUR BONES, READ  ·  LOCKING YOUR ARCHETYPE');
+            ? '◆ LOCK ACQUIRED  ·  BLOAT MAPPED'
+            : '◉ READING YOUR BLOAT  ·  FLUID / JAW / CHEEKS');
         _drawBottomMeasurementStream(canvas, size);
         break;
 
@@ -201,7 +224,7 @@ class GeometryOverlayPainter extends CustomPainter {
           _drawBoneStructure(canvas, size, pulseBoost: true);
         }
         _drawAnalysingShockwaves(canvas, size);
-        _drawTopTicker(canvas, size, '◈ COMPOSITING  ·  RENDERING MAXIMIZED TWIN');
+        _drawTopTicker(canvas, size, '◈ COMPOSITING  ·  BUILDING YOUR DEBLOAT READ');
         break;
     }
   }
@@ -889,34 +912,26 @@ class GeometryOverlayPainter extends CustomPainter {
       return Offset(p.dx * size.width, p.dy * size.height);
     }
 
-    // Real measurements from this frame's FaceGeometryService pass.
-    // Geometry can be null briefly between the first frame's mesh
-    // arriving and the geometry being computed — fall back to a
-    // small idle wobble so the rails don't blink to zero.
-    final g = geometry;
-    final canthal = g?.canthalTilt        ?? (math.sin(animT * 2.1) * 0.12);
-    final jaw     = g?.jawAngle           ?? (118 + math.sin(animT * 1.6) * 0.6);
-    final fwhr    = g?.fwhr               ?? (1.87 + math.sin(animT * 1.9) * 0.015);
-    final sym     = g?.symmetryScore      ?? (87 + math.sin(animT * 1.3) * 0.8);
-    final nose    = g?.noseLengthRatio    ?? (0.34 + math.sin(animT * 1.5) * 0.008);
-
-    // Canthal tilt clamps to ±10° in FaceGeometryService when the
-    // eye-corner detection breaks down (typically head rotated > 25°).
-    // Showing "CANTHAL 10.00°" in that state is misleading — replace
-    // with a dash so the user reads "couldn't measure this angle yet"
-    // instead of "your tilt is locked at the maximum". Same logic used
-    // in _drawFloatingMeasurements + _drawMeasurementArcs below.
-    final canthalText = canthal.abs() >= 9.5
-        ? 'EYE TILT · —'
-        : 'EYE TILT · ${canthal.toStringAsFixed(2)}°';
+    // Live debloat reads for this frame. Geometry can be null briefly
+    // between the first frame's mesh arriving and the geometry being
+    // computed — _zoneScore falls back to a small idle wobble so the
+    // rails don't blink to zero. NO aesthetics metrics here — the rails
+    // only ever talk about bloat.
+    final r = _liveReadout;
+    final underEye = _zoneScore(r, 'Under-Eyes',    64);
+    final cheeks   = _zoneScore(r, 'Cheekbones',    61);
+    final fluidBal = _zoneScore(r, 'Fluid Balance', 58);
+    final jawDef   = _zoneScore(r, 'Jawline',       63);
+    final waterMl  = r?.waterMl ??
+        ((210 + math.sin(animT * 1.4) * 10) / 10).round() * 10;
 
     // 5 rails — each: (anchor index, left-side boolean, label text, delay)
     final rails = <({int anchor, bool leftSide, String label, double delayFrac})>[
-      (anchor: 33,    leftSide: true,  label: canthalText, delayFrac: 0.00),
-      (anchor: 454,   leftSide: false, label: 'SYM · ${sym.toStringAsFixed(0)}%',          delayFrac: 0.10),
-      (anchor: 234,   leftSide: true,  label: 'FWHR · ${fwhr.toStringAsFixed(2)}',         delayFrac: 0.20),
-      (anchor: 1,     leftSide: false, label: 'NOSE · ${nose.toStringAsFixed(2)}',         delayFrac: 0.30),
-      (anchor: 152,   leftSide: false, label: 'JAW · ${jaw.toStringAsFixed(0)}°',          delayFrac: 0.40),
+      (anchor: 33,    leftSide: true,  label: 'UNDER-EYE · $underEye', delayFrac: 0.00),
+      (anchor: 454,   leftSide: false, label: 'CHEEKS · $cheeks',      delayFrac: 0.10),
+      (anchor: 234,   leftSide: true,  label: 'FLUID · $fluidBal',     delayFrac: 0.20),
+      (anchor: 1,     leftSide: false, label: 'WATER · ~$waterMl ml',  delayFrac: 0.30),
+      (anchor: 152,   leftSide: false, label: 'JAW · $jawDef',         delayFrac: 0.40),
     ];
 
     // Base reveal so rails don't blast in all at once during scanning
@@ -1154,10 +1169,10 @@ class GeometryOverlayPainter extends CustomPainter {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  //  Measurement arcs — visualise specific measurements as arcs / brackets
-  //  drawn over the face. Canthal tilt as a curved line above each eye, FWHR
-  //  as bracket ticks across cheekbones, jaw angle as an arc at the gonion.
-  //  This makes the "we measured you" feel VISIBLE, not just numerical.
+  //  Measurement arcs — decorative arcs / brackets drawn over the debloat
+  //  zones (a bracket across the cheeks, arcs at the jaw corners, small
+  //  curves at the under-eyes). Pure visuals, zero text — they make the
+  //  "we read your face" feel VISIBLE without quoting any metric.
   // ═══════════════════════════════════════════════════════════════════════════
   void _drawMeasurementArcs(Canvas canvas, Size size) {
     final points = mesh!.points;
@@ -1293,14 +1308,15 @@ class GeometryOverlayPainter extends CustomPainter {
     final points = mesh!.points;
     if (points.isEmpty) return;
 
-    // 6 feature zones, each gets its own progress slice.
+    // 5 debloat zones, top-of-face to neck, each with its own progress
+    // slice. These are the ONLY things the beam calls out — fluid,
+    // under-eye, cheeks, jaw, neck. No aesthetics-metric labels.
     const zones = [
-      (0.00, 0.15, 'FOREHEAD',    0.18),
-      (0.15, 0.30, 'EYE LINE',    0.30),
-      (0.30, 0.45, 'CHEEKBONES',  0.44),
-      (0.45, 0.60, 'NOSE',        0.52),
-      (0.60, 0.75, 'LIPS',        0.68),
-      (0.75, 0.92, 'JAWLINE',     0.82),
+      (0.00, 0.18, 'FLUID',      0.18),
+      (0.18, 0.36, 'UNDER-EYE',  0.30),
+      (0.36, 0.55, 'CHEEKS',     0.44),
+      (0.55, 0.74, 'JAW',        0.62),
+      (0.74, 0.92, 'NECK',       0.82),
     ];
 
     for (final (start, end, label, yPct) in zones) {
@@ -1547,27 +1563,20 @@ class GeometryOverlayPainter extends CustomPainter {
       return Offset(p.dx * size.width, p.dy * size.height);
     }
 
-    // Real measurements from FaceGeometryService.computeGeometry, fed
-    // in by scan_screen each frame. Idle fallback only fires before
-    // the first geometry pass lands.
-    final g = geometry;
-    final canthal = g?.canthalTilt   ?? (math.sin(animT * 2.1) * 0.12);
-    final jaw     = g?.jawAngle      ?? (118 + math.sin(animT * 1.6) * 0.6);
-    final fwhr    = g?.fwhr          ?? (1.87 + math.sin(animT * 1.9) * 0.015);
-    final sym     = g?.symmetryScore ?? (87 + math.sin(animT * 1.3) * 0.8);
-
-    // Suppress canthal value when it's at the ±10° clamp boundary —
-    // means the eye-corner detection broke down (face rotated > ~25°).
-    // Showing "CANTHAL 10.00°" in that state is misleading.
-    final canthalLabel = canthal.abs() >= 9.5
-        ? 'CANTHAL —'
-        : 'CANTHAL ${canthal.toStringAsFixed(2)}°';
+    // Live debloat reads, fed by the same per-frame geometry pass.
+    // Idle fallback only fires before the first geometry lands. Labels
+    // speak debloat only — no aesthetics metrics.
+    final r = _liveReadout;
+    final underEye = _zoneScore(r, 'Under-Eyes',    64);
+    final jawDef   = _zoneScore(r, 'Jawline',       63);
+    final cheeks   = _zoneScore(r, 'Cheekbones',    61);
+    final fluidBal = _zoneScore(r, 'Fluid Balance', 58);
 
     final readouts = <(Offset?, String, double)>[
-      (px(FaceMesh.idxLeftEyeOuter),  canthalLabel,                              0.00),
-      (px(FaceMesh.idxChin),          'JAW ${jaw.toStringAsFixed(0)}°',         0.20),
-      (px(FaceMesh.idxCheekL),        'FWHR ${fwhr.toStringAsFixed(2)}',        0.40),
-      (px(FaceMesh.idxCheekR),        'SYM ${sym.toStringAsFixed(0)}%',         0.60),
+      (px(FaceMesh.idxLeftEyeOuter),  'UNDER-EYE $underEye', 0.00),
+      (px(FaceMesh.idxChin),          'JAW $jawDef',         0.20),
+      (px(FaceMesh.idxCheekL),        'CHEEKS $cheeks',      0.40),
+      (px(FaceMesh.idxCheekR),        'FLUID $fluidBal',     0.60),
     ];
 
     for (final (anchor, text, delay) in readouts) {
@@ -1903,31 +1912,25 @@ class GeometryOverlayPainter extends CustomPainter {
     // Near the bottom edge, above the phase HUD.
     final y = size.height - 130;
 
-    // Real measurements from the live geometry pass. Idle fallback only
-    // shows during the brief window before the first frame's geometry
-    // lands; once we have data, every value below is the user's actual
-    // face metric, recomputed every frame.
-    final g = geometry;
-    final canthal = g?.canthalTilt    ?? (3.0 + math.sin(animT * 2) * 0.15);
-    final sym     = g?.symmetryScore  ?? (87 + math.sin(animT * 1.5) * 1.2);
-    final fwhr    = g?.fwhr           ?? (1.87 + math.sin(animT * 1.8) * 0.02);
-    final jaw     = g?.jawAngle       ?? (118 + math.sin(animT * 1.3) * 0.8);
-    final chin    = g?.chinProjection ?? (0.34 + math.sin(animT * 1.6) * 0.01);
-    // Facial thirds — round to nearest integer for the marquee compactness.
-    final t1 = (g?.facialThirdTop ?? 33).round();
-    final t2 = (g?.facialThirdMid ?? 33).round();
-    final t3 = (g?.facialThirdLow ?? 34).round();
-    // Same clamp-boundary suppression as the floating labels above.
-    final canthalStr = canthal.abs() >= 9.5
-        ? 'CANTHAL —'
-        : 'CANTHAL ${canthal.toStringAsFixed(2)}°';
+    // Live debloat reads from the same per-frame geometry pass. Idle
+    // fallback only shows during the brief window before the first
+    // frame's geometry lands. Marquee speaks debloat only — fluid,
+    // under-eye, jaw, cheeks, neck, trapped water.
+    final r = _liveReadout;
+    final fluidBal = _zoneScore(r, 'Fluid Balance', 58);
+    final underEye = _zoneScore(r, 'Under-Eyes',    64);
+    final jawDef   = _zoneScore(r, 'Jawline',       63);
+    final cheeks   = _zoneScore(r, 'Cheekbones',    61);
+    final neck     = _zoneScore(r, 'Submental',     60);
+    final waterMl  = r?.waterMl ??
+        ((210 + math.sin(animT * 1.4) * 10) / 10).round() * 10;
     final values = <String>[
-      canthalStr,
-      'SYM ${sym.toStringAsFixed(1)}%',
-      'FWHR ${fwhr.toStringAsFixed(2)}',
-      'JAW ${jaw.toStringAsFixed(0)}°',
-      'CHIN ${chin.toStringAsFixed(2)}',
-      'THIRDS $t1/$t2/$t3',
+      'FLUID $fluidBal',
+      'UNDER-EYE $underEye',
+      'JAW $jawDef',
+      'CHEEKS $cheeks',
+      'NECK $neck',
+      'WATER ~$waterMl ml',
     ];
     final text = values.join('   ·   ');
 

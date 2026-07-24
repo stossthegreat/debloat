@@ -165,7 +165,7 @@ class ProgressStats extends StatelessWidget {
                 height: 130,
                 child: CustomPaint(
                   size: Size.infinite,
-                  painter: _LinePainter(points: points)),
+                  painter: _ColumnPainter(points: points)),
               ),
               const SizedBox(height: 6),
               Row(
@@ -359,57 +359,80 @@ class _HistoryRow extends StatelessWidget {
   }
 }
 
-class _LinePainter extends CustomPainter {
+/// v+22 — the smooth line-and-dots chart is gone (it's the stock look
+/// Apple keeps pattern-matching against). Progress now renders as DRAIN
+/// COLUMNS: one rounded vertical bar per scan, brand-gradient fill, the
+/// latest column highlighted with a glow + its score printed above it.
+class _ColumnPainter extends CustomPainter {
   final List<int> points;
-  const _LinePainter({required this.points});
+  const _ColumnPainter({required this.points});
   @override
   void paint(Canvas canvas, Size size) {
     if (points.isEmpty) return;
-    const padTop = 16.0, padBot = 8.0;
+    const padTop = 22.0, padBot = 4.0;
     final chartH = size.height - padTop - padBot;
-    final maxV = 100.0, minV = 0.0;
     final n = points.length;
 
-    Offset at(int i) {
-      final x = n == 1 ? size.width / 2 : size.width * (i / (n - 1));
-      final y = padTop + chartH * (1 - (points[i] - minV) / (maxV - minV));
-      return Offset(x, y);
-    }
+    // faint baseline
+    canvas.drawLine(
+      Offset(0, size.height - padBot),
+      Offset(size.width, size.height - padBot),
+      Paint()..color = AppColors.divider..strokeWidth = 1);
 
-    // gridlines
-    final grid = Paint()..color = AppColors.divider..strokeWidth = 1;
-    for (var i = 0; i <= 2; i++) {
-      final y = padTop + chartH * (i / 2);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
-    }
+    // column geometry — capped width so 2 scans don't render as slabs.
+    final slot = size.width / n;
+    final barW = slot.clamp(0.0, 34.0) * 0.62;
 
-    final pts = [for (var i = 0; i < n; i++) at(i)];
-    // fill
-    if (pts.length > 1) {
-      final fill = Path()..moveTo(pts.first.dx, size.height - padBot);
-      for (final p in pts) { fill.lineTo(p.dx, p.dy); }
-      fill..lineTo(pts.last.dx, size.height - padBot)..close();
-      canvas.drawPath(fill, Paint()
+    for (var i = 0; i < n; i++) {
+      final v = points[i].clamp(0, 100) / 100.0;
+      final x = slot * i + slot / 2;
+      final top = padTop + chartH * (1 - v);
+      final isLatest = i == n - 1;
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromLTRB(x - barW / 2, top, x + barW / 2, size.height - padBot),
+        Radius.circular(barW / 2));
+
+      // ghost track behind every column
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTRB(x - barW / 2, padTop, x + barW / 2,
+              size.height - padBot),
+          Radius.circular(barW / 2)),
+        Paint()..color = AppColors.surface3.withValues(alpha: 0.35));
+
+      final fill = Paint()
         ..shader = LinearGradient(
-          begin: Alignment.topCenter, end: Alignment.bottomCenter,
-          colors: [AppColors.brand.withValues(alpha: 0.28), Colors.transparent],
-        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)));
-    }
-    // line
-    final line = Path()..moveTo(pts.first.dx, pts.first.dy);
-    for (final p in pts.skip(1)) { line.lineTo(p.dx, p.dy); }
-    canvas.drawPath(line, Paint()
-      ..style = PaintingStyle.stroke..strokeWidth = 3
-      ..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round
-      ..color = AppColors.brand
-      ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 0.5));
-    // dots
-    for (final p in pts) {
-      canvas.drawCircle(p, 4.5, Paint()..color = AppColors.base);
-      canvas.drawCircle(p, 4.5, Paint()
-        ..style = PaintingStyle.stroke..strokeWidth = 2.5..color = AppColors.brand);
+          begin: Alignment.bottomCenter, end: Alignment.topCenter,
+          colors: isLatest
+              ? [AppColors.accentDeep, AppColors.brand]
+              : [
+                  AppColors.brand.withValues(alpha: 0.35),
+                  AppColors.brand.withValues(alpha: 0.6),
+                ],
+        ).createShader(rect.outerRect);
+      if (isLatest) {
+        canvas.drawRRect(rect, Paint()
+          ..color = AppColors.brand.withValues(alpha: 0.4)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
+      }
+      canvas.drawRRect(rect, fill);
+
+      // score printed above the latest column
+      if (isLatest) {
+        final tp = TextPainter(
+          text: TextSpan(
+            text: '${points[i]}',
+            style: const TextStyle(
+              color: AppColors.brand,
+              fontSize: 12, fontWeight: FontWeight.w800),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas,
+            Offset(x - tp.width / 2, (top - tp.height - 4).clamp(0.0, size.height)));
+      }
     }
   }
   @override
-  bool shouldRepaint(_LinePainter old) => old.points != points;
+  bool shouldRepaint(_ColumnPainter old) => old.points != points;
 }

@@ -310,6 +310,55 @@ class OnbMultiRow extends StatelessWidget {
   }
 }
 
+/// Clean "art is coming" placeholder shown wherever a real image asset
+/// hasn't landed yet. Reads as an intentional, on-brand empty state — a
+/// soft violet tile with a line-icon and a tiny caption — NOT a random
+/// emoji. The moment the matching JPG/PNG is dropped into assets/, the
+/// Image.asset above it renders instead and this never shows.
+class OnbImagePlaceholder extends StatelessWidget {
+  final IconData icon;
+  final String caption;
+  const OnbImagePlaceholder({
+    super.key,
+    this.icon = Icons.image_outlined,
+    this.caption = 'Image coming',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [Onb.cardSel, Onb.card]),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 62, height: 62,
+              decoration: BoxDecoration(
+                color: Onb.primary.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Onb.primary.withValues(alpha: 0.45), width: 1.2),
+              ),
+              child: Icon(icon, color: Onb.primaryLite, size: 30),
+            ),
+            const SizedBox(height: 12),
+            Text(caption.toUpperCase(),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                color: Onb.grey, fontSize: 10.5, letterSpacing: 1.4,
+                fontWeight: FontWeight.w700)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _EmojiTile extends StatelessWidget {
   final String emoji;
   const _EmojiTile({required this.emoji});

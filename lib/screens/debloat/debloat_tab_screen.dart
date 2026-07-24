@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -136,12 +134,16 @@ class _DebloatTabScreenState extends State<DebloatTabScreen>
 
                   const SizedBox(height: Sp.lg),
 
-                  // ── System integrity ring ──
-                  Center(
-                    child: _SystemRing(pct: pct, done: done, total: total),
+                  // ── Drain meter — the day's integrity readout. A wide
+                  // fluid bar (droplet marker rides the fill edge), NOT a
+                  // progress ring — restyled per bro so the tab reads
+                  // nothing like the template apps Apple keeps flagging.
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
+                    child: _DrainMeter(pct: pct, done: done, total: total),
                   ).animate().fadeIn(duration: 400.ms),
 
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 10),
                   Center(
                     child: Text(
                       pct >= 1.0
@@ -208,80 +210,108 @@ class _DebloatTabScreenState extends State<DebloatTabScreen>
   }
 }
 
-// ── System ring — the day's integrity readout ───────────────────────────────
-class _SystemRing extends StatelessWidget {
+// ── Drain meter — the day's integrity readout as a fluid bar ────────────────
+class _DrainMeter extends StatelessWidget {
   final double pct;
   final int done;
   final int total;
-  const _SystemRing({required this.pct, required this.done, required this.total});
+  const _DrainMeter({required this.pct, required this.done, required this.total});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 148, height: 148,
-      child: Stack(
-        alignment: Alignment.center,
+    final p = pct.clamp(0.0, 1.0);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(Rd.xl),
+        border: Border.all(
+          color: AppColors.brand.withValues(alpha: 0.28), width: 0.9),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CustomPaint(
-            size: const Size(148, 148),
-            painter: _RingPainter(pct: pct),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('$done/$total',
-                style: GoogleFonts.spaceGrotesk(
-                  color: AppColors.textPrimary,
-                  fontSize: 34, height: 1,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -1.2,
-                )),
-              const SizedBox(height: 3),
-              Text('TODAY',
+              Text('TODAY\'S DRAIN',
                 style: AppTypography.label.copyWith(
                   color: AppColors.textTertiary,
-                  fontSize: 9, letterSpacing: 3.0,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 10, letterSpacing: 2.8,
+                  fontWeight: FontWeight.w900,
                 )),
+              const Spacer(),
+              Text('$done',
+                style: GoogleFonts.spaceGrotesk(
+                  color: AppColors.brand,
+                  fontSize: 26, height: 1,
+                  fontWeight: FontWeight.w800, letterSpacing: -1)),
+              Text(' / $total',
+                style: GoogleFonts.spaceGrotesk(
+                  color: AppColors.textTertiary,
+                  fontSize: 15, height: 1.2,
+                  fontWeight: FontWeight.w700)),
             ],
           ),
+          const SizedBox(height: 12),
+          // The fluid track. A droplet marker rides the fill edge so the
+          // bar reads as water draining out of the face, not a to-do bar.
+          LayoutBuilder(builder: (context, c) {
+            const trackH = 16.0;
+            final fillW = (c.maxWidth * p).clamp(0.0, c.maxWidth);
+            return SizedBox(
+              height: 26,
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.centerLeft,
+                children: [
+                  Container(
+                    height: trackH,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface3.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(trackH / 2),
+                    ),
+                  ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOut,
+                    height: trackH,
+                    width: p <= 0 ? 0 : (fillW < trackH ? trackH : fillW),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.brandDim, AppColors.brand]),
+                      borderRadius: BorderRadius.circular(trackH / 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.brand.withValues(alpha: 0.45),
+                          blurRadius: 12),
+                      ],
+                    ),
+                  ),
+                  if (p > 0)
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeOut,
+                      left: (fillW - 13).clamp(0.0, c.maxWidth - 26),
+                      child: Container(
+                        width: 26, height: 26,
+                        decoration: BoxDecoration(
+                          color: AppColors.base,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.brand, width: 2),
+                        ),
+                        child: const Icon(Icons.water_drop_rounded,
+                          color: AppColors.brand, size: 13),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );
   }
-}
-
-class _RingPainter extends CustomPainter {
-  final double pct;
-  _RingPainter({required this.pct});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final c = Offset(size.width / 2, size.height / 2);
-    final r = size.width / 2 - 6;
-    final track = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 7
-      ..color = AppColors.surface3;
-    canvas.drawCircle(c, r, track);
-    if (pct <= 0) return;
-    final arc = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 7
-      ..strokeCap = StrokeCap.round
-      ..shader = SweepGradient(
-        startAngle: -math.pi / 2,
-        endAngle: 3 * math.pi / 2,
-        colors: const [AppColors.brandDim, AppColors.brand],
-        transform: const GradientRotation(-math.pi / 2),
-      ).createShader(Rect.fromCircle(center: c, radius: r));
-    canvas.drawArc(
-      Rect.fromCircle(center: c, radius: r),
-      -math.pi / 2, 2 * math.pi * pct.clamp(0.0, 1.0), false, arc);
-  }
-
-  @override
-  bool shouldRepaint(_RingPainter old) => old.pct != pct;
 }
 
 // ── One time-block section ──────────────────────────────────────────────────
@@ -346,7 +376,7 @@ class _Block extends StatelessWidget {
                     const Divider(
                       height: 1, thickness: 0.6,
                       color: AppColors.divider,
-                      indent: 54,
+                      indent: 46,
                     ),
                 ],
               ],
@@ -374,39 +404,17 @@ class _Row extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Leading icon tile — shows the protocol's own glyph, and
-              // morphs into a brand-filled check the moment it's ticked.
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                width: 40, height: 40,
-                margin: const EdgeInsets.only(top: 1),
-                decoration: BoxDecoration(
-                  color: isDone
-                      ? AppColors.brand
-                      : AppColors.brand.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isDone
-                        ? AppColors.brand
-                        : AppColors.brand.withValues(alpha: 0.30),
-                    width: 1.2),
-                  boxShadow: isDone
-                      ? [BoxShadow(
-                          color: AppColors.brand.withValues(alpha: 0.45),
-                          blurRadius: 14)]
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  isDone ? Icons.check_rounded : item.icon,
-                  size: isDone ? 22 : 20,
-                  color: isDone ? const Color(0xFF03181C) : AppColors.brand,
-                ),
-              ),
-              const SizedBox(width: 14),
+              // Leading glyph — plain, small, no tile. The completion
+              // state lives ENTIRELY in the trailing droplet toggle, so
+              // the row reads as a protocol line, not a checkbox list.
+              Icon(item.icon,
+                size: 19,
+                color: isDone
+                    ? AppColors.textMuted
+                    : AppColors.brand.withValues(alpha: 0.85)),
+              const SizedBox(width: 13),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,7 +432,7 @@ class _Row extends StatelessWidget {
                         decorationColor: AppColors.textTertiary,
                       )),
                     const SizedBox(height: 3),
-                    Text(item.why,
+                    Text('${item.why} · ${item.metric}',
                       style: AppTypography.bodySmall.copyWith(
                         color: isDone
                             ? AppColors.textMuted
@@ -434,27 +442,35 @@ class _Row extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              // Target chip.
-              Container(
-                margin: const EdgeInsets.only(top: 2),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4),
+              const SizedBox(width: 12),
+              // Trailing droplet toggle — hollow droplet when pending,
+              // brand-filled rounded square with a check when drained.
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                width: 34, height: 34,
                 decoration: BoxDecoration(
-                  color: AppColors.surface2,
-                  borderRadius: BorderRadius.circular(100),
+                  color: isDone ? AppColors.brand : Colors.transparent,
+                  borderRadius: BorderRadius.circular(11),
                   border: Border.all(
-                      color: AppColors.surface3, width: 0.7),
-                ),
-                child: Text(item.metric,
-                  style: GoogleFonts.spaceGrotesk(
                     color: isDone
-                        ? AppColors.textMuted
-                        : AppColors.brand,
-                    fontSize: 10.5, height: 1,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
-                  )),
+                        ? AppColors.brand
+                        : AppColors.surface3,
+                    width: 1.4),
+                  boxShadow: isDone
+                      ? [BoxShadow(
+                          color: AppColors.brand.withValues(alpha: 0.45),
+                          blurRadius: 12)]
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  isDone ? Icons.check_rounded : Icons.water_drop_outlined,
+                  size: isDone ? 19 : 16,
+                  color: isDone
+                      ? const Color(0xFF03181C)
+                      : AppColors.textTertiary,
+                ),
               ),
             ],
           ),

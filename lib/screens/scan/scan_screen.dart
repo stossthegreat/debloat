@@ -1210,10 +1210,10 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                   // mirror) — flag the painter to swap LEFT/RIGHT cues.
                   mirrorLR:     Platform.isAndroid,
                   denseMesh:    _denseMesh,
-                  // Real per-frame geometry — the painter feeds these
-                  // directly into the live HUD readouts so the user
-                  // sees their ACTUAL canthal tilt, jaw angle, FWHR,
-                  // symmetry instead of a hardcoded sine-wave wiggle.
+                  // Real per-frame geometry — the painter translates it
+                  // through DebloatStatsService so the live HUD reads
+                  // are the user's ACTUAL fluid / under-eye / jaw /
+                  // cheeks scores, not a hardcoded sine-wave wiggle.
                   geometry:     _geometry,
                   // iOS-only face-anchored oval. Android already
                   // tracks fine via real MediaPipe; passing null
