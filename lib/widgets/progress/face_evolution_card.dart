@@ -232,6 +232,11 @@ class _FaceEvolutionCardState extends State<FaceEvolutionCard>
     // ignore: discarded_futures
     AnalyticsService.evolutionShared(_photoScans.length);
     setState(() => _sharing = true);
+    // Share-sheet anchor — without this iOS 26 silently refuses to
+    // present the sheet (see FaceEvolutionShare.sharePair).
+    final mq = MediaQuery.of(context);
+    final origin = Rect.fromLTWH(
+        mq.size.width / 2 - 1, mq.padding.top + 8, 2, 2);
     try {
       await FaceEvolutionShare.sharePair(
         beforePath: _day1.capturedImagePath!,
@@ -239,6 +244,7 @@ class _FaceEvolutionCardState extends State<FaceEvolutionCard>
         afterLabel: _dayLabel(_sel),
         scoreBefore: DebloatStatsService.compute(_day1.geometry).overall,
         scoreAfter:  DebloatStatsService.compute(_sel.geometry).overall,
+        origin: origin,
       );
     } finally {
       if (mounted) setState(() => _sharing = false);
@@ -680,13 +686,25 @@ class FaceEvolutionShare {
     required String afterLabel,
     int scoreBefore = 0,
     int scoreAfter = 0,
+    // Anchor for the iOS share sheet. REQUIRED — this was the "share
+    // button does nothing" bug: without a valid sharePositionOrigin,
+    // share_plus 10.x on iOS 26's UIScene lifecycle resolves a stale
+    // keyWindow and the sheet SILENTLY fails to present. The report
+    // share always passed one; these calls didn't. Same fix as
+    // ShareService._shareBytes.
+    Rect? origin,
   }) async {
     final text = 'My Debloat OS face evolution. Day 1 → $afterLabel 💧→🗿';
     final dir = await getTemporaryDirectory();
     final stamp = DateTime.now().millisecondsSinceEpoch;
     final args = <String, String>{'before': beforePath, 'after': afterPath};
 
+    Future<void> present(List<XFile> files) => Share.shareXFiles(
+          files, text: text, sharePositionOrigin: origin);
+
     // 1) The real thing — branded MP4 via the native H.264 encoder.
+    //    Hard 60s ceiling so a wedged encoder can never hang the button;
+    //    on timeout we drop to the GIF path and the sheet still opens.
     try {
       final mp4 = await EvolutionVideoService.buildRevealVideo(
         beforePath: beforePath,
@@ -694,46 +712,57 @@ class FaceEvolutionShare {
         dayLabel: afterLabel,
         scoreBefore: scoreBefore,
         scoreAfter: scoreAfter,
-      );
+      ).timeout(const Duration(seconds: 60), onTimeout: () => null);
       if (mp4 != null) {
-        await Share.shareXFiles(
-          [XFile(mp4, mimeType: 'video/mp4')], text: text);
+        await present([XFile(mp4, mimeType: 'video/mp4')]);
         return;
       }
-    } catch (_) {/* fall through */}
+    } catch (e) {
+      debugPrint('evolution share: mp4 path failed: $e');
+    }
 
-    // 2) Animated GIF reveal — legacy fallback if the native encoder is
+    // 2) Animated GIF reveal — fallback if the native encoder is
     //    unavailable (e.g. stale build without the channel).
     try {
-      final bytes = await compute(encodeRevealGif, args);
+      final bytes = await compute(encodeRevealGif, args)
+          .timeout(const Duration(seconds: 30), onTimeout: () => null);
       if (bytes != null && bytes.isNotEmpty) {
         final f = File('${dir.path}/evolution_$stamp.gif');
         await f.writeAsBytes(bytes);
-        await Share.shareXFiles(
-          [XFile(f.path, mimeType: 'image/gif')], text: text);
+        await present([XFile(f.path, mimeType: 'image/gif')]);
         return;
       }
-    } catch (_) {/* fall through */}
+    } catch (e) {
+      debugPrint('evolution share: gif path failed: $e');
+    }
 
     // 3) Static side-by-side JPG (also off-thread).
     try {
-      final bytes = await compute(encodeJpgPair, args);
+      final bytes = await compute(encodeJpgPair, args)
+          .timeout(const Duration(seconds: 20), onTimeout: () => null);
       if (bytes != null && bytes.isNotEmpty) {
         final f = File('${dir.path}/evolution_$stamp.jpg');
         await f.writeAsBytes(bytes);
-        await Share.shareXFiles(
-          [XFile(f.path, mimeType: 'image/jpeg')], text: text);
+        await present([XFile(f.path, mimeType: 'image/jpeg')]);
         return;
       }
-    } catch (_) {/* fall through */}
+    } catch (e) {
+      debugPrint('evolution share: jpg path failed: $e');
+    }
 
-    // 4) Raw photos — guarantees the share sheet still opens.
+    // 4) Raw photos — the share sheet still opens.
     try {
-      await Share.shareXFiles([
+      await present([
         XFile(beforePath, mimeType: 'image/jpeg'),
         XFile(afterPath, mimeType: 'image/jpeg'),
-      ], text: text);
-    } catch (_) {}
+      ]);
+    } catch (e) {
+      debugPrint('evolution share: raw-photo path failed: $e');
+      // 5) Absolute last resort — plain text. Nothing left to fail.
+      try {
+        await Share.share(text, sharePositionOrigin: origin);
+      } catch (_) {}
+    }
   }
 }
 
