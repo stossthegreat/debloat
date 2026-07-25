@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -465,7 +466,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
           // ── Hero: INTERACTIVE before/after slider — starts at exactly
           //    50/50, bloated left / future face right. ────────────────
-          _PaywallHeroStack(female: _gender == 'f'),
+          _PaywallHeroSquare(female: _gender == 'f'),
 
           // ── Middle: header + points pushed lower, plan card pulled
           //    down against the CTA. No logo, no scroll — spacers own
@@ -584,91 +585,111 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
 }
 
-/// The before/after hero — ONE centred block, two FULL SQUARE photos
-/// stacked on top of each other: DAY 1 (bloated) on top, DAY 60
-/// (drained) below. Each square is top-anchored so the WHOLE face —
-/// hair, head, chin — is visible. Smaller than full-bleed, centred.
-/// Gender-aware. No slider — the honest stack sells it.
-class _PaywallHeroStack extends StatelessWidget {
+/// The before/after hero — ONE big centred SQUARE with the SAME
+/// interactive slider as onboarding page 1: divider defaults to
+/// exactly 50/50, bloated LEFT, drained RIGHT. The portraits are
+/// top-anchored inside the square so the FULL face — hair, head,
+/// chin — is visible, just smaller. Gender-aware.
+class _PaywallHeroSquare extends StatefulWidget {
   final bool female;
-  const _PaywallHeroStack({required this.female});
+  const _PaywallHeroSquare({required this.female});
+  @override
+  State<_PaywallHeroSquare> createState() => _PaywallHeroSquareState();
+}
+
+class _PaywallHeroSquareState extends State<_PaywallHeroSquare> {
+  double _t = 0.5; // exactly half way by default
 
   @override
   Widget build(BuildContext context) {
-    final before =
-        female ? 'assets/marketing/before_f.jpg' : 'assets/marketing/before.jpg';
-    final after =
-        female ? 'assets/marketing/after_f.jpg' : 'assets/marketing/after.jpg';
+    final before = widget.female
+        ? 'assets/marketing/before_f.jpg'
+        : 'assets/marketing/before.jpg';
+    final after = widget.female
+        ? 'assets/marketing/after_f.jpg'
+        : 'assets/marketing/after.jpg';
 
     final size = MediaQuery.of(context).size;
-    // Block is 1:2 (two stacked squares). Height budgeted off what the
-    // rest of the paywall needs; width follows, capped for narrow phones.
-    var h = (size.height - 565).clamp(230.0, 430.0);
-    var w = h / 2;
-    final maxW = size.width * 0.52;
-    if (w > maxW) { w = maxW; h = w * 2; }
+    // A perfect square, as wide as the layout budget allows.
+    final side = math.min(size.width - 44, (size.height - 520))
+        .clamp(240.0, 400.0)
+        .toDouble();
 
     return Center(
       child: SizedBox(
-        width: w,
-        height: h,
+        width: side,
+        height: side,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.14), width: 1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              children: [
-                // DAY 1 — the bloated truth, full head visible.
-                Expanded(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      _square(before),
-                      Positioned(
-                        left: 10, top: 8,
-                        child: _tag('DAY 1', Colors.white),
-                      ),
-                    ],
+          borderRadius: BorderRadius.circular(22),
+          child: LayoutBuilder(builder: (context, c) {
+            final w = c.maxWidth;
+            return GestureDetector(
+              onHorizontalDragUpdate: (d) => setState(
+                  () => _t = (d.localPosition.dx / w).clamp(0.06, 0.94)),
+              onTapDown: (d) => setState(
+                  () => _t = (d.localPosition.dx / w).clamp(0.06, 0.94)),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // AFTER (drained) — the base, revealed on the right.
+                  _face(after),
+                  // BEFORE (bloated) clipped to the left of the divider.
+                  ClipRect(
+                    clipper: _PwLeftClipper(_t),
+                    child: _face(before),
                   ),
-                ),
-                // Seam — thin brand line between the two mornings.
-                Container(height: 2, color: _pvVioletLite),
-                // DAY 60 — the drained result, full head visible.
-                Expanded(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      _square(after),
-                      Positioned(
-                        left: 10, bottom: 8,
-                        child: _tag('DAY 60', _pvVioletLite),
-                      ),
-                    ],
+                  // Divider + drag handle — same feel as onboarding.
+                  Positioned(
+                    left: w * _t - 1, top: 0, bottom: 0,
+                    child: Container(width: 2, color: Colors.white),
                   ),
-                ),
-              ],
-            ),
-          ),
+                  Positioned(
+                    left: w * _t - 17, top: 0, bottom: 0,
+                    child: Center(
+                      child: Container(
+                        width: 34, height: 34,
+                        decoration: BoxDecoration(
+                          color: _pvBg,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: _pvVioletLite, width: 2),
+                          boxShadow: [BoxShadow(
+                            color: _pvVioletLite.withValues(alpha: 0.6),
+                            blurRadius: 14)],
+                        ),
+                        child: const Icon(Icons.unfold_more_rounded,
+                          color: _pvVioletLite, size: 18),
+                      ),
+                    ),
+                  ),
+                  // Tiny corner labels — white left, blue right.
+                  Positioned(
+                    left: 12, bottom: 10,
+                    child: _tag('DAY 1', Colors.white),
+                  ),
+                  Positioned(
+                    right: 12, bottom: 10,
+                    child: _tag('DAY 60', _pvVioletLite),
+                  ),
+                ],
+              ),
+            );
+          }),
         ),
       ),
     );
   }
 
-  /// Top-anchored cover — the source portraits are 3:4 with the whole
-  /// head in the upper square, so Alignment(0,-1) keeps hair AND chin
-  /// in frame inside the 1:1 panel.
-  Widget _square(String asset) => Image.asset(
+  /// Top-anchored cover — the whole head lives in the upper square of
+  /// the 3:4 portraits, so a 1:1 window aligned to the top shows the
+  /// full face: hair, head, chin.
+  Widget _face(String asset) => Image.asset(
         asset,
         fit: BoxFit.cover,
         alignment: const Alignment(0, -1),
         errorBuilder: (_, __, ___) => Container(
           color: _pvCard,
           alignment: Alignment.center,
-          child: const Icon(Icons.face_rounded, color: _pvViolet, size: 44)),
+          child: const Icon(Icons.face_rounded, color: _pvViolet, size: 52)),
       );
 
   Widget _tag(String label, Color color) => Text(label,
@@ -677,6 +698,15 @@ class _PaywallHeroStack extends StatelessWidget {
           letterSpacing: 1.6, fontWeight: FontWeight.w800,
           shadows: const [Shadow(color: Colors.black87, blurRadius: 6)],
         ));
+}
+
+class _PwLeftClipper extends CustomClipper<Rect> {
+  final double t;
+  const _PwLeftClipper(this.t);
+  @override
+  Rect getClip(Size size) => Rect.fromLTRB(0, 0, size.width * t, size.height);
+  @override
+  bool shouldReclip(_PwLeftClipper old) => old.t != t;
 }
 
 // ── Paywall palette — black & blue, matching the app (was violet).
