@@ -744,11 +744,13 @@ class _CommitStep extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(18),
             child: AspectRatio(
-              aspectRatio: 1200 / 640,
+              // 4:3 of the full square flat-lay — you can actually SEE
+              // the kit now (was a thin 1200/640 letterbox strip).
+              aspectRatio: 4 / 3,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset('assets/onboarding/tools_banner.jpg',
+                  Image.asset('assets/onboarding/welcome_routine.jpg',
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const OnbImagePlaceholder(
                       icon: Icons.spa_rounded, caption: 'The Kit')),
@@ -1786,7 +1788,7 @@ class _IdentityForkStep extends StatelessWidget {
           const OnbHeadline(
             text: 'Which one do you ',
             emphasis: 'want to be?',
-            sub: 'Same face. Drag the last screen to see the difference.'),
+            sub: 'Same bones. Two different mornings.'),
           const SizedBox(height: 22),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
