@@ -63,10 +63,16 @@
 /// TESTING — flipped back to TRUE per bro: "turn paywall off so I can
 /// test" (render-consistency debugging). FLIP TO FALSE BEFORE THE
 /// STORE SUBMISSION — this single line is the launch switch.
-const kBypassPaywall = true;
+///
+/// LAUNCH — FALSE per bro: "Put the paywall back up bro I gotta push
+/// this one." Every gate is live: funnel → scan → processing theatre →
+/// PAYWALL → pay → report. Pro rescans 2/week on full gpt-4o, the
+/// onboarding scan is always gpt-4o-mini, food scans unlimited on
+/// gpt-4o-mini. RevenueCat is on the Debloat OS project key (v49).
+const kBypassPaywall = false;
 
 /// Human-readable build tag shown tiny on the paywall so we can instantly
 /// tell which build is actually installed on-device (TestFlight lag has
 /// repeatedly made us debug a stale build). Bump this with every pubspec
 /// build-number bump.
-const kBuildTag = 'v1.0.0+49';
+const kBuildTag = 'v1.0.0+50';
