@@ -623,6 +623,19 @@ class _ReportScreenState extends State<ReportScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _generatingHero = false);
+      // Never fail silently — the old empty catch made the spinner just
+      // stop with no image and no explanation ("it don't work").
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text(
+            'Render didn\'t come through — tap GENERATE to try again.',
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600)),
+        backgroundColor: Color(0xFF16161B),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 4),
+      ));
     }
   }
 
