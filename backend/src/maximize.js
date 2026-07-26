@@ -187,25 +187,30 @@ function classify(s) {
  */
 // The debloat instruction — the whole point of the app. Used as the
 // OPENER of the main prompt and, alone, as the reinforcement pass.
+// Written as short direct orders: the edit model follows blunt
+// commands far more reliably than long descriptive paragraphs, and
+// the under-cheek hollow is named FIRST because it is THE look.
 const DEBLOAT_CORE =
-  `DRAMATICALLY de-bloat and de-puff the entire face — this is the most ` +
-  `important change and it must be strong and obvious. Remove ALL facial ` +
-  `water retention, bloat, and soft puffiness completely, as if this ` +
-  `person lost every pound of water weight and facial fat and is at ` +
-  `their leanest. HOLLOW OUT THE CHEEKS: reduce the buccal fat so the ` +
-  `cheekbones stand out and a clear hollow appears just beneath them. ` +
-  `Carve out a sharp, chiselled, clearly-defined jawline and a defined ` +
-  `chin. Tighten under the chin and the neck — remove any submental ` +
-  `fullness, soft double-chin, or jaw softness. Fully flatten and ` +
-  `de-puff the under-eye bags. Slim the overall width and roundness of ` +
-  `the face so it reads lean, sculpted, angular, and completely ` +
-  `drained. Make the transformation big and unmistakable.`;
+  `Make the face extremely lean, chiselled, and defined. ` +
+  `HOLLOW OUT THE AREA UNDER THE CHEEKBONES: carve a deep, clearly ` +
+  `visible shadowed hollow beneath each cheekbone, like a very lean ` +
+  `male model with almost no buccal fat. ` +
+  `High, sharp, prominent cheekbones. ` +
+  `A razor-sharp chiselled jawline with a hard clean edge from ear to ` +
+  `chin, visible from the front. ` +
+  `Zero double chin — skin pulled tight under the chin and down the ` +
+  `neck. ` +
+  `Flat under-eyes: no bags, no puffiness. ` +
+  `Strip out every trace of facial bloat, puffiness, and water ` +
+  `retention. ` +
+  `The result must look DRAMATICALLY slimmer, more angular, and more ` +
+  `sculpted than the input photo — an obvious, striking ` +
+  `transformation, the leanest believable version of this exact face.`;
 
 const REINFORCE_PROMPT =
   `Same person, same photo. ` + DEBLOAT_CORE + ` ` +
-  `Keep the hairstyle, facial hair, skin, lighting, background, ` +
-  `framing, pose, expression, age, and identity exactly as they are — ` +
-  `change ONLY the facial leanness. Photorealistic.`;
+  `Change ONLY the facial leanness — keep the hair, facial hair, ` +
+  `lighting, background, pose, and identity untouched. Photorealistic.`;
 
 /** Hard timeout for best-effort calls. */
 function withTimeout(promise, ms) {
@@ -233,15 +238,13 @@ function buildPrompt(heroChange) {
     `If they have facial hair, keep it neatly groomed with clean lines ` +
     `and a tight neckline. Groomed eyebrows, no stragglers. ` +
 
-    // 3 — identity + scene preserve (leaner, but still clearly them)
-    `Despite the strong slimming, it must still be recognisably the SAME ` +
-    `person: keep their underlying bone structure, apparent age, nose ` +
-    `shape, eye shape and eye colour, lip shape, expression, hairstyle, ` +
-    `facial hair, ethnicity, and natural skin tone. Do not change who they ` +
-    `are — only drain the bloat and fat to reveal a leaner, sharper version ` +
-    `of this exact face. ` +
-    `Keep the same lighting, background, framing, camera angle, and pose. ` +
-    `Natural shadows. Photorealistic.`
+    // 3 — identity + scene preserve. Deliberately SHORT: the old
+    // twelve-item "keep everything the same" list kept pulling the
+    // model back toward the original face and the slimming came out
+    // weak. Lock only what actually defines identity and the scene.
+    `It must still clearly be the SAME person — same eyes, nose, lips, ` +
+    `age, ethnicity, and skin tone — just the leanest version of them. ` +
+    `Same lighting, background, framing, and pose. Photorealistic.`
   );
 }
 
