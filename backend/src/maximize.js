@@ -188,43 +188,56 @@ function classify(s) {
 // The debloat instruction — the whole point of the app. Used as the
 // OPENER of the main prompt and, alone, as the reinforcement pass.
 //
-// HARD-LEARNED RULES for this wording (v42 postmortem):
-//   · NEVER use shadow/contour/darkness words ("shadowed hollow",
-//     "carve", "dark") — nano-banana takes them literally and PAINTS
-//     grey-black smudges onto the cheeks like contour makeup. A real
-//     user got a face with black patches drawn on it.
-//   · Describe the change as RESHAPING THE 3-D STRUCTURE of the face,
-//     and explicitly ban painting anything onto the skin.
+// HARD-LEARNED RULES for this wording:
+//   · v42 postmortem: NEVER use shadow/contour/darkness words
+//     ("shadowed hollow", "carve", "dark") — nano-banana takes them
+//     literally and PAINTS grey-black smudges onto the cheeks like
+//     contour makeup. A real user got black patches drawn on his face.
+//   · v43 postmortem: anatomical command-lists ("reduce buccal fat",
+//     "narrow the face", "reshape the geometry") barely move the
+//     needle — the model reads surgical face-proportion orders as an
+//     identity threat and resists them (community guides literally use
+//     "no jawline reduction" as a KEEPER phrase to stop unwanted
+//     slimming, i.e. slimming is a thing it does happily when asked
+//     the natural way).
+//   · What demonstrably works (documented nano-banana case: "make this
+//     guy slimmer — 210 to 177 pounds" → full transformation): tell a
+//     plain WEIGHT-LOSS STORY with real numbers. The model knows where
+//     weight loss shows — face, neck, jaw — and applies it as a
+//     coherent, believable whole instead of resisting per-feature
+//     edits. Same reason the original grooming lines ("freshly-cut
+//     hair, clear skin") always landed: natural narrative, not anatomy.
 const DEBLOAT_CORE =
-  `Completely transform this face into its leanest, most chiselled ` +
-  `version — the same man after losing all facial fat and water ` +
-  `weight. Reshape the actual 3-D structure of the face: ` +
-  `slim the cheeks so they curve inward below the cheekbones, with ` +
-  `almost no buccal fat, like a lean male model; ` +
-  `make the cheekbones high and prominent; ` +
-  `give him a sharp, clearly defined jawline from ear to chin; ` +
-  `tighten the skin under the chin and along the neck — no double ` +
-  `chin at all; ` +
-  `remove all under-eye bags and puffiness; ` +
-  `narrow the overall width and roundness of the face. ` +
-  `The face must come out DRAMATICALLY slimmer and more angular than ` +
-  `the input photo. ` +
-  `Achieve ALL of this purely by reshaping the face's geometry. ` +
-  `Do NOT paint shadows, dark patches, contour lines, makeup, or any ` +
-  `marks onto the skin — the skin stays clean, smooth, evenly lit, ` +
-  `and one natural tone, exactly like a real unedited photo.`;
+  `Show this exact same person after they lost 30 pounds of water ` +
+  `weight and fat, with the loss showing in their face and neck. ` +
+  `Their face is now much slimmer and leaner: tight slim cheeks that ` +
+  `sit close against the bone with a natural lean hollow beneath the ` +
+  `cheekbones, high visible cheekbones, one sharp clean jawline from ` +
+  `ear to chin, a firm tight neck with no fullness under the chin, ` +
+  `and fresh flat under-eyes with no puffiness or bags. ` +
+  `Their whole face looks narrower, lighter, drained of all bloat — ` +
+  `like the "after" photo of a dramatic weight-loss transformation. ` +
+  `The change must be big and clearly visible, but completely ` +
+  `natural: real lean facial structure, clean evenly-lit skin with ` +
+  `nothing painted or drawn on it.`;
 
-// Pass 2 doubles as a CLEANUP pass: if pass 1 painted any contour-like
-// smudge despite the ban, this wording orders it wiped instead of
-// compounding it (the old reinforce re-ran the same flawed wording on
-// the flawed output and made the smudges worse).
+// Pass 2 — a conversational "push it further" follow-up, which is how
+// nano-banana is designed to be iterated (multi-turn small edits
+// preserve likeness better than one giant edit). Also doubles as a
+// CLEANUP pass: any contour-like smudge from pass 1 gets wiped instead
+// of compounded.
 const REINFORCE_PROMPT =
-  `Same person, same photo. ` + DEBLOAT_CORE + ` ` +
+  `Same person, same photo — now push the weight loss in their face ` +
+  `further. Make the face even leaner: slimmer, tighter cheeks with ` +
+  `a deeper natural lean hollow beneath the cheekbones, an even ` +
+  `sharper cleaner jawline, a tighter neck with zero fullness under ` +
+  `the chin, completely flat under-eyes. ` +
   `If there are any painted shadows, grey or dark smudges, contour ` +
   `marks, or unnatural patches anywhere on the skin, remove them ` +
   `completely and restore clean, natural, evenly lit skin. ` +
-  `Change ONLY the facial leanness — keep the hair, facial hair, ` +
-  `lighting, background, pose, and identity untouched. Photorealistic.`;
+  `Keep the hair, facial hair, expression, lighting, background, ` +
+  `pose, and identity exactly the same. Photorealistic — it must ` +
+  `look like a real unedited photo.`;
 
 /** Hard timeout for best-effort calls. */
 function withTimeout(promise, ms) {
@@ -240,7 +253,7 @@ function buildPrompt(heroChange) {
     // 1 — THE DEBLOAT LAYER FIRST. The edit model weights the opening
     // of the prompt hardest; leading with grooming used to let it
     // occasionally "spend" the edit on hair and barely touch the face.
-    `The person in this photo. ` + DEBLOAT_CORE + ' ' +
+    `Edit this photo. ` + DEBLOAT_CORE + ' ' +
 
     // 2 — grooming hero + baseline (the glow-up they always had)
     `Also give them ${heroChange}. ` +
