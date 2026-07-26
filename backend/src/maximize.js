@@ -47,6 +47,23 @@ const EDIT_MODEL = 'google/nano-banana';
 // re-roll. 3 = "clearly visible slimming" per the verifier rubric.
 const VERIFY_PASS_SCORE = 3;
 
+// ...and must stay at least this recognisable (0-10, judged against the
+// ORIGINAL selfie, ignoring hair/beard/clothing). Below this the render
+// reads as a different person — v45 postmortem: a strong debloat came
+// back with a new haircut, added clothing, and a face the user didn't
+// recognise as himself. Over-transformation is failure too.
+const IDENT_PASS_SCORE = 6;
+
+/** A candidate ships without a re-roll only if it slims AND stays them. */
+function isViable(c) {
+  return !!c && c.slim >= VERIFY_PASS_SCORE && c.ident >= IDENT_PASS_SCORE;
+}
+
+/** Rank: viable first, then leanest, identity as tiebreak. */
+function rankCandidate(c) {
+  return (isViable(c) ? 1000 : 0) + c.slim * 10 + c.ident;
+}
+
 // Stop launching new Replicate work after this much wall time — the
 // Flutter client aborts at 160s, so everything must land well before.
 const TIME_BUDGET_MS = 90_000;
@@ -102,29 +119,32 @@ export async function maximize({ imageBase64, brief } = {}) {
   );
   let candidates = settled
     .filter(s => s.status === 'fulfilled')
-    .map(s => ({ url: s.value, score: -1 }));
+    .map(s => ({ url: s.value, slim: -1, ident: -1 }));
   settled
     .filter(s => s.status === 'rejected')
     .forEach(s => console.warn(`[maximize] debloat candidate failed: ${String(s.reason?.message ?? s.reason).slice(0, 120)}`));
 
-  // ── VERIFY · vision referee scores each candidate ────────────────────────
-  // Compare against the groomed base (not the raw selfie) so hair/beard
-  // changes can't inflate or confuse the slimness score.
+  // ── VERIFY · vision referee scores slimming AND identity ─────────────────
+  // Slimness is judged against the groomed base (so hair/beard changes
+  // can't confuse it); identity is judged against the ORIGINAL selfie,
+  // ignoring hair/beard/clothing — a strong debloat that turns the user
+  // into a different person is just as failed as a weak one.
   candidates = await Promise.all(
-    candidates.map(async c => ({ ...c, score: await scoreDebloat(baseImage, c.url) })),
+    candidates.map(async c => ({ ...c, ...(await scoreRender(inputDataUri, baseImage, c.url)) })),
   );
-  candidates.sort((a, b) => b.score - a.score);
-  console.log(`[maximize] debloat scores: [${candidates.map(c => c.score).join(', ')}] at ${Date.now() - t0}ms`);
+  candidates.sort((a, b) => rankCandidate(b) - rankCandidate(a));
+  console.log(`[maximize] candidate scores: [${candidates.map(c => `slim ${c.slim}/ident ${c.ident}`).join('; ')}] at ${Date.now() - t0}ms`);
 
   let best = candidates[0] ?? null;
 
-  // ── RE-ROLL · nothing visibly slimmer yet and time remains ───────────────
-  if ((!best || best.score < VERIFY_PASS_SCORE) && Date.now() - t0 < TIME_BUDGET_MS) {
+  // ── RE-ROLL · no candidate is both slim enough AND still them ────────────
+  if (!isViable(best) && Date.now() - t0 < TIME_BUDGET_MS) {
     try {
-      const url   = await withTimeout(runEdit({ imageDataUri: baseImage, prompt: DEBLOAT_TWIN }), 45_000);
-      const score = await scoreDebloat(baseImage, url);
-      console.log(`[maximize] re-roll score: ${score} at ${Date.now() - t0}ms`);
-      if (!best || score > best.score) best = { url, score };
+      const url    = await withTimeout(runEdit({ imageDataUri: baseImage, prompt: DEBLOAT_TWIN }), 45_000);
+      const scores = await scoreRender(inputDataUri, baseImage, url);
+      console.log(`[maximize] re-roll score: slim ${scores.slim}/ident ${scores.ident} at ${Date.now() - t0}ms`);
+      const cand = { url, ...scores };
+      if (!best || rankCandidate(cand) > rankCandidate(best)) best = cand;
     } catch (err) {
       console.warn(`[maximize] re-roll failed: ${String(err?.message ?? err).slice(0, 120)}`);
     }
@@ -134,7 +154,7 @@ export async function maximize({ imageBase64, brief } = {}) {
   // only a total wipeout of every pass throws.
   const finalUrl = best?.url ?? groomedUrl;
   if (!finalUrl) throw new Error('maximize: every pass failed');
-  console.log(`[maximize] done in ${Date.now() - t0}ms — score ${best?.score ?? 'n/a'}`);
+  console.log(`[maximize] done in ${Date.now() - t0}ms — slim ${best?.slim ?? 'n/a'} / ident ${best?.ident ?? 'n/a'}`);
 
   return {
     url:              finalUrl,
@@ -236,11 +256,15 @@ function groomPrompt(heroChange) {
     `clean, clear, healthy skin with even tone — no acne, no blemishes, ` +
     `no redness, no visible pores — but keep natural skin texture ` +
     `(not airbrushed, not plastic, not smoothed). ` +
-    `Give them freshly-cut, cleanly-styled hair. ` +
+    `Give them a freshly-cut, cleanly-styled version of THEIR OWN ` +
+    `hairstyle — sharpen and tidy what they already have, do not switch ` +
+    `them to a different haircut. ` +
     `If they have facial hair, keep it neatly groomed with clean lines ` +
     `and a tight neckline. Groomed eyebrows, no stragglers. ` +
+    `Do not add, remove, or change any clothing. ` +
     `Keep the face shape, expression, lighting, background, framing, ` +
-    `and pose exactly the same. Photorealistic.`
+    `and pose exactly the same. They must stay instantly recognisable ` +
+    `— improve them, do not replace them. Photorealistic.`
   );
 }
 
@@ -274,15 +298,22 @@ const DEBLOAT_TWIN =
   `cheeks with a natural lean hollow beneath high visible cheekbones, ` +
   `a sharp clean jawline from ear to chin, a firm tight neck with no ` +
   `fullness under the chin, and completely flat under-eyes. ` +
+  `Anyone who knows this person must instantly recognise the twin as ` +
+  `them — identical face, just leaner. ` +
   `Nothing painted or drawn on the skin — clean, evenly lit, natural. ` +
-  `Same room, same lighting, same framing, same pose, same clothing. ` +
+  `Same room, same lighting, same framing, same pose. Do not add, ` +
+  `remove, or change any clothing. ` +
   `Photorealistic — a real unedited photo.`;
 
 // ─── VERIFY · vision referee ─────────────────────────────────────────────────
-// Scores how much leaner the face in `afterUrl` is vs `beforeImage`.
-// 0 = identical, 3 = clearly visible slimming, 10 = dramatic. Returns -1
-// on any failure so a broken referee can never sink a good render.
-async function scoreDebloat(beforeImage, afterUrl) {
+// One gpt-4o-mini call scores a candidate on BOTH axes:
+//   slim  — how much leaner the face is vs the groomed base (IMAGE 2),
+//           so hair/beard changes can't confuse the comparison.
+//   ident — is this still recognisably the person in the ORIGINAL selfie
+//           (IMAGE 1), ignoring hairstyle / facial hair / clothing.
+// Returns {slim: -1, ident: -1} on any failure so a broken referee can
+// never sink a good render.
+async function scoreRender(originalImage, baseImage, candidateUrl) {
   try {
     const r = await withTimeout(openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -292,27 +323,38 @@ async function scoreDebloat(beforeImage, afterUrl) {
           {
             type: 'text',
             text:
-              'IMAGE 1 is the before photo, IMAGE 2 is the after photo of the same face. ' +
-              'Score how much SLIMMER and LEANER the face in IMAGE 2 is compared to IMAGE 1 — ' +
-              'look at cheek fullness, hollowness under the cheekbones, jawline sharpness, ' +
-              'fullness under the chin, and under-eye puffiness. ' +
+              'IMAGE 1 is the original selfie. IMAGE 2 is a groomed version of it. ' +
+              'IMAGE 3 is an AI edit that should show the same face slimmer. ' +
+              'Score two things about IMAGE 3. ' +
+              '(1) "slim": compared to IMAGE 2, how much slimmer and leaner is the face — ' +
+              'cheek fullness, hollowness under the cheekbones, jawline sharpness, ' +
+              'fullness under the chin, under-eye puffiness. ' +
               '0 = no visible change, 3 = clearly visible slimming, 6 = strong slimming, ' +
               '10 = dramatic transformation. ' +
-              'Respond with JSON only: {"score": <integer 0-10>}',
+              '(2) "ident": ignoring hairstyle, facial hair, and clothing, is the face in ' +
+              'IMAGE 3 still recognisably the SAME PERSON as IMAGE 1 — same eyes, nose, ' +
+              'lips, bone character, age, ethnicity? ' +
+              '10 = unmistakably the same person, 6 = same person with minor drift, ' +
+              '3 = looks like a relative, 0 = a different person. ' +
+              'Respond with JSON only: {"slim": <integer 0-10>, "ident": <integer 0-10>}',
           },
-          { type: 'image_url', image_url: { url: beforeImage, detail: 'low' } },
-          { type: 'image_url', image_url: { url: afterUrl,    detail: 'low' } },
+          { type: 'image_url', image_url: { url: originalImage, detail: 'low' } },
+          { type: 'image_url', image_url: { url: baseImage,     detail: 'low' } },
+          { type: 'image_url', image_url: { url: candidateUrl,  detail: 'low' } },
         ],
       }],
       response_format: { type: 'json_object' },
       temperature: 0,
-      max_tokens: 30,
+      max_tokens: 40,
     }), 15_000);
-    const score = JSON.parse(r.choices[0]?.message?.content ?? '{}').score;
-    return Number.isFinite(score) ? score : -1;
+    const parsed = JSON.parse(r.choices[0]?.message?.content ?? '{}');
+    return {
+      slim:  Number.isFinite(parsed.slim)  ? parsed.slim  : -1,
+      ident: Number.isFinite(parsed.ident) ? parsed.ident : -1,
+    };
   } catch (err) {
     console.warn(`[maximize] verifier failed: ${String(err?.message ?? err).slice(0, 120)}`);
-    return -1;
+    return { slim: -1, ident: -1 };
   }
 }
 
