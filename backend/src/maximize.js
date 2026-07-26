@@ -47,6 +47,12 @@ const EDIT_MODEL = 'google/nano-banana';
 // re-roll. 3 = "clearly visible slimming" per the verifier rubric.
 const VERIFY_PASS_SCORE = 3;
 
+// THE signature axis — the sunken hollow beneath the cheekbones. General
+// slimming without the cheek hollow is NOT a debloat render (v46
+// postmortem: a render passed on slim+ident yet the cheek area stayed
+// flat — user: "your cheek area hollows and it's not in this image").
+const HOLLOW_PASS_SCORE = 4;
+
 // ...and must stay at least this recognisable (0-10, judged against the
 // ORIGINAL selfie, ignoring hair/beard/clothing). Below this the render
 // reads as a different person — v45 postmortem: a strong debloat came
@@ -54,14 +60,17 @@ const VERIFY_PASS_SCORE = 3;
 // recognise as himself. Over-transformation is failure too.
 const IDENT_PASS_SCORE = 6;
 
-/** A candidate ships without a re-roll only if it slims AND stays them. */
+/** Ships without a re-roll only if it slims, HOLLOWS, and stays them. */
 function isViable(c) {
-  return !!c && c.slim >= VERIFY_PASS_SCORE && c.ident >= IDENT_PASS_SCORE;
+  return !!c
+    && c.slim   >= VERIFY_PASS_SCORE
+    && c.hollow >= HOLLOW_PASS_SCORE
+    && c.ident  >= IDENT_PASS_SCORE;
 }
 
-/** Rank: viable first, then leanest, identity as tiebreak. */
+/** Rank: viable first, then deepest cheek hollow, then leanest, then identity. */
 function rankCandidate(c) {
-  return (isViable(c) ? 1000 : 0) + c.slim * 10 + c.ident;
+  return (isViable(c) ? 1000 : 0) + c.hollow * 20 + c.slim * 5 + c.ident;
 }
 
 // Stop launching new Replicate work after this much wall time — the
@@ -119,7 +128,7 @@ export async function maximize({ imageBase64, brief } = {}) {
   );
   let candidates = settled
     .filter(s => s.status === 'fulfilled')
-    .map(s => ({ url: s.value, slim: -1, ident: -1 }));
+    .map(s => ({ url: s.value, slim: -1, hollow: -1, ident: -1 }));
   settled
     .filter(s => s.status === 'rejected')
     .forEach(s => console.warn(`[maximize] debloat candidate failed: ${String(s.reason?.message ?? s.reason).slice(0, 120)}`));
@@ -133,16 +142,23 @@ export async function maximize({ imageBase64, brief } = {}) {
     candidates.map(async c => ({ ...c, ...(await scoreRender(inputDataUri, baseImage, c.url)) })),
   );
   candidates.sort((a, b) => rankCandidate(b) - rankCandidate(a));
-  console.log(`[maximize] candidate scores: [${candidates.map(c => `slim ${c.slim}/ident ${c.ident}`).join('; ')}] at ${Date.now() - t0}ms`);
+  console.log(`[maximize] candidate scores: [${candidates.map(c => `slim ${c.slim}/hollow ${c.hollow}/ident ${c.ident}`).join('; ')}] at ${Date.now() - t0}ms`);
 
   let best = candidates[0] ?? null;
 
-  // ── RE-ROLL · no candidate is both slim enough AND still them ────────────
+  // ── RE-ROLL · no candidate slims, hollows, AND stays them ────────────────
+  // The re-roll uses the hollow-focused prompt: by this point the usual
+  // miss is a face that slimmed overall but kept flat cheeks, so the
+  // retry spends the whole edit on the one thing that's missing.
   if (!isViable(best) && Date.now() - t0 < TIME_BUDGET_MS) {
     try {
-      const url    = await withTimeout(runEdit({ imageDataUri: baseImage, prompt: DEBLOAT_TWIN }), 45_000);
+      // Deepen the best candidate so far when there is one (its general
+      // slimming is already done — this pass adds the missing hollow);
+      // start from the groomed base only if every candidate failed.
+      const rerollBase = best?.url ?? baseImage;
+      const url    = await withTimeout(runEdit({ imageDataUri: rerollBase, prompt: HOLLOW_FOCUS }), 45_000);
       const scores = await scoreRender(inputDataUri, baseImage, url);
-      console.log(`[maximize] re-roll score: slim ${scores.slim}/ident ${scores.ident} at ${Date.now() - t0}ms`);
+      console.log(`[maximize] re-roll score: slim ${scores.slim}/hollow ${scores.hollow}/ident ${scores.ident} at ${Date.now() - t0}ms`);
       const cand = { url, ...scores };
       if (!best || rankCandidate(cand) > rankCandidate(best)) best = cand;
     } catch (err) {
@@ -154,7 +170,7 @@ export async function maximize({ imageBase64, brief } = {}) {
   // only a total wipeout of every pass throws.
   const finalUrl = best?.url ?? groomedUrl;
   if (!finalUrl) throw new Error('maximize: every pass failed');
-  console.log(`[maximize] done in ${Date.now() - t0}ms — slim ${best?.slim ?? 'n/a'} / ident ${best?.ident ?? 'n/a'}`);
+  console.log(`[maximize] done in ${Date.now() - t0}ms — slim ${best?.slim ?? 'n/a'} / hollow ${best?.hollow ?? 'n/a'} / ident ${best?.ident ?? 'n/a'}`);
 
   return {
     url:              finalUrl,
@@ -268,16 +284,22 @@ function groomPrompt(heroChange) {
   );
 }
 
-// PASS B candidate 1 — the weight-loss narrative.
+// PASS B candidate 1 — the weight-loss narrative. The sunken cheeks are
+// named FIRST and hardest: they are THE signature of a debloated face
+// ("sunken"/"curves inward" is structural wording — never "shadowed",
+// see the v42 rule above).
 const DEBLOAT_NARRATIVE =
   `Edit this photo. Show this exact same person after they lost 30 ` +
   `pounds of water weight and fat, with all of the loss showing in ` +
   `their face and neck. ` +
-  `Their face is now much slimmer and leaner: tight slim cheeks that ` +
-  `sit close against the bone with a natural lean hollow beneath the ` +
-  `cheekbones, high visible cheekbones, one sharp clean jawline from ` +
-  `ear to chin, a firm tight neck with no fullness under the chin, ` +
-  `and fresh flat under-eyes with no puffiness or bags. ` +
+  `The most important change: their cheeks are now VISIBLY SUNKEN — ` +
+  `the skin below each cheekbone curves clearly inward, hollow like a ` +
+  `lean fashion model's cheeks, with high prominent cheekbones above. ` +
+  `Even if they have a beard, the sunken hollow above the beard line ` +
+  `must be clearly visible. ` +
+  `On top of that: one sharp clean jawline from ear to chin, a firm ` +
+  `tight neck with no fullness under the chin, and fresh flat ` +
+  `under-eyes with no puffiness or bags. ` +
   `Their whole face looks narrower, lighter, drained of all bloat — ` +
   `like the "after" photo of a dramatic weight-loss transformation. ` +
   `The change must be big and clearly visible, but completely ` +
@@ -294,10 +316,12 @@ const DEBLOAT_TWIN =
   `Replace this person with their identical twin who weighs 30 pounds ` +
   `less. The twin looks exactly like them — same eyes, same nose, same ` +
   `lips, same skin tone, same age, same hairstyle, same facial hair, ` +
-  `same expression — but with a dramatically leaner face: tight slim ` +
-  `cheeks with a natural lean hollow beneath high visible cheekbones, ` +
-  `a sharp clean jawline from ear to chin, a firm tight neck with no ` +
-  `fullness under the chin, and completely flat under-eyes. ` +
+  `same expression — but with a dramatically leaner face. Above all, ` +
+  `the twin's cheeks are VISIBLY SUNKEN: the skin below each cheekbone ` +
+  `curves clearly inward, hollow like a lean fashion model's cheeks, ` +
+  `with high prominent cheekbones above. Plus a sharp clean jawline ` +
+  `from ear to chin, a firm tight neck with no fullness under the ` +
+  `chin, and completely flat under-eyes. ` +
   `Anyone who knows this person must instantly recognise the twin as ` +
   `them — identical face, just leaner. ` +
   `Nothing painted or drawn on the skin — clean, evenly lit, natural. ` +
@@ -305,14 +329,34 @@ const DEBLOAT_TWIN =
   `remove, or change any clothing. ` +
   `Photorealistic — a real unedited photo.`;
 
+// RE-ROLL — hollow-focused. Runs when the candidates slimmed the face
+// but the cheek area stayed flat (the common miss). One job only: put
+// in the missing sunken hollow, touch nothing else.
+const HOLLOW_FOCUS =
+  `Edit this photo. One change only: make the cheeks visibly SUNKEN. ` +
+  `The skin below each cheekbone must curve clearly inward — a deep ` +
+  `natural hollow, like a lean fashion model with no fat in their ` +
+  `cheeks — with high prominent cheekbones above. If they have a ` +
+  `beard, the sunken hollow above the beard line must be clearly ` +
+  `visible. This is a real structural change to the face — nothing ` +
+  `painted or drawn on the skin, no darkened areas, just genuinely ` +
+  `hollow cheeks with clean, evenly lit skin. ` +
+  `Keep everything else exactly the same: same person, same eyes, ` +
+  `nose, lips, age, hairstyle, facial hair, expression, clothing, ` +
+  `lighting, background, framing, and pose. ` +
+  `Photorealistic — a real unedited photo.`;
+
 // ─── VERIFY · vision referee ─────────────────────────────────────────────────
-// One gpt-4o-mini call scores a candidate on BOTH axes:
-//   slim  — how much leaner the face is vs the groomed base (IMAGE 2),
-//           so hair/beard changes can't confuse the comparison.
-//   ident — is this still recognisably the person in the ORIGINAL selfie
-//           (IMAGE 1), ignoring hairstyle / facial hair / clothing.
-// Returns {slim: -1, ident: -1} on any failure so a broken referee can
-// never sink a good render.
+// One gpt-4o-mini call scores a candidate on THREE axes:
+//   slim   — how much leaner the face is vs the groomed base (IMAGE 2),
+//            so hair/beard changes can't confuse the comparison.
+//   hollow — THE signature: is there a clearly visible sunken hollow in
+//            the cheeks beneath the cheekbones? Scored on the candidate
+//            alone; general slimming can't stand in for it.
+//   ident  — is this still recognisably the person in the ORIGINAL selfie
+//            (IMAGE 1), ignoring hairstyle / facial hair / clothing.
+// Returns -1s on any failure so a broken referee can never sink a good
+// render.
 async function scoreRender(originalImage, baseImage, candidateUrl) {
   try {
     const r = await withTimeout(openai.chat.completions.create({
@@ -324,19 +368,23 @@ async function scoreRender(originalImage, baseImage, candidateUrl) {
             type: 'text',
             text:
               'IMAGE 1 is the original selfie. IMAGE 2 is a groomed version of it. ' +
-              'IMAGE 3 is an AI edit that should show the same face slimmer. ' +
-              'Score two things about IMAGE 3. ' +
+              'IMAGE 3 is an AI edit that should show the same face slimmer with sunken cheeks. ' +
+              'Score three things about IMAGE 3. ' +
               '(1) "slim": compared to IMAGE 2, how much slimmer and leaner is the face — ' +
-              'cheek fullness, hollowness under the cheekbones, jawline sharpness, ' +
-              'fullness under the chin, under-eye puffiness. ' +
+              'cheek fullness, jawline sharpness, fullness under the chin, under-eye puffiness. ' +
               '0 = no visible change, 3 = clearly visible slimming, 6 = strong slimming, ' +
               '10 = dramatic transformation. ' +
-              '(2) "ident": ignoring hairstyle, facial hair, and clothing, is the face in ' +
+              '(2) "hollow": looking at IMAGE 3 alone, is there a clearly visible sunken ' +
+              'hollow in the cheeks just below the cheekbones — the skin curving inward ' +
+              'like a lean model\'s cheeks? Judge the hollow specifically, not overall slimness. ' +
+              '0 = cheeks flat or full, 4 = visible hollow, 7 = strong clear hollow, ' +
+              '10 = deep dramatic model-like hollow. ' +
+              '(3) "ident": ignoring hairstyle, facial hair, and clothing, is the face in ' +
               'IMAGE 3 still recognisably the SAME PERSON as IMAGE 1 — same eyes, nose, ' +
               'lips, bone character, age, ethnicity? ' +
               '10 = unmistakably the same person, 6 = same person with minor drift, ' +
               '3 = looks like a relative, 0 = a different person. ' +
-              'Respond with JSON only: {"slim": <integer 0-10>, "ident": <integer 0-10>}',
+              'Respond with JSON only: {"slim": <integer 0-10>, "hollow": <integer 0-10>, "ident": <integer 0-10>}',
           },
           { type: 'image_url', image_url: { url: originalImage, detail: 'low' } },
           { type: 'image_url', image_url: { url: baseImage,     detail: 'low' } },
@@ -345,16 +393,17 @@ async function scoreRender(originalImage, baseImage, candidateUrl) {
       }],
       response_format: { type: 'json_object' },
       temperature: 0,
-      max_tokens: 40,
+      max_tokens: 60,
     }), 15_000);
     const parsed = JSON.parse(r.choices[0]?.message?.content ?? '{}');
     return {
-      slim:  Number.isFinite(parsed.slim)  ? parsed.slim  : -1,
-      ident: Number.isFinite(parsed.ident) ? parsed.ident : -1,
+      slim:   Number.isFinite(parsed.slim)   ? parsed.slim   : -1,
+      hollow: Number.isFinite(parsed.hollow) ? parsed.hollow : -1,
+      ident:  Number.isFinite(parsed.ident)  ? parsed.ident  : -1,
     };
   } catch (err) {
     console.warn(`[maximize] verifier failed: ${String(err?.message ?? err).slice(0, 120)}`);
-    return { slim: -1, ident: -1 };
+    return { slim: -1, hollow: -1, ident: -1 };
   }
 }
 
