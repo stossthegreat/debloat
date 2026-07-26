@@ -60,6 +60,11 @@ const HOLLOW_PASS_SCORE = 4;
 // recognise as himself. Over-transformation is failure too.
 const IDENT_PASS_SCORE = 6;
 
+// The groomed base must keep the user's actual haircut (0-10 sameness,
+// judged style + length vs the original selfie). Below this the groom
+// pass restyled them — retry once, then skip grooming entirely.
+const HAIR_PASS_SCORE = 6;
+
 /** Ships without a re-roll only if it slims, HOLLOWS, and stays them. */
 function isViable(c) {
   return !!c
@@ -87,36 +92,49 @@ const TIME_BUDGET_MS = 90_000;
  * Returns { url, editUrl, prompt, seed, heroChange, model, intermediateUrls }.
  */
 export async function maximize({ imageBase64, brief } = {}) {
+  // v48 — heroChange NO LONGER drives a hair restyle. The old glow-up
+  // system injected "give them <a modern haircut>" into the groom pass,
+  // which flatly contradicted "do not switch haircuts" in the same
+  // prompt — the model obeyed the explicit order and kept shipping
+  // renders with brand-new haircuts (v45 fringe, v47 side-part on a
+  // buzzed head). The groom pass now only POLISHES what's there. The
+  // heroChange string survives purely as response metadata for the app.
   const improve = Array.isArray(brief?.improve) ? brief.improve : [];
-
-  // Rank grooming fixes: hair(0) > beard(1) > other-grooming(2). Skin(3) is
-  // handled by the always-on baseline, not as a hero.
-  const ranked = improve
-    .map((s, i) => ({ s: String(s || '').trim(), pri: classify(s), idx: i }))
-    .filter(r => r.s.length > 0 && r.pri <= 2)
-    .sort((a, b) => a.pri - b.pri || a.idx - b.idx);
-
-  const heroChange = ranked.length > 0
-    ? ranked[0].s
-    : 'a cleanly styled, modern haircut that suits the face shape';
+  const heroChange = improve.map(s => String(s || '').trim()).find(s => s.length > 0)
+    ?? 'a freshly groomed, debloated version of themselves';
 
   const seed         = deterministicSeed(imageBase64);
   const inputDataUri = `data:image/jpeg;base64,${imageBase64}`;
   const t0           = Date.now();
 
-  console.log(`[maximize] verified pipeline — hero="${heroChange}"`);
+  console.log(`[maximize] verified pipeline — polish-only groom`);
 
   // ── PASS A · grooming ────────────────────────────────────────────────────
-  // The reliable half. If it somehow fails after retries, debloat the raw
-  // selfie instead of erroring — the debloat IS the product.
+  // Polish only: skin cleanup + tidy THEIR OWN hair and beard. Guarded by
+  // a hair-fidelity check — if the model swaps the haircut anyway, retry
+  // once, and if it swaps again, skip grooming and debloat the raw selfie
+  // (fidelity beats polish; the debloat prompts preserve their real hair).
   let groomedUrl = null;
   try {
     groomedUrl = await runWithRetry(
-      () => runEdit({ imageDataUri: inputDataUri, prompt: groomPrompt(heroChange) }),
+      () => runEdit({ imageDataUri: inputDataUri, prompt: groomPrompt() }),
       { label: 'groom', maxAttempts: 2, retryAll: true, capWaitSec: 3 },
     );
-    console.log(`[maximize] groom ok: ${Date.now() - t0}ms`);
+    const hair = await scoreHair(inputDataUri, groomedUrl);
+    if (hair >= 0 && hair < HAIR_PASS_SCORE) {
+      console.warn(`[maximize] groom swapped the haircut (hair ${hair}) — retrying once`);
+      const retryUrl  = await runEdit({ imageDataUri: inputDataUri, prompt: groomPrompt() });
+      const retryHair = await scoreHair(inputDataUri, retryUrl);
+      if (retryHair < 0 || retryHair >= HAIR_PASS_SCORE) {
+        groomedUrl = retryUrl;
+      } else {
+        console.warn(`[maximize] groom retry swapped hair again (hair ${retryHair}) — skipping groom, using raw selfie`);
+        groomedUrl = null;
+      }
+    }
+    if (groomedUrl) console.log(`[maximize] groom ok: ${Date.now() - t0}ms`);
   } catch (err) {
+    groomedUrl = null;
     console.warn(`[maximize] groom failed — debloating the raw selfie: ${String(err?.message ?? err).slice(0, 120)}`);
   }
   const baseImage = groomedUrl ?? inputDataUri;
@@ -232,18 +250,6 @@ function isTransient(msg) {
   return false;
 }
 
-/**
- * Classify an improve item so we can rank the grooming hero:
- *   0 = HAIR, 1 = BEARD, 2 = OTHER grooming, 3 = SKIN (baseline, not hero).
- */
-function classify(s) {
-  const x = String(s || '').toLowerCase();
-  if (/\b(hair(?!\s*line)|fade|crop|cut|hairline|fringe|buzz|taper|undercut|quiff|pomp|part|bangs)\b/.test(x)) return 0;
-  if (/\b(beard|stubble|goatee|moustache|facial hair)\b/.test(x)) return 1;
-  if (/\b(brow|eyebrow|teeth|whiten|glasses|frame|lash)\b/.test(x)) return 2;
-  return 3;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 //  PROMPTS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -264,19 +270,20 @@ function classify(s) {
 //   · One job per pass: mixing grooming + debloat in one prompt let the
 //     model "spend" the edit on hair and skip the face.
 
-// PASS A — grooming only. The ask that has landed reliably since v1.
-function groomPrompt(heroChange) {
+// PASS A — polish only. NO restyle instruction of any kind (v48: the old
+// "give them <heroChange>" line ordered a new haircut and contradicted
+// the keep-your-hair clause — the model obeyed the order every time).
+function groomPrompt() {
   return (
-    `Edit this photo. Give them ${heroChange}. ` +
-    `Make them look their absolute best: ` +
-    `clean, clear, healthy skin with even tone — no acne, no blemishes, ` +
-    `no redness, no visible pores — but keep natural skin texture ` +
-    `(not airbrushed, not plastic, not smoothed). ` +
-    `Give them a freshly-cut, cleanly-styled version of THEIR OWN ` +
-    `hairstyle — sharpen and tidy what they already have, do not switch ` +
-    `them to a different haircut. ` +
-    `If they have facial hair, keep it neatly groomed with clean lines ` +
-    `and a tight neckline. Groomed eyebrows, no stragglers. ` +
+    `Edit this photo. Keep the EXACT same haircut, hair length, and ` +
+    `hairline — do not restyle the hair, only make it look clean, ` +
+    `freshly washed, and neatly tidied. ` +
+    `Give them clean, clear, healthy skin with even tone — no acne, no ` +
+    `blemishes, no redness, no visible pores — but keep natural skin ` +
+    `texture (not airbrushed, not plastic, not smoothed). ` +
+    `If they have facial hair, keep the same beard exactly as it is, ` +
+    `just neatly groomed with clean lines and a tight neckline. ` +
+    `Groomed eyebrows, no stragglers. ` +
     `Do not add, remove, or change any clothing. ` +
     `Keep the face shape, expression, lighting, background, framing, ` +
     `and pose exactly the same. They must stay instantly recognisable ` +
@@ -404,6 +411,46 @@ async function scoreRender(originalImage, baseImage, candidateUrl) {
   } catch (err) {
     console.warn(`[maximize] verifier failed: ${String(err?.message ?? err).slice(0, 120)}`);
     return { slim: -1, hollow: -1, ident: -1 };
+  }
+}
+
+// ─── VERIFY · hair-fidelity check on the groomed base ────────────────────────
+// The debloat candidates inherit whatever hair the groomed base has, so a
+// haircut swap here poisons every downstream render. Scores 0-10 how much
+// the haircut (style + length, not neatness) matches the original selfie.
+// Returns -1 on failure so a broken check never blocks the pipeline.
+async function scoreHair(originalImage, groomedUrl) {
+  try {
+    const r = await withTimeout(openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text:
+              'IMAGE 1 is an original selfie. IMAGE 2 is an AI-groomed version that was ' +
+              'supposed to keep the exact same haircut. ' +
+              'Score 0-10 how much the HAIRCUT in IMAGE 2 matches IMAGE 1 — same style, ' +
+              'same length, same hairline. Ignore neatness, ignore the face, ignore ' +
+              'facial hair. ' +
+              '10 = same haircut, 6 = same haircut slightly neater or fuller, ' +
+              '3 = noticeably different style or length, 0 = completely different haircut. ' +
+              'Respond with JSON only: {"hair": <integer 0-10>}',
+          },
+          { type: 'image_url', image_url: { url: originalImage, detail: 'low' } },
+          { type: 'image_url', image_url: { url: groomedUrl,    detail: 'low' } },
+        ],
+      }],
+      response_format: { type: 'json_object' },
+      temperature: 0,
+      max_tokens: 30,
+    }), 15_000);
+    const hair = JSON.parse(r.choices[0]?.message?.content ?? '{}').hair;
+    return Number.isFinite(hair) ? hair : -1;
+  } catch (err) {
+    console.warn(`[maximize] hair check failed: ${String(err?.message ?? err).slice(0, 120)}`);
+    return -1;
   }
 }
 
