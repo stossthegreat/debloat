@@ -187,28 +187,42 @@ function classify(s) {
  */
 // The debloat instruction — the whole point of the app. Used as the
 // OPENER of the main prompt and, alone, as the reinforcement pass.
-// Written as short direct orders: the edit model follows blunt
-// commands far more reliably than long descriptive paragraphs, and
-// the under-cheek hollow is named FIRST because it is THE look.
+//
+// HARD-LEARNED RULES for this wording (v42 postmortem):
+//   · NEVER use shadow/contour/darkness words ("shadowed hollow",
+//     "carve", "dark") — nano-banana takes them literally and PAINTS
+//     grey-black smudges onto the cheeks like contour makeup. A real
+//     user got a face with black patches drawn on it.
+//   · Describe the change as RESHAPING THE 3-D STRUCTURE of the face,
+//     and explicitly ban painting anything onto the skin.
 const DEBLOAT_CORE =
-  `Make the face extremely lean, chiselled, and defined. ` +
-  `HOLLOW OUT THE AREA UNDER THE CHEEKBONES: carve a deep, clearly ` +
-  `visible shadowed hollow beneath each cheekbone, like a very lean ` +
-  `male model with almost no buccal fat. ` +
-  `High, sharp, prominent cheekbones. ` +
-  `A razor-sharp chiselled jawline with a hard clean edge from ear to ` +
-  `chin, visible from the front. ` +
-  `Zero double chin — skin pulled tight under the chin and down the ` +
-  `neck. ` +
-  `Flat under-eyes: no bags, no puffiness. ` +
-  `Strip out every trace of facial bloat, puffiness, and water ` +
-  `retention. ` +
-  `The result must look DRAMATICALLY slimmer, more angular, and more ` +
-  `sculpted than the input photo — an obvious, striking ` +
-  `transformation, the leanest believable version of this exact face.`;
+  `Completely transform this face into its leanest, most chiselled ` +
+  `version — the same man after losing all facial fat and water ` +
+  `weight. Reshape the actual 3-D structure of the face: ` +
+  `slim the cheeks so they curve inward below the cheekbones, with ` +
+  `almost no buccal fat, like a lean male model; ` +
+  `make the cheekbones high and prominent; ` +
+  `give him a sharp, clearly defined jawline from ear to chin; ` +
+  `tighten the skin under the chin and along the neck — no double ` +
+  `chin at all; ` +
+  `remove all under-eye bags and puffiness; ` +
+  `narrow the overall width and roundness of the face. ` +
+  `The face must come out DRAMATICALLY slimmer and more angular than ` +
+  `the input photo. ` +
+  `Achieve ALL of this purely by reshaping the face's geometry. ` +
+  `Do NOT paint shadows, dark patches, contour lines, makeup, or any ` +
+  `marks onto the skin — the skin stays clean, smooth, evenly lit, ` +
+  `and one natural tone, exactly like a real unedited photo.`;
 
+// Pass 2 doubles as a CLEANUP pass: if pass 1 painted any contour-like
+// smudge despite the ban, this wording orders it wiped instead of
+// compounding it (the old reinforce re-ran the same flawed wording on
+// the flawed output and made the smudges worse).
 const REINFORCE_PROMPT =
   `Same person, same photo. ` + DEBLOAT_CORE + ` ` +
+  `If there are any painted shadows, grey or dark smudges, contour ` +
+  `marks, or unnatural patches anywhere on the skin, remove them ` +
+  `completely and restore clean, natural, evenly lit skin. ` +
   `Change ONLY the facial leanness — keep the hair, facial hair, ` +
   `lighting, background, pose, and identity untouched. Photorealistic.`;
 
