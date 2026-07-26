@@ -59,10 +59,14 @@
 /// funnel → scan → processing theatre → PAYWALL → pay → report.
 /// Pro scans cap at 2/week on full gpt-4o; the onboarding scan is
 /// always gpt-4o-mini; food scans are unlimited on gpt-4o-mini.
-const kBypassPaywall = false;
+///
+/// TESTING — flipped back to TRUE per bro: "turn paywall off so I can
+/// test" (render-consistency debugging). FLIP TO FALSE BEFORE THE
+/// STORE SUBMISSION — this single line is the launch switch.
+const kBypassPaywall = true;
 
 /// Human-readable build tag shown tiny on the paywall so we can instantly
 /// tell which build is actually installed on-device (TestFlight lag has
 /// repeatedly made us debug a stale build). Bump this with every pubspec
 /// build-number bump.
-const kBuildTag = 'v1.0.0+40';
+const kBuildTag = 'v1.0.0+41';

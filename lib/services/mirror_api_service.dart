@@ -185,7 +185,11 @@ class MirrorApiService {
           Uri.parse('${ApiConfig.backendBaseUrl}/maximize'),
           headers: {'Content-Type': 'application/json'},
           body: body,
-        ).timeout(const Duration(seconds: 120));
+          // 160s — the backend chain is bounded at ~120s worst case
+          // (3 bounded attempts + reinforcement pass), so the client
+          // must always outlast it. The old 120/unbounded pairing was
+          // the "render randomly fails" bug.
+        ).timeout(const Duration(seconds: 160));
 
         if (response.statusCode != 200) {
           throw Exception('Backend ${response.statusCode}: ${response.body}');

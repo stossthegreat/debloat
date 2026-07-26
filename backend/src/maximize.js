@@ -66,15 +66,41 @@ export async function maximize({ imageBase64, brief } = {}) {
   // User's explicit ask: never fail. Retry 5 times; the Flutter
   // client will retry the whole request if we somehow still throw.
   const editStart = Date.now();
+  // BOUNDED retries — the Flutter client aborts at ~150s, so the server
+  // chain must always finish first. 3 attempts, short capped backoff
+  // (2s/4s): worst case ≈ 3 runs + 6s of waiting. The old 5-attempt /
+  // 30s-backoff chain could grind for 3-5 minutes — the client timed
+  // out mid-grind and the render "randomly" failed.
   const editUrl = await runWithRetry(
     () => runEdit({ imageDataUri: inputDataUri, prompt }),
-    { label: 'maximize', maxAttempts: 5, retryAll: true },
+    { label: 'maximize', maxAttempts: 3, retryAll: true, capWaitSec: 4 },
   );
-  console.log(`[maximize] ok: ${Date.now() - editStart}ms`);
+  console.log(`[maximize] pass1 ok: ${Date.now() - editStart}ms`);
+
+  // REINFORCEMENT PASS — nano-banana is stochastic and sometimes
+  // under-applies the slimming. A short debloat-only second pass on the
+  // pass-1 output pushes the effect to consistent strength. Strictly
+  // best-effort: single attempt, hard 35s cap, only when there is
+  // enough time budget left — any failure keeps the pass-1 render.
+  let finalUrl = editUrl;
+  if (Date.now() - editStart < 60_000) {
+    try {
+      const boosted = await withTimeout(
+        runEdit({ imageDataUri: editUrl, prompt: REINFORCE_PROMPT }),
+        35_000,
+      );
+      if (typeof boosted === 'string' && boosted.startsWith('http')) {
+        finalUrl = boosted;
+        console.log(`[maximize] reinforcement ok: ${Date.now() - editStart}ms total`);
+      }
+    } catch (err) {
+      console.warn(`[maximize] reinforcement skipped: ${String(err?.message ?? err).slice(0, 120)}`);
+    }
+  }
 
   return {
-    url:              editUrl,
-    editUrl,
+    url:              finalUrl,
+    editUrl:          finalUrl,
     prompt,
     seed,
     heroChange,
@@ -88,7 +114,7 @@ export async function maximize({ imageBase64, brief } = {}) {
  * retries EVERY error. Backoff honours a Retry-After hint if present, else
  * exponential (3s, 6s, 12s) capped at 30s.
  */
-async function runWithRetry(fn, { label, maxAttempts = 3, retryAll = false } = {}) {
+async function runWithRetry(fn, { label, maxAttempts = 3, retryAll = false, capWaitSec = 30 } = {}) {
   let lastErr;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -103,8 +129,8 @@ async function runWithRetry(fn, { label, maxAttempts = 3, retryAll = false } = {
         throw err;
       }
       const retryAfter = msg.match(/retry_after"?\s*:\s*(\d+)/);
-      const waitSec    = retryAfter ? Number(retryAfter[1]) : Math.pow(2, attempt) * 3;
-      const waitMs     = Math.min(Math.max(waitSec, 3), 30) * 1000;
+      const waitSec    = retryAfter ? Number(retryAfter[1]) : Math.pow(2, attempt);
+      const waitMs     = Math.min(Math.max(waitSec, 2), capWaitSec) * 1000;
       const kind = transient ? 'transient' : 'unclassified';
       console.warn(`[${label}] ${kind} failure attempt ${attempt}/${maxAttempts}: "${msg.slice(0, 200)}" — waiting ${waitMs}ms`);
       await new Promise(r => setTimeout(r, waitMs));
@@ -159,13 +185,47 @@ function classify(s) {
  * weight, never carving new bone — that keeps it the same person, believable,
  * and un-revertable (no face-swap runs after this).
  */
+// The debloat instruction — the whole point of the app. Used as the
+// OPENER of the main prompt and, alone, as the reinforcement pass.
+const DEBLOAT_CORE =
+  `DRAMATICALLY de-bloat and de-puff the entire face — this is the most ` +
+  `important change and it must be strong and obvious. Remove ALL facial ` +
+  `water retention, bloat, and soft puffiness completely, as if this ` +
+  `person lost every pound of water weight and facial fat and is at ` +
+  `their leanest. HOLLOW OUT THE CHEEKS: reduce the buccal fat so the ` +
+  `cheekbones stand out and a clear hollow appears just beneath them. ` +
+  `Carve out a sharp, chiselled, clearly-defined jawline and a defined ` +
+  `chin. Tighten under the chin and the neck — remove any submental ` +
+  `fullness, soft double-chin, or jaw softness. Fully flatten and ` +
+  `de-puff the under-eye bags. Slim the overall width and roundness of ` +
+  `the face so it reads lean, sculpted, angular, and completely ` +
+  `drained. Make the transformation big and unmistakable.`;
+
+const REINFORCE_PROMPT =
+  `Same person, same photo. ` + DEBLOAT_CORE + ` ` +
+  `Keep the hairstyle, facial hair, skin, lighting, background, ` +
+  `framing, pose, expression, age, and identity exactly as they are — ` +
+  `change ONLY the facial leanness. Photorealistic.`;
+
+/** Hard timeout for best-effort calls. */
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, rej) =>
+      setTimeout(() => rej(new Error(`timed out after ${ms}ms`)), ms)),
+  ]);
+}
+
 function buildPrompt(heroChange) {
   return (
-    // 1 — subject + grooming hero
-    `The person in this photo. Give them ${heroChange}. ` +
+    // 1 — THE DEBLOAT LAYER FIRST. The edit model weights the opening
+    // of the prompt hardest; leading with grooming used to let it
+    // occasionally "spend" the edit on hair and barely touch the face.
+    `The person in this photo. ` + DEBLOAT_CORE + ' ' +
 
-    // 2 — grooming baseline (the glow-up they always had)
-    `At the same time, make them look their absolute best: ` +
+    // 2 — grooming hero + baseline (the glow-up they always had)
+    `Also give them ${heroChange}. ` +
+    `Make them look their absolute best: ` +
     `clean, clear, healthy skin with even tone — no acne, no blemishes, ` +
     `no redness, no visible pores — but keep natural skin texture ` +
     `(not airbrushed, not plastic, not smoothed). ` +
@@ -173,22 +233,7 @@ function buildPrompt(heroChange) {
     `If they have facial hair, keep it neatly groomed with clean lines ` +
     `and a tight neckline. Groomed eyebrows, no stragglers. ` +
 
-    // 3 — THE DEBLOAT LAYER (the whole point of the app — make it strong)
-    `Now DRAMATICALLY de-bloat and de-puff the entire face — this is the ` +
-    `most important change and it must be strong and obvious. Remove ALL ` +
-    `facial water retention, bloat, and soft puffiness completely, as if ` +
-    `this person lost every pound of water weight and facial fat and is at ` +
-    `their leanest. HOLLOW OUT THE CHEEKS: reduce the buccal fat so the ` +
-    `cheekbones stand out and a clear hollow appears just beneath them. ` +
-    `Carve out a sharp, chiselled, clearly-defined jawline and a defined ` +
-    `chin. Tighten the area under the chin and the neck — remove any ` +
-    `submental fullness, soft double-chin, or jaw softness. Fully flatten ` +
-    `and de-puff the under-eye bags. Slim the overall width and roundness ` +
-    `of the face so it reads lean, sculpted, angular, and completely ` +
-    `drained. Think "shredded, dehydrated, photo-shoot-ready face." Make ` +
-    `the before→after transformation big and unmistakable. ` +
-
-    // 4 — identity + scene preserve (leaner, but still clearly them)
+    // 3 — identity + scene preserve (leaner, but still clearly them)
     `Despite the strong slimming, it must still be recognisably the SAME ` +
     `person: keep their underlying bone structure, apparent age, nose ` +
     `shape, eye shape and eye colour, lip shape, expression, hairstyle, ` +
@@ -209,14 +254,24 @@ async function runEdit({ imageDataUri, prompt }) {
     output_format: 'png',
   };
   const output = await replicate.run(EDIT_MODEL, { input });
-  return extractUrl(output);
+  const url = extractUrl(output);
+  // A non-http "url" ([object Object], empty, etc.) means the model
+  // returned something unusable — throw so the retry wrapper goes again
+  // instead of shipping garbage the app can't load.
+  if (typeof url !== 'string' || !url.startsWith('http')) {
+    throw new Error(`runEdit: unusable output url: ${String(url).slice(0, 80)}`);
+  }
+  return url;
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function extractUrl(output) {
   if (typeof output === 'string') return output;
   if (Array.isArray(output))      return String(output[0]);
-  if (output && typeof output.url === 'function') return output.url();
+  if (output && typeof output.url === 'function') {
+    const u = output.url();
+    return typeof u === 'string' ? u : (u && u.href) ? u.href : String(u);
+  }
   if (output && typeof output.url === 'string')   return output.url;
   return String(output);
 }
