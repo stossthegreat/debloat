@@ -1,41 +1,62 @@
 import Replicate from 'replicate';
+import OpenAI from 'openai';
 import crypto from 'node:crypto';
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+const openai    = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  THE MAXED + DEBLOATED TWIN
+//  THE MAXED + DEBLOATED TWIN — verified-render pipeline
 // ─────────────────────────────────────────────────────────────────────────────
 // The hero render shows the user their best self: the grooming glow-up they
 // always had — fresh hair, clear skin, neat facial hair — AND their face
 // drained of bloat (de-puffed, sharper jaw, hollowed cheeks). Both at once.
 //
+// WHY A MULTI-PASS, SELF-CHECKING PIPELINE (v45)
+// ----------------------------------------------
+// Replicate's google/nano-banana exposes ONLY prompt / image_input /
+// aspect_ratio / output_format. No seed, no guidance, no edit-strength
+// knob. The model is stochastic AND heavily identity-locked on faces, so
+// a single-shot edit "works sik" one run and barely moves the next —
+// exactly the inconsistency users hit in v40-v44. No prompt wording fixes
+// a dice roll. What fixes it is checking the dice:
+//
+//   PASS A  groom the original (hair / skin / beard) — this edit family
+//           has landed reliably since v1; it never carried the risk.
+//   PASS B  fire TWO debloat edits on the groomed base CONCURRENTLY,
+//           with two different framings (weight-loss narrative + the
+//           "identical twin, 30 lbs lighter" framing that releases the
+//           model's identity lock).
+//   VERIFY  gpt-4o-mini vision scores each candidate 0-10 on how much
+//           leaner the face actually got vs the base (~$0.001, ~2-4s).
+//   RE-ROLL if nothing scores ≥ VERIFY_PASS_SCORE and there is time
+//           budget left, roll once more, then ship the best scorer.
+//
+// Worst case ≈ 4 nano-banana runs ≈ $0.16 / render — fine for a paid
+// feature whose entire pitch is this one image.
+//
 // WHY NO FACE-SWAP
 // ----------------
-// The original pipeline ran a Stage-3 face-swap that pasted the ORIGINAL
-// selfie's face back onto the edit output to lock identity for haircut edits.
-// But that swap REVERTS everything done to the face itself — both the debloat
-// AND the skin cleanup — because it pastes the original (bloated, original-
-// skin) face region back on top. Only the hair survived. That's why the twin
-// "did nothing" once we asked it to debloat. So the swap is gone. Identity is
-// held by Nano Banana's native subject-lock + a prompt that explicitly
-// preserves bone structure, age, and ethnicity while it grooms + drains.
-//
-// MODEL
-// -----
-// Google's Nano Banana (Gemini 2.5 Flash Image). DeepMind's own line: it
-// "locks onto your facial features, skin tone, and expression before making
-// any change." Best-in-class identity retention for exactly this kind of
-// same-person edit. ~$0.039 / render.
+// The original pipeline's Stage-3 face-swap pasted the ORIGINAL selfie's
+// face back onto the edit — reverting the debloat AND the skin cleanup.
+// Identity is held by nano-banana's native subject-lock plus prompts that
+// keep eyes / nose / lips / age / ethnicity fixed.
 const EDIT_MODEL = 'google/nano-banana';
 
+// A debloat candidate must score at least this (0-10) to ship without a
+// re-roll. 3 = "clearly visible slimming" per the verifier rubric.
+const VERIFY_PASS_SCORE = 3;
+
+// Stop launching new Replicate work after this much wall time — the
+// Flutter client aborts at 160s, so everything must land well before.
+const TIME_BUDGET_MS = 90_000;
+
 /**
- * Generate the hero twin — grooming glow-up + facial debloat in one edit.
+ * Generate the hero twin — grooming glow-up + verified facial debloat.
  *
  * `brief.improve` (from the GPT analysis) supplies the single grooming hero
  * change (hair > beard > other grooming). Skin is always cleaned up and the
- * face is always de-bloated on top, regardless of the brief. Single-stage,
- * identity-locked, no face-swap.
+ * face is always de-bloated on top, regardless of the brief.
  *
  * Returns { url, editUrl, prompt, seed, heroChange, model, intermediateUrls }.
  */
@@ -53,55 +74,72 @@ export async function maximize({ imageBase64, brief } = {}) {
     ? ranked[0].s
     : 'a cleanly styled, modern haircut that suits the face shape';
 
-  const prompt = buildPrompt(heroChange);
-  const seed   = deterministicSeed(imageBase64);
+  const seed         = deterministicSeed(imageBase64);
   const inputDataUri = `data:image/jpeg;base64,${imageBase64}`;
+  const t0           = Date.now();
 
-  console.log(`[maximize] maxed+debloat render — hero="${heroChange}" (no face-swap)`);
+  console.log(`[maximize] verified pipeline — hero="${heroChange}"`);
 
-  // Primary (and only) edit via Nano Banana. Retry on EVERY error
-  // (not just transient): content-moderation false-positives, weird
-  // Replicate 4xxs on valid payloads, and unclassified failures all
-  // used to throw here and cascade up to a "Server hiccup" screen.
-  // User's explicit ask: never fail. Retry 5 times; the Flutter
-  // client will retry the whole request if we somehow still throw.
-  const editStart = Date.now();
-  // BOUNDED retries — the Flutter client aborts at ~150s, so the server
-  // chain must always finish first. 3 attempts, short capped backoff
-  // (2s/4s): worst case ≈ 3 runs + 6s of waiting. The old 5-attempt /
-  // 30s-backoff chain could grind for 3-5 minutes — the client timed
-  // out mid-grind and the render "randomly" failed.
-  const editUrl = await runWithRetry(
-    () => runEdit({ imageDataUri: inputDataUri, prompt }),
-    { label: 'maximize', maxAttempts: 3, retryAll: true, capWaitSec: 4 },
+  // ── PASS A · grooming ────────────────────────────────────────────────────
+  // The reliable half. If it somehow fails after retries, debloat the raw
+  // selfie instead of erroring — the debloat IS the product.
+  let groomedUrl = null;
+  try {
+    groomedUrl = await runWithRetry(
+      () => runEdit({ imageDataUri: inputDataUri, prompt: groomPrompt(heroChange) }),
+      { label: 'groom', maxAttempts: 2, retryAll: true, capWaitSec: 3 },
+    );
+    console.log(`[maximize] groom ok: ${Date.now() - t0}ms`);
+  } catch (err) {
+    console.warn(`[maximize] groom failed — debloating the raw selfie: ${String(err?.message ?? err).slice(0, 120)}`);
+  }
+  const baseImage = groomedUrl ?? inputDataUri;
+
+  // ── PASS B · two concurrent debloat candidates ───────────────────────────
+  const settled = await Promise.allSettled(
+    [DEBLOAT_NARRATIVE, DEBLOAT_TWIN].map(p =>
+      withTimeout(runEdit({ imageDataUri: baseImage, prompt: p }), 45_000)),
   );
-  console.log(`[maximize] pass1 ok: ${Date.now() - editStart}ms`);
+  let candidates = settled
+    .filter(s => s.status === 'fulfilled')
+    .map(s => ({ url: s.value, score: -1 }));
+  settled
+    .filter(s => s.status === 'rejected')
+    .forEach(s => console.warn(`[maximize] debloat candidate failed: ${String(s.reason?.message ?? s.reason).slice(0, 120)}`));
 
-  // REINFORCEMENT PASS — nano-banana is stochastic and sometimes
-  // under-applies the slimming. A short debloat-only second pass on the
-  // pass-1 output pushes the effect to consistent strength. Strictly
-  // best-effort: single attempt, hard 35s cap, only when there is
-  // enough time budget left — any failure keeps the pass-1 render.
-  let finalUrl = editUrl;
-  if (Date.now() - editStart < 60_000) {
+  // ── VERIFY · vision referee scores each candidate ────────────────────────
+  // Compare against the groomed base (not the raw selfie) so hair/beard
+  // changes can't inflate or confuse the slimness score.
+  candidates = await Promise.all(
+    candidates.map(async c => ({ ...c, score: await scoreDebloat(baseImage, c.url) })),
+  );
+  candidates.sort((a, b) => b.score - a.score);
+  console.log(`[maximize] debloat scores: [${candidates.map(c => c.score).join(', ')}] at ${Date.now() - t0}ms`);
+
+  let best = candidates[0] ?? null;
+
+  // ── RE-ROLL · nothing visibly slimmer yet and time remains ───────────────
+  if ((!best || best.score < VERIFY_PASS_SCORE) && Date.now() - t0 < TIME_BUDGET_MS) {
     try {
-      const boosted = await withTimeout(
-        runEdit({ imageDataUri: editUrl, prompt: REINFORCE_PROMPT }),
-        35_000,
-      );
-      if (typeof boosted === 'string' && boosted.startsWith('http')) {
-        finalUrl = boosted;
-        console.log(`[maximize] reinforcement ok: ${Date.now() - editStart}ms total`);
-      }
+      const url   = await withTimeout(runEdit({ imageDataUri: baseImage, prompt: DEBLOAT_TWIN }), 45_000);
+      const score = await scoreDebloat(baseImage, url);
+      console.log(`[maximize] re-roll score: ${score} at ${Date.now() - t0}ms`);
+      if (!best || score > best.score) best = { url, score };
     } catch (err) {
-      console.warn(`[maximize] reinforcement skipped: ${String(err?.message ?? err).slice(0, 120)}`);
+      console.warn(`[maximize] re-roll failed: ${String(err?.message ?? err).slice(0, 120)}`);
     }
   }
+
+  // Ship the strongest verified render; grooming-only beats erroring, and
+  // only a total wipeout of every pass throws.
+  const finalUrl = best?.url ?? groomedUrl;
+  if (!finalUrl) throw new Error('maximize: every pass failed');
+  console.log(`[maximize] done in ${Date.now() - t0}ms — score ${best?.score ?? 'n/a'}`);
 
   return {
     url:              finalUrl,
     editUrl:          finalUrl,
-    prompt,
+    prompt:           DEBLOAT_NARRATIVE,
     seed,
     heroChange,
     model:            EDIT_MODEL,
@@ -112,7 +150,7 @@ export async function maximize({ imageBase64, brief } = {}) {
 /**
  * Generic retry wrapper for Replicate calls. With retryAll (used here),
  * retries EVERY error. Backoff honours a Retry-After hint if present, else
- * exponential (3s, 6s, 12s) capped at 30s.
+ * exponential, capped at capWaitSec.
  */
 async function runWithRetry(fn, { label, maxAttempts = 3, retryAll = false, capWaitSec = 30 } = {}) {
   let lastErr;
@@ -170,46 +208,47 @@ function classify(s) {
   return 3;
 }
 
-/**
- * THE PROMPT — grooming glow-up + facial debloat, identity-locked.
- *
- * Four beats:
- *   1. Subject + the grooming hero change (hair / beard / grooming)
- *   2. Grooming baseline — clean skin, styled hair, neat facial hair (always)
- *   3. THE DEBLOAT LAYER — drain facial water/puffiness, reveal the jaw and
- *      cheekbones already there (this is what makes it a Debloat render, not
- *      just a glow-up)
- *   4. Identity + scene preserve
- *
- * The debloat is framed as REVEALING existing bone by removing soft water-
- * weight, never carving new bone — that keeps it the same person, believable,
- * and un-revertable (no face-swap runs after this).
- */
-// The debloat instruction — the whole point of the app. Used as the
-// OPENER of the main prompt and, alone, as the reinforcement pass.
-//
-// HARD-LEARNED RULES for this wording:
-//   · v42 postmortem: NEVER use shadow/contour/darkness words
-//     ("shadowed hollow", "carve", "dark") — nano-banana takes them
-//     literally and PAINTS grey-black smudges onto the cheeks like
-//     contour makeup. A real user got black patches drawn on his face.
-//   · v43 postmortem: anatomical command-lists ("reduce buccal fat",
-//     "narrow the face", "reshape the geometry") barely move the
-//     needle — the model reads surgical face-proportion orders as an
-//     identity threat and resists them (community guides literally use
-//     "no jawline reduction" as a KEEPER phrase to stop unwanted
-//     slimming, i.e. slimming is a thing it does happily when asked
-//     the natural way).
-//   · What demonstrably works (documented nano-banana case: "make this
-//     guy slimmer — 210 to 177 pounds" → full transformation): tell a
-//     plain WEIGHT-LOSS STORY with real numbers. The model knows where
-//     weight loss shows — face, neck, jaw — and applies it as a
-//     coherent, believable whole instead of resisting per-feature
-//     edits. Same reason the original grooming lines ("freshly-cut
-//     hair, clear skin") always landed: natural narrative, not anatomy.
-const DEBLOAT_CORE =
-  `Show this exact same person after they lost 30 pounds of water ` +
-  `weight and fat, with the loss showing in their face and neck. ` +
+// ─────────────────────────────────────────────────────────────────────────────
+//  PROMPTS
+// ─────────────────────────────────────────────────────────────────────────────
+// HARD-LEARNED RULES:
+//   · v42: NEVER use shadow/contour/darkness words ("shadowed hollow",
+//     "carve", "dark") — the model takes them literally and PAINTS
+//     grey-black contour smudges onto the cheeks. A real user got black
+//     patches drawn on his face.
+//   · v43: anatomical command-lists ("reduce buccal fat", "reshape the
+//     geometry") barely move the needle — surgical face-proportion orders
+//     read as an identity threat and get resisted. Community guides use
+//     "no jawline reduction" as a KEEPER phrase, i.e. slimming is easy
+//     for the model when asked the natural way.
+//   · What works: a plain weight-loss story with numbers (documented
+//     nano-banana case: "make this guy slimmer — 210 to 177 lbs" → full
+//     transformation), and the "identical twin" framing, the community's
+//     standard unlock when the identity lock resists a structural edit.
+//   · One job per pass: mixing grooming + debloat in one prompt let the
+//     model "spend" the edit on hair and skip the face.
+
+// PASS A — grooming only. The ask that has landed reliably since v1.
+function groomPrompt(heroChange) {
+  return (
+    `Edit this photo. Give them ${heroChange}. ` +
+    `Make them look their absolute best: ` +
+    `clean, clear, healthy skin with even tone — no acne, no blemishes, ` +
+    `no redness, no visible pores — but keep natural skin texture ` +
+    `(not airbrushed, not plastic, not smoothed). ` +
+    `Give them freshly-cut, cleanly-styled hair. ` +
+    `If they have facial hair, keep it neatly groomed with clean lines ` +
+    `and a tight neckline. Groomed eyebrows, no stragglers. ` +
+    `Keep the face shape, expression, lighting, background, framing, ` +
+    `and pose exactly the same. Photorealistic.`
+  );
+}
+
+// PASS B candidate 1 — the weight-loss narrative.
+const DEBLOAT_NARRATIVE =
+  `Edit this photo. Show this exact same person after they lost 30 ` +
+  `pounds of water weight and fat, with all of the loss showing in ` +
+  `their face and neck. ` +
   `Their face is now much slimmer and leaner: tight slim cheeks that ` +
   `sit close against the bone with a natural lean hollow beneath the ` +
   `cheekbones, high visible cheekbones, one sharp clean jawline from ` +
@@ -219,25 +258,63 @@ const DEBLOAT_CORE =
   `like the "after" photo of a dramatic weight-loss transformation. ` +
   `The change must be big and clearly visible, but completely ` +
   `natural: real lean facial structure, clean evenly-lit skin with ` +
-  `nothing painted or drawn on it.`;
+  `nothing painted or drawn on it. ` +
+  `Keep the hairstyle, facial hair, clothing, expression, lighting, ` +
+  `background, framing, and pose exactly the same. Photorealistic.`;
 
-// Pass 2 — a conversational "push it further" follow-up, which is how
-// nano-banana is designed to be iterated (multi-turn small edits
-// preserve likeness better than one giant edit). Also doubles as a
-// CLEANUP pass: any contour-like smudge from pass 1 gets wiped instead
-// of compounded.
-const REINFORCE_PROMPT =
-  `Same person, same photo — now push the weight loss in their face ` +
-  `further. Make the face even leaner: slimmer, tighter cheeks with ` +
-  `a deeper natural lean hollow beneath the cheekbones, an even ` +
-  `sharper cleaner jawline, a tighter neck with zero fullness under ` +
-  `the chin, completely flat under-eyes. ` +
-  `If there are any painted shadows, grey or dark smudges, contour ` +
-  `marks, or unnatural patches anywhere on the skin, remove them ` +
-  `completely and restore clean, natural, evenly lit skin. ` +
-  `Keep the hair, facial hair, expression, lighting, background, ` +
-  `pose, and identity exactly the same. Photorealistic — it must ` +
-  `look like a real unedited photo.`;
+// PASS B candidate 2 — the identical-twin framing. Asking for a *twin*
+// releases the model's identity lock (it no longer has to preserve "the
+// same person's" proportions) while every named feature keeps the twin
+// visually identical. Community-standard unlock for structural edits.
+const DEBLOAT_TWIN =
+  `Replace this person with their identical twin who weighs 30 pounds ` +
+  `less. The twin looks exactly like them — same eyes, same nose, same ` +
+  `lips, same skin tone, same age, same hairstyle, same facial hair, ` +
+  `same expression — but with a dramatically leaner face: tight slim ` +
+  `cheeks with a natural lean hollow beneath high visible cheekbones, ` +
+  `a sharp clean jawline from ear to chin, a firm tight neck with no ` +
+  `fullness under the chin, and completely flat under-eyes. ` +
+  `Nothing painted or drawn on the skin — clean, evenly lit, natural. ` +
+  `Same room, same lighting, same framing, same pose, same clothing. ` +
+  `Photorealistic — a real unedited photo.`;
+
+// ─── VERIFY · vision referee ─────────────────────────────────────────────────
+// Scores how much leaner the face in `afterUrl` is vs `beforeImage`.
+// 0 = identical, 3 = clearly visible slimming, 10 = dramatic. Returns -1
+// on any failure so a broken referee can never sink a good render.
+async function scoreDebloat(beforeImage, afterUrl) {
+  try {
+    const r = await withTimeout(openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text:
+              'IMAGE 1 is the before photo, IMAGE 2 is the after photo of the same face. ' +
+              'Score how much SLIMMER and LEANER the face in IMAGE 2 is compared to IMAGE 1 — ' +
+              'look at cheek fullness, hollowness under the cheekbones, jawline sharpness, ' +
+              'fullness under the chin, and under-eye puffiness. ' +
+              '0 = no visible change, 3 = clearly visible slimming, 6 = strong slimming, ' +
+              '10 = dramatic transformation. ' +
+              'Respond with JSON only: {"score": <integer 0-10>}',
+          },
+          { type: 'image_url', image_url: { url: beforeImage, detail: 'low' } },
+          { type: 'image_url', image_url: { url: afterUrl,    detail: 'low' } },
+        ],
+      }],
+      response_format: { type: 'json_object' },
+      temperature: 0,
+      max_tokens: 30,
+    }), 15_000);
+    const score = JSON.parse(r.choices[0]?.message?.content ?? '{}').score;
+    return Number.isFinite(score) ? score : -1;
+  } catch (err) {
+    console.warn(`[maximize] verifier failed: ${String(err?.message ?? err).slice(0, 120)}`);
+    return -1;
+  }
+}
 
 /** Hard timeout for best-effort calls. */
 function withTimeout(promise, ms) {
@@ -246,33 +323,6 @@ function withTimeout(promise, ms) {
     new Promise((_, rej) =>
       setTimeout(() => rej(new Error(`timed out after ${ms}ms`)), ms)),
   ]);
-}
-
-function buildPrompt(heroChange) {
-  return (
-    // 1 — THE DEBLOAT LAYER FIRST. The edit model weights the opening
-    // of the prompt hardest; leading with grooming used to let it
-    // occasionally "spend" the edit on hair and barely touch the face.
-    `Edit this photo. ` + DEBLOAT_CORE + ' ' +
-
-    // 2 — grooming hero + baseline (the glow-up they always had)
-    `Also give them ${heroChange}. ` +
-    `Make them look their absolute best: ` +
-    `clean, clear, healthy skin with even tone — no acne, no blemishes, ` +
-    `no redness, no visible pores — but keep natural skin texture ` +
-    `(not airbrushed, not plastic, not smoothed). ` +
-    `Give them freshly-cut, cleanly-styled hair. ` +
-    `If they have facial hair, keep it neatly groomed with clean lines ` +
-    `and a tight neckline. Groomed eyebrows, no stragglers. ` +
-
-    // 3 — identity + scene preserve. Deliberately SHORT: the old
-    // twelve-item "keep everything the same" list kept pulling the
-    // model back toward the original face and the slimming came out
-    // weak. Lock only what actually defines identity and the scene.
-    `It must still clearly be the SAME person — same eyes, nose, lips, ` +
-    `age, ethnicity, and skin tone — just the leanest version of them. ` +
-    `Same lighting, background, framing, and pose. Photorealistic.`
-  );
 }
 
 // ─── Primary edit ─────────────────────────────────────────────────────────────
@@ -286,8 +336,8 @@ async function runEdit({ imageDataUri, prompt }) {
   const output = await replicate.run(EDIT_MODEL, { input });
   const url = extractUrl(output);
   // A non-http "url" ([object Object], empty, etc.) means the model
-  // returned something unusable — throw so the retry wrapper goes again
-  // instead of shipping garbage the app can't load.
+  // returned something unusable — throw so the caller can retry or
+  // discard instead of shipping garbage the app can't load.
   if (typeof url !== 'string' || !url.startsWith('http')) {
     throw new Error(`runEdit: unusable output url: ${String(url).slice(0, 80)}`);
   }
