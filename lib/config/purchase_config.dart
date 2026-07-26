@@ -26,7 +26,10 @@
 /// ──────────────────────────────────────────────────────────────────────
 class PurchaseConfig {
   /// RevenueCat public SDK key for iOS. Starts with `appl_`.
-  static const iosApiKey     = 'appl_LZCBJirwBRyekXFKrBGdcdnyRLJ';
+  /// Debloat OS project key (replaced the old project's key, which
+  /// would have made every purchase silently land in the wrong
+  /// RevenueCat project and never unlock `pro` here).
+  static const iosApiKey     = 'appl_MjIhxaGWkgEnKEntaDjNjimrGPe';
 
   /// RevenueCat public SDK key for Android. Starts with `goog_`.
   static const androidApiKey = 'goog_cdoFAjjiwMkzsxNjPBwoKalEwkF';
@@ -39,7 +42,7 @@ class PurchaseConfig {
   /// Product identifiers — MUST match exactly what's in App Store
   /// Connect and Google Play Console.
   ///
-  ///   debloat_pro_weekly     →  Weekly subscription ($6.99/wk)
+  ///   debloat_pro_weekly     →  Weekly subscription ($4.99/wk)
   ///   debloat_pro_yearly     →  Annual subscription (not on sale;
   ///                             register in the stores before
   ///                             re-enabling the annual tier)
