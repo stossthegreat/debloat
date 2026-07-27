@@ -164,24 +164,45 @@ export async function maximize({ imageBase64, brief } = {}) {
 
   let best = candidates[0] ?? null;
 
-  // ── RE-ROLL · no candidate slims, hollows, AND stays them ────────────────
-  // The re-roll uses the hollow-focused prompt: by this point the usual
-  // miss is a face that slimmed overall but kept flat cheeks, so the
-  // retry spends the whole edit on the one thing that's missing.
-  if (!isViable(best) && Date.now() - t0 < TIME_BUDGET_MS) {
+  // ── RE-ROLLS · keep rolling until a candidate passes ALL gates ───────────
+  // Up to three extra rolls inside the time budget. Prompt choice per
+  // roll: if the best so far slims and stays them but lacks the hollow
+  // (the common miss), deepen THAT render with the hollow-only prompt;
+  // otherwise start clean from the groomed base with the twin framing.
+  // Never deepen a failed render — compounding garbage was how a puffy
+  // candidate could snowball.
+  for (let roll = 1; roll <= 3 && !isViable(best) && Date.now() - t0 < TIME_BUDGET_MS; roll++) {
     try {
-      // Deepen the best candidate so far when there is one (its general
-      // slimming is already done — this pass adds the missing hollow);
-      // start from the groomed base only if every candidate failed.
-      const rerollBase = best?.url ?? baseImage;
-      const url    = await withTimeout(runEdit({ imageDataUri: rerollBase, prompt: HOLLOW_FOCUS }), 45_000);
+      const deepen =
+        !!best && best.slim >= VERIFY_PASS_SCORE && best.ident >= IDENT_PASS_SCORE;
+      const url = await withTimeout(
+        runEdit({
+          imageDataUri: deepen ? best.url : baseImage,
+          prompt:       deepen ? HOLLOW_FOCUS : DEBLOAT_TWIN,
+        }),
+        40_000,
+      );
       const scores = await scoreRender(inputDataUri, baseImage, url);
-      console.log(`[maximize] re-roll score: slim ${scores.slim}/hollow ${scores.hollow}/ident ${scores.ident} at ${Date.now() - t0}ms`);
+      console.log(`[maximize] re-roll ${roll} (${deepen ? 'deepen' : 'fresh'}): slim ${scores.slim}/hollow ${scores.hollow}/ident ${scores.ident} at ${Date.now() - t0}ms`);
       const cand = { url, ...scores };
       if (!best || rankCandidate(cand) > rankCandidate(best)) best = cand;
     } catch (err) {
-      console.warn(`[maximize] re-roll failed: ${String(err?.message ?? err).slice(0, 120)}`);
+      console.warn(`[maximize] re-roll ${roll} failed: ${String(err?.message ?? err).slice(0, 120)}`);
     }
+  }
+
+  // ── FLOOR · a render that scored as not-slimmer NEVER ships ──────────────
+  // v50 postmortem: with no floor, "ship the least-bad candidate" sent a
+  // user a face that scored as puffy/unchanged. If after every roll the
+  // best still isn't clearly slimmer and recognisable, ship the groomed
+  // base instead — no debloat beats anti-debloat, and the app's GENERATE
+  // retry gives the dice another spin.
+  // A -1 means the referee itself failed (OpenAI down), not a bad render
+  // — in that case ship blind rather than silently downgrade every
+  // render to grooming-only for the length of an outage.
+  if (best && best.slim >= 0 && (best.slim < 2 || (best.ident >= 0 && best.ident < 5))) {
+    console.warn(`[maximize] FLOOR: rejecting best (slim ${best.slim}/hollow ${best.hollow}/ident ${best.ident}) — shipping groomed base`);
+    best = null;
   }
 
   // Ship the strongest verified render; grooming-only beats erroring, and
@@ -302,6 +323,8 @@ const DEBLOAT_NARRATIVE =
   `The most important change: their cheeks are now VISIBLY SUNKEN — ` +
   `the skin below each cheekbone curves clearly inward, hollow like a ` +
   `lean fashion model's cheeks, with high prominent cheekbones above. ` +
+  `The lower cheeks and the area around the mouth are lean and drawn ` +
+  `inward — absolutely no puffiness there. ` +
   `Even if they have a beard, the sunken hollow above the beard line ` +
   `must be clearly visible. ` +
   `On top of that: one sharp clean jawline from ear to chin, a firm ` +
@@ -326,9 +349,10 @@ const DEBLOAT_TWIN =
   `same expression — but with a dramatically leaner face. Above all, ` +
   `the twin's cheeks are VISIBLY SUNKEN: the skin below each cheekbone ` +
   `curves clearly inward, hollow like a lean fashion model's cheeks, ` +
-  `with high prominent cheekbones above. Plus a sharp clean jawline ` +
-  `from ear to chin, a firm tight neck with no fullness under the ` +
-  `chin, and completely flat under-eyes. ` +
+  `with high prominent cheekbones above, and the area around the ` +
+  `mouth lean and drawn inward with zero puffiness. Plus a sharp ` +
+  `clean jawline from ear to chin, a firm tight neck with no fullness ` +
+  `under the chin, and completely flat under-eyes. ` +
   `Anyone who knows this person must instantly recognise the twin as ` +
   `them — identical face, just leaner. ` +
   `Nothing painted or drawn on the skin — clean, evenly lit, natural. ` +
@@ -343,9 +367,10 @@ const HOLLOW_FOCUS =
   `Edit this photo. One change only: make the cheeks visibly SUNKEN. ` +
   `The skin below each cheekbone must curve clearly inward — a deep ` +
   `natural hollow, like a lean fashion model with no fat in their ` +
-  `cheeks — with high prominent cheekbones above. If they have a ` +
-  `beard, the sunken hollow above the beard line must be clearly ` +
-  `visible. This is a real structural change to the face — nothing ` +
+  `cheeks — with high prominent cheekbones above, and the area around ` +
+  `the mouth lean and drawn inward. If they have a beard, the sunken ` +
+  `hollow above the beard line must be clearly visible. ` +
+  `This is a real structural change to the face — nothing ` +
   `painted or drawn on the skin, no darkened areas, just genuinely ` +
   `hollow cheeks with clean, evenly lit skin. ` +
   `Keep everything else exactly the same: same person, same eyes, ` +
@@ -378,8 +403,10 @@ async function scoreRender(originalImage, baseImage, candidateUrl) {
               'IMAGE 3 is an AI edit that should show the same face slimmer with sunken cheeks. ' +
               'Score three things about IMAGE 3. ' +
               '(1) "slim": compared to IMAGE 2, how much slimmer and leaner is the face — ' +
-              'cheek fullness, jawline sharpness, fullness under the chin, under-eye puffiness. ' +
-              '0 = no visible change, 3 = clearly visible slimming, 6 = strong slimming, ' +
+              'cheek fullness, jawline sharpness, fullness under the chin, under-eye puffiness, ' +
+              'and fullness around the mouth. ' +
+              'If the face looks the same, or FULLER or puffier anywhere, slim = 0. ' +
+              '0 = no visible change or puffier, 3 = clearly visible slimming, 6 = strong slimming, ' +
               '10 = dramatic transformation. ' +
               '(2) "hollow": looking at IMAGE 3 alone, is there a clearly visible sunken ' +
               'hollow in the cheeks just below the cheekbones — the skin curving inward ' +
@@ -393,9 +420,11 @@ async function scoreRender(originalImage, baseImage, candidateUrl) {
               '3 = looks like a relative, 0 = a different person. ' +
               'Respond with JSON only: {"slim": <integer 0-10>, "hollow": <integer 0-10>, "ident": <integer 0-10>}',
           },
-          { type: 'image_url', image_url: { url: originalImage, detail: 'low' } },
-          { type: 'image_url', image_url: { url: baseImage,     detail: 'low' } },
-          { type: 'image_url', image_url: { url: candidateUrl,  detail: 'low' } },
+          // 'high' detail — at 'low' (512px) the referee couldn't reliably
+          // see cheek hollows and let a puffy render score as slimmed.
+          { type: 'image_url', image_url: { url: originalImage, detail: 'high' } },
+          { type: 'image_url', image_url: { url: baseImage,     detail: 'high' } },
+          { type: 'image_url', image_url: { url: candidateUrl,  detail: 'high' } },
         ],
       }],
       response_format: { type: 'json_object' },
