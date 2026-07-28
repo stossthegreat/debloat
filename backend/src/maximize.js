@@ -330,7 +330,8 @@ const DEBLOAT_NARRATIVE =
   `On top of that: one sharp clean jawline from ear to chin, a firm ` +
   `tight neck with no fullness under the chin, and fresh flat ` +
   `under-eyes with no puffiness or bags. ` +
-  `Their whole face looks narrower, lighter, drained of all bloat — ` +
+  `Their whole face looks narrower, sharper, more angular, drained of ` +
+  `all bloat — sharper cheekbones, sharper jaw, a sharper face — ` +
   `like the "after" photo of a dramatic weight-loss transformation. ` +
   `The change must be big and clearly visible, but completely ` +
   `natural: real lean facial structure, clean evenly-lit skin with ` +
