@@ -139,9 +139,11 @@ export async function maximize({ imageBase64, brief } = {}) {
   }
   const baseImage = groomedUrl ?? inputDataUri;
 
-  // ── PASS B · two concurrent debloat candidates ───────────────────────────
+  // ── PASS B · three concurrent debloat candidates ─────────────────────────
+  // Three different attack angles on the same base — narrative, twin,
+  // and structured-anatomical — the referee picks the strongest viable.
   const settled = await Promise.allSettled(
-    [DEBLOAT_NARRATIVE, DEBLOAT_TWIN].map(p =>
+    [DEBLOAT_NARRATIVE, DEBLOAT_TWIN, STRUCTURED_SCULPT].map(p =>
       withTimeout(runEdit({ imageDataUri: baseImage, prompt: p }), 45_000)),
   );
   let candidates = settled
@@ -345,9 +347,10 @@ const DEBLOAT_NARRATIVE =
 // visually identical. Community-standard unlock for structural edits.
 const DEBLOAT_TWIN =
   `Replace this person with their identical twin who weighs 30 pounds ` +
-  `less. The twin looks exactly like them — same eyes, same nose, same ` +
-  `lips, same skin tone, same age, same hairstyle, same facial hair, ` +
-  `same expression — but with a dramatically leaner face. Above all, ` +
+  `less. The twin looks exactly like them — same eyes, same distance ` +
+  `between the eyes, same nose and nose bridge, same lips, same skin ` +
+  `tone, same age, same hairstyle, same facial hair, same expression ` +
+  `— but with a dramatically leaner face. Above all, ` +
   `the twin's cheeks are VISIBLY SUNKEN: the skin below each cheekbone ` +
   `curves clearly inward, hollow like a lean fashion model's cheeks, ` +
   `with high prominent cheekbones above, and the area around the ` +
@@ -360,6 +363,35 @@ const DEBLOAT_TWIN =
   `Same room, same lighting, same framing, same pose. Do not add, ` +
   `remove, or change any clothing. ` +
   `Photorealistic — a real unedited photo.`;
+
+// PASS B candidate 3 — structured anatomical (Gemini-engineered format,
+// adapted). Hard-labelled sections + medical terms (zygomatic arches,
+// gonial angle, submental fullness) give the model dimensional
+// boundaries instead of vibes, and explicit identity anchors (eye
+// spacing, nose bridge) stop it defaulting to a stock model face.
+// DELIBERATELY DROPPED from the Gemini template: the editorial-relight
+// section (45° key light / 85mm studio look) — our render must keep the
+// selfie's own lighting or the before/after comparison breaks, and
+// shadow-driven "depth" is how v42 got painted smudges.
+const STRUCTURED_SCULPT =
+  `[TASK]: Modify the uploaded reference image to sculpt and lean out ` +
+  `the subject's face while retaining 100% exact facial identity, eye ` +
+  `shape, lip structure, nose bridge, and natural skin tone. ` +
+  `[PRESERVE - HARD CONSTRAINTS]: Maintain exact facial feature ` +
+  `geometry, distance between eyes, skin undertones, hairstyle, facial ` +
+  `hair, clothing, expression, pose, framing, background, and the ` +
+  `original photo's lighting. Do not swap the face or turn the subject ` +
+  `into a different person or stock model. Do not paint shadows or ` +
+  `marks onto the skin. ` +
+  `[FACIAL ADJUSTMENTS]: Reduce soft tissue volume, facial fluid ` +
+  `retention, and cheek puffiness by 30%. Enhance cheekbone prominence ` +
+  `(zygomatic arches) with clear, sculpted cheek hollows directly ` +
+  `underneath. Lean out the lower cheeks and the area around the ` +
+  `mouth. Define a razor-sharp, chiseled jawline and clean jaw angle ` +
+  `(gonial angle), eliminating all submental fullness and double chin. ` +
+  `Flatten under-eye puffiness completely. Keep skin texture ` +
+  `completely natural and photorealistic with visible micro-pores and ` +
+  `realistic skin grain.`;
 
 // RE-ROLL — hollow-focused. Runs when the candidates slimmed the face
 // but the cheek area stayed flat (the common miss). One job only: put
