@@ -139,12 +139,14 @@ export async function maximize({ imageBase64, brief } = {}) {
   }
   const baseImage = groomedUrl ?? inputDataUri;
 
-  // ── PASS B · four concurrent debloat candidates ──────────────────────────
-  // Four different attack angles on the same base — narrative, twin,
-  // structured-anatomical, geometric-skeletonization — the referee
-  // picks the strongest viable.
+  // ── PASS B · three concurrent debloat candidates ─────────────────────────
+  // Three different attack angles on the same base — narrative, twin,
+  // and structured-anatomical — the referee picks the strongest viable.
+  // (v56: the GEO_SKELETON fourth candidate is gone — its extreme
+  // "skeletonize" push made renders WORSE; bro wants v54's balance
+  // plus a sharper face and a light, even hollow on BOTH cheeks.)
   const settled = await Promise.allSettled(
-    [DEBLOAT_NARRATIVE, DEBLOAT_TWIN, STRUCTURED_SCULPT, GEO_SKELETON].map(p =>
+    [DEBLOAT_NARRATIVE, DEBLOAT_TWIN, STRUCTURED_SCULPT].map(p =>
       withTimeout(runEdit({ imageDataUri: baseImage, prompt: p }), 45_000)),
   );
   let candidates = settled
@@ -323,11 +325,12 @@ const DEBLOAT_NARRATIVE =
   `Edit this photo. Show this exact same person after they lost 30 ` +
   `pounds of water weight and fat, with all of the loss showing in ` +
   `their face and neck. ` +
-  `The most important change: their cheeks are now VISIBLY SUNKEN — ` +
-  `the skin below each cheekbone curves clearly inward, hollow like a ` +
-  `lean fashion model's cheeks, with high prominent cheekbones above. ` +
+  `The most important change: BOTH cheeks now show a light, clearly ` +
+  `visible, perfectly symmetrical hollow — the skin below each ` +
+  `cheekbone curves gently inward, like a lean fashion model's ` +
+  `cheeks, with high prominent cheekbones above. ` +
   `The lower cheeks and the area around the mouth are lean and drawn ` +
-  `inward — absolutely no puffiness there. ` +
+  `inward — no puffiness there. ` +
   `Even if they have a beard, the sunken hollow above the beard line ` +
   `must be clearly visible. ` +
   `On top of that: one sharp clean jawline from ear to chin, a firm ` +
@@ -336,9 +339,9 @@ const DEBLOAT_NARRATIVE =
   `Their whole face looks narrower, sharper, more angular, drained of ` +
   `all bloat — sharper cheekbones, sharper jaw, a sharper face — ` +
   `like the "after" photo of a dramatic weight-loss transformation. ` +
-  `The change must be big and clearly visible, but completely ` +
-  `natural: real lean facial structure, with nothing painted or drawn ` +
-  `onto the skin. ` +
+  `The change must be clearly visible but completely natural: real ` +
+  `lean facial structure, clean evenly-lit skin with nothing painted ` +
+  `or drawn on it. ` +
   `Keep the hairstyle, facial hair, clothing, expression, lighting, ` +
   `background, framing, and pose exactly the same. Photorealistic.`;
 
@@ -351,16 +354,16 @@ const DEBLOAT_TWIN =
   `less. The twin looks exactly like them — same eyes, same distance ` +
   `between the eyes, same nose and nose bridge, same lips, same skin ` +
   `tone, same age, same hairstyle, same facial hair, same expression ` +
-  `— but with a dramatically leaner face. Above all, ` +
-  `the twin's cheeks are VISIBLY SUNKEN: the skin below each cheekbone ` +
-  `curves clearly inward, hollow like a lean fashion model's cheeks, ` +
-  `with high prominent cheekbones above, and the area around the ` +
-  `mouth lean and drawn inward with zero puffiness. Plus a sharp ` +
-  `clean jawline from ear to chin, a firm tight neck with no fullness ` +
-  `under the chin, and completely flat under-eyes. ` +
+  `— but with a leaner, sharper face. Above all, BOTH of the twin's ` +
+  `cheeks show a light, clearly visible, symmetrical hollow: the skin ` +
+  `below each cheekbone curves gently inward, like a lean fashion ` +
+  `model's cheeks, with high prominent cheekbones above, and the area ` +
+  `around the mouth lean and drawn inward with no puffiness. Plus a ` +
+  `sharp clean jawline from ear to chin, a firm tight neck with no ` +
+  `fullness under the chin, and completely flat under-eyes. ` +
   `Anyone who knows this person must instantly recognise the twin as ` +
-  `them — identical face, just leaner. ` +
-  `Nothing painted or drawn onto the skin. ` +
+  `them — identical face, just leaner and sharper. ` +
+  `Nothing painted or drawn on the skin — clean, evenly lit, natural. ` +
   `Same room, same lighting, same framing, same pose. Do not add, ` +
   `remove, or change any clothing. ` +
   `Photorealistic — a real unedited photo.`;
@@ -386,56 +389,29 @@ const STRUCTURED_SCULPT =
   `marks onto the skin. ` +
   `[FACIAL ADJUSTMENTS]: Reduce soft tissue volume, facial fluid ` +
   `retention, and cheek puffiness by 30%. Enhance cheekbone prominence ` +
-  `(zygomatic arches) with clear, sculpted cheek hollows directly ` +
-  `underneath. Lean out the lower cheeks and the area around the ` +
-  `mouth. Define a razor-sharp, chiseled jawline and clean jaw angle ` +
-  `(gonial angle), eliminating all submental fullness and double chin. ` +
+  `(zygomatic arches) with light, clearly visible, symmetrical cheek ` +
+  `hollows directly underneath — on BOTH cheeks equally. Lean out the ` +
+  `lower cheeks and the area around the mouth. Define a razor-sharp, ` +
+  `chiseled jawline and clean jaw angle (gonial angle), eliminating ` +
+  `all submental fullness and double chin. ` +
   `Flatten under-eye puffiness completely. Keep skin texture ` +
   `completely natural and photorealistic with visible micro-pores and ` +
   `realistic skin grain.`;
-
-// PASS B candidate 4 — geometric skeletonization (Gemini's V55 proposal,
-// adapted). Its structural vocabulary is the strongest yet: quantified
-// conditioning, masseter-direction indentation, linear mandible angle.
-// DELIBERATELY DROPPED: its [LIGHTING PROTOCOL] (90° hard side light,
-// "paint a deep dark shadow pool") — that is the exact v42 instruction
-// family that made the model draw black smudges on a real user's face,
-// and a chiaroscuro relight next to a soft-lit selfie breaks the
-// before/after realism the paywall sells.
-const GEO_SKELETON =
-  `[TASK]: Edit this image to dramatically sharpen and lean out the ` +
-  `subject's face, keeping the photo's original lighting. Retain 100% ` +
-  `exact facial identity (eyes, nose bridge, lips, eyebrow shape), but ` +
-  `apply extreme low-body-fat conditioning to the face. ` +
-  `[PRESERVE CONSTRAINTS]: Hold the exact positions and identity ` +
-  `markers of eyes, nose, and mouth. Keep the precise hairstyle and ` +
-  `facial hair boundaries. Retain the pose, expression, clothing, ` +
-  `environment, and the original photo's lighting. Do not swap the ` +
-  `identity. Do not paint shadows or marks onto the skin. ` +
-  `[SCULPTING PROTOCOL]: Apply aggressive facial fat subtraction to ` +
-  `all soft tissues. Maximum accentuation of the zygomatic arches ` +
-  `(cheekbones), rendering them as high, prominent, sharp bone ` +
-  `structure. Deep, distinct cheek indentation (hollows) directly ` +
-  `beneath the cheekbones, running back toward the masseter muscle — ` +
-  `real geometric depth, not surface shading. Lean out the lower ` +
-  `cheeks and the area around the mouth. Define a razor-sharp, linear ` +
-  `mandible angle (jawline) with an abrupt clean transition, ` +
-  `eliminating all submental fullness. Flatten under-eye pads ` +
-  `completely. Photorealistic, natural skin texture.`;
 
 // RE-ROLL — hollow-focused. Runs when the candidates slimmed the face
 // but the cheek area stayed flat (the common miss). One job only: put
 // in the missing sunken hollow, touch nothing else.
 const HOLLOW_FOCUS =
-  `Edit this photo. One change only: make the cheeks visibly SUNKEN. ` +
-  `The skin below each cheekbone must curve clearly inward — a deep ` +
-  `natural hollow, like a lean fashion model with no fat in their ` +
-  `cheeks — with high prominent cheekbones above, and the area around ` +
-  `the mouth lean and drawn inward. If they have a beard, the sunken ` +
-  `hollow above the beard line must be clearly visible. ` +
-  `This is a real structural change to the face — nothing ` +
-  `painted or drawn onto the skin, no darkened areas, just genuinely ` +
-  `hollow cheeks. ` +
+  `Edit this photo. One change only: give BOTH cheeks a light, ` +
+  `clearly visible, symmetrical hollow. The skin below each cheekbone ` +
+  `must curve gently inward — a natural lean hollow, like a fit ` +
+  `fashion model's cheeks — with high prominent cheekbones above, and ` +
+  `the area around the mouth lean and drawn inward. If they have a ` +
+  `beard, the hollow above the beard line must be clearly visible on ` +
+  `both sides. ` +
+  `This is a real structural change to the face — nothing painted or ` +
+  `drawn on the skin, no darkened areas, just genuinely lean hollow ` +
+  `cheeks with clean, evenly lit skin. ` +
   `Keep everything else exactly the same: same person, same eyes, ` +
   `nose, lips, age, hairstyle, facial hair, expression, clothing, ` +
   `lighting, background, framing, and pose. ` +
@@ -471,9 +447,10 @@ async function scoreRender(originalImage, baseImage, candidateUrl) {
               'If the face looks the same, or FULLER or puffier anywhere, slim = 0. ' +
               '0 = no visible change or puffier, 3 = clearly visible slimming, 6 = strong slimming, ' +
               '10 = dramatic transformation. ' +
-              '(2) "hollow": looking at IMAGE 3 alone, is there a clearly visible sunken ' +
-              'hollow in the cheeks just below the cheekbones — the skin curving inward ' +
-              'like a lean model\'s cheeks? Judge the hollow specifically, not overall slimness. ' +
+              '(2) "hollow": looking at IMAGE 3 alone, is there a clearly visible lean ' +
+              'hollow in BOTH cheeks just below the cheekbones — the skin curving inward ' +
+              'like a lean model\'s cheeks, on both sides? If only one cheek shows a hollow, ' +
+              'cap the score at 3. Judge the hollow specifically, not overall slimness. ' +
               '0 = cheeks flat or full, 4 = visible hollow, 7 = strong clear hollow, ' +
               '10 = deep dramatic model-like hollow. ' +
               '(3) "ident": ignoring hairstyle, facial hair, and clothing, is the face in ' +
