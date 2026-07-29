@@ -139,11 +139,12 @@ export async function maximize({ imageBase64, brief } = {}) {
   }
   const baseImage = groomedUrl ?? inputDataUri;
 
-  // ── PASS B · three concurrent debloat candidates ─────────────────────────
-  // Three different attack angles on the same base — narrative, twin,
-  // and structured-anatomical — the referee picks the strongest viable.
+  // ── PASS B · four concurrent debloat candidates ──────────────────────────
+  // Four different attack angles on the same base — narrative, twin,
+  // structured-anatomical, geometric-skeletonization — the referee
+  // picks the strongest viable.
   const settled = await Promise.allSettled(
-    [DEBLOAT_NARRATIVE, DEBLOAT_TWIN, STRUCTURED_SCULPT].map(p =>
+    [DEBLOAT_NARRATIVE, DEBLOAT_TWIN, STRUCTURED_SCULPT, GEO_SKELETON].map(p =>
       withTimeout(runEdit({ imageDataUri: baseImage, prompt: p }), 45_000)),
   );
   let candidates = settled
@@ -336,8 +337,8 @@ const DEBLOAT_NARRATIVE =
   `all bloat — sharper cheekbones, sharper jaw, a sharper face — ` +
   `like the "after" photo of a dramatic weight-loss transformation. ` +
   `The change must be big and clearly visible, but completely ` +
-  `natural: real lean facial structure, clean evenly-lit skin with ` +
-  `nothing painted or drawn on it. ` +
+  `natural: real lean facial structure, with nothing painted or drawn ` +
+  `onto the skin. ` +
   `Keep the hairstyle, facial hair, clothing, expression, lighting, ` +
   `background, framing, and pose exactly the same. Photorealistic.`;
 
@@ -359,7 +360,7 @@ const DEBLOAT_TWIN =
   `under the chin, and completely flat under-eyes. ` +
   `Anyone who knows this person must instantly recognise the twin as ` +
   `them — identical face, just leaner. ` +
-  `Nothing painted or drawn on the skin — clean, evenly lit, natural. ` +
+  `Nothing painted or drawn onto the skin. ` +
   `Same room, same lighting, same framing, same pose. Do not add, ` +
   `remove, or change any clothing. ` +
   `Photorealistic — a real unedited photo.`;
@@ -393,6 +394,35 @@ const STRUCTURED_SCULPT =
   `completely natural and photorealistic with visible micro-pores and ` +
   `realistic skin grain.`;
 
+// PASS B candidate 4 — geometric skeletonization (Gemini's V55 proposal,
+// adapted). Its structural vocabulary is the strongest yet: quantified
+// conditioning, masseter-direction indentation, linear mandible angle.
+// DELIBERATELY DROPPED: its [LIGHTING PROTOCOL] (90° hard side light,
+// "paint a deep dark shadow pool") — that is the exact v42 instruction
+// family that made the model draw black smudges on a real user's face,
+// and a chiaroscuro relight next to a soft-lit selfie breaks the
+// before/after realism the paywall sells.
+const GEO_SKELETON =
+  `[TASK]: Edit this image to dramatically sharpen and lean out the ` +
+  `subject's face, keeping the photo's original lighting. Retain 100% ` +
+  `exact facial identity (eyes, nose bridge, lips, eyebrow shape), but ` +
+  `apply extreme low-body-fat conditioning to the face. ` +
+  `[PRESERVE CONSTRAINTS]: Hold the exact positions and identity ` +
+  `markers of eyes, nose, and mouth. Keep the precise hairstyle and ` +
+  `facial hair boundaries. Retain the pose, expression, clothing, ` +
+  `environment, and the original photo's lighting. Do not swap the ` +
+  `identity. Do not paint shadows or marks onto the skin. ` +
+  `[SCULPTING PROTOCOL]: Apply aggressive facial fat subtraction to ` +
+  `all soft tissues. Maximum accentuation of the zygomatic arches ` +
+  `(cheekbones), rendering them as high, prominent, sharp bone ` +
+  `structure. Deep, distinct cheek indentation (hollows) directly ` +
+  `beneath the cheekbones, running back toward the masseter muscle — ` +
+  `real geometric depth, not surface shading. Lean out the lower ` +
+  `cheeks and the area around the mouth. Define a razor-sharp, linear ` +
+  `mandible angle (jawline) with an abrupt clean transition, ` +
+  `eliminating all submental fullness. Flatten under-eye pads ` +
+  `completely. Photorealistic, natural skin texture.`;
+
 // RE-ROLL — hollow-focused. Runs when the candidates slimmed the face
 // but the cheek area stayed flat (the common miss). One job only: put
 // in the missing sunken hollow, touch nothing else.
@@ -404,8 +434,8 @@ const HOLLOW_FOCUS =
   `the mouth lean and drawn inward. If they have a beard, the sunken ` +
   `hollow above the beard line must be clearly visible. ` +
   `This is a real structural change to the face — nothing ` +
-  `painted or drawn on the skin, no darkened areas, just genuinely ` +
-  `hollow cheeks with clean, evenly lit skin. ` +
+  `painted or drawn onto the skin, no darkened areas, just genuinely ` +
+  `hollow cheeks. ` +
   `Keep everything else exactly the same: same person, same eyes, ` +
   `nose, lips, age, hairstyle, facial hair, expression, clothing, ` +
   `lighting, background, framing, and pose. ` +
