@@ -170,7 +170,7 @@ class _AscendScreenState extends State<AscendScreen> {
           },
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.only(bottom: Sp.xl),
+            padding: const EdgeInsets.only(bottom: Sp.dock),
             children: [
             // v292 — masthead matches Looks / Rizz: wordmark, then
             // the streak flame (gated > 0 like the other tabs so a

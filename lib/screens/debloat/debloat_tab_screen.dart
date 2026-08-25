@@ -99,7 +99,7 @@ class _DebloatTabScreenState extends State<DebloatTabScreen>
               backgroundColor: AppColors.surface1,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: Sp.xl),
+                padding: const EdgeInsets.only(bottom: Sp.dock),
                 children: [
                   // ── Masthead ──
                   Padding(

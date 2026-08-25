@@ -84,6 +84,12 @@ abstract final class Sp {
   static const double xl  = 32;
   static const double xxl = 48;
   static const double xxxl = 72;
+
+  /// Bottom padding a scrolling tab body needs so its last card clears
+  /// the floating nav dock (66pt tall + 12pt bottom margin) instead of
+  /// sliding underneath it. Scaffold.extendBody lets the page run to
+  /// the screen edge, so every tab list owes this at the end.
+  static const double dock = 96;
 }
 
 abstract final class Rd {

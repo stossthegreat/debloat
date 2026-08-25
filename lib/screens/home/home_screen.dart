@@ -203,6 +203,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.base,
+      // v57 — the nav is a floating dock now, so the page runs to the
+      // bottom edge underneath it instead of being cropped above a bar.
+      extendBody: true,
       body: _loading
           ? const _Splash()
           : IndexedStack(
@@ -305,7 +308,7 @@ class _ScanHubTab extends StatelessWidget {
         color: AppColors.red,
         backgroundColor: AppColors.surface1,
         child: ListView(
-          padding: const EdgeInsets.only(bottom: Sp.xl),
+          padding: const EdgeInsets.only(bottom: Sp.dock),
           children: [
             // ── Masthead — replaced the old "Looks" title with the
             //    Debloat OS wordmark and the brand subhead "The guy she
@@ -1011,60 +1014,71 @@ class _SplitDivider extends StatelessWidget {
 }
 
 // ── Bottom nav ──────────────────────────────────────────────────────────────
+// v57 — FLOATING DOCK. The old nav was a full-bleed bar pinned to the
+// screen edge with a hairline on top. This one lifts off the edge as a
+// rounded, self-contained dock: the page scrolls underneath it, the
+// active tab wears a filled cyan capsule, and the whole thing sits on a
+// soft brand glow. Written from scratch for Debloat OS — icons, labels,
+// palette and geometry are all ours.
 class _NavBar extends StatelessWidget {
   final int index;
   final ValueChanged<int> onTap;
-  /// v298 — when true, paints a small red dot over the Ascend tab
-  /// icon (index 3) so the user knows there's an unhandled action
-  /// inside. Suppressed while the Ascend tab is the active tab —
-  /// the dot has done its job once they're there.
+
+  /// Paints a small cyan dot over the Progress tab icon when the user
+  /// still has an open daily action. Suppressed while that tab is
+  /// active — the dot has done its job once they're there.
   final bool ascendPending;
+
   const _NavBar({
     required this.index,
     required this.onTap,
     this.ascendPending = false,
   });
 
+  /// Four surfaces, one promise each: the reading, the plate, the
+  /// daily system, the trend.
+  static const _items = <({String label, IconData icon})>[
+    (label: 'Scan',     icon: Icons.center_focus_strong_rounded),
+    (label: 'Food',     icon: Icons.restaurant_rounded),
+    (label: 'Debloat',  icon: Icons.water_drop_rounded),
+    (label: 'Progress', icon: Icons.show_chart_rounded),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    // ── Tab roster ────────────────────────────────────────────────────────
-    // Four tabs: SCAN / DEBLOAT / MIRROR / ASCEND. Each tab does ONE
-    // thing — the reading, the daily system, the render, the program.
-    final items = const <({String label, IconData icon, bool italic})>[
-      (label: 'Scan',     icon: Icons.center_focus_strong_rounded, italic: false),
-      (label: 'Food',     icon: Icons.restaurant_rounded,          italic: false),
-      (label: 'Debloat',  icon: Icons.water_drop_outlined,         italic: false),
-      (label: 'Progress', icon: Icons.insights_rounded,            italic: false),
-    ];
-    // v303 — bottom nav rebuilt in the Skeletal-PT pattern bro
-    // pointed at: each tab is its own block, the ACTIVE block fills
-    // with the brand red and stays filled, inactive tabs render
-    // flat. Bigger icons + bigger labels, and the whole block is
-    // the tap target (no more tiny icon-only hit area).
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        border: Border(
-          top: BorderSide(color: AppColors.divider, width: 0.6)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+        child: Container(
+          height: 66,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: AppColors.red.withValues(alpha: 0.16), width: 0.8),
+            boxShadow: [
+              // Depth against the page + a faint brand halo so the dock
+              // reads as lit, not just layered.
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.55),
+                blurRadius: 22, offset: const Offset(0, 8)),
+              BoxShadow(
+                color: AppColors.red.withValues(alpha: 0.09),
+                blurRadius: 26, spreadRadius: -6),
+            ],
+          ),
           child: Row(
             children: [
-              for (var i = 0; i < items.length; i++)
+              for (var i = 0; i < _items.length; i++)
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _NavBlock(
-                      label: items[i].label,
-                      icon: items[i].icon,
-                      active: i == index,
-                      showPendingDot:
-                          i == 3 && ascendPending && i != index,
-                      onTap: () => onTap(i),
-                    ),
+                  child: _NavBlock(
+                    label: _items[i].label,
+                    icon: _items[i].icon,
+                    active: i == index,
+                    showPendingDot: i == 3 && ascendPending && i != index,
+                    onTap: () => onTap(i),
                   ),
                 ),
             ],
@@ -1075,22 +1089,19 @@ class _NavBar extends StatelessWidget {
   }
 }
 
-/// v303 — Bottom-nav block. Active tab fills with brand red and
-/// stays filled; inactive tabs render flat. Whole block is the tap
-/// target so the user can land anywhere on the rectangle. Big
-/// icon (24pt) + big label (12pt italic Playfair) so the chrome
-/// reads as confident, not crowded.
+/// One dock slot. The active slot fills with a soft cyan capsule and
+/// turns its icon + label brand-cyan; inactive slots stay flat and
+/// muted. The capsule animates in so switching tabs has weight.
 ///
-/// `showPendingDot` rides a small red dot at the top-right of the
-/// icon when this tab has an outstanding action (currently only
-/// the Ascend tab uses it). Suppressed on the active tab — the dot
-/// has served its purpose once the user is there.
+/// The whole slot is the tap target — the user can land anywhere in
+/// the column, not just on the glyph.
 class _NavBlock extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool active;
   final bool showPendingDot;
   final VoidCallback onTap;
+
   const _NavBlock({
     required this.label,
     required this.icon,
@@ -1101,51 +1112,71 @@ class _NavBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // v306 — red fill on the active pill dropped per bro's note;
-    // active state is now just the icon + label going red, no
-    // block highlight. New size + new block tap-target retained
-    // so anywhere on the rectangle still routes.
     final fg = active ? AppColors.red : AppColors.textSecondary;
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(18),
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: const BoxDecoration(),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 3),
+          decoration: BoxDecoration(
+            color: active
+                ? AppColors.red.withValues(alpha: 0.13)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: active
+                  ? AppColors.red.withValues(alpha: 0.30)
+                  : Colors.transparent,
+              width: 0.8,
+            ),
+          ),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Icon(icon, size: 24, color: fg),
+                  Icon(icon, size: 21, color: fg),
                   if (showPendingDot)
                     Positioned(
-                      right: -5, top: -3,
+                      top: -2, right: -3,
                       child: Container(
-                        width: 9, height: 9,
+                        width: 7, height: 7,
                         decoration: BoxDecoration(
                           color: AppColors.red,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.surface1, width: 1.4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.red.withValues(alpha: 0.6),
+                              blurRadius: 5),
+                          ],
                         ),
                       ),
                     ),
                 ],
               ),
-              const SizedBox(height: 4),
-              Text(label,
-                style: AppTypography.h1.copyWith(
+              const SizedBox(height: 3),
+              Text(
+                label.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.visible,
+                style: GoogleFonts.inter(
+                  fontSize: 8.5,
+                  height: 1.0,
                   color: fg,
-                  fontSize: 13, height: 1,
-                  letterSpacing: -0.2,
-                  
-                  fontWeight: FontWeight.w800,
-                )),
+                  letterSpacing: 0.6,
+                  fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),

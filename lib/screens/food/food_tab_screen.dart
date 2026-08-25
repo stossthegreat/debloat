@@ -135,7 +135,7 @@ class _FoodTabScreenState extends State<FoodTabScreen> {
       backgroundColor: AppColors.base,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.only(bottom: Sp.xxl),
+          padding: const EdgeInsets.only(bottom: Sp.dock),
           children: [
             // ── Masthead ────────────────────────────────────────────────
             Padding(
