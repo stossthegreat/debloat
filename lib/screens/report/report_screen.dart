@@ -11,11 +11,9 @@ import '../../models/face_geometry.dart';
 import '../../models/mirror_analysis.dart';
 import '../../models/scan_record.dart';
 import '../../models/protocol.dart';
-import '../../services/archetype_service.dart';
 import '../../services/analytics_service.dart';
 import '../../services/daily_nudge_service.dart';
 import '../../services/face_asset_service.dart';
-import '../../services/honest_rating_service.dart';
 import '../../services/local_store_service.dart';
 import '../../services/mirror_api_service.dart';
 import '../../services/notification_service.dart';
@@ -29,14 +27,10 @@ import '../../services/review_prompt_service.dart';
 import '../../services/share_service.dart';
 import '../../widgets/common/fullscreen_image.dart';
 import '../../services/debloat_report_service.dart';
-import '../../widgets/report/ai_verdict_panel.dart';
 import '../../widgets/report/aspect_protocol_cards.dart';
 import '../../widgets/report/debloat_gauges_card.dart';
 import '../../widgets/report/debloat_report_cards.dart';
 import '../../widgets/report/hero_card.dart';
-import '../../widgets/report/hidden_depth_panel.dart';
-import '../../widgets/report/per_trait_scores.dart';
-import '../../widgets/report/trait_grid.dart';
 
 class ReportScreen extends StatefulWidget {
   final Uint8List imageBytes;
@@ -63,7 +57,6 @@ class _ReportScreenState extends State<ReportScreen> {
   // GPT-4o Vision honest-looks rating. Fires in parallel with /scan so
   // the added latency is absorbed. Null = model refused (rare) and the
   // dual-score hero degrades to geometry-only.
-  HonestRating? _honest;
   // Bro v6 conversion flow: non-pro users see a TEASER variant of the
   // report — score reveal + blurred glow-up + locked panels + paywall
   // CTAs. Resolved once on mount; the live RevenueCat read keeps it
@@ -166,13 +159,6 @@ class _ReportScreenState extends State<ReportScreen> {
     try {
       final imageB64 = base64Encode(widget.imageBytes);
 
-      // Fire honest rating as background — never awaited here.
-      // ignore: discarded_futures
-      HonestRatingService.rate(imageBase64: imageB64).then((honest) {
-        if (!mounted || honest == null) return;
-        setState(() => _honest = honest);
-      });
-
       final result = await MirrorApiService.analyseOnly(
         imageBytes:  widget.imageBytes,
         geometry:    widget.geometry,
@@ -220,7 +206,6 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Future<void> _persistScan(MirrorAnalysis a) async {
     final score = ScoringService.compute(widget.geometry);
-    final match = ArchetypeService.bestMatch(widget.geometry);
     final id = 'scan-${DateTime.now().millisecondsSinceEpoch}';
 
     // Save the oriented JPEG to app docs so the advisor + tryon + gallery
@@ -252,7 +237,7 @@ class _ReportScreenState extends State<ReportScreen> {
     // delta (projected - headlineCurrent) as projectedDelta. The home
     // _HopeCard's `current + projectedDelta` then lands on the same
     // PROJECTED the report just headlined. No middle ground.
-    final headlineCurrent  = _honest?.score ?? score.value;
+    final headlineCurrent  = score.value;
     final formulaProjected = (score.value + _potentialDelta(score.value))
         .clamp(0, 100);
     final projectedDelta   = (formulaProjected - headlineCurrent)
@@ -268,8 +253,6 @@ class _ReportScreenState extends State<ReportScreen> {
       // just saw on the HeroCard.
       score:              headlineCurrent,
       tierLabel:          score.tierLabel,
-      archetypeName:      match.archetype.name,
-      archetypeMatchPct:  (match.match * 100).round(),
       capturedImagePath:  savedPath,
       maximizedImageUrl:  a.maximizedImageUrl,
       projectedDelta:     projectedDelta,
@@ -286,7 +269,7 @@ class _ReportScreenState extends State<ReportScreen> {
     // looks_score_best for any future progress chart that needs it.
     try {
       final prefs = await SharedPreferences.getInstance();
-      final headline = _honest?.score ?? score.value;
+      final headline = score.value;
       await prefs.setInt('looks_score', headline);
       final prev = prefs.getInt('looks_score_best') ?? 0;
       if (headline > prev) await prefs.setInt('looks_score_best', headline);
@@ -310,7 +293,7 @@ class _ReportScreenState extends State<ReportScreen> {
       await LocalStoreService.saveGeneration(GenerationRecord(
         id:            'gen-${DateTime.now().millisecondsSinceEpoch}',
         createdAt:     DateTime.now(),
-        prompt:        'Maximized twin · ${match.archetype.name}',
+        prompt:        'Debloated render',
         imageUrl:      a.maximizedImageUrl,
         relatedScanId: record.id,
       ));
@@ -501,8 +484,8 @@ class _ReportScreenState extends State<ReportScreen> {
                     )),
                   const SizedBox(height: 6),
                   Text(
-                    'The honest read is heavy — bones, skin, eyes, '
-                    'archetype. Almost there.',
+                    'Reading fluid across every zone — cheeks, jaw, '
+                    'under-eyes. Almost there.',
                     textAlign: TextAlign.center,
                     style: AppTypography.body.copyWith(
                       fontSize: 11.5,
@@ -714,7 +697,7 @@ class _ReportScreenState extends State<ReportScreen> {
     //   2. The GPT analyse `oneLineVerdict` — longer, measurement-cited.
     //   3. A computed fallback anchored to their actual strongest axis
     //      so it never defaults to the same string twice.
-    final honestNote = (_honest?.note ?? '').trim();
+    const honestNote = '';
     final tagline = honestNote.isNotEmpty
         ? honestNote
         : (a.report.oneLineVerdict.trim().isNotEmpty
@@ -776,14 +759,14 @@ class _ReportScreenState extends State<ReportScreen> {
                   // available, so the shared image tells the same truth
                   // as the results page. Projected still comes from the
                   // geometry potential model.
-                  currentScore:   _honest?.score ?? score.value,
+                  currentScore:   score.value,
                   projectedScore: projected,
                   tagline:        tagline,
                   // The same four debloat signals the hero shows —
                   // bro: "make it show under the images on the share
                   // card." One story, on-screen and shared.
                   microProofs: microProofs,
-                  text: '${_honest?.score ?? score.value} → $projected. '
+                  text: '${score.value} → $projected. '
                         'Same face. Debloat OS.',
                 ),
               ),
@@ -794,7 +777,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
           // ── 1 · HERO CARD (before/after debloat render) — normal inset.
           HeroCard(
-            currentScore:     _honest?.score ?? score.value,
+            currentScore:     score.value,
             projectedScore:   projected,
             tagline:          tagline,
             beforeBytes:      widget.imageBytes,
@@ -871,49 +854,13 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  /// Build a list of additional strength tiles to render under the
-  /// "Biggest Strength" card. Bro: "only gives one example of what's
-  /// good — give them a little more." Pulls the top-scoring sub-axes
-  /// from the GPT vision rating (skin, hair, jawline, eyes, etc.) and
-  /// surfaces the 2 highest above the biggest-strength axis, each with
-  /// the qualifier word from subTiers as the headline.
-  List<({String eyebrow, String headline, String body})> _buildExtraStrengths() {
-    final subScores = _honest?.subScores;
-    final subTiers  = _honest?.subTiers;
-    if (subScores == null || subScores.isEmpty) return const [];
-
-    final ranked = subScores.entries
-        .where((e) => e.value >= 60) // only flex genuine strengths
-        .toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    // Skip the top one — it's already in biggestStrength. Take next 2.
-    final extras = ranked.skip(1).take(2);
-
-    String labelFor(String key) => switch (key.toLowerCase()) {
-      'skin'        => 'YOUR SKIN HOLDS UP',
-      'hair'        => 'YOUR HAIR LANDS',
-      'jawline'     => 'YOUR JAW READS',
-      'masculinity' => 'YOUR DIMORPHISM HITS',
-      'eyes'        => 'YOUR EYES CARRY',
-      'face'        => 'YOUR FACE STRUCTURE WORKS',
-      _             => 'STRENGTH · ${key.toUpperCase()}',
-    };
-
-    String bodyFor(String key, int score) {
-      final tier = (subTiers?[key] ?? '').trim();
-      if (tier.isNotEmpty) return '$tier — scoring $score/100 on vision.';
-      return 'Scoring $score/100 on the vision pass — above average.';
-    }
-
-    return extras.map((e) => (
-      eyebrow:  labelFor(e.key),
-      headline: (subTiers?[e.key] ?? '').trim().isNotEmpty
-          ? (subTiers![e.key] ?? '')
-          : '${e.value}/100',
-      body:     bodyFor(e.key, e.value),
-    )).toList();
-  }
+  /// Extra strength tiles under the Biggest Strength card.
+  ///
+  /// v57 — returns empty. The per-axis sub-scores this read from came
+  /// from the old vision looks-rating service, which is gone: Debloat OS
+  /// grades bloat zones (DebloatStatsService), not looksmax traits.
+  List<({String eyebrow, String headline, String body})> _buildExtraStrengths() =>
+      const [];
 
   // ═══════════════════════════════════════════════════════════════════════
   //  LOCKED TEASER — what non-pro users see after their first scan.
@@ -932,14 +879,14 @@ class _ReportScreenState extends State<ReportScreen> {
   // ═══════════════════════════════════════════════════════════════════════
   Widget _buildLockedTeaser(MirrorAnalysis a) {
     final score      = ScoringService.compute(widget.geometry);
-    final current    = _honest?.score ?? score.value;
+    final current    = score.value;
     final potential  = _potentialDelta(current);
     final projected  = (current + potential).clamp(0, 100);
     // Same tagline + proof recipe the unlocked report uses, so the
     // locked variant of HeroCard reads identically except for the
     // after half.
     final microProofs = _buildMicroProofs();
-    final honestNote = (_honest?.note ?? '').trim();
+    const honestNote = '';
     final tagline = honestNote.isNotEmpty
         ? honestNote
         : (a.report.oneLineVerdict.trim().isNotEmpty
@@ -999,7 +946,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
           // Same dual-score hero the unlocked report ships — but with the
           // secondary geometry score withheld behind a green "?".
-          _DualScoreHero(honest: _honest, geometry: score.value, locked: true),
+          _DualScoreHero(geometry: score.value, locked: true),
           const SizedBox(height: Sp.md),
 
           // Same HeroCard — only difference is locked=true on the
@@ -1548,7 +1495,6 @@ class _ShareButton extends StatelessWidget {
 //  the bones score promotes to hero and the eyebrow reads BONES ONLY.
 // ═══════════════════════════════════════════════════════════════════════════
 class _DualScoreHero extends StatelessWidget {
-  final HonestRating? honest;
   final int geometry;
   /// Locked teaser variant — the secondary BONE STRUCTURE number is
   /// withheld behind a green "?" (same curiosity gap as the HeroCard's
@@ -1557,14 +1503,13 @@ class _DualScoreHero extends StatelessWidget {
   final bool locked;
 
   const _DualScoreHero({
-    required this.honest,
     required this.geometry,
     this.locked = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final hasHonest = honest != null;
+    const hasHonest = false;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),

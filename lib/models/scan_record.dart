@@ -9,8 +9,6 @@ class ScanRecord {
   final FaceGeometry geometry;
   final int score;                 // 0..100 — computed from geometry at save time
   final String tierLabel;          // "Apex", "Elite", ...
-  final String archetypeName;      // "Nordic Apex", etc.
-  final int archetypeMatchPct;     // 0..100
   final String? capturedImagePath; // local path — null if not persisted to disk
   final String? maximizedImageUrl; // backend-returned Flux twin
 
@@ -34,8 +32,6 @@ class ScanRecord {
     required this.geometry,
     required this.score,
     required this.tierLabel,
-    required this.archetypeName,
-    required this.archetypeMatchPct,
     this.capturedImagePath,
     this.maximizedImageUrl,
     this.projectedDelta = 0,
@@ -57,8 +53,6 @@ class ScanRecord {
     'hasReliableData':    geometry.hasReliableData,
     'score':              score,
     'tierLabel':          tierLabel,
-    'archetypeName':      archetypeName,
-    'archetypeMatchPct':  archetypeMatchPct,
     'capturedImagePath':  capturedImagePath,
     'maximizedImageUrl':  maximizedImageUrl,
     'projectedDelta':     projectedDelta,
@@ -82,8 +76,6 @@ class ScanRecord {
     ),
     score:              (j['score'] as num).toInt(),
     tierLabel:          j['tierLabel']          as String? ?? 'Foundation',
-    archetypeName:      j['archetypeName']      as String? ?? 'Classical Greek',
-    archetypeMatchPct:  (j['archetypeMatchPct'] as num?)?.toInt() ?? 0,
     capturedImagePath:  j['capturedImagePath'] as String?,
     maximizedImageUrl:  j['maximizedImageUrl'] as String?,
     projectedDelta:     (j['projectedDelta']     as num?)?.toInt() ?? 0,

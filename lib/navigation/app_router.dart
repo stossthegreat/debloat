@@ -1,12 +1,10 @@
 import 'dart:typed_data';
 import 'package:go_router/go_router.dart';
 import '../models/face_geometry.dart';
-import '../screens/chat/chat_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/legal/legal_screen.dart';
 import '../screens/onboarding/ai_consent_screen.dart';
 import '../screens/onboarding/gender_pick_screen.dart';
-import '../screens/onboarding/intro_reel_screen.dart';
 import '../screens/onboarding/processing_screen.dart';
 import '../screens/onboarding/funnel/onboarding_funnel_screen.dart';
 import '../screens/paywall/paywall_screen.dart';
@@ -26,9 +24,6 @@ final appRouter = GoRouter(
   observers: [AnalyticsRouteObserver()],
   routes: [
     GoRoute(path: '/',           builder: (_, __) => const SplashScreen()),
-    // Intro reel → the DePuff emotional funnel (Part 1: hook & qualify).
-    GoRoute(path: '/intro',
-        builder: (_, __) => const IntroReelScreen(next: '/onboarding')),
     GoRoute(path: '/onboarding',
         builder: (_, __) => const OnboardingFunnelScreen()),
     // Pre-scan gender pick. First-launch users get routed here from
@@ -114,19 +109,6 @@ final appRouter = GoRouter(
           imageBytes:  extra['imageBytes'] as Uint8List,
           geometry:    extra['geometry']   as FaceGeometry,
           extraImages: (extra['extraImages'] as List?)?.cast<Uint8List>() ?? const [],
-        );
-      },
-    ),
-    // THE MIRROR — the AI glow-up chat, reached from the Transform tab
-    // hero with the latest scan geometry.
-    GoRoute(
-      path: '/chat',
-      builder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>;
-        return ChatScreen(
-          geometry:  extra['geometry']  as FaceGeometry,
-          imagePath: extra['imagePath'] as String?,
-          autoSend:  extra['autoSend']  as String?,
         );
       },
     ),

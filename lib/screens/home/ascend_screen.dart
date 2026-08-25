@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/protocol.dart';
 import '../../models/scan_record.dart' show ScanRecord;
-import '../../services/ascension_service.dart';
+import '../../services/streak_rank_service.dart';
 import '../../services/daily_mission_service.dart';
 import '../../services/share_service.dart';
 import '../../theme/app_colors.dart';
@@ -138,12 +138,12 @@ class _AscendScreenState extends State<AscendScreen> {
   /// fresh reference point. Idempotent per calendar day — multiple
   /// taps on the tab don't move the "prior" slot.
   Future<void> _loadDeltaAndSnapshot() async {
-    final score = AscensionService.debloatScoreFromComponents(
+    final score = StreakRankService.debloatScoreFromComponents(
       looks:       widget.looksScore100,
       consistency: widget.consistency,
     );
-    final delta = await AscensionService.weeklyDeltaFor(score);
-    await AscensionService.snapshotTodayScore(score);
+    final delta = await StreakRankService.weeklyDeltaFor(score);
+    await StreakRankService.snapshotTodayScore(score);
     if (!mounted) return;
     setState(() {
       _weeklyDelta = delta;
@@ -154,7 +154,7 @@ class _AscendScreenState extends State<AscendScreen> {
   @override
   Widget build(BuildContext context) {
     final day            = widget.ascensionDay;
-    final rank           = AscensionService.rankFor(day);
+    final rank           = StreakRankService.rankFor(day);
     final clDone         = widget.dailyMissions.where((m) => m.done).length;
     final clTotal        = widget.dailyMissions.length;
 
@@ -204,7 +204,7 @@ class _AscendScreenState extends State<AscendScreen> {
               padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
               child: SemiCircleDay(
                 day: day,
-                total: AscensionService.totalDays,
+                total: StreakRankService.totalDays,
                 rankLabel: rank.label),
             ).animate().fadeIn(duration: 450.ms),
 
@@ -325,13 +325,13 @@ class _AscendScreenState extends State<AscendScreen> {
     final int consistencyEnd = widget.consistency;
     const int consistencyStart = 0;
 
-    // DEBLOAT SCORE arc — same formula AscensionService runs in the
+    // DEBLOAT SCORE arc — same formula StreakRankService runs in the
     // hero so the certificate reads as continuous with the live tab.
-    final int scoreStart = AscensionService.debloatScoreFromComponents(
+    final int scoreStart = StreakRankService.debloatScoreFromComponents(
       looks:       looksStart,
       consistency: consistencyStart,
     );
-    final int scoreEnd = AscensionService.debloatScoreFromComponents(
+    final int scoreEnd = StreakRankService.debloatScoreFromComponents(
       looks:       looksEnd,
       consistency: consistencyEnd,
     );
@@ -940,7 +940,7 @@ class _ScanMilestoneCard extends StatelessWidget {
 /// v289 — Today's Message. Single rotating identity line that
 /// replaces the manufactured fear of the Cost of Quitting card.
 /// Day-indexed copy, streak-milestone overrides — see
-/// [AscensionService.todayMessageFor].
+/// [StreakRankService.todayMessageFor].
 class _TodayMessageCard extends StatelessWidget {
   final String line;
   const _TodayMessageCard({required this.line});
@@ -1120,7 +1120,7 @@ class _RankProgression extends StatelessWidget {
   const _RankProgression({required this.currentDay});
   @override
   Widget build(BuildContext context) {
-    final ranks = AscensionService.ranks();
+    final ranks = StreakRankService.ranks();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Sp.lg),
       child: Container(

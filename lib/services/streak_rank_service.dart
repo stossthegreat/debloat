@@ -20,8 +20,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///     reminder).
 ///   - The Day-60 unlock is a locked premium card today; the
 ///     anticipation IS the retention.
-class AscensionService {
-  AscensionService._();
+class StreakRankService {
+  StreakRankService._();
 
   static const int _totalDays = 60;
 

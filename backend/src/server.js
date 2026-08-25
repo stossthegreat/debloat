@@ -6,10 +6,6 @@ import { fileURLToPath } from 'node:url';
 import { analyse } from './analyse.js';
 import { analyseFood } from './food.js';
 import { maximize } from './maximize.js';
-import { tryOn } from './tryon.js';
-import { chat } from './chat.js';
-import { rate } from './rate.js';
-import { rizzReply, rizzChat } from './rizz.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -150,110 +146,7 @@ app.post('/food', async (req, res) => {
   }
 });
 
-// ── Chat: face-aware advisor. Text reply + optional inline tryon render.
-app.post('/chat', async (req, res) => {
-  try {
-    const { messages, face } = req.body;
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ error: 'messages[] required' });
-    }
-    const result = await chat({ messages, face: face ?? {} });
-    res.json(result);
-  } catch (err) {
-    console.error('[/chat] error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── Rizz: dating-text coach. Totally separate from /chat (the face
-// doctor). The client posts what she said + vibe + scenario, this
-// runs the RIZZ system prompt on gpt-4o, returns 3 ranked reply
-// options as { replies: [{ text, tag }, ... ] }. No face geometry,
-// no archetypes, no tryon — just text in, text out.
-app.post('/rizz/reply', async (req, res) => {
-  try {
-    const { her, vibe, ctx, scenario, previous, imageBase64, mySide } = req.body || {};
-    // `previous` is an optional array of {text, tag} objects sent by
-    // the quick-action chips ("More heat", "Funnier", "Make a move").
-    // When present, rizzReply switches into TRANSFORM MODE and
-    // rewrites those three replies instead of generating cold.
-    const prev = Array.isArray(previous)
-      ? previous
-          .filter(p => p && typeof p.text === 'string')
-          .slice(0, 3)
-          .map(p => ({ text: p.text, tag: typeof p.tag === 'string' ? p.tag : '' }))
-      : [];
-    // `imageBase64` is the bare-bytes-as-base64 of a chat screenshot.
-    // When present, rizzReply uses the gpt-4o-vision path — the model
-    // reads the iMessage UI directly, no OCR involved.
-    const result = await rizzReply({
-      her:         typeof her      === 'string' ? her      : '',
-      vibe:        typeof vibe     === 'string' ? vibe     : 'auto',
-      ctx:         typeof ctx      === 'string' ? ctx      : '',
-      scenario:    typeof scenario === 'string' ? scenario : '',
-      previous:    prev,
-      imageBase64: typeof imageBase64 === 'string' ? imageBase64 : undefined,
-      mySide:      typeof mySide    === 'string' ? mySide    : undefined,
-    });
-    res.json(result);
-  } catch (err) {
-    console.error('[/rizz/reply] error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── Rizz chat: free-form conversational mentor. Same RIZZ persona as
-// /rizz/reply but for "ask me anything" questions on the Chat with
-// Mirrorly surface. Returns { reply: string }.
-app.post('/rizz/chat', async (req, res) => {
-  try {
-    const { messages, imageBase64 } = req.body || {};
-    const result = await rizzChat({
-      messages,
-      imageBase64: typeof imageBase64 === 'string' ? imageBase64 : undefined,
-    });
-    res.json(result);
-  } catch (err) {
-    console.error('[/rizz/chat] error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── Rate: GPT-4o Vision honest looks rating. Companion to geometry —
-// the vision-based half of the two-score moat. Returns null on refusal,
-// client falls back to geometry-only in that case.
-app.post('/rate', async (req, res) => {
-  try {
-    const { imageBase64 } = req.body;
-    if (!imageBase64) return res.status(400).json({ error: 'imageBase64 required' });
-    const result = await rate({ imageBase64 });
-    if (result == null) {
-      // Distinct 200 with {refused:true} so the client can degrade cleanly
-      // without treating this as a hard error.
-      return res.json({ refused: true });
-    }
-    res.json(result);
-  } catch (err) {
-    console.error('[/rate] error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── Try-on: "show me with a beard / fade / glasses / etc"
-app.post('/tryon', async (req, res) => {
-  try {
-    const { imageBase64, styleRequest, category, geometry } = req.body;
-    if (!imageBase64)   return res.status(400).json({ error: 'imageBase64 required' });
-    if (!styleRequest)  return res.status(400).json({ error: 'styleRequest required' });
-    const result = await tryOn({ imageBase64, styleRequest, category, geometry });
-    res.json(result);
-  } catch (err) {
-    console.error('[/tryon] error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-  console.log(`[mirror-backend] listening on :${PORT}`);
+  console.log(`[debloat-backend] listening on :${PORT}`);
 });

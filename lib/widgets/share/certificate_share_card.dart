@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/app_colors.dart' as base;
-import '../../theme/auralay_app_colors.dart';
-import '../../theme/auralay_app_typography.dart';
+import 'share_palette.dart';
+import 'share_type.dart';
 
 /// Debloat OS — 60-DAY PROTOCOL CERTIFICATE share card (v291).
 ///
