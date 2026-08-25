@@ -21,7 +21,7 @@ import '../../services/paywall_gate.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/common/ai_consent_dialog.dart';
-import '../../widgets/common/mirrorly_wordmark.dart';
+import '../../widgets/common/brand_wordmark.dart';
 import '../../widgets/scan/geometry_overlay_painter.dart';
 
 class ScanScreen extends StatefulWidget {
@@ -992,7 +992,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
     // App Store guideline 5.1.2(i) gate. Before any selfie bytes
     // leave the device for OpenAI / Replicate, the user must have
     // granted explicit in-app permission. The /report screen is
-    // where MirrorApiService.analyseOnly fires the first network
+    // where DebloatApiService.analyseOnly fires the first network
     // call, so we MUST get consent before we route there (and
     // before /paywall, since a successful purchase forwards to
     // /report with the scan payload). ensure() short-circuits when
@@ -1377,7 +1377,7 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                       // small enough to disappear next to the camera
                       // feed). The two-tone red "Him" carries the
                       // brand on its own.
-                      const MirrorlyWordmark(fontSize: 30, letterSpacing: -0.8),
+                      const DebloatWordmark(fontSize: 30, letterSpacing: -0.8),
                       const SizedBox(width: 10),
                       Container(
                         width: 4, height: 4,

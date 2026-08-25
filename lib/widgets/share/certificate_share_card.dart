@@ -133,7 +133,7 @@ class CertificateShareCard extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   )),
                 const SizedBox(height: 16),
-                _MirrorlyMark(fontSize: 96),
+                _BrandMark(fontSize: 96),
                 const SizedBox(height: 12),
                 Container(width: 110, height: 3, color: base.AppColors.red),
                 const SizedBox(height: 22),
@@ -240,7 +240,7 @@ class CertificateShareCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _MirrorlyMark(fontSize: 28),
+                    _BrandMark(fontSize: 28),
                     const SizedBox(width: 14),
                     Container(
                       width: 4, height: 4,
@@ -503,9 +503,9 @@ class _StatArcRow extends StatelessWidget {
 
 /// Two-tone Debloat OS wordmark — italic Playfair, white "Im" + red "Him".
 /// Duplicated locally so the share card has no theme-variant dependency.
-class _MirrorlyMark extends StatelessWidget {
+class _BrandMark extends StatelessWidget {
   final double fontSize;
-  const _MirrorlyMark({required this.fontSize});
+  const _BrandMark({required this.fontSize});
 
   @override
   Widget build(BuildContext context) {

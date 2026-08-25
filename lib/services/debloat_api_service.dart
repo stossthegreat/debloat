@@ -4,10 +4,10 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/face_geometry.dart';
 import '../models/food_analysis.dart';
-import '../models/mirror_analysis.dart';
+import '../models/debloat_analysis.dart';
 import 'local_store_service.dart';
 
-class MirrorApiService {
+class DebloatApiService {
   static Map<String, dynamic> _geometryToJson(FaceGeometry g) => {
     // Original 9 — stable contract with existing backend
     'canthalTilt':          g.canthalTilt,
@@ -44,9 +44,9 @@ class MirrorApiService {
   /// when the user taps the on-image GENERATE button.
   ///
   /// Same retry contract as [scan] — never gives up. The returned
-  /// [MirrorAnalysis] has an empty `maximizedImageUrl`; the caller is
+  /// [DebloatAnalysis] has an empty `maximizedImageUrl`; the caller is
   /// expected to backfill it via [maximizeOnly] on user demand.
-  static Future<MirrorAnalysis> analyseOnly({
+  static Future<DebloatAnalysis> analyseOnly({
     required Uint8List imageBytes,
     required FaceGeometry geometry,
     List<Uint8List> extraImages = const [],
@@ -82,7 +82,7 @@ class MirrorApiService {
     }
     final body = jsonEncode(payload);
 
-    return _retryForever<MirrorAnalysis>(
+    return _retryForever<DebloatAnalysis>(
       label: 'analyse',
       run: () async {
         final response = await http.post(
@@ -95,10 +95,10 @@ class MirrorApiService {
           throw Exception('Backend ${response.statusCode}: ${response.body}');
         }
         // /analyse returns the bare report object — wrap it into the
-        // MirrorAnalysis envelope with an empty maximized payload so
+        // DebloatAnalysis envelope with an empty maximized payload so
         // the rest of the app keeps the same contract.
         final report = jsonDecode(response.body) as Map<String, dynamic>;
-        return MirrorAnalysis.fromJson({
+        return DebloatAnalysis.fromJson({
           'report':    report,
           'maximized': {'url': ''},
         });
@@ -119,7 +119,7 @@ class MirrorApiService {
   ///
   /// If the caller wants to give up (e.g. user navigated away), they can
   /// cancel by unmounting — the next `setState` will be ignored.
-  static Future<MirrorAnalysis> scan({
+  static Future<DebloatAnalysis> scan({
     required Uint8List imageBytes,
     required FaceGeometry geometry,
     List<Uint8List> extraImages = const [],
@@ -143,7 +143,7 @@ class MirrorApiService {
     }
     final body = jsonEncode(payload);
 
-    return _retryForever<MirrorAnalysis>(
+    return _retryForever<DebloatAnalysis>(
       label: 'scan',
       run: () async {
         final response = await http.post(
@@ -156,7 +156,7 @@ class MirrorApiService {
           throw Exception('Backend ${response.statusCode}: ${response.body}');
         }
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-        return MirrorAnalysis.fromJson(decoded);
+        return DebloatAnalysis.fromJson(decoded);
       },
     );
   }

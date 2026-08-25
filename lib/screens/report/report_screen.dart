@@ -8,14 +8,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/face_geometry.dart';
-import '../../models/mirror_analysis.dart';
+import '../../models/debloat_analysis.dart';
 import '../../models/scan_record.dart';
 import '../../models/protocol.dart';
 import '../../services/analytics_service.dart';
 import '../../services/daily_nudge_service.dart';
 import '../../services/face_asset_service.dart';
 import '../../services/local_store_service.dart';
-import '../../services/mirror_api_service.dart';
+import '../../services/debloat_api_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/paywall_gate.dart';
 import '../../services/protocol_service.dart';
@@ -49,7 +49,7 @@ class ReportScreen extends StatefulWidget {
 }
 
 class _ReportScreenState extends State<ReportScreen> {
-  MirrorAnalysis? _analysis;
+  DebloatAnalysis? _analysis;
   String? _error;
   // Populated once the scan image is persisted. Passed to chat/tryon so the
   // advisor can fire Flux renders inline using the real scan image.
@@ -159,7 +159,7 @@ class _ReportScreenState extends State<ReportScreen> {
     try {
       final imageB64 = base64Encode(widget.imageBytes);
 
-      final result = await MirrorApiService.analyseOnly(
+      final result = await DebloatApiService.analyseOnly(
         imageBytes:  widget.imageBytes,
         geometry:    widget.geometry,
         extraImages: widget.extraImages,
@@ -204,7 +204,7 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
-  Future<void> _persistScan(MirrorAnalysis a) async {
+  Future<void> _persistScan(DebloatAnalysis a) async {
     final score = ScoringService.compute(widget.geometry);
     final id = 'scan-${DateTime.now().millisecondsSinceEpoch}';
 
@@ -549,7 +549,7 @@ class _ReportScreenState extends State<ReportScreen> {
   /// drops the resulting url into [_localMaximizedUrl] so HeroCard
   /// stops showing the placeholder. Already-have-url path is a no-op
   /// (HeroCard automatically renders the image).
-  Future<void> _generateHero(MirrorAnalysis a) async {
+  Future<void> _generateHero(DebloatAnalysis a) async {
     if (_generatingHero) return;
     final existing = _localMaximizedUrl.isNotEmpty
         ? _localMaximizedUrl
@@ -589,7 +589,7 @@ class _ReportScreenState extends State<ReportScreen> {
     HapticFeedback.heavyImpact();
     setState(() => _generatingHero = true);
     try {
-      final url = await MirrorApiService.maximizeOnly(
+      final url = await DebloatApiService.maximizeOnly(
         imageBytes: widget.imageBytes,
         improve:    a.report.fixes
           .map((f) => f.visualRequest.trim())
@@ -675,7 +675,7 @@ class _ReportScreenState extends State<ReportScreen> {
     ];
   }
 
-  Widget _buildReport(MirrorAnalysis a) {
+  Widget _buildReport(DebloatAnalysis a) {
     final score = ScoringService.compute(widget.geometry);
     // On-device debloat read (AI verdict lines, projected points, cause
     // bars). Always available; the GPT verdict can refine it later.
@@ -877,7 +877,7 @@ class _ReportScreenState extends State<ReportScreen> {
   //  a centered LOCK pill — no Replicate call fires for free users
   //  (they never get past the gate to consume credits).
   // ═══════════════════════════════════════════════════════════════════════
-  Widget _buildLockedTeaser(MirrorAnalysis a) {
+  Widget _buildLockedTeaser(DebloatAnalysis a) {
     final score      = ScoringService.compute(widget.geometry);
     final current    = score.value;
     final potential  = _potentialDelta(current);
@@ -1128,7 +1128,7 @@ class _ApplyAllFixesButtonState extends State<_ApplyAllFixesButton> {
     // Slow path — render on demand.
     setState(() { _retrying = true; _retryError = null; });
     try {
-      final url = await MirrorApiService.maximizeOnly(
+      final url = await DebloatApiService.maximizeOnly(
         imageBytes: widget.imageBytes,
         improve:    widget.improveList,
       );

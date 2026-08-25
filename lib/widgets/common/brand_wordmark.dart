@@ -57,6 +57,6 @@ class DebloatWordmark extends StatelessWidget {
 }
 
 /// Legacy alias — every pre-rebrand call-site referenced
-/// [MirrorlyWordmark]; keep the old name resolving to the new mark so
+/// [DebloatWordmark]; keep the old name resolving to the new mark so
 /// nothing churns. New code should use [DebloatWordmark].
-typedef MirrorlyWordmark = DebloatWordmark;
+typedef DebloatWordmark = DebloatWordmark;

@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 /// they survive app restarts and can be loaded instantly for tryon requests,
 /// chat context, progress-gallery previews, etc.
 ///
-/// Images are stored as JPEG in `<docs>/mirrorly/scans/<id>.jpg`.
+/// Images are stored as JPEG in `<docs>/debloat/scans/<id>.jpg`.
 class FaceAssetService {
   static Future<String> saveScanImage({
     required String scanId,
@@ -42,8 +42,11 @@ class FaceAssetService {
       final filename = path.split('/').last;
       if (filename.isNotEmpty && filename != path) {
         final dir = await getApplicationDocumentsDirectory();
-        final rescued = File('${dir.path}/mirrorly/scans/$filename');
+        final rescued = File('${dir.path}/$_scansSubdir/$filename');
         if (await rescued.exists()) return await rescued.readAsBytes();
+        // Pre-v57 installs wrote under the old subdirectory name.
+        final legacy = File('${dir.path}/$_legacySubdir/$filename');
+        if (await legacy.exists()) return await legacy.readAsBytes();
       }
       return null;
     } catch (_) {
@@ -61,7 +64,10 @@ class FaceAssetService {
       final filename = path.split('/').last;
       if (filename.isNotEmpty && filename != path) {
         final dir = await getApplicationDocumentsDirectory();
-        return File('${dir.path}/mirrorly/scans/$filename').exists();
+        if (await File('${dir.path}/$_scansSubdir/$filename').exists()) {
+          return true;
+        }
+        return File('${dir.path}/$_legacySubdir/$filename').exists();
       }
     } catch (_) {}
     return false;
@@ -82,7 +88,7 @@ class FaceAssetService {
       final filename = path.split('/').last;
       if (filename.isNotEmpty && filename != path) {
         final dir = await getApplicationDocumentsDirectory();
-        final rescued = '${dir.path}/mirrorly/scans/$filename';
+        final rescued = '${dir.path}/$_scansSubdir/$filename';
         if (await File(rescued).exists()) return rescued;
       }
     } catch (_) {}
@@ -101,14 +107,23 @@ class FaceAssetService {
   static Future<void> purgeAll() async {
     try {
       final base = await getApplicationDocumentsDirectory();
-      final d = Directory('${base.path}/mirrorly/scans');
-      if (await d.exists()) await d.delete(recursive: true);
+      for (final sub in const [_scansSubdir, _legacySubdir]) {
+        final d = Directory('${base.path}/$sub');
+        if (await d.exists()) await d.delete(recursive: true);
+      }
     } catch (_) {}
   }
 
+  /// Current on-disk home for scan JPEGs.
+  static const _scansSubdir = 'debloat/scans';
+
+  /// Pre-v57 location, still read (never written) so TestFlight
+  /// builds installed before the rename keep their scan history.
+  static const _legacySubdir = 'mirrorly/scans';
+
   static Future<Directory> _scansDir() async {
     final base = await getApplicationDocumentsDirectory();
-    final d = Directory('${base.path}/mirrorly/scans');
+    final d = Directory('${base.path}/$_scansSubdir');
     if (!await d.exists()) await d.create(recursive: true);
     return d;
   }

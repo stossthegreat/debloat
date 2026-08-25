@@ -20,7 +20,7 @@ final appRouter = GoRouter(
   // Every navigator push/pop/replace fires screen_view through
   // AnalyticsRouteObserver, which also updates
   // AnalyticsService.currentScreen so the app-lifecycle hook in
-  // main.dart's MirrorApp can tag "where did the user quit from".
+  // main.dart's DebloatApp can tag "where did the user quit from".
   observers: [AnalyticsRouteObserver()],
   routes: [
     GoRoute(path: '/',           builder: (_, __) => const SplashScreen()),

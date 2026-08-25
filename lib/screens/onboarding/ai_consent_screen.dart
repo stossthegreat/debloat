@@ -8,7 +8,7 @@ import '../../services/analytics_service.dart';
 import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
-import '../../widgets/common/mirrorly_wordmark.dart';
+import '../../widgets/common/brand_wordmark.dart';
 
 /// Onboarding consent — deliberately MINIMAL (v371).
 ///
@@ -67,7 +67,7 @@ class _AiConsentScreenState extends State<AiConsentScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const MirrorlyWordmark(fontSize: 34)
+              const DebloatWordmark(fontSize: 34)
                   .animate()
                   .fadeIn(duration: 500.ms),
 

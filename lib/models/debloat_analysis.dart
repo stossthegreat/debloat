@@ -96,7 +96,7 @@ class Report {
 }
 
 @immutable
-class MirrorAnalysis {
+class DebloatAnalysis {
   final Report report;
   final String maximizedImageUrl;
   /// Optional pre-rendered per-fix images.
@@ -109,16 +109,16 @@ class MirrorAnalysis {
   /// background generation or caching).
   final List<String> intermediateUrls;
 
-  const MirrorAnalysis({
+  const DebloatAnalysis({
     required this.report,
     required this.maximizedImageUrl,
     this.intermediateUrls = const [],
   });
 
-  factory MirrorAnalysis.fromJson(Map<String, dynamic> j) {
+  factory DebloatAnalysis.fromJson(Map<String, dynamic> j) {
     final maxed = j['maximized'] as Map<String, dynamic>? ?? {};
     final raw   = maxed['intermediateUrls'] as List?;
-    return MirrorAnalysis(
+    return DebloatAnalysis(
       report: Report.fromJson(j['report'] as Map<String, dynamic>),
       maximizedImageUrl: maxed['url'] as String? ?? '',
       intermediateUrls: (raw ?? const [])
@@ -132,7 +132,7 @@ class MirrorAnalysis {
   /// after the initial /scan returned empty (Replicate hiccupped and
   /// we retried /maximize in the background). Everything else stays
   /// the same; only the hero render swaps in.
-  MirrorAnalysis copyWithMaximizedImageUrl(String url) => MirrorAnalysis(
+  DebloatAnalysis copyWithMaximizedImageUrl(String url) => DebloatAnalysis(
     report:            report,
     maximizedImageUrl: url,
     intermediateUrls:  intermediateUrls,

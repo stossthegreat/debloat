@@ -175,7 +175,7 @@ class ProgressShareCard extends StatelessWidget {
                   )),
                 const SizedBox(height: 16),
                 // ── Brand — two-tone Debloat OS.
-                _MirrorlyMark(fontSize: 100),
+                _BrandMark(fontSize: 100),
                 const SizedBox(height: 12),
                 Container(width: 100, height: 3, color: base.AppColors.red),
                 const SizedBox(height: 22),
@@ -193,7 +193,7 @@ class ProgressShareCard extends StatelessWidget {
                 const SizedBox(height: 28),
 
                 // ── DEBLOAT SCORE HERO. The unified composite.
-                _MirrorlyScoreShareHero(
+                _ScoreShareHero(
                   score: debloatNow,
                   delta: debloatDelta,
                 ),
@@ -304,7 +304,7 @@ class ProgressShareCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _MirrorlyMark(fontSize: 28),
+                    _BrandMark(fontSize: 28),
                     const SizedBox(width: 14),
                     Container(
                       width: 4, height: 4,
@@ -350,10 +350,10 @@ class ProgressShareCard extends StatelessWidget {
 /// delta pill underneath. The composite is the hook; viewers read
 /// the number first, then the BUILT FROM row tells them how it was
 /// earned. Same italic Playfair language as the in-app score block.
-class _MirrorlyScoreShareHero extends StatelessWidget {
+class _ScoreShareHero extends StatelessWidget {
   final int? score;
   final int? delta;
-  const _MirrorlyScoreShareHero({required this.score, required this.delta});
+  const _ScoreShareHero({required this.score, required this.delta});
 
   @override
   Widget build(BuildContext context) {
@@ -530,9 +530,9 @@ class _ScorePill extends StatelessWidget {
 
 /// Two-tone Debloat OS wordmark — italic Playfair, white "Im" + red "Him".
 /// Duplicated locally so the share card has no theme-variant dependency.
-class _MirrorlyMark extends StatelessWidget {
+class _BrandMark extends StatelessWidget {
   final double fontSize;
-  const _MirrorlyMark({required this.fontSize});
+  const _BrandMark({required this.fontSize});
 
   @override
   Widget build(BuildContext context) {

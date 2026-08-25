@@ -3,7 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../services/local_store_service.dart';
-import '../../widgets/common/mirrorly_wordmark.dart';
+import '../../widgets/common/brand_wordmark.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -84,7 +84,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   curve: Curves.easeOut,
                 ),
             const SizedBox(height: 22),
-            const MirrorlyWordmark(fontSize: 40)
+            const DebloatWordmark(fontSize: 40)
                 .animate()
                 .fadeIn(delay: 260.ms, duration: 700.ms, curve: Curves.easeOut),
           ],

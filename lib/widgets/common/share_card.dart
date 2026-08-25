@@ -81,7 +81,7 @@ class ShareCard extends StatelessWidget {
                   ],
                 ),
               ] else
-                // Two-tone wordmark — matches the MirrorlyWordmark widget so
+                // Two-tone wordmark — matches the DebloatWordmark widget so
                 // the "no scores" share variant carries the same brand
                 // punchline as every other surface.
                 RichText(
@@ -266,7 +266,7 @@ class ShareCard extends StatelessWidget {
           Positioned(
             left: 20, top: 18,
             // Two-tone "Im" white + "Him" red, matching the in-app
-            // MirrorlyWordmark widget. v216a fix: the previous version
+            // DebloatWordmark widget. v216a fix: the previous version
             // painted the whole wordmark in accent red so the brand
             // read as "Him Him" — losing the punchline that "Im" is
             // who you are and "Him" (red) is who you become.

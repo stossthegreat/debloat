@@ -59,17 +59,17 @@ void main() async {
     await LocalStoreService.resetBypassSubscribedOnce();
   }
 
-  runApp(const MirrorApp());
+  runApp(const DebloatApp());
 }
 
-class MirrorApp extends StatefulWidget {
-  const MirrorApp({super.key});
+class DebloatApp extends StatefulWidget {
+  const DebloatApp({super.key});
 
   @override
-  State<MirrorApp> createState() => _MirrorAppState();
+  State<DebloatApp> createState() => _DebloatAppState();
 }
 
-class _MirrorAppState extends State<MirrorApp> with WidgetsBindingObserver {
+class _DebloatAppState extends State<DebloatApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();

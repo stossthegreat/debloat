@@ -13,7 +13,7 @@ import '../../services/daily_mission_service.dart';
 import '../../services/share_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
-import '../../widgets/common/mirrorly_wordmark.dart';
+import '../../widgets/common/brand_wordmark.dart';
 import '../../widgets/progress/face_evolution_card.dart';
 import '../../widgets/progress/progress_extras.dart';
 
@@ -182,7 +182,7 @@ class _AscendScreenState extends State<AscendScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const MirrorlyWordmark(fontSize: 34),
+                  const DebloatWordmark(fontSize: 34),
                   const Spacer(),
                   if (widget.dayStreak > 0) ...[
                     _MastheadStreakBadge(days: widget.dayStreak),
@@ -615,13 +615,13 @@ class _ProgressRingPainter extends CustomPainter {
 /// underneath, three component pillars stacked below as the
 /// "built from" credit row. Sits directly under the flame so the
 /// user reads day + score as one unit.
-class _MirrorlyScoreHero extends StatelessWidget {
+class _DebloatScoreHero extends StatelessWidget {
   final int score;
   final int delta;
   final bool deltaReady;
   final int looks;
   final int consistency;
-  const _MirrorlyScoreHero({
+  const _DebloatScoreHero({
     required this.score,
     required this.delta,
     required this.deltaReady,
@@ -692,9 +692,9 @@ class _MirrorlyScoreHero extends StatelessWidget {
             const SizedBox(height: 10),
             // v371 — GAME retired from the score (looks pivot): the
             // score is built from LOOKS + CONSISTENCY only.
-            _MirrorlyComponentRow(label: 'Looks',       value: looks,        accent: AppColors.measure),
+            _ScoreComponentRow(label: 'Looks',       value: looks,        accent: AppColors.measure),
             const SizedBox(height: 6),
-            _MirrorlyComponentRow(label: 'Consistency', value: consistency,  accent: AppColors.red),
+            _ScoreComponentRow(label: 'Consistency', value: consistency,  accent: AppColors.red),
           ],
         ),
       ),
@@ -702,11 +702,11 @@ class _MirrorlyScoreHero extends StatelessWidget {
   }
 }
 
-class _MirrorlyComponentRow extends StatelessWidget {
+class _ScoreComponentRow extends StatelessWidget {
   final String label;
   final int value;
   final Color accent;
-  const _MirrorlyComponentRow({
+  const _ScoreComponentRow({
     required this.label,
     required this.value,
     required this.accent,

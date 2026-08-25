@@ -19,8 +19,8 @@ import '../../services/daily_mission_service.dart';
 import '../../services/streak_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
-import '../../widgets/common/mirrorly_wordmark.dart';
-import '../../widgets/common/mirrorly_components.dart';
+import '../../widgets/common/brand_wordmark.dart';
+import '../../widgets/common/ui_kit.dart';
 // DEBLOAT OS. Four surfaces, one promise per tab:
 //   SCAN / DEBLOAT / FOOD / ASCEND.
 import '../debloat/debloat_tab_screen.dart';
@@ -316,7 +316,7 @@ class _ScanHubTab extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const MirrorlyWordmark(fontSize: 34),
+                  const DebloatWordmark(fontSize: 34),
                   const Spacer(),
                   if (dayStreak > 0) ...[
                     _StreakBadge(days: dayStreak),

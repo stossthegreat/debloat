@@ -11,10 +11,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/food_analysis.dart';
 import '../../services/analytics_service.dart';
-import '../../services/mirror_api_service.dart';
+import '../../services/debloat_api_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
-import '../../widgets/common/mirrorly_wordmark.dart';
+import '../../widgets/common/brand_wordmark.dart';
 
 /// FOOD tab — "Scan meals that cause puffiness."
 ///
@@ -95,7 +95,7 @@ class _FoodTabScreenState extends State<FoodTabScreen> {
       // ignore: discarded_futures
       AnalyticsService.foodScanStarted(
           source == ImageSource.camera ? 'camera' : 'library');
-      final result = await MirrorApiService.analyseFood(imageBytes: bytes);
+      final result = await DebloatApiService.analyseFood(imageBytes: bytes);
       if (!mounted) return;
       setState(() {
         _result  = result;
@@ -142,7 +142,7 @@ class _FoodTabScreenState extends State<FoodTabScreen> {
               padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
               child: Row(
                 children: [
-                  const MirrorlyWordmark(fontSize: 34),
+                  const DebloatWordmark(fontSize: 34),
                   const Spacer(),
                   if (_result != null && !_loading)
                     _PillButton(

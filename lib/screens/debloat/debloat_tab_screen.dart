@@ -8,7 +8,7 @@ import '../../services/analytics_service.dart';
 import '../../services/debloat_checklist_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
-import '../../widgets/common/mirrorly_wordmark.dart';
+import '../../widgets/common/brand_wordmark.dart';
 
 /// THE DEBLOAT TAB — the daily system. Twelve evidence-anchored
 /// protocols in three time blocks (MORNING FLUSH / INTAKE CONTROL /

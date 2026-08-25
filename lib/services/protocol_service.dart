@@ -1,7 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/face_geometry.dart';
-import '../models/mirror_analysis.dart';
+import '../models/debloat_analysis.dart';
 import '../models/protocol.dart';
 import '../models/scan_record.dart';
 import 'daily_nudge_service.dart';

@@ -8,7 +8,7 @@ import '../../services/analytics_service.dart';
 import '../../services/local_store_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
-import '../../widgets/common/mirrorly_wordmark.dart';
+import '../../widgets/common/brand_wordmark.dart';
 
 /// ── Onboarding manifesto + profile screen ──────────────────────────────
 ///
