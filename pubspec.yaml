@@ -1,7 +1,7 @@
 name: debloat_os
 description: "Debloat OS — the face under the bloat."
 publish_to: 'none'
-version: 1.0.0+57
+version: 1.0.0+58
 
 environment:
   sdk: ^3.8.0
@@ -31,9 +31,8 @@ dependencies:
   path_provider: ^2.1.3
   share_plus: ^10.0.2
   # RevenueCat SDK — single integration for App Store + Play Billing.
-  # Handles subscriptions, one-time IAPs, receipt validation, and
-  # restore-purchases. We use it for Mirrorly Pro (monthly/annual) and
-  # the 20-credit one-time pack.
+  # Handles subscriptions, receipt validation, and restore-purchases.
+  # Debloat OS sells exactly one product: the weekly Pro subscription.
   purchases_flutter: ^8.2.2
   # Firebase Analytics — conversion-funnel telemetry only. Logs the
   # named events in lib/services/analytics_service.dart. No PII, no
@@ -51,7 +50,6 @@ dependencies:
   flutter_local_notifications: ^17.2.3
   timezone: ^0.9.4
 
-  # ── AURALAY GRAFT (Eyes + Game tabs + voice AI) ─────────────────────────
   # Keeps the screen on during the face scan.
   wakelock_plus: ^1.2.1
   # In-app review prompt. Fires once after the first scan, asking for
@@ -73,7 +71,8 @@ flutter:
   assets:
     - assets/icons/appstore.png
     - assets/icons/playstore.png
-    # Mirror-tab pre-scan before/after pair. Declared as a directory
+    # Before/after pair used by the onboarding slider and the Scan
+    # tab's pre-scan tile. Declared as a directory
     # so the build doesn't fail when the JPEGs haven't been dropped
     # yet — Flutter bundles whatever exists in the folder, and the
     # Image.asset errorBuilder in _BeforeAfterTile falls back to a

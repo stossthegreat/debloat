@@ -22,16 +22,16 @@ import '../../theme/app_typography.dart';
 import '../../widgets/common/brand_wordmark.dart';
 import '../../widgets/common/ui_kit.dart';
 // DEBLOAT OS. Four surfaces, one promise per tab:
-//   SCAN / DEBLOAT / FOOD / ASCEND.
+//   TODAY / FOOD / SCAN / PROGRESS.
 import '../debloat/debloat_tab_screen.dart';
 import '../food/food_tab_screen.dart';
 import 'ascend_screen.dart';
 
 /// The hub. Four surfaces, one promise per tab:
-///   0. SCAN    — face scan + bloat read
-///   1. DEBLOAT — the daily checklist system
-///   2. FOOD    — scan meals that cause puffiness (sodium + bloat grade)
-///   3. ASCEND  — streak, daily missions, gap to potential
+///   0. TODAY    — the daily anti-bloat system (landing tab)
+///   1. FOOD     — photograph meals for sodium load + bloat grade
+///   2. SCAN     — the face measurement + bloat read
+///   3. PROGRESS — streak, daily actions, trend over time
 class HomeScreen extends StatefulWidget {
   /// Optional initial tab.
   final int? initialTab;
@@ -88,10 +88,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // FOUR tabs: SCAN (0) / FOOD (1) / DEBLOAT (2) / ASCEND (3). Scan
-    // leads the nav and is the default landing tab. Callers that want a
-    // specific tab pass initialTab; anything out of range falls back to
-    // SCAN so older deep links don't crash.
+    // FOUR tabs: TODAY (0) / FOOD (1) / SCAN (2) / PROGRESS (3).
+    // TODAY leads the nav and is the default landing tab, so the app
+    // opens on the work rather than on a face score. Callers that want
+    // a specific tab pass initialTab; anything out of range falls back
+    // to TODAY so older deep links don't crash.
     final t = widget.initialTab ?? 0;
     _tab = (t >= 0 && t < 4) ? t : 0;
     _reload();
@@ -210,11 +211,25 @@ class _HomeScreenState extends State<HomeScreen> {
           ? const _Splash()
           : IndexedStack(
               index: _tab,
-              // Tab roster order: SCAN (0) · FOOD (1) · DEBLOAT (2) ·
-              // ASCEND (3). Scan (the face read) leads; Food sits second.
+              // v57 tab roster: TODAY (0) · FOOD (1) · SCAN (2) ·
+              // PROGRESS (3). The daily anti-bloat system leads and is
+              // the landing tab — this app is a bloat tracker you work
+              // every day, not a face-rating app you open once. The
+              // face scan demotes to slot 2, where it belongs: a
+              // measurement you take periodically to check the trend.
               children: [
-                // Tab 0 — SCAN hub: face scan + bloat read. Streak badge
-                // on the masthead keeps the loop visible.
+                // Tab 0 — TODAY: the daily debloat system. Every toggle
+                // calls back into _reload so the flame + the Progress
+                // consistency stay live.
+                DebloatTabScreen(
+                  dayStreak: _dayStreak,
+                  onChanged: _reload,
+                ),
+                // Tab 1 — FOOD: photograph a meal, get its sodium load
+                // and facial-bloat grade. Self-contained; owns its own
+                // capture + backend call + result persistence.
+                const FoodTabScreen(),
+                // Tab 2 — SCAN: the face measurement + bloat read.
                 _ScanHubTab(
                   latest:           _latest,
                   protocol:         _protocol,
@@ -222,17 +237,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   dayStreak:        _dayStreak,
                   isPro:            _isPro,
                   onRefresh:        _reload,
-                ),
-                // Tab 1 — FOOD: scan a meal, grade it for facial bloat
-                // (sodium load + bloat metric grid). Self-contained; owns
-                // its own capture + backend call + result persistence.
-                const FoodTabScreen(),
-                // Tab 2 — DEBLOAT: the daily checklist system. Every
-                // toggle calls back into _reload so the flame + the
-                // Ascend consistency stay live.
-                DebloatTabScreen(
-                  dayStreak: _dayStreak,
-                  onChanged: _reload,
                 ),
                 // Tab 3 — ASCEND. Pulls the protocol + scan history +
                 // completion booleans from this screen's state so it
@@ -777,7 +781,7 @@ class _ProgressIconChip extends StatelessWidget {
 // ── Masthead cog — small circular settings icon in the top-right of
 // the Looks tab + Rizz tab mastheads. Replaces the old
 // MastheadAction so we get a clean compact icon next to the brand
-// wordmark without dragging the whole legacy MirrorlyMasthead row.
+// wordmark without dragging the whole legacy masthead row.
 class _MastheadCog extends StatelessWidget {
   final VoidCallback onTap;
   const _MastheadCog({required this.onTap});
@@ -1035,12 +1039,12 @@ class _NavBar extends StatelessWidget {
     this.ascendPending = false,
   });
 
-  /// Four surfaces, one promise each: the reading, the plate, the
-  /// daily system, the trend.
+  /// Four surfaces, one promise each: the daily system, the plate,
+  /// the measurement, the trend.
   static const _items = <({String label, IconData icon})>[
-    (label: 'Scan',     icon: Icons.center_focus_strong_rounded),
+    (label: 'Today',    icon: Icons.water_drop_rounded),
     (label: 'Food',     icon: Icons.restaurant_rounded),
-    (label: 'Debloat',  icon: Icons.water_drop_rounded),
+    (label: 'Scan',     icon: Icons.center_focus_strong_rounded),
     (label: 'Progress', icon: Icons.show_chart_rounded),
   ];
 

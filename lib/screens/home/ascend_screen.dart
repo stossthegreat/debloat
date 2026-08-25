@@ -226,7 +226,7 @@ class _AscendScreenState extends State<AscendScreen> {
             _SystemLauncher(
               done:  clDone,
               total: clTotal,
-              onTap: () => widget.onJumpToTab(2),
+              onTap: () => widget.onJumpToTab(0),
             ).animate().fadeIn(delay: 240.ms, duration: 400.ms),
 
             const SizedBox(height: Sp.lg),
